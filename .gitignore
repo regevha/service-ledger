@@ -1,0 +1,7 @@
+backend/.venv/
+backend/__pycache__/
+**/__pycache__/
+*.pyc
+backend/.env
+backend/storage/attachments/**
+!backend/storage/attachments/.gitkeep

@@ -1,0 +1,176 @@
+from __future__ import annotations
+
+import csv
+import io
+import uuid
+from datetime import date, datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
+
+from app import models, schemas
+from app.db import get_db
+
+router = APIRouter(tags=["reports"])
+
+
+@router.post("/reports", response_model=schemas.ReportOut, status_code=201)
+def create_report(payload: schemas.ReportCreate, db: Session = Depends(get_db)):
+    """§9: start a bare draft — no instrument or template yet. Document-first
+    intake (§4) resolves both after classification."""
+    report = models.Report(**payload.model_dump())
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    return report
+
+
+@router.get("/reports", response_model=list[schemas.ReportOut])
+def search_reports(
+    instrument_id: uuid.UUID | None = None,
+    date_from: date | None = None,
+    status: models.ReportStatus | None = None,
+    db: Session = Depends(get_db),
+):
+    """§7/§9: filtered search."""
+    query = db.query(models.Report)
+    if instrument_id:
+        query = query.filter(models.Report.instrument_id == instrument_id)
+    if date_from:
+        query = query.filter(models.Report.report_date >= date_from)
+    if status:
+        query = query.filter(models.Report.status == status)
+    return query.order_by(models.Report.created_at.desc()).all()
+
+
+@router.get("/reports/export")
+def export_reports(
+    instrument_id: uuid.UUID | None = None,
+    date_from: date | None = None,
+    status: models.ReportStatus | None = None,
+    db: Session = Depends(get_db),
+):
+    """§7/§9: bulk CSV export of a filtered view. extracted_fields is
+    flattened to a JSON string column rather than one column per possible
+    field — the whole point of JSONB (§5) is that the field set varies by
+    template, so a fixed CSV schema would defeat it."""
+    query = db.query(models.Report)
+    if instrument_id:
+        query = query.filter(models.Report.instrument_id == instrument_id)
+    if date_from:
+        query = query.filter(models.Report.report_date >= date_from)
+    if status:
+        query = query.filter(models.Report.status == status)
+    reports = query.order_by(models.Report.report_date).all()
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        [
+            "id",
+            "status",
+            "instrument_model",
+            "instrument_serial",
+            "report_type",
+            "technician_name",
+            "report_date",
+            "finalized_at",
+            "extracted_fields_json",
+        ]
+    )
+    for report in reports:
+        writer.writerow(
+            [
+                report.id,
+                report.status.value,
+                report.instrument.model if report.instrument else "",
+                report.instrument.serial_number if report.instrument else "",
+                report.template.report_type.value if report.template else "",
+                report.technician_name or "",
+                report.report_date.isoformat() if report.report_date else "",
+                report.finalized_at.isoformat() if report.finalized_at else "",
+                str(report.extracted_fields or {}),
+            ]
+        )
+    buffer.seek(0)
+    return StreamingResponse(
+        buffer,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=reports_export.csv"},
+    )
+
+
+@router.get("/reports/{report_id}", response_model=schemas.ReportOut)
+def get_report(report_id: uuid.UUID, db: Session = Depends(get_db)):
+    report = db.get(models.Report, report_id)
+    if not report:
+        raise HTTPException(404, "Report not found")
+    return report
+
+
+@router.patch("/reports/{report_id}/template", response_model=schemas.ReportOut)
+def confirm_template(report_id: uuid.UUID, payload: schemas.TemplateConfirmation, db: Session = Depends(get_db)):
+    """§9: confirm or override the classified instrument/template. An
+    override (or the manual fallback pick, when classify was uncertain)
+    invalidates any extraction already run — §4/§6: values extracted under
+    the wrong template aren't corrections to make, they're noise to discard."""
+    report = db.get(models.Report, report_id)
+    if not report:
+        raise HTTPException(404, "Report not found")
+    instrument = db.get(models.Instrument, payload.instrument_id)
+    template = db.get(models.ReportTemplate, payload.template_id)
+    if not instrument or not template:
+        raise HTTPException(422, "instrument_id or template_id does not exist")
+
+    template_changed = report.template_id != payload.template_id
+    report.instrument_id = payload.instrument_id
+    report.template_id = payload.template_id
+    report.status = models.ReportStatus.classified
+    if template_changed:
+        # Discard any prior extraction — it ran (or would run) against the
+        # wrong schema.
+        report.extracted_fields = {}
+    db.commit()
+    db.refresh(report)
+    return report
+
+
+@router.patch("/reports/{report_id}/fields", response_model=schemas.ReportOut)
+def update_report_fields(report_id: uuid.UUID, payload: schemas.ReportFieldsUpdate, db: Session = Depends(get_db)):
+    """§9/§6: apply corrections directly to the report's fields — overwrites
+    in place, no audit log in MVP (§10). Allowed even on a finalized report
+    (§6: "editing a finalized report ... overwrites its fields in place")."""
+    report = db.get(models.Report, report_id)
+    if not report:
+        raise HTTPException(404, "Report not found")
+
+    data = payload.model_dump(exclude_unset=True)
+    if "extracted_fields" in data and data["extracted_fields"] is not None:
+        report.extracted_fields = {**(report.extracted_fields or {}), **data.pop("extracted_fields")}
+    for key, value in data.items():
+        setattr(report, key, value)
+
+    if report.status in (models.ReportStatus.extracted, models.ReportStatus.in_review):
+        report.status = models.ReportStatus.in_review
+
+    db.commit()
+    db.refresh(report)
+    return report
+
+
+@router.post("/reports/{report_id}/finalize", response_model=schemas.ReportOut)
+def finalize_report(report_id: uuid.UUID, db: Session = Depends(get_db)):
+    """§9: mark a report finalized. §5: a report is meant to reach this from
+    extracted/in_review — finalizing a bare draft would just freeze an empty
+    record, so that's rejected rather than silently allowed."""
+    report = db.get(models.Report, report_id)
+    if not report:
+        raise HTTPException(404, "Report not found")
+    if report.status not in (models.ReportStatus.extracted, models.ReportStatus.in_review):
+        raise HTTPException(409, f"Cannot finalize a report in status '{report.status.value}'")
+    report.status = models.ReportStatus.finalized
+    report.finalized_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(report)
+    return report
