@@ -149,6 +149,47 @@ Two things worth knowing if you touch this code:
   should assume more such gaps exist until they're demonstrated against
   real documents, not asserted from the spec text alone.
 
+### Failure handling
+
+Going live means the pipeline now depends on a network call that can fail
+in ways the stub never did — a bad key, a dropped connection, a timeout, a
+rate limit, or (seen in practice above) a response that doesn't match the
+expected shape. `_live_classify`/`_live_extract` catch all of these and
+raise `ClassificationError`/`ExtractionError` (`app/services/errors.py`)
+with a message meant for a human, not a stack trace. The Anthropic client is
+built with an explicit `timeout` and `max_retries`
+(`ANTHROPIC_TIMEOUT_SECONDS` / `ANTHROPIC_MAX_RETRIES` in `.env` — the SDK
+already retries connection errors/408/409/429/5xx internally with backoff,
+this just makes the budget explicit instead of trusting an undocumented
+default).
+
+The routers (`app/routers/attachments.py`) catch both error types: instead
+of a bare 500 with no trace of what was attempted, `classify`/`extract`
+return `502` with the error message, and — this is the part that actually
+matters for a technician looking at a stuck report later — write an
+`ExtractionJob` row with `status=failed` and `error_message` set
+(`extraction_jobs.error_message`, added in the
+`add_error_message_to_extraction_jobs` migration) so the failure has a
+record, not just an error response nobody saw. `tests/test_live_claude_failures.py`
+covers both paths by monkeypatching `classify`/`extract` to raise — the
+suite doesn't and shouldn't call the real API (see `tests/conftest.py`).
+
+One schema path — `number[detector]`/`number[laser]`, used only by the
+`calibration` templates (`app/seed_templates.py::CST_CALIBRATION_FIELDS`) —
+had never been exercised at all, live or otherwise: none of the 6 real
+sample documents used to validate this wiring are calibration visits.
+`tests/test_extraction_schema.py` at least proves the JSON-schema
+construction for that type doesn't break, and a one-off live smoke test
+(feeding a real, wrong-type document through the calibration template's
+tool schema) confirmed the shape round-trips correctly through a real model
+call — per-detector fields came back as empty objects with low confidence
+rather than the flattened/stringified failure mode found earlier, which is
+the correct answer when the source document has no calibration data to
+report. That derisks the schema shape; it can't confirm extraction
+*accuracy* on this field type without a real calibration document, which
+CL-ARCH-001 §12 already lists as still needed for the FACSDiscover S8
+spectral fields.
+
 ## Known gaps against the full spec (intentionally out of scope for this scaffold)
 
 - **No background worker.** §3 describes extraction as async via a polling

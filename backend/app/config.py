@@ -28,6 +28,14 @@ class Settings(BaseSettings):
 
     use_live_claude: bool = False
     anthropic_api_key: str = ""
+    # Explicit rather than relying on the SDK's undocumented defaults: the
+    # client already retries connection errors/408/409/429/5xx internally
+    # with backoff up to this count before classify()/extract() ever see an
+    # exception (see services/errors.py for what happens after retries are
+    # exhausted). A vision call over a multi-page PDF is slower than a
+    # typical text call, hence the generous timeout.
+    anthropic_timeout_seconds: float = 90.0
+    anthropic_max_retries: int = 2
 
     @property
     def attachment_storage_path(self) -> Path:

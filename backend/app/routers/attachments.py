@@ -10,6 +10,7 @@ from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
 from app.services.classification import classify as run_classify
+from app.services.errors import ClassificationError, ExtractionError
 from app.services.extraction import extract as run_extract
 
 router = APIRouter(tags=["attachments"])
@@ -51,7 +52,22 @@ def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db))
     if not attachment:
         raise HTTPException(404, "Attachment not found")
 
-    result = run_classify(db, attachment)
+    try:
+        result = run_classify(db, attachment)
+    except ClassificationError as e:
+        # Record the attempt even though it failed — a 500 with no trace of
+        # what was tried leaves a technician unable to tell "classification
+        # failed" from "nothing happened yet."
+        job = models.ExtractionJob(
+            attachment_id=attachment_id,
+            status=models.ExtractionJobStatus.failed,
+            error_message=str(e),
+            started_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(timezone.utc),
+        )
+        db.add(job)
+        db.commit()
+        raise HTTPException(502, f"Classification failed: {e}") from e
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,
@@ -105,7 +121,14 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
     )
     db.add(job)
 
-    extracted_fields, field_confidences = run_extract(attachment, template)
+    try:
+        extracted_fields, field_confidences = run_extract(attachment, template)
+    except ExtractionError as e:
+        job.status = models.ExtractionJobStatus.failed
+        job.error_message = str(e)
+        job.completed_at = datetime.now(timezone.utc)
+        db.commit()
+        raise HTTPException(502, f"Extraction failed: {e}") from e
 
     report.extracted_fields = extracted_fields
     report.status = models.ReportStatus.extracted

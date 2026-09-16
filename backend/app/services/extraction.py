@@ -26,10 +26,12 @@ import hashlib
 from datetime import date
 from pathlib import Path
 
+import anthropic
 from anthropic import Anthropic
 
 from app.config import get_settings
 from app.models import Attachment, ReportTemplate
+from app.services.errors import ExtractionError
 
 settings = get_settings()
 
@@ -41,7 +43,11 @@ _client: Anthropic | None = None
 def _get_client() -> Anthropic:
     global _client
     if _client is None:
-        _client = Anthropic(api_key=settings.anthropic_api_key)
+        _client = Anthropic(
+            api_key=settings.anthropic_api_key,
+            timeout=settings.anthropic_timeout_seconds,
+            max_retries=settings.anthropic_max_retries,
+        )
     return _client
 
 
@@ -206,22 +212,34 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dic
     tool = _build_extract_tool(fields)
     prompt = _EXTRACT_PROMPT_HEADER + "\n\nFields to extract:\n" + _field_list_for_prompt(fields)
 
-    response = _get_client().messages.create(
-        model="claude-sonnet-5",
-        max_tokens=4096,
-        tools=[tool],
-        tool_choice={"type": "tool", "name": _EXTRACT_TOOL_NAME},
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64}},
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ],
-    )
-    tool_use = next(block for block in response.content if block.type == "tool_use")
+    try:
+        response = _get_client().messages.create(
+            model="claude-sonnet-5",
+            max_tokens=4096,
+            tools=[tool],
+            tool_choice={"type": "tool", "name": _EXTRACT_TOOL_NAME},
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64}},
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ],
+        )
+    except anthropic.AuthenticationError as e:
+        raise ExtractionError(f"Claude API authentication failed — check ANTHROPIC_API_KEY: {e}") from e
+    except anthropic.APIError as e:
+        raise ExtractionError(f"Claude API request failed during extraction: {e}") from e
+
+    try:
+        tool_use = next(block for block in response.content if block.type == "tool_use")
+    except StopIteration as e:
+        raise ExtractionError(
+            "Claude did not return the expected tool call for extraction (no tool_use block in the response)"
+        ) from e
+
     data = _resolve_extraction_data(tool_use.input, fields)
 
     extracted_fields: dict = {}
@@ -241,7 +259,14 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dic
             confidence = value.get("confidence", confidence)
             value = value.get("value")
         extracted_fields[name] = value
-        field_confidences[name] = float(confidence) if confidence is not None else 0.0
+        try:
+            field_confidences[name] = float(confidence) if confidence is not None else 0.0
+        except (TypeError, ValueError):
+            # A non-numeric confidence shouldn't sink the whole extraction —
+            # treat it as "couldn't tell," which is what a low confidence
+            # already means to a reviewer, and keep the (possibly still
+            # useful) value.
+            field_confidences[name] = 0.0
     return extracted_fields, field_confidences
 
 

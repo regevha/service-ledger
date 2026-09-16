@@ -135,5 +135,6 @@ class ExtractionJobOut(BaseModel):
     status: ExtractionJobStatus
     classification: dict | None
     field_confidences: dict | None
+    error_message: str | None = None
     started_at: datetime | None
     completed_at: datetime | None
