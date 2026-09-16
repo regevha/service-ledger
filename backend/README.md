@@ -134,7 +134,10 @@ need to know the difference.
   artifacts (new-report-demo.html, repair-review-demo.html,
   instrument-timeline-demo.html) show the intended UI but aren't wired to
   this API yet.
-- **§12's open questions are still open** — the FACSDiscover S8 spectral
-  field list and per-model PM additions are implemented exactly as guessed
-  in the spec, not yet checked against real BD documentation. This is what
-  tomorrow's sample documents are for.
+- **The FACSDiscover S8 spectral calibration field list is still a guess** —
+  unlike `repair` and `preventive_maintenance`, no real S8 document has been
+  checked against it yet (§12).
+- **`preventive_maintenance` is now grounded in one real document, not
+  zero** (v0.12) — but only an LSRFortessa one. Whether Aria/S8 PM visits
+  also carry no model-specific fields, the same way this one didn't, is
+  still open (§12).
