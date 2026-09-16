@@ -1,7 +1,7 @@
 # Calibration Ledger — backend scaffold
 
 A working implementation of the API surface described in **CL-ARCH-001 §9**
-(the Calibration Ledger architecture spec, v0.11) — real FastAPI, real
+(the Calibration Ledger architecture spec, v0.12) — real FastAPI, real
 Postgres with JSONB templates, real Alembic migrations, real tests. The one
 thing that isn't real yet is Claude itself: `classify()` and `extract()` are
 stubbed (see "Swapping in the real Claude API" below) so the rest of the
@@ -24,7 +24,7 @@ backend/
     models.py               §5 data model, field-for-field
     schemas.py               Pydantic request/response shapes
     seed_instruments.py      The fixed 3-instrument fleet (§1)
-    seed_templates.py        The six report_templates rows (§5)
+    seed_templates.py        The four report_templates rows (§5)
     routers/
       instruments.py         POST/GET /instruments, GET /instruments/{id}/trend
       report_templates.py    GET /report-templates (resolution logic, §2)
@@ -137,7 +137,11 @@ need to know the difference.
 - **The FACSDiscover S8 spectral calibration field list is still a guess** —
   unlike `repair` and `preventive_maintenance`, no real S8 document has been
   checked against it yet (§12).
-- **`preventive_maintenance` is now grounded in one real document, not
-  zero** (v0.12) — but only an LSRFortessa one. Whether Aria/S8 PM visits
-  also carry no model-specific fields, the same way this one didn't, is
-  still open (§12).
+- **`preventive_maintenance` is now grounded in two real documents, not
+  zero** (v0.12) — an LSRFortessa visit and a FACSDiscover S8 visit, neither
+  carrying any model-specific field. Only a FACSAria III PM report remains
+  unchecked (§12).
+- **`repair` is now confirmed across all three instrument models** (v0.12)
+  — two LSRFortessa repairs, a FACSAria III repair, and a FACSDiscover S8
+  repair all map cleanly with zero schema changes, making it the only
+  template checked against every model in scope (§5, §12).
