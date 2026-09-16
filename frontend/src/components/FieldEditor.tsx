@@ -91,18 +91,29 @@ function ObjectArrayInput({
     onChange([...rows, blank]);
   }
 
+  // Explicit column count + minmax(0, 1fr) rather than the CSS's own
+  // repeat(auto-fit, minmax(90px, 1fr)): auto-fit sizes tracks from the
+  // container width alone, and a track's automatic minimum still defaults
+  // to its content's width unless overridden — so a long extracted value
+  // (a real part description, or here the stub's placeholder file path)
+  // was forcing each column onto its own line instead of lining up beside
+  // its header. minmax(0, ...) lets the track shrink below its content's
+  // natural width, and the input/textarea inside truncates or wraps in its
+  // own column instead of blowing out the whole row.
+  const rowGridStyle = { gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr)) auto` };
+
   return (
     <div className="object-array">
       {rows.length > 0 && (
         <div className="object-array-table">
-          <div className="object-array-row object-array-head">
+          <div className="object-array-row object-array-head" style={rowGridStyle}>
             {columns.map(([key]) => (
               <span key={key}>{key.replace(/_/g, ' ')}</span>
             ))}
             <span />
           </div>
           {rows.map((row, i) => (
-            <div className="object-array-row" key={i}>
+            <div className="object-array-row" key={i} style={rowGridStyle}>
               {columns.map(([key, type]) => (
                 <span key={key}>{leafInput(row[key], type as LeafType, (v) => updateRow(i, key, v))}</span>
               ))}
