@@ -47,6 +47,11 @@ SPECTRAL_CALIBRATION_FIELDS = [
     {"name": "imaging_focus_calibration_passed", "type": "boolean", "unit": None, "notes": "S8-specific imaging module"},
 ]
 
+# Checked against four real BD Care EU Work Order Service Reports — two
+# LSRFortessa repairs, a FACSAria III repair, and a FACSDiscover S8 repair —
+# making this the only template confirmed against a document from every
+# model in scope. All four map cleanly with zero schema changes across the
+# whole set; see CL-ARCH-001 §5, §12 (v0.12).
 REPAIR_FIELDS = [
     {
         "name": "fault_description",
@@ -96,8 +101,11 @@ REPAIR_FIELDS = [
 # `reports.next_service_due` real column that already exists across every
 # report type (§5). The per-model split was dropped too, on the same
 # evidence-over-guess basis repair's per-model split was dropped in v0.9:
-# nothing on the real form is model-specific. Only checked against an
-# LSRFortessa document so far — see §12.
+# nothing on the real form is model-specific. Checked against two real
+# documents so far — an LSRFortessa visit and a FACSDiscover S8 visit, the
+# latter's own imaging/optical checks sitting in the same free-text
+# narrative rather than as discrete fields. Only a FACSAria III PM report
+# remains unchecked — see §12.
 PM_FIELDS = [
     {
         "name": "service_description",
