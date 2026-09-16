@@ -20,12 +20,14 @@ import base64
 import hashlib
 from pathlib import Path
 
+import anthropic
 from anthropic import Anthropic
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models import Attachment, Instrument, ReportTemplate, ReportType
 from app.schemas import ClassificationGuess, ClassificationResult
+from app.services.errors import ClassificationError
 from app.services.templates import resolve_template
 
 settings = get_settings()
@@ -38,7 +40,11 @@ _client: Anthropic | None = None
 def _get_client() -> Anthropic:
     global _client
     if _client is None:
-        _client = Anthropic(api_key=settings.anthropic_api_key)
+        _client = Anthropic(
+            api_key=settings.anthropic_api_key,
+            timeout=settings.anthropic_timeout_seconds,
+            max_retries=settings.anthropic_max_retries,
+        )
     return _client
 
 
@@ -99,26 +105,51 @@ def _live_classify(db: Session, attachment: Attachment, instruments: list[Instru
         },
     }
 
-    response = _get_client().messages.create(
-        model="claude-sonnet-5",
-        max_tokens=1024,
-        tools=[tool],
-        tool_choice={"type": "tool", "name": _CLASSIFY_TOOL_NAME},
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64}},
-                    {"type": "text", "text": _CLASSIFY_PROMPT},
-                ],
-            }
-        ],
-    )
-    tool_use = next(block for block in response.content if block.type == "tool_use")
-    data = tool_use.input
+    try:
+        response = _get_client().messages.create(
+            model="claude-sonnet-5",
+            max_tokens=1024,
+            tools=[tool],
+            tool_choice={"type": "tool", "name": _CLASSIFY_TOOL_NAME},
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64}},
+                        {"type": "text", "text": _CLASSIFY_PROMPT},
+                    ],
+                }
+            ],
+        )
+    except anthropic.AuthenticationError as e:
+        # Not retried by the SDK (a bad key won't fix itself) — worth its own
+        # message since "check ANTHROPIC_API_KEY" is a much faster diagnosis
+        # than the generic APIError message below.
+        raise ClassificationError(f"Claude API authentication failed — check ANTHROPIC_API_KEY: {e}") from e
+    except anthropic.APIError as e:
+        # Covers everything else the SDK can raise for this call (connection
+        # errors, timeouts, rate limits, 5xx) — already retried internally
+        # up to settings.anthropic_max_retries before landing here.
+        raise ClassificationError(f"Claude API request failed during classification: {e}") from e
 
-    instrument_guess = ClassificationGuess(value=data["instrument_model"], confidence=float(data["instrument_confidence"]))
-    type_guess = ClassificationGuess(value=data["report_type"], confidence=float(data["report_type_confidence"]))
+    try:
+        tool_use = next(block for block in response.content if block.type == "tool_use")
+    except StopIteration as e:
+        raise ClassificationError(
+            "Claude did not return the expected tool call for classification (no tool_use block in the response)"
+        ) from e
+
+    data = tool_use.input
+    try:
+        instrument_guess = ClassificationGuess(value=data["instrument_model"], confidence=float(data["instrument_confidence"]))
+        type_guess = ClassificationGuess(value=data["report_type"], confidence=float(data["report_type_confidence"]))
+    except (KeyError, TypeError, ValueError) as e:
+        # Tool-use input isn't strictly validated against the schema (see
+        # extraction.py's flat-schema comment for a live example of this),
+        # so a missing key or an unparseable confidence is a real, seen-in-
+        # practice failure mode, not just defensive paranoia.
+        raise ClassificationError(f"Claude's classification response was missing or malformed fields: {e}") from e
+
     return instrument_guess, type_guess
 
 

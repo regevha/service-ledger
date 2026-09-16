@@ -172,6 +172,10 @@ class ExtractionJob(Base):
     classification: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # { field_name: confidence }
     field_confidences: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Set when status=failed — a human-readable reason from ClassificationError/
+    # ExtractionError (see services/errors.py), not a stack trace. NULL for
+    # every other status.
+    error_message: Mapped[str | None] = mapped_column(String, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
