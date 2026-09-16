@@ -1,11 +1,11 @@
-"""Seeds the six report_templates rows described in spec §5.
+"""Seeds the four report_templates rows described in spec §5 (v0.12).
 
 Field lists are transcribed field-for-field from the spec's tables — see
 CL-ARCH-001 §5 for the unit notes and the rationale behind each template's
-shape (why repair stays one shared row while calibration and PM split by
-model, why JSONB over a wide table, etc). This module only encodes the
-already-decided shape; run it once against a fresh database via
-`python -m app.seed_templates`.
+shape (why repair and, as of v0.12, preventive_maintenance both stay one
+shared row while calibration still splits by model, why JSONB over a wide
+table, etc). This module only encodes the already-decided shape; run it once
+against a fresh database via `python -m app.seed_templates`.
 """
 from __future__ import annotations
 
@@ -85,42 +85,86 @@ REPAIR_FIELDS = [
     },
 ]
 
-PM_CORE_FIELDS = [
-    {"name": "fluidics_system_flushed", "type": "boolean", "unit": None, "notes": None},
-    {"name": "filters_replaced", "type": "boolean", "unit": None, "notes": None},
-    {"name": "sheath_waste_tank_serviced", "type": "boolean", "unit": None, "notes": None},
-    {"name": "laser_hours_logged", "type": "number[laser]", "unit": "hours", "notes": "cumulative, per laser line"},
-    {"name": "firmware_version_verified", "type": "text", "unit": None, "notes": None},
-    {"name": "next_pm_due", "type": "date", "unit": None, "notes": None},
-]
-
-PM_ARIA_ADDITIONS = [
-    {"name": "nozzle_orifice_inspected", "type": "boolean", "unit": None, "notes": "cell-sorter hardware"},
-    {"name": "drop_delay_recalibrated", "type": "boolean", "unit": None, "notes": "cell-sorter hardware"},
-    {"name": "sort_precision_cv_percent", "type": "number", "unit": "%", "notes": "cell-sorter hardware"},
-]
-
-PM_S8_ADDITIONS = [
-    {"name": "nozzle_orifice_inspected", "type": "boolean", "unit": None, "notes": "sort-specific, shared with the Aria III"},
-    {"name": "drop_delay_recalibrated", "type": "boolean", "unit": None, "notes": "sort-specific, shared with the Aria III"},
-    {"name": "optical_filter_wheel_inspected", "type": "boolean", "unit": None, "notes": "S8 imaging/spectral hardware"},
-    {"name": "imaging_module_calibration_verified", "type": "boolean", "unit": None, "notes": "S8 imaging/spectral hardware"},
+# v0.12: redesigned from a guessed per-model boolean checklist to this shared,
+# repair-shaped template after checking a real LSRFortessa half-year PM
+# report. The real form carries no discrete per-check booleans anywhere —
+# it's the same free-text "Work Performed" narrative as a repair report, plus
+# Parts/Labor/Travel tables, plus one section repair reports don't have:
+# a "Calibrated Tools" table of external metrology equipment used during the
+# visit. laser_hours_logged, firmware_version_verified, and next_pm_due were
+# all dropped — none appear on the real form, and next_pm_due duplicated the
+# `reports.next_service_due` real column that already exists across every
+# report type (§5). The per-model split was dropped too, on the same
+# evidence-over-guess basis repair's per-model split was dropped in v0.9:
+# nothing on the real form is model-specific. Only checked against an
+# LSRFortessa document so far — see §12.
+PM_FIELDS = [
+    {
+        "name": "service_description",
+        "type": "text",
+        "unit": None,
+        "notes": "BD's Subject + Description lines — often just \"Preventive Maintenance\" verbatim",
+    },
+    {
+        "name": "work_performed",
+        "type": "text",
+        "unit": None,
+        "notes": "the maintenance narrative (cleaning, PM-kit exchange, checks performed, CS&T baseline, final inspection outcome)",
+    },
+    {
+        "name": "components_replaced",
+        "type": "object[]",
+        "unit": None,
+        "notes": "one entry per part; mirrors the form's \"Parts Used\" table (PM kits, not fault repairs)",
+        "item_schema": {"part_name": "text", "part_number": "text", "qty": "number"},
+    },
+    {
+        "name": "calibrated_tools",
+        "type": "object[]",
+        "unit": None,
+        "notes": "external test equipment used, from the form's \"Calibrated Tools\" table — not present on repair reports",
+        "item_schema": {
+            "tool_id": "text",
+            "tool_name": "text",
+            "last_calibration_date": "date",
+            "next_calibration_date": "date",
+        },
+    },
+    {"name": "labor_hours", "type": "number", "unit": "hours", "notes": "rounded total from the form's \"Labor\" line"},
+    {
+        "name": "verification_result",
+        "type": "enum",
+        "unit": None,
+        "notes": "technician-assigned, not on the source form — mirrors repair's retest_result",
+        "options": ["pass", "fail", "not verified"],
+    },
 ]
 
 # (report_type, model) -> field list. model=None means the NULL-model
 # fallback row (§2, §5): applies to every model of the instrument_type unless
-# a model-specific row exists for the same report_type.
+# a model-specific row exists for the same report_type. As of v0.12, only
+# calibration still has a model-specific row (FACSDiscover S8's spectral
+# variant) — repair (v0.9) and preventive_maintenance (v0.12) both collapsed
+# to a single shared row once checked against real documents.
 TEMPLATE_ROWS: list[tuple[ReportType, str | None, list[dict]]] = [
     (ReportType.calibration, None, CST_CALIBRATION_FIELDS),
     (ReportType.calibration, "FACSDiscover S8", SPECTRAL_CALIBRATION_FIELDS),
     (ReportType.repair, None, REPAIR_FIELDS),
-    (ReportType.preventive_maintenance, "FACSAria III", PM_CORE_FIELDS + PM_ARIA_ADDITIONS),
-    (ReportType.preventive_maintenance, "LSRFortessa", list(PM_CORE_FIELDS)),
-    (ReportType.preventive_maintenance, "FACSDiscover S8", PM_CORE_FIELDS + PM_S8_ADDITIONS),
+    (ReportType.preventive_maintenance, None, PM_FIELDS),
 ]
 
 
 def seed(db: Session) -> list[ReportTemplate]:
+    """Upserts every row in TEMPLATE_ROWS, then removes any report_templates
+    row for a report_type covered here that isn't in the current desired set
+    — e.g. the three old per-model preventive_maintenance rows a v0.12
+    redesign left behind. A Report already pointing at a removed row keeps
+    its template_id (the FK isn't touched), it just won't resolve for new
+    reports; this is a dev/eval-scale convenience (§1), not a migration
+    tool."""
+    desired = {(rt, model) for rt, model, _ in TEMPLATE_ROWS}
+    covered_report_types = {rt for rt, _, _ in TEMPLATE_ROWS}
+
     created = []
     for report_type, model, fields in TEMPLATE_ROWS:
         existing = (
@@ -144,6 +188,18 @@ def seed(db: Session) -> list[ReportTemplate]:
         )
         db.add(row)
         created.append(row)
+    db.flush()
+
+    stale = [
+        row
+        for row in db.query(ReportTemplate)
+        .filter(ReportTemplate.instrument_type == "facs", ReportTemplate.report_type.in_(covered_report_types))
+        .all()
+        if (row.report_type, row.model) not in desired
+    ]
+    for row in stale:
+        db.delete(row)
+
     db.commit()
     for row in created:
         db.refresh(row)
