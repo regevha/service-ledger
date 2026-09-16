@@ -20,6 +20,12 @@ os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+psycopg2://calibration_ledger:calibration_ledger_dev@localhost:5432/calibration_ledger_test",
 )
+# Force stub mode regardless of the developer's own backend/.env: these tests
+# upload fake, non-PDF byte strings and assert exact hardcoded stub values
+# (e.g. "No see events"), so a real Claude call here would both waste a
+# credit and immediately fail on invalid PDF content. USE_LIVE_CLAUDE is only
+# ever meant to be live for the running dev server, never for the test suite.
+os.environ["USE_LIVE_CLAUDE"] = "false"
 
 from app import seed_instruments, seed_templates  # noqa: E402
 from app.db import Base, get_db  # noqa: E402

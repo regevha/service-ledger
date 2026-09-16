@@ -2,11 +2,11 @@
 
 A working implementation of the API surface described in **CL-ARCH-001 §9**
 (the Calibration Ledger architecture spec, v0.12) — real FastAPI, real
-Postgres with JSONB templates, real Alembic migrations, real tests. The one
-thing that isn't real yet is Claude itself: `classify()` and `extract()` are
-stubbed (see "Swapping in the real Claude API" below) so the rest of the
-document-first pipeline could be built and tested against a stable, canned
-signal before a live API key was available.
+Postgres with JSONB templates, real Alembic migrations, real tests.
+`classify()` and `extract()` can run against the real Claude API (see
+"Swapping in the real Claude API" below) or against a deterministic stub;
+the test suite always forces the stub (see `tests/conftest.py`) so it never
+spends a real API call or depends on a developer's local `.env`.
 
 Read `calibration-ledger-spec.html` (the published architecture spec) first
 if you haven't — this scaffold makes no design decisions of its own; it
@@ -110,13 +110,44 @@ Everything routes through two functions:
 - `app/services/extraction.py::extract(attachment, template)` →
   `(extracted_fields, field_confidences)`
 
-Nothing outside these two files needs to change. To go live: set
-`ANTHROPIC_API_KEY` and `USE_LIVE_CLAUDE=true` in `.env`, then replace each
-function's stub body with an actual `anthropic` SDK call — send the
-attachment's page image(s) plus (for `extract`) the template's
-`field_schema["fields"]` list, and parse the response back into the same
-shapes these stubs already return. The router code, tests, and demo UI don't
-need to know the difference.
+Both now have a real Claude path (`_live_classify` / `_live_extract`),
+selected at runtime by `settings.use_live_claude` — nothing outside these two
+files needed to change to add it, exactly as this section originally
+predicted. To go live: set `ANTHROPIC_API_KEY` and `USE_LIVE_CLAUDE=true` in
+`.env` (never committed — see `.env.example`). The router code, tests, and
+demo UI don't know the difference.
+
+The live path sends the attachment's PDF as a native `document` content
+block (Claude's PDF support handles multi-page scans directly, no
+per-page image splitting needed) plus, for `extract`, the resolved
+template's `field_schema["fields"]` list turned into a JSON tool schema
+built on the fly (`extraction.py::_build_extract_tool`). Both calls force
+tool use (`tool_choice={"type": "tool", ...}`) so the answer comes back as
+validated-shape JSON rather than free text to parse.
+
+Two things worth knowing if you touch this code:
+
+- **The extraction tool schema is deliberately flat** — top-level
+  `<field_name>` / `<field_name>__confidence` properties, not a nested
+  `{value, confidence}` object per field. A live validation run showed the
+  model reliably fills in flat, directly-typed top-level properties (the
+  same shape `classify()`'s tool already used successfully) but would
+  collapse a nested per-field object into a stringified value and drop
+  confidence — tool-use input isn't strictly validated against the schema,
+  and this was a real, repeatable weak spot for a schema this shape. There's
+  also a defensive unwrap (`_resolve_extraction_data`, plus a per-field
+  check in `_live_extract`) for the rarer case where the model still wraps
+  its whole answer, or one field's answer, in an extra key anyway.
+- **The privacy prompt is not just the product-spec wording.** Beyond
+  keeping customer contact/billing/contract details out of field values
+  (§4/§10), a live run against the real FACSAria III repair document showed
+  the technician's own sign-off ("... . By Shachar on 18/04/2021", a
+  pattern this fleet's quote logs use) leaking into `fault_description` —
+  the same class of gap already caught once by hand in the demo HTML pages,
+  now caught again by an actual API call and fixed by naming that pattern
+  explicitly in `_EXTRACT_PROMPT_HEADER`. Anyone extending this prompt
+  should assume more such gaps exist until they're demonstrated against
+  real documents, not asserted from the spec text alone.
 
 ## Known gaps against the full spec (intentionally out of scope for this scaffold)
 

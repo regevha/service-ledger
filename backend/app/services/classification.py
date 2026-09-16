@@ -3,8 +3,8 @@
 `classify()` is the one function a real Claude vision call replaces later.
 Its signature and return shape (a guess + confidence for instrument, a guess
 + confidence for report type) are the actual contract the rest of the app is
-built against, so swapping the stub body for a live API call touches only
-this file — no router, model, or schema changes required.
+built against — the live path added below (behind `settings.use_live_claude`)
+changes only this file's insides, exactly as the spec's swap-out plan says.
 
 The stub is deterministic (seeded from the attachment's id/path) rather than
 randomly noisy, so a demo run is reproducible. It also special-cases the real
@@ -16,8 +16,11 @@ document is easy.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
+from pathlib import Path
 
+from anthropic import Anthropic
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -29,6 +32,40 @@ settings = get_settings()
 
 _SAMPLE_MARKERS = ("wo-04587090", "sample", "work_order", "work-order")
 
+_client: Anthropic | None = None
+
+
+def _get_client() -> Anthropic:
+    global _client
+    if _client is None:
+        _client = Anthropic(api_key=settings.anthropic_api_key)
+    return _client
+
+
+_CLASSIFY_TOOL_NAME = "record_classification"
+
+_CLASSIFY_PROMPT = """This is a scanned BD Care service report for one flow cytometer in a fixed \
+fleet of three models. Identify two things and report a confidence (0 to 1) for each \
+independently — they are not the same call.
+
+1. Which instrument model this document is for. Look for the "Installed Product" or \
+"System" field, which prints a code and model name (e.g. "648282B3 - ARIA III ACDU \
+6B/3R/3V" is a FACSAria III; "665158 - FACSDiscover S8 ..." is a FACSDiscover S8). \
+Only choose from the allowed options.
+
+2. What kind of service visit this is. The most reliable signal is the "Work Order \
+Task Code" field: a code starting T113 ("Repair / Troubleshooting Visit") means \
+repair; a code starting T111 ("Preventive Maintenance") means preventive_maintenance; \
+anything referencing CS&T/QC calibration with no fault or PM-kit language means \
+calibration. Repair, PM, and calibration visits otherwise share the same generic \
+form layout, so this is a genuinely harder call than #1 — give it a lower confidence \
+when the task code is unclear or missing rather than guessing high.
+
+Give confidence scores that reflect real uncertainty. A clean, legible, unambiguous \
+read deserves something like 0.9-0.98. Anything you had to infer rather than read \
+directly, or where the document is ambiguous between two categories, deserves \
+meaningfully lower — do not default to a high number out of politeness."""
+
 
 def _stable_unit(*parts: str) -> float:
     """A float in [0, 1), stable for the same inputs — stands in for "model
@@ -37,12 +74,56 @@ def _stable_unit(*parts: str) -> float:
     return int(digest[:8], 16) / 0xFFFFFFFF
 
 
-def classify(db: Session, attachment: Attachment) -> ClassificationResult:
-    lower_path = attachment.file_path.lower()
-    instruments = db.query(Instrument).order_by(Instrument.serial_number).all()
-    if not instruments:
-        raise RuntimeError("No instruments registered — seed the instrument fleet before classifying (see app/seed_instruments.py).")
+def _live_classify(db: Session, attachment: Attachment, instruments: list[Instrument]) -> tuple[ClassificationGuess, ClassificationGuess]:
+    """The real Claude vision call. Sends the scanned PDF as a `document`
+    content block (native multi-page PDF support — see CL-TDD-001 §1) and
+    forces a tool call so the model's answer comes back as validated JSON
+    rather than free text to parse (§4: "returns ... a confidence for
+    each")."""
+    pdf_bytes = Path(attachment.file_path).read_bytes()
+    pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("ascii")
+    model_options = sorted({i.model for i in instruments})
 
+    tool = {
+        "name": _CLASSIFY_TOOL_NAME,
+        "description": "Record the classified instrument model and report type for this scanned service document.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "instrument_model": {"type": "string", "enum": model_options},
+                "instrument_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                "report_type": {"type": "string", "enum": [rt.value for rt in ReportType]},
+                "report_type_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            },
+            "required": ["instrument_model", "instrument_confidence", "report_type", "report_type_confidence"],
+        },
+    }
+
+    response = _get_client().messages.create(
+        model="claude-sonnet-5",
+        max_tokens=1024,
+        tools=[tool],
+        tool_choice={"type": "tool", "name": _CLASSIFY_TOOL_NAME},
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64}},
+                    {"type": "text", "text": _CLASSIFY_PROMPT},
+                ],
+            }
+        ],
+    )
+    tool_use = next(block for block in response.content if block.type == "tool_use")
+    data = tool_use.input
+
+    instrument_guess = ClassificationGuess(value=data["instrument_model"], confidence=float(data["instrument_confidence"]))
+    type_guess = ClassificationGuess(value=data["report_type"], confidence=float(data["report_type_confidence"]))
+    return instrument_guess, type_guess
+
+
+def _stub_classify(attachment: Attachment, instruments: list[Instrument]) -> tuple[ClassificationGuess, ClassificationGuess]:
+    lower_path = attachment.file_path.lower()
     if any(marker in lower_path for marker in _SAMPLE_MARKERS):
         # Reproduces the real BD Care EU Work Order Service Report case
         # discussed in spec §4: instrument ID is a confident read, report
@@ -65,17 +146,34 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
         type_guess = ClassificationGuess(
             value=report_type.value, confidence=round(0.86 + 0.12 * _stable_unit(attachment.file_path, "tc"), 2)
         )
+    return instrument_guess, type_guess
+
+
+def classify(db: Session, attachment: Attachment) -> ClassificationResult:
+    instruments = db.query(Instrument).order_by(Instrument.serial_number).all()
+    if not instruments:
+        raise RuntimeError("No instruments registered — seed the instrument fleet before classifying (see app/seed_instruments.py).")
+
+    if settings.use_live_claude:
+        instrument_guess, type_guess = _live_classify(db, attachment, instruments)
+    else:
+        instrument_guess, type_guess = _stub_classify(attachment, instruments)
 
     resolved_template: ReportTemplate | None = None
     resolved_instrument_id = None
+    # The fixed MVP fleet (§1) has exactly one instrument per model, so the
+    # first match is the only match; this would need a real disambiguation
+    # step (serial number, most likely) if the fleet ever grows past that.
+    matched_instrument = next((i for i in instruments if i.model == instrument_guess.value), None)
     if (
-        instrument_guess.confidence >= settings.classification_confidence_threshold
+        matched_instrument is not None
+        and instrument_guess.confidence >= settings.classification_confidence_threshold
         and type_guess.confidence >= settings.classification_confidence_threshold
     ):
         resolved_template = resolve_template(
             db, instrument_type="facs", report_type=type_guess.value, model=instrument_guess.value
         )
-        resolved_instrument_id = instrument.id
+        resolved_instrument_id = matched_instrument.id
 
     return ClassificationResult(
         instrument=instrument_guess,
