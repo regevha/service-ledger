@@ -340,9 +340,23 @@ textarea {
 }
 .object-array-row {
   display: grid;
+  /* Fallback only — FieldEditor.tsx sets an explicit gridTemplateColumns
+     inline style matching the real column count, since auto-fit alone
+     can't tell a long value's content-width from the space actually
+     available. min-width: 0 on the cells is what lets that fix work: a
+     grid item's automatic minimum size defaults to its content's width
+     otherwise, which is what forced long values onto their own row. */
   grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)) auto;
   gap: 8px;
   align-items: center;
+}
+.object-array-row > * {
+  min-width: 0;
+}
+.object-array-row input,
+.object-array-row textarea {
+  min-width: 0;
+  text-overflow: ellipsis;
 }
 .object-array-head {
   font-size: 0.7rem;
