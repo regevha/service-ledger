@@ -425,7 +425,8 @@ function ReviewScreen({
   return (
     <div className="section">
       <div className="section-title">
-        {REPORT_TYPE_LABEL[template.report_type]} — {flaggedCount} field{flaggedCount === 1 ? '' : 's'} need your attention
+        {REPORT_TYPE_LABEL[template.report_type]} — {flaggedCount} field{flaggedCount === 1 ? '' : 's'} {flaggedCount === 1 ? 'needs' : 'need'} your
+        attention
       </div>
 
       <div className="field-list">
