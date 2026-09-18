@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import uuid
 from datetime import date, datetime, timezone
 
@@ -123,7 +124,16 @@ def export_reports(
                 report.technician_name or "",
                 report.report_date.isoformat() if report.report_date else "",
                 report.finalized_at.isoformat() if report.finalized_at else "",
-                str(report.extracted_fields or {}),
+                # json.dumps, not str() — str() on a dict produces Python
+                # repr syntax (True/None/single-quoted strings), which looks
+                # like JSON but isn't: json.loads() on it throws for any
+                # report with a boolean, null, or nested field (e.g.
+                # CST_CALIBRATION_FIELDS' compensation_matrix_updated), even
+                # though this column is named/documented as JSON. default=str
+                # is a defensive backstop, not a real dependency — every
+                # value here already comes from JSON-schema-typed fields
+                # (services/extraction.py), so nothing should ever hit it.
+                json.dumps(report.extracted_fields or {}, default=str),
             ]
         )
     buffer.seek(0)
