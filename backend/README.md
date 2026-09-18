@@ -60,6 +60,12 @@ python -m app.seed_templates
 
 uvicorn app.main:app --reload
 # → http://127.0.0.1:8000/docs for interactive OpenAPI docs
+
+# in a second terminal — §3's background worker. Without this running,
+# POST /attachments/{id}/classify and .../extract enqueue a job and return
+# 202 immediately, but nothing ever picks it up: reports stay stuck in
+# "draft"/"classified" forever.
+python -m app.worker
 ```
 
 Run the tests (against a separate `calibration_ledger_test` database — see
@@ -76,20 +82,26 @@ now backed by a real API:
 
 1. `POST /reports` — bare draft, no instrument or template yet.
 2. `POST /reports/{id}/attachments` — upload the scan (multipart file).
-3. `POST /attachments/{id}/classify` — guesses instrument + report type.
-   Both confident (≥ `CLASSIFICATION_CONFIDENCE_THRESHOLD`, default 0.85) →
-   the report is auto-resolved to `classified` with `instrument_id` /
-   `template_id` set. Either guess below threshold → the report stays
-   `draft` and step 4 is required.
+3. `POST /attachments/{id}/classify` — enqueues a classify job and returns
+   it immediately (`202`, `status: "pending"`) — §3's background worker
+   (`python -m app.worker`, see above) is what actually calls
+   `classify()`. Poll `GET /extraction-jobs/{id}` until `status` leaves
+   `pending`/`classifying`. Both guesses confident (≥
+   `CLASSIFICATION_CONFIDENCE_THRESHOLD`, default 0.85) → the report is
+   auto-resolved to `classified` with `instrument_id` / `template_id` set.
+   Either guess below threshold → the report stays `draft` and step 4 is
+   required.
 4. `PATCH /reports/{id}/template` — manual confirm/override (always
    available, not just for the low-confidence case — this is also how an
    incorrect confident guess gets corrected, discarding any prior
-   extraction per §4/§6).
-5. `POST /attachments/{id}/extract` — runs extraction against the resolved
-   template; report moves to `extracted`.
+   extraction per §4/§6). Synchronous — nothing here calls Claude.
+5. `POST /attachments/{id}/extract` — same enqueue-and-poll shape as step 3:
+   returns a pending job immediately; the worker runs `extract()` against
+   the resolved template and the report moves to `extracted` once the
+   polled job reaches `succeeded`.
 6. `PATCH /reports/{id}/fields` — technician corrections; moves to
-   `in_review`.
-7. `POST /reports/{id}/finalize` — moves to `finalized`.
+   `in_review`. Synchronous.
+7. `POST /reports/{id}/finalize` — moves to `finalized`. Synchronous.
 
 The stub's `classify()` special-cases any filename containing
 `WO-04587090`, `sample`, or `work_order`/`work-order` to reproduce the real
@@ -114,8 +126,9 @@ Both now have a real Claude path (`_live_classify` / `_live_extract`),
 selected at runtime by `settings.use_live_claude` — nothing outside these two
 files needed to change to add it, exactly as this section originally
 predicted. To go live: set `ANTHROPIC_API_KEY` and `USE_LIVE_CLAUDE=true` in
-`.env` (never committed — see `.env.example`). The router code, tests, and
-demo UI don't know the difference.
+`.env` (never committed — see `.env.example`). The worker (`app/worker.py`,
+the only caller of these two functions since §3's async rework), the
+router, the tests, and the frontend don't know the difference.
 
 The live path sends the attachment's PDF as a native `document` content
 block (Claude's PDF support handles multi-page scans directly, no
@@ -192,10 +205,6 @@ spectral fields.
 
 ## Known gaps against the full spec (intentionally out of scope for this scaffold)
 
-- **No background worker.** §3 describes extraction as async via a polling
-  worker; this scaffold runs classify/extract inline in the request for
-  simplicity. Swapping to a worker later doesn't change the API contract
-  (§3's whole point), so this is a safe thing to defer.
 - **No PDF preprocessing.** `page_count` is hardcoded to 1 and multi-page
   PDFs aren't split (§4 step 2) — there's no real document content to
   preprocess yet.

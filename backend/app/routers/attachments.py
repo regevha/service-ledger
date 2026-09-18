@@ -9,9 +9,6 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
-from app.services.classification import classify as run_classify
-from app.services.errors import ClassificationError, ExtractionError
-from app.services.extraction import extract as run_extract
 
 router = APIRouter(tags=["attachments"])
 settings = get_settings()
@@ -43,67 +40,49 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session 
     return attachment
 
 
-@router.post("/attachments/{attachment_id}/classify", response_model=schemas.ClassificationResult)
+@router.post(
+    "/attachments/{attachment_id}/classify",
+    response_model=schemas.ExtractionJobOut,
+    status_code=202,
+)
 def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
-    """§4 step 3 / §9: guess instrument and report type, resolve a template
-    when confident. Swap `services.classification.classify` for a real
-    Claude vision call to make this live — nothing here changes."""
+    """§4 step 3 / §9 / §3: enqueue a classify job and return immediately —
+    `app.worker` is what actually calls Claude and resolves a template when
+    confident. This used to run `services.classification.classify` inline in
+    the request; §3 is explicit that a vision call ("seconds, not
+    milliseconds") shouldn't block an HTTP request, so this endpoint's only
+    job now is validating the attachment exists and handing the worker a row
+    to pick up. Poll `GET /extraction-jobs/{id}` on the returned job until its
+    `status` leaves `pending`/`classifying`."""
     attachment = db.get(models.Attachment, attachment_id)
     if not attachment:
         raise HTTPException(404, "Attachment not found")
 
-    try:
-        result = run_classify(db, attachment)
-    except ClassificationError as e:
-        # Record the attempt even though it failed — a 500 with no trace of
-        # what was tried leaves a technician unable to tell "classification
-        # failed" from "nothing happened yet."
-        job = models.ExtractionJob(
-            attachment_id=attachment_id,
-            status=models.ExtractionJobStatus.failed,
-            error_message=str(e),
-            started_at=datetime.now(timezone.utc),
-            completed_at=datetime.now(timezone.utc),
-        )
-        db.add(job)
-        db.commit()
-        raise HTTPException(502, f"Classification failed: {e}") from e
-
     job = models.ExtractionJob(
         attachment_id=attachment_id,
+        kind=models.ExtractionJobKind.classify,
         status=models.ExtractionJobStatus.pending,
-        classification=result.model_dump(mode="json"),
         started_at=datetime.now(timezone.utc),
     )
     db.add(job)
-
-    report = attachment.report
-    if result.resolved_instrument_id and result.resolved_template_id:
-        # Confident on both — resolve automatically and move straight
-        # toward extraction (§4: "the system resolves the matching template
-        # automatically and moves straight to extraction").
-        report.instrument_id = result.resolved_instrument_id
-        report.template_id = result.resolved_template_id
-        report.status = models.ReportStatus.classified
-        job.status = models.ExtractionJobStatus.succeeded
-        job.completed_at = datetime.now(timezone.utc)
-    else:
-        # Below threshold on either guess — leave instrument/template NULL;
-        # the technician (or a caller) must PATCH /reports/{id}/template
-        # with a manual pick before extraction can run (§4's fallback path).
-        job.status = models.ExtractionJobStatus.succeeded
-        job.completed_at = datetime.now(timezone.utc)
-
     db.commit()
-    return result
+    db.refresh(job)
+    return job
 
 
-@router.post("/attachments/{attachment_id}/extract", response_model=schemas.ExtractionJobOut)
+@router.post(
+    "/attachments/{attachment_id}/extract",
+    response_model=schemas.ExtractionJobOut,
+    status_code=202,
+)
 def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
-    """§4 step 4-5 / §9: enqueue (here, run inline — there's no real
-    background worker in this scaffold yet, see §3) an extraction job against
-    the report's resolved template. Swap `services.extraction.extract` for a
-    real Claude vision call to make this live."""
+    """§4 step 4-5 / §9 / §3: enqueue an extract job against the report's
+    already-resolved template and return immediately — `app.worker` runs the
+    actual Claude vision call asynchronously. The 409 here is still checked
+    synchronously (a report with no resolved template is a client mistake to
+    reject up front, not something worth a round trip through the queue to
+    discover); the worker re-checks the same condition defensively before it
+    runs (see `app.worker._run_extract_job`)."""
     attachment = db.get(models.Attachment, attachment_id)
     if not attachment:
         raise HTTPException(404, "Attachment not found")
@@ -112,30 +91,14 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
         raise HTTPException(
             409, "Report has no resolved instrument/template yet — classify the attachment and confirm a template first (§4)."
         )
-    template = db.get(models.ReportTemplate, report.template_id)
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,
-        status=models.ExtractionJobStatus.extracting,
+        kind=models.ExtractionJobKind.extract,
+        status=models.ExtractionJobStatus.pending,
         started_at=datetime.now(timezone.utc),
     )
     db.add(job)
-
-    try:
-        extracted_fields, field_confidences = run_extract(attachment, template)
-    except ExtractionError as e:
-        job.status = models.ExtractionJobStatus.failed
-        job.error_message = str(e)
-        job.completed_at = datetime.now(timezone.utc)
-        db.commit()
-        raise HTTPException(502, f"Extraction failed: {e}") from e
-
-    report.extracted_fields = extracted_fields
-    report.status = models.ReportStatus.extracted
-    job.field_confidences = field_confidences
-    job.status = models.ExtractionJobStatus.succeeded
-    job.completed_at = datetime.now(timezone.utc)
-
     db.commit()
     db.refresh(job)
     return job

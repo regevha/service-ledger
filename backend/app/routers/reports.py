@@ -26,40 +26,73 @@ def create_report(payload: schemas.ReportCreate, db: Session = Depends(get_db)):
     return report
 
 
-@router.get("/reports", response_model=list[schemas.ReportOut])
+@router.get("/reports", response_model=list[schemas.ReportListItemOut])
 def search_reports(
     instrument_id: uuid.UUID | None = None,
+    report_type: models.ReportType | None = None,
     date_from: date | None = None,
+    date_to: date | None = None,
     status: models.ReportStatus | None = None,
     db: Session = Depends(get_db),
 ):
-    """§7/§9: filtered search."""
+    """§7/§9: filtered search — the browse/list view, not a single report's
+    detail (that's GET /reports/{id}, still the raw ReportOut shape the
+    review flow round-trips against). Returns the denormalized
+    ReportListItemOut shape so a list screen can render instrument/report
+    type without a lookup per row, the same relationships export_reports
+    already reads."""
     query = db.query(models.Report)
     if instrument_id:
         query = query.filter(models.Report.instrument_id == instrument_id)
+    if report_type:
+        query = query.join(models.ReportTemplate).filter(models.ReportTemplate.report_type == report_type)
     if date_from:
         query = query.filter(models.Report.report_date >= date_from)
+    if date_to:
+        query = query.filter(models.Report.report_date <= date_to)
     if status:
         query = query.filter(models.Report.status == status)
-    return query.order_by(models.Report.created_at.desc()).all()
+    reports = query.order_by(models.Report.created_at.desc()).all()
+    return [
+        schemas.ReportListItemOut(
+            id=r.id,
+            status=r.status,
+            instrument_model=r.instrument.model if r.instrument else None,
+            instrument_serial_number=r.instrument.serial_number if r.instrument else None,
+            report_type=r.template.report_type if r.template else None,
+            technician_name=r.technician_name,
+            report_date=r.report_date,
+            created_at=r.created_at,
+            finalized_at=r.finalized_at,
+        )
+        for r in reports
+    ]
 
 
 @router.get("/reports/export")
 def export_reports(
     instrument_id: uuid.UUID | None = None,
+    report_type: models.ReportType | None = None,
     date_from: date | None = None,
+    date_to: date | None = None,
     status: models.ReportStatus | None = None,
     db: Session = Depends(get_db),
 ):
-    """§7/§9: bulk CSV export of a filtered view. extracted_fields is
-    flattened to a JSON string column rather than one column per possible
-    field — the whole point of JSONB (§5) is that the field set varies by
-    template, so a fixed CSV schema would defeat it."""
+    """§7/§9: bulk CSV export of a filtered view — the same filter set as
+    search_reports above, so exporting always matches what's on screen in the
+    reports list/search. extracted_fields is flattened to a JSON string
+    column rather than one column per possible field — the whole point of
+    JSONB (§5) is that the field set varies by template, so a fixed CSV
+    schema would defeat it."""
     query = db.query(models.Report)
     if instrument_id:
         query = query.filter(models.Report.instrument_id == instrument_id)
+    if report_type:
+        query = query.join(models.ReportTemplate).filter(models.ReportTemplate.report_type == report_type)
     if date_from:
         query = query.filter(models.Report.report_date >= date_from)
+    if date_to:
+        query = query.filter(models.Report.report_date <= date_to)
     if status:
         query = query.filter(models.Report.status == status)
     reports = query.order_by(models.Report.report_date).all()

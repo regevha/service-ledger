@@ -25,7 +25,7 @@ def _get_template_id(client, report_type: str, model: str | None = None) -> str:
     return templates[0]["id"]
 
 
-def test_confident_classification_resolves_straight_through(client):
+def test_confident_classification_resolves_straight_through(client, run_worker):
     report = client.post("/reports", json={"technician_name": "R. Tester"}).json()
     assert report["status"] == "draft"
     assert report["instrument_id"] is None and report["template_id"] is None
@@ -37,22 +37,33 @@ def test_confident_classification_resolves_straight_through(client):
     assert upload.status_code == 201
     attachment = upload.json()
 
-    classification = client.post(f"/attachments/{attachment['id']}/classify")
-    assert classification.status_code == 200
-    result = classification.json()
-    assert result["instrument"]["confidence"] >= 0.85
-    assert result["report_type"]["confidence"] >= 0.85
-    assert result["resolved_template_id"] is not None
-    assert result["resolved_instrument_id"] is not None
+    # §3/§9: classify only enqueues a job now — nothing runs until the
+    # worker (simulated here by run_worker) picks it up.
+    submitted = client.post(f"/attachments/{attachment['id']}/classify")
+    assert submitted.status_code == 202
+    assert submitted.json()["status"] == "pending"
+    assert submitted.json()["kind"] == "classify"
+    run_worker()
+
+    result = client.get(f"/extraction-jobs/{submitted.json()['id']}").json()
+    assert result["status"] == "succeeded"
+    classification = result["classification"]
+    assert classification["instrument"]["confidence"] >= 0.85
+    assert classification["report_type"]["confidence"] >= 0.85
+    assert classification["resolved_template_id"] is not None
+    assert classification["resolved_instrument_id"] is not None
 
     refreshed = client.get(f"/reports/{report['id']}").json()
     assert refreshed["status"] == "classified"
-    assert refreshed["instrument_id"] == result["resolved_instrument_id"]
-    assert refreshed["template_id"] == result["resolved_template_id"]
+    assert refreshed["instrument_id"] == classification["resolved_instrument_id"]
+    assert refreshed["template_id"] == classification["resolved_template_id"]
 
     extraction = client.post(f"/attachments/{attachment['id']}/extract")
-    assert extraction.status_code == 200
-    job = extraction.json()
+    assert extraction.status_code == 202
+    assert extraction.json()["kind"] == "extract"
+    run_worker()
+
+    job = client.get(f"/extraction-jobs/{extraction.json()['id']}").json()
     assert job["status"] == "succeeded"
     assert job["field_confidences"]
 
@@ -61,7 +72,7 @@ def test_confident_classification_resolves_straight_through(client):
     assert extracted_report["extracted_fields"]
 
 
-def test_uncertain_report_type_falls_back_to_manual_pick_then_finalizes(client):
+def test_uncertain_report_type_falls_back_to_manual_pick_then_finalizes(client, run_worker):
     """Reproduces the real BD Care Work Order case from spec §4: instrument
     ID is a confident read, report type is a borderline guess that must be
     confirmed manually before extraction can run against the right template."""
@@ -73,7 +84,10 @@ def test_uncertain_report_type_falls_back_to_manual_pick_then_finalizes(client):
     )
     attachment = upload.json()
 
-    result = client.post(f"/attachments/{attachment['id']}/classify").json()
+    submitted = client.post(f"/attachments/{attachment['id']}/classify")
+    assert submitted.status_code == 202
+    run_worker()
+    result = client.get(f"/extraction-jobs/{submitted.json()['id']}").json()["classification"]
     assert result["instrument"]["value"] == "LSRFortessa"
     assert result["instrument"]["confidence"] >= 0.85
     assert result["report_type"]["value"] == "repair"
@@ -97,7 +111,9 @@ def test_uncertain_report_type_falls_back_to_manual_pick_then_finalizes(client):
     assert confirmed["instrument_id"] == instrument_id
 
     extraction = client.post(f"/attachments/{attachment['id']}/extract")
-    job = extraction.json()
+    assert extraction.status_code == 202
+    run_worker()
+    job = client.get(f"/extraction-jobs/{extraction.json()['id']}").json()
     assert job["status"] == "succeeded"
 
     extracted = client.get(f"/reports/{report['id']}").json()
@@ -129,7 +145,7 @@ def test_cannot_finalize_a_bare_draft(client):
     assert resp.status_code == 409
 
 
-def test_overriding_template_discards_prior_extraction(client):
+def test_overriding_template_discards_prior_extraction(client, run_worker):
     report = client.post("/reports", json={}).json()
     upload = client.post(
         f"/reports/{report['id']}/attachments",
@@ -137,16 +153,34 @@ def test_overriding_template_discards_prior_extraction(client):
     )
     attachment = upload.json()
     client.post(f"/attachments/{attachment['id']}/classify")
+    run_worker()
     client.post(f"/attachments/{attachment['id']}/extract")
+    run_worker()
 
     extracted = client.get(f"/reports/{report['id']}").json()
     assert extracted["extracted_fields"]  # something was extracted
 
-    other_instrument_id = _get_instrument_id(client, "FACSDiscover S8")
-    other_template_id = _get_template_id(client, "calibration", "FACSDiscover S8")
+    # "scan.pdf" has no marker (§4's stub), so the auto-classification above
+    # is a stable hash of the attachment's storage path — which embeds a
+    # fresh uuid4 per upload (see upload_attachment), so it can land on any
+    # of the 3 models x 3 report types. There are only 4 distinct template
+    # rows in the whole system (§5: calibration splits CS&T/spectral, repair
+    # and PM are each one shared row) — picking a *fixed* override target
+    # (e.g. always "FACSDiscover S8" / calibration) would flake whenever the
+    # random classification already resolved to that same template_id
+    # (calibration alone has two models sharing one row), so nothing would
+    # actually change and extracted_fields would never get cleared. Instead,
+    # pick any template that's guaranteed different from the one just
+    # resolved — PATCH .../template doesn't cross-validate instrument vs.
+    # template model (see schemas.TemplateConfirmation), so the two only need
+    # to each be independently valid.
+    all_templates = client.get("/report-templates").json()
+    other_template = next(t for t in all_templates if t["id"] != extracted["template_id"])
+    other_model = other_template["model"] or "FACSAria III"  # a NULL-model row applies to any non-S8 model
+    other_instrument_id = _get_instrument_id(client, other_model)
     overridden = client.patch(
         f"/reports/{report['id']}/template",
-        json={"instrument_id": other_instrument_id, "template_id": other_template_id},
+        json={"instrument_id": other_instrument_id, "template_id": other_template["id"]},
     ).json()
     assert overridden["status"] == "classified"
     assert overridden["extracted_fields"] == {}  # discarded, per §4/§6

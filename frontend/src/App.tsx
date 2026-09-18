@@ -9,11 +9,17 @@ import {
   finalizeReport,
   getReport,
   listInstruments,
+  listReports,
+  pollExtractionJob,
+  reportsExportUrl,
   updateReportFields,
   uploadAttachment,
   type ClassificationResult,
   type Instrument,
   type Report,
+  type ReportFilters,
+  type ReportListItem,
+  type ReportStatus,
   type ReportTemplate,
   type ReportType,
 } from './api';
@@ -33,6 +39,16 @@ const REPORT_TYPE_LABEL: Record<ReportType, string> = {
   preventive_maintenance: 'Preventive maintenance',
 };
 
+const STATUS_LABEL: Record<ReportStatus, string> = {
+  draft: 'Draft',
+  classified: 'Classified',
+  extracted: 'Extracted',
+  in_review: 'In review',
+  finalized: 'Finalized',
+};
+
+const STATUS_OPTIONS: ReportStatus[] = ['draft', 'classified', 'extracted', 'in_review', 'finalized'];
+
 type Phase =
   | { name: 'intake' }
   | { name: 'working'; label: string }
@@ -50,6 +66,12 @@ function ConfidenceBadge({ confidence, threshold }: { confidence: number; thresh
 export default function App() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [instrumentsError, setInstrumentsError] = useState<string | null>(null);
+
+  // Independent of `phase` below — `phase` is the single-report intake state
+  // machine (upload → classify → review → done), while `view` just switches
+  // which top-level screen is showing. Switching to 'reports' and back
+  // leaves an in-progress intake exactly where it was.
+  const [view, setView] = useState<'new' | 'reports'>('new');
 
   const [phase, setPhase] = useState<Phase>({ name: 'intake' });
 
@@ -93,7 +115,11 @@ export default function App() {
   async function runExtraction(attId: string, reportId: string, tpl: ReportTemplate) {
     setPhase({ name: 'working', label: 'Reading the resolved template with Claude vision…' });
     try {
-      const job = await extractAttachment(attId);
+      // §3/§9: this only enqueues the job — app/worker.py is what actually
+      // runs it — so wait for it to leave pending/extracting before reading
+      // the result back.
+      const submitted = await extractAttachment(attId);
+      const job = await pollExtractionJob(submitted.id);
       if (job.status === 'failed') {
         setPhase({
           name: 'error',
@@ -137,7 +163,19 @@ export default function App() {
   async function runClassification(attId: string, reportId: string) {
     setPhase({ name: 'working', label: 'Classifying instrument & report type…' });
     try {
-      const result = await classifyAttachment(attId);
+      // §3/§9: submit returns a pending job immediately; app/worker.py picks
+      // it up in the background and this polls until it's done.
+      const submitted = await classifyAttachment(attId);
+      const job = await pollExtractionJob(submitted.id);
+      if (job.status === 'failed') {
+        setPhase({
+          name: 'error',
+          message: job.error_message || 'Classification failed for an unknown reason.',
+          retry: () => void runClassification(attId, reportId),
+        });
+        return;
+      }
+      const result = job.classification as unknown as ClassificationResult;
       setClassification(result);
       if (result.resolved_template_id && result.resolved_instrument_id) {
         const tpl = await findTemplate(result.instrument.value, result.report_type.value as ReportType);
@@ -210,65 +248,80 @@ export default function App() {
         <span className="masthead-sub">core review loop</span>
       </div>
 
+      <div className="view-tabs">
+        <button className={`view-tab ${view === 'new' ? 'active' : ''}`} onClick={() => setView('new')}>
+          New report
+        </button>
+        <button className={`view-tab ${view === 'reports' ? 'active' : ''}`} onClick={() => setView('reports')}>
+          Reports
+        </button>
+      </div>
+
       <div className="app-shell">
-        <StepBar phase={phase} />
+        {view === 'reports' ? (
+          <ReportsListScreen instruments={instruments} />
+        ) : (
+          <>
+            <StepBar phase={phase} />
 
-        {instrumentsError && <div className="banner banner-warn">{instrumentsError}</div>}
+            {instrumentsError && <div className="banner banner-warn">{instrumentsError}</div>}
 
-        {phase.name === 'intake' && (
-          <IntakeScreen
-            technicianName={technicianName}
-            setTechnicianName={setTechnicianName}
-            file={file}
-            setFile={setFile}
-            onStart={() => void handleStart()}
-          />
-        )}
+            {phase.name === 'intake' && (
+              <IntakeScreen
+                technicianName={technicianName}
+                setTechnicianName={setTechnicianName}
+                file={file}
+                setFile={setFile}
+                onStart={() => void handleStart()}
+              />
+            )}
 
-        {phase.name === 'working' && (
-          <div className="section working-panel">
-            <div className="spinner" />
-            <div>{phase.label}</div>
-          </div>
-        )}
+            {phase.name === 'working' && (
+              <div className="section working-panel">
+                <div className="spinner" />
+                <div>{phase.label}</div>
+              </div>
+            )}
 
-        {phase.name === 'confirm-classification' && classification && (
-          <ConfirmClassificationScreen
-            classification={classification}
-            instruments={instruments}
-            pickInstrumentModel={pickInstrumentModel}
-            setPickInstrumentModel={setPickInstrumentModel}
-            pickReportType={pickReportType}
-            setPickReportType={setPickReportType}
-            onConfirm={() => void handleConfirmClassification()}
-          />
-        )}
+            {phase.name === 'confirm-classification' && classification && (
+              <ConfirmClassificationScreen
+                classification={classification}
+                instruments={instruments}
+                pickInstrumentModel={pickInstrumentModel}
+                setPickInstrumentModel={setPickInstrumentModel}
+                pickReportType={pickReportType}
+                setPickReportType={setPickReportType}
+                onConfirm={() => void handleConfirmClassification()}
+              />
+            )}
 
-        {phase.name === 'review' && template && (
-          <ReviewScreen
-            template={template}
-            fields={fields}
-            fieldConfidences={fieldConfidences}
-            onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
-            onSave={() => void handleSaveFields(false)}
-            onFinalize={() => void handleSaveFields(true)}
-          />
-        )}
+            {phase.name === 'review' && template && (
+              <ReviewScreen
+                template={template}
+                fields={fields}
+                fieldConfidences={fieldConfidences}
+                onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
+                onSave={() => void handleSaveFields(false)}
+                onFinalize={() => void handleSaveFields(true)}
+              />
+            )}
 
-        {phase.name === 'done' && report && <DoneScreen report={report} onReset={resetToIntake} />}
+            {phase.name === 'done' && report && <DoneScreen report={report} onReset={resetToIntake} />}
 
-        {phase.name === 'error' && (
-          <div className="section">
-            <div className="banner banner-crit">{phase.message}</div>
-            <div className="cta-row">
-              <button className="btn" onClick={resetToIntake}>
-                Start over
-              </button>
-              <button className="btn primary" onClick={phase.retry}>
-                Try again
-              </button>
-            </div>
-          </div>
+            {phase.name === 'error' && (
+              <div className="section">
+                <div className="banner banner-crit">{phase.message}</div>
+                <div className="cta-row">
+                  <button className="btn" onClick={resetToIntake}>
+                    Start over
+                  </button>
+                  <button className="btn primary" onClick={phase.retry}>
+                    Try again
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -410,24 +463,35 @@ function ReviewScreen({
   onChange,
   onSave,
   onFinalize,
+  title,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
   fieldConfidences: Record<string, number>;
   onChange: (name: string, value: unknown) => void;
   onSave: () => void;
-  onFinalize: () => void;
+  // Undefined hides the finalize button entirely — used when browsing an
+  // existing report whose status doesn't allow finalizing (§9: only
+  // extracted/in_review can finalize; the backend 409s otherwise, so the
+  // frontend just doesn't offer the button rather than surfacing that error).
+  onFinalize?: () => void;
+  // Override the computed "N fields need attention" heading — that count is
+  // meaningless without fresh extraction confidences (an already-saved
+  // report has none), so the reports list passes its own heading instead.
+  title?: string;
 }) {
   const flaggedCount = template.field_schema.fields.filter(
     (f) => (fieldConfidences[f.name] ?? 1) < FIELD_CONFIDENCE_THRESHOLD
   ).length;
+  const heading =
+    title ??
+    `${REPORT_TYPE_LABEL[template.report_type]} — ${flaggedCount} field${flaggedCount === 1 ? '' : 's'} ${
+      flaggedCount === 1 ? 'needs' : 'need'
+    } your attention`;
 
   return (
     <div className="section">
-      <div className="section-title">
-        {REPORT_TYPE_LABEL[template.report_type]} — {flaggedCount} field{flaggedCount === 1 ? '' : 's'} {flaggedCount === 1 ? 'needs' : 'need'} your
-        attention
-      </div>
+      <div className="section-title">{heading}</div>
 
       <div className="field-list">
         {template.field_schema.fields.map((field, i) => {
@@ -456,10 +520,240 @@ function ReviewScreen({
         <button className="btn" onClick={onSave}>
           Save corrections
         </button>
-        <button className="btn primary" onClick={onFinalize}>
-          Save &amp; finalize report
-        </button>
+        {onFinalize && (
+          <button className="btn primary" onClick={onFinalize}>
+            Save &amp; finalize report
+          </button>
+        )}
       </div>
+    </div>
+  );
+}
+
+function ReportsListScreen({ instruments }: { instruments: Instrument[] }) {
+  const [filters, setFilters] = useState<ReportFilters>({});
+  const [items, setItems] = useState<ReportListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<ReportListItem | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listReports(filters)
+      .then((list) => {
+        if (!cancelled) setItems(list);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof ApiError ? e.message : 'Could not load reports.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filters]);
+
+  if (selectedItem) {
+    return <ReportDetailScreen item={selectedItem} onBack={() => setSelectedItem(null)} />;
+  }
+
+  const hasFilters = Boolean(filters.instrument_id || filters.report_type || filters.status || filters.date_from || filters.date_to);
+
+  return (
+    <div className="section">
+      <div className="section-title">Reports</div>
+
+      <div className="filter-row">
+        <select
+          value={filters.instrument_id ?? ''}
+          onChange={(e) => setFilters((f) => ({ ...f, instrument_id: e.target.value || undefined }))}
+        >
+          <option value="">All instruments</option>
+          {instruments.map((inst) => (
+            <option key={inst.id} value={inst.id}>
+              {inst.model} ({inst.serial_number})
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.report_type ?? ''}
+          onChange={(e) =>
+            setFilters((f) => ({ ...f, report_type: (e.target.value || undefined) as ReportType | undefined }))
+          }
+        >
+          <option value="">All report types</option>
+          {(Object.keys(REPORT_TYPE_LABEL) as ReportType[]).map((rt) => (
+            <option key={rt} value={rt}>
+              {REPORT_TYPE_LABEL[rt]}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.status ?? ''}
+          onChange={(e) => setFilters((f) => ({ ...f, status: (e.target.value || undefined) as ReportStatus | undefined }))}
+        >
+          <option value="">All statuses</option>
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {STATUS_LABEL[s]}
+            </option>
+          ))}
+        </select>
+
+        <input
+          type="date"
+          aria-label="From date"
+          value={filters.date_from ?? ''}
+          onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value || undefined }))}
+        />
+        <span className="filter-sep">to</span>
+        <input
+          type="date"
+          aria-label="To date"
+          value={filters.date_to ?? ''}
+          onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value || undefined }))}
+        />
+
+        {hasFilters && (
+          <button className="btn small" onClick={() => setFilters({})}>
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {error && <div className="banner banner-warn">{error}</div>}
+
+      {loading ? (
+        <div className="working-panel">
+          <div className="spinner" />
+          <div>Loading reports…</div>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="empty-hint">No reports match these filters.</div>
+      ) : (
+        <>
+          <div className="table-toolbar">
+            <span className="table-toolbar-count">
+              {items.length} report{items.length === 1 ? '' : 's'}
+            </span>
+            <a className="btn small" href={reportsExportUrl(filters)}>
+              ⬇ Export CSV
+            </a>
+          </div>
+          <div className="report-table">
+            <div className="report-row report-row-head">
+              <span>Instrument</span>
+              <span>Type</span>
+              <span>Technician</span>
+              <span>Report date</span>
+              <span>Status</span>
+            </div>
+            {items.map((r) => (
+              <button className="report-row report-row-body" key={r.id} onClick={() => setSelectedItem(r)}>
+                <span>
+                  {r.instrument_model ?? '—'}
+                  {r.instrument_serial_number ? ` (${r.instrument_serial_number})` : ''}
+                </span>
+                <span>{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
+                <span>{r.technician_name ?? '—'}</span>
+                <span>{r.report_date ?? '—'}</span>
+                <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ReportDetailScreen({ item, onBack }: { item: ReportListItem; onBack: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [report, setReport] = useState<Report | null>(null);
+  const [template, setTemplate] = useState<ReportTemplate | null>(null);
+  const [fields, setFields] = useState<Record<string, unknown>>({});
+  const [busyLabel, setBusyLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    (async () => {
+      try {
+        const r = await getReport(item.id);
+        if (cancelled) return;
+        setReport(r);
+        setFields(r.extracted_fields ?? {});
+        // GET /reports/{id} only carries instrument_id/template_id (raw
+        // ReportOut, §9) — the list item already resolved those to display
+        // names (§7), which is exactly what findTemplate needs, so reuse it
+        // instead of adding a get-template-by-id endpoint for this one screen.
+        if (item.instrument_model && item.report_type) {
+          const tpl = await findTemplate(item.instrument_model, item.report_type);
+          if (!cancelled) setTemplate(tpl);
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof ApiError ? e.message : 'Could not load report.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [item]);
+
+  async function handleSave(finalize: boolean) {
+    if (!report) return;
+    setBusyLabel(finalize ? 'Saving and finalizing…' : 'Saving corrections…');
+    try {
+      const updated = await updateReportFields(report.id, { extracted_fields: fields });
+      const final = finalize ? await finalizeReport(report.id) : updated;
+      setReport(final);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Saving failed unexpectedly.');
+    } finally {
+      setBusyLabel(null);
+    }
+  }
+
+  return (
+    <div className="section">
+      <button className="btn small back-link" onClick={onBack}>
+        ← Back to reports
+      </button>
+
+      {error && <div className="banner banner-warn">{error}</div>}
+
+      {loading || busyLabel ? (
+        <div className="working-panel">
+          <div className="spinner" />
+          <div>{busyLabel ?? 'Loading report…'}</div>
+        </div>
+      ) : report && template ? (
+        <ReviewScreen
+          template={template}
+          fields={fields}
+          fieldConfidences={{}}
+          onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
+          onSave={() => void handleSave(false)}
+          onFinalize={
+            report.status === 'extracted' || report.status === 'in_review' ? () => void handleSave(true) : undefined
+          }
+          title={`${REPORT_TYPE_LABEL[template.report_type]} — ${STATUS_LABEL[report.status]}`}
+        />
+      ) : report ? (
+        <div className="empty-hint">
+          No template could be resolved for this report (its instrument or report type isn't set), so its fields
+          can't be shown here.
+        </div>
+      ) : null}
     </div>
   );
 }

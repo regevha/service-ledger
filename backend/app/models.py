@@ -60,6 +60,19 @@ class ExtractionJobStatus(str, enum.Enum):
     failed = "failed"
 
 
+class ExtractionJobKind(str, enum.Enum):
+    """Which half of §4's pipeline this job runs. Not a spec-named column —
+    the spec's job table (§5) describes "one classify-then-extract attempt"
+    in prose, but the actual endpoints (§9) submit classify and extract as
+    two separate calls with a manual-confirm checkpoint possibly in between
+    (§4/§6), so each call gets its own job row rather than one row trying to
+    span a human-in-the-loop gap. `app.worker` reads this to know which
+    service function to run for a `pending` row."""
+
+    classify = "classify"
+    extract = "extract"
+
+
 class Instrument(Base):
     """§5: the physical asset. `instrument_type` is fixed to "facs" for MVP but
     stored as a plain string (not a native enum) so the spec's "stays open for
@@ -162,6 +175,10 @@ class ExtractionJob(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     attachment_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("attachments.id"), nullable=False
+    )
+    kind: Mapped[ExtractionJobKind] = mapped_column(
+        Enum(ExtractionJobKind, name="extraction_job_kind"),
+        nullable=False,
     )
     status: Mapped[ExtractionJobStatus] = mapped_column(
         Enum(ExtractionJobStatus, name="extraction_job_status"),

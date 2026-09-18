@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     # the pipeline, not just another field.
     classification_confidence_threshold: float = 0.85
 
+    # §3: "a single background worker process, polling a job table in
+    # Postgres." How often app.worker checks for a new pending row when it
+    # finds none — short enough that a technician waiting on the review
+    # screen (§4/§6) doesn't notice the poll itself as added latency, long
+    # enough not to hammer Postgres with an empty SELECT in the common case
+    # (nothing pending) at single-user scale.
+    worker_poll_interval_seconds: float = 0.5
+
     use_live_claude: bool = False
     anthropic_api_key: str = ""
     # Explicit rather than relying on the SDK's undocumented defaults: the
