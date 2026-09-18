@@ -203,6 +203,57 @@ report. That derisks the schema shape; it can't confirm extraction
 CL-ARCH-001 §12 already lists as still needed for the FACSDiscover S8
 spectral fields.
 
+### Confirming the live path actually ran
+
+`USE_LIVE_CLAUDE=true` in `.env` is easy to set and easy to be wrong about —
+a stale env var, a cached `Settings` object, or a test harness that force-sets
+`USE_LIVE_CLAUDE=false` (Playwright's `playwright.config.ts` does exactly
+this, deliberately, to stay deterministic) can silently leave you looking at
+stub output while believing it's live. None of these are hypothetical —
+`playwright.config.ts`'s webServer commands literally hardcode
+`USE_LIVE_CLAUDE=false` regardless of `.env`, since env vars set in the shell
+take priority over `.env` file values (pydantic-settings' default). Checking
+`settings.use_live_claude` alone only proves the switch was read, not that
+`_live_classify`/`_live_extract` actually executed and got a real answer
+back. What actually proves it, in increasing order of certainty:
+
+1. **The transport-level log line.** `_get_client()` returns a real
+   `anthropic.Anthropic` client whose underlying `httpx` transport logs every
+   outbound request at INFO level: `HTTP Request: POST
+   https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"`. The stub path
+   never constructs this client or calls `.messages.create()` at all, so this
+   line cannot appear unless the live path ran — set
+   `logging.basicConfig(level=logging.INFO)` (or run via `app/worker.py`,
+   which already does this) to see it.
+2. **Non-null token usage in the call-timing log.** Both `_live_classify` and
+   `_live_extract` log one line per call —
+   `Claude classify/extract API call for attachment <path> completed in
+   <N>s (input_tokens=<N>, output_tokens=<N>)` — reading `input_tokens`/
+   `output_tokens` off the real `anthropic.types.Message.usage` object. A
+   stub response is a plain Python object with no `.usage` attribute, so this
+   degrades to `input_tokens=?, output_tokens=?` under stub (see
+   `tests/test_live_claude_parsing.py`'s fakes, which never set `.usage`
+   either) — real integers here mean a real `Message` came back.
+3. **The decisive test: diff against what the stub would have said for the
+   same file.** `_stub_classify`/`_stub_extract` are pure functions of the
+   attachment's file path — call them directly (no API, no cost) on the same
+   file and compare. For the real sample document (any filename containing
+   `WO-04587090`/`sample`/`work_order`), the stub *always* returns report-type
+   confidence 0.58 (deliberately below the 0.85 threshold, forcing the
+   manual-confirm branch — see above) and *always* returns the same two fixed
+   sentences for `fault_description`/`work_performed`. A live run against
+   that exact file instead auto-resolved at 0.95 confidence and extracted a
+   specific pressure reading ("4.95 PSI, changed to 4.5") that exists only in
+   the scanned document, not anywhere in this codebase. Getting a different
+   *decision* (auto-resolve vs. manual-confirm), not just different wording,
+   on a file the stub is hardcoded to always route one way is the strongest
+   evidence available that the model actually read the document.
+
+`backend/validate_live.py` and `backend/dump_live_json.py` (both
+intentionally uncommitted scratch scripts, not part of the app) run
+`classify()`/`extract()` live against six real scanned BD Care Work Order
+PDFs for exactly this kind of check — see their docstrings.
+
 ## Known gaps against the full spec (intentionally out of scope for this scaffold)
 
 - **No PDF preprocessing.** `page_count` is hardcoded to 1 and multi-page
