@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Playwright E2E suite output (tests/e2e/*.spec.ts is committed; its run
+# artifacts are not)
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
