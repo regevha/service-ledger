@@ -25,6 +25,7 @@ backend/
     schemas.py               Pydantic request/response shapes
     seed_instruments.py      The fixed 3-instrument fleet (§1)
     seed_templates.py        The four report_templates rows (§5)
+    seed_demo_reports.py     3 real finalized demo reports for the Reports screen — optional, manual only
     routers/
       instruments.py         POST/GET /instruments, GET /instruments/{id}/trend
       report_templates.py    GET /report-templates (resolution logic, §2)
@@ -57,6 +58,12 @@ alembic upgrade head
 # automatically on server startup, this is just for running it standalone)
 python -m app.seed_instruments
 python -m app.seed_templates
+
+# optional — 3 more finalized reports (real live-Claude extraction results,
+# hardcoded so this is free/offline) so the Reports screen has more than one
+# document to show. NOT auto-run on startup, unlike the two seeds above —
+# see the module docstring for why (it would pollute the test/e2e databases).
+python -m app.seed_demo_reports
 
 uvicorn app.main:app --reload
 # → http://127.0.0.1:8000/docs for interactive OpenAPI docs
