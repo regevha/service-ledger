@@ -169,15 +169,84 @@ def process_one_job(db: Session) -> bool:
         else:
             _run_extract_job(db, job)
     except Exception:  # noqa: BLE001 — a bug in this file must not wedge the queue
-        db.rollback()
         logger.exception("Unhandled error processing extraction job %s (kind=%s)", job.id, job.kind)
-        job = db.get(models.ExtractionJob, job.id)
-        if job is not None:
-            job.status = models.ExtractionJobStatus.failed
-            job.error_message = "Worker crashed processing this job — see server logs."
-            job.completed_at = datetime.now(timezone.utc)
-            db.commit()
+        try:
+            db.rollback()
+            failed_job = db.get(models.ExtractionJob, job.id)
+            if failed_job is not None:
+                failed_job.status = models.ExtractionJobStatus.failed
+                failed_job.error_message = "Worker crashed processing this job — see server logs."
+                failed_job.completed_at = datetime.now(timezone.utc)
+                db.commit()
+        except Exception:  # noqa: BLE001
+            # The exception above wasn't just a bug in this file's own logic
+            # — the session/connection itself is what's broken (a dropped
+            # DB connection, a deadlock), so rollback()/get()/commit() can
+            # raise too. That second failure must not escape and take the
+            # whole worker process down with it (this used to be exactly
+            # that: uncaught, it propagated out of process_one_job into
+            # run_forever's bare loop and killed the process, silently
+            # stranding every job submitted afterward in `pending` forever).
+            # The job is left stuck in classifying/extracting; the next
+            # worker startup's _recover_orphaned_jobs cleans it up.
+            logger.exception(
+                "Also failed to mark extraction job %s as failed after the error above — it will stay "
+                "in-progress until the worker restarts and _recover_orphaned_jobs picks it up.",
+                job.id,
+            )
     return True
+
+
+def _recover_orphaned_jobs(db: Session) -> int:
+    """Run once at worker startup (§3's crash-recovery gap): within a single
+    run_forever process, process_one_job always drives a claimed job to
+    succeeded/failed before returning, so `classifying`/`extracting` are
+    otherwise a dead end — the only way a job is left sitting in one of
+    those statuses is that a previous worker process died (crashed, was
+    killed, the host restarted) after claiming it but before finishing it.
+    `_claim_next_job` only ever looks at `status == pending`, so such a job
+    would otherwise sit there silently forever, invisible to the queue and
+    to the frontend's poll (which is watching the job it already knows
+    about, not scanning for new ones). Marks them failed with a clear
+    message rather than silently resubmitting them — classify/extract cost
+    a real API call, so a crash-looping job should stop and wait for a
+    deliberate retry (the review screen's "Try again"), not retry itself
+    silently on every restart."""
+    orphaned = (
+        db.query(models.ExtractionJob)
+        .filter(
+            models.ExtractionJob.status.in_(
+                [models.ExtractionJobStatus.classifying, models.ExtractionJobStatus.extracting]
+            )
+        )
+        .all()
+    )
+    for job in orphaned:
+        job.status = models.ExtractionJobStatus.failed
+        job.error_message = "Worker restarted while this job was in progress — resubmit to retry."
+        job.completed_at = datetime.now(timezone.utc)
+    if orphaned:
+        db.commit()
+    return len(orphaned)
+
+
+def _worker_tick() -> bool:
+    """One iteration of run_forever's loop, factored out so its crash
+    resilience — the actual point of this function — can be unit-tested
+    directly rather than only by way of the infinite loop, which (like
+    reset_db.py's CLI entrypoint) isn't itself covered by tests. Catches
+    everything, including SessionLocal() itself failing (e.g. the DB is
+    down), so one bad tick can never take the whole worker process with it
+    — this used to have no top-level handling at all, so any exception that
+    reached here (not just a bug in one job's processing, which
+    process_one_job already guards) killed run_forever's `while True` loop
+    outright."""
+    try:
+        with SessionLocal() as db:
+            return process_one_job(db)
+    except Exception:  # noqa: BLE001
+        logger.exception("Unhandled error in the worker's main loop — staying up and retrying rather than exiting.")
+        return False
 
 
 def run_forever() -> None:
@@ -192,10 +261,13 @@ def run_forever() -> None:
         settings.worker_poll_interval_seconds,
         settings.use_live_claude,
     )
+    with SessionLocal() as db:
+        recovered = _recover_orphaned_jobs(db)
+    if recovered:
+        logger.warning("Recovered %d job(s) left in-progress by a previous worker run.", recovered)
+
     while True:
-        with SessionLocal() as db:
-            processed = process_one_job(db)
-        if not processed:
+        if not _worker_tick():
             time.sleep(settings.worker_poll_interval_seconds)
 
 
