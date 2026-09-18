@@ -66,6 +66,7 @@ export interface Report {
   report_date: string | null;
   created_at: string;
   finalized_at: string | null;
+  attachments: Attachment[];
 }
 
 // Denormalized shape GET /reports (filtered search) returns — distinct from
@@ -239,6 +240,14 @@ export function uploadAttachment(reportId: string, file: File): Promise<Attachme
   const form = new FormData();
   form.append('file', file);
   return apiFetch(`/reports/${reportId}/attachments`, { method: 'POST', body: form });
+}
+
+// Not routed through apiFetch — same reasoning as reportsExportUrl above:
+// this is a direct link href (opened in a new tab, or downloaded), not a
+// fetch, so the browser handles the PDF/image response and its
+// Content-Disposition filename itself rather than any JS/blob plumbing here.
+export function attachmentFileUrl(attachmentId: string): string {
+  return `${API_BASE}/attachments/${attachmentId}/file`;
 }
 
 // Both of these now only enqueue a job and return immediately (202) — the

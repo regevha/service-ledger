@@ -112,6 +112,16 @@
   color: var(--text-faint);
   margin-bottom: 12px;
 }
+.section-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.section-title-row .section-title {
+  margin-bottom: 0;
+}
 .hint-text {
   font-size: 0.84rem;
   color: var(--text-muted);

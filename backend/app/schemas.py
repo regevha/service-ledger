@@ -51,6 +51,19 @@ class ReportTemplateOut(BaseModel):
     field_schema: dict
 
 
+# ---------- Attachments ----------
+
+
+class AttachmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    report_id: uuid.UUID
+    file_path: str
+    file_type: str
+    page_count: int
+
+
 # ---------- Reports ----------
 
 
@@ -76,6 +89,13 @@ class ReportOut(BaseModel):
     report_date: date | None
     created_at: datetime
     finalized_at: datetime | None
+    # The report screen's "view original scan" link (§4/§9 gap noticed while
+    # testing the demo build — GET /reports/{id} previously carried no way
+    # back to the attachment that produced it) reads off this list rather
+    # than a separate GET /reports/{id}/attachments round trip, since
+    # ReportOut already loads the ORM row this hangs off of for free via the
+    # existing Report.attachments relationship.
+    attachments: list[AttachmentOut] = []
 
 
 class ReportListItemOut(BaseModel):
@@ -117,19 +137,6 @@ class TemplateConfirmation(BaseModel):
 
     instrument_id: uuid.UUID
     template_id: uuid.UUID
-
-
-# ---------- Attachments ----------
-
-
-class AttachmentOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: uuid.UUID
-    report_id: uuid.UUID
-    file_path: str
-    file_type: str
-    page_count: int
 
 
 # ---------- Extraction jobs / classification ----------
