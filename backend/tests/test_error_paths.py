@@ -110,6 +110,27 @@ def test_update_fields_applies_top_level_columns_not_just_extracted_fields(clien
     assert body["report_date"] == "2026-03-01"
 
 
+def test_update_fields_422_on_explicit_null_extracted_fields(client):
+    """Regression test: an explicit `"extracted_fields": null` used to slip
+    past the merge guard (which only special-cased a non-null dict) and reach
+    the generic setattr loop, writing NULL onto a NOT NULL column. FastAPI's
+    response validation then 500'd on the way out — but only after
+    db.commit() had already persisted the NULL, so the report was left
+    permanently unreadable (every later GET 500s the same way). This must be
+    rejected before it ever reaches the database, and the report must still
+    be perfectly readable afterward."""
+    report = client.post("/reports", json={"technician_name": "R. Tester"}).json()
+
+    resp = client.patch(f"/reports/{report['id']}/fields", json={"extracted_fields": None})
+    assert resp.status_code == 422
+
+    # The report itself must be untouched and still readable — this is the
+    # part that silently failed before the fix (a 500 here, forever).
+    still_readable = client.get(f"/reports/{report['id']}")
+    assert still_readable.status_code == 200
+    assert still_readable.json()["extracted_fields"] == {}
+
+
 def test_finalize_404_on_missing_report(client):
     resp = client.post(f"/reports/{uuid.uuid4()}/finalize")
     assert resp.status_code == 404
