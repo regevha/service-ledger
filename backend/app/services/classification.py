@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
+import time
 from pathlib import Path
 
 import anthropic
@@ -30,6 +32,7 @@ from app.schemas import ClassificationGuess, ClassificationResult
 from app.services.errors import ClassificationError
 from app.services.templates import resolve_template
 
+logger = logging.getLogger("app.services.classification")
 settings = get_settings()
 
 _SAMPLE_MARKERS = ("wo-04587090", "sample", "work_order", "work-order")
@@ -105,6 +108,11 @@ def _live_classify(db: Session, attachment: Attachment, instruments: list[Instru
         },
     }
 
+    # §-none-yet: there's no APM/request tracing in this project, so this
+    # timer is the only record of how long a live Claude call actually took
+    # — worth having on both the success and failure path (a slow classify
+    # is a real "why is the job stuck" question during a demo).
+    call_started = time.perf_counter()
     try:
         response = _get_client().messages.create(
             model="claude-sonnet-5",
@@ -124,17 +132,45 @@ def _live_classify(db: Session, attachment: Attachment, instruments: list[Instru
     except anthropic.AuthenticationError as e:
         # Not retried by the SDK (a bad key won't fix itself) — worth its own
         # message since "check ANTHROPIC_API_KEY" is a much faster diagnosis
-        # than the generic APIError message below.
+        # than the generic APIError message below. Logged here (not just
+        # raised) because the router/worker only ever store str(e) on the
+        # job row — without this, an auth failure was previously invisible
+        # anywhere a human would actually look while debugging live.
+        logger.exception(
+            "Claude API authentication failed classifying attachment %s after %.2fs",
+            attachment.file_path,
+            time.perf_counter() - call_started,
+        )
         raise ClassificationError(f"Claude API authentication failed — check ANTHROPIC_API_KEY: {e}") from e
     except anthropic.APIError as e:
         # Covers everything else the SDK can raise for this call (connection
         # errors, timeouts, rate limits, 5xx) — already retried internally
-        # up to settings.anthropic_max_retries before landing here.
+        # up to settings.anthropic_max_retries before landing here, so the
+        # elapsed time here includes all of those retries, not just one shot.
+        logger.exception(
+            "Claude API request failed classifying attachment %s after %.2fs",
+            attachment.file_path,
+            time.perf_counter() - call_started,
+        )
         raise ClassificationError(f"Claude API request failed during classification: {e}") from e
+
+    usage = getattr(response, "usage", None)
+    logger.info(
+        "Claude classify API call for attachment %s completed in %.2fs (input_tokens=%s, output_tokens=%s)",
+        attachment.file_path,
+        time.perf_counter() - call_started,
+        getattr(usage, "input_tokens", "?"),
+        getattr(usage, "output_tokens", "?"),
+    )
 
     try:
         tool_use = next(block for block in response.content if block.type == "tool_use")
     except StopIteration as e:
+        logger.error(
+            "Claude returned no tool_use block classifying attachment %s (got block types: %s)",
+            attachment.file_path,
+            [getattr(block, "type", "?") for block in response.content],
+        )
         raise ClassificationError(
             "Claude did not return the expected tool call for classification (no tool_use block in the response)"
         ) from e
@@ -148,6 +184,12 @@ def _live_classify(db: Session, attachment: Attachment, instruments: list[Instru
         # extraction.py's flat-schema comment for a live example of this),
         # so a missing key or an unparseable confidence is a real, seen-in-
         # practice failure mode, not just defensive paranoia.
+        logger.error(
+            "Claude's classification response for attachment %s was missing or malformed fields: %s (raw tool input: %r)",
+            attachment.file_path,
+            e,
+            data,
+        )
         raise ClassificationError(f"Claude's classification response was missing or malformed fields: {e}") from e
 
     return instrument_guess, type_guess

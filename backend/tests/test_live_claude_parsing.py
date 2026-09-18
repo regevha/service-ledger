@@ -18,6 +18,8 @@ through classify()/extract()) and exercise the real parsing code around it.
 """
 from __future__ import annotations
 
+import logging
+import re
 from types import SimpleNamespace
 
 import anthropic
@@ -67,10 +69,15 @@ def _connection_error() -> anthropic.APIConnectionError:
     return anthropic.APIConnectionError(message="connection reset", request=req)
 
 
+# Matches the "%.2fs" duration every call-timing log line renders, e.g. "0.00s".
+_DURATION_RE = re.compile(r"\d+\.\d\ds")
+
+
 # ================= classification._live_classify =================
 
 
-def test_live_classify_parses_a_well_formed_tool_response(tmp_path, monkeypatch):
+def test_live_classify_parses_a_well_formed_tool_response(tmp_path, monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4 fake scan")
     attachment = SimpleNamespace(file_path=str(pdf))
@@ -105,8 +112,16 @@ def test_live_classify_parses_a_well_formed_tool_response(tmp_path, monkeypatch)
         "LSRFortessa",
     ]
 
+    # Every live Claude call gets one completion log line with how long it
+    # took — the fake response has no .usage (the SimpleNamespace test
+    # double doesn't set one), so input/output tokens degrade to "?" rather
+    # than blowing up.
+    assert "Claude classify API call" in caplog.text
+    assert _DURATION_RE.search(caplog.text)
+    assert "input_tokens=?" in caplog.text
 
-def test_live_classify_wraps_authentication_error(tmp_path, monkeypatch):
+
+def test_live_classify_wraps_authentication_error(tmp_path, monkeypatch, caplog):
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4 x")
     attachment = SimpleNamespace(file_path=str(pdf))
@@ -116,8 +131,17 @@ def test_live_classify_wraps_authentication_error(tmp_path, monkeypatch):
     with pytest.raises(ClassificationError, match="authentication failed"):
         classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa")])
 
+    # The router/worker only ever store str(e) on the job row — this is what
+    # makes an auth failure visible anywhere a human would actually look
+    # while debugging live, rather than only inside the database. A failed
+    # call still gets timed — "how long before it gave up" is exactly what
+    # you want to know when a job is stuck.
+    assert "authentication failed" in caplog.text
+    assert str(pdf) in caplog.text
+    assert _DURATION_RE.search(caplog.text)
 
-def test_live_classify_wraps_a_generic_api_error(tmp_path, monkeypatch):
+
+def test_live_classify_wraps_a_generic_api_error(tmp_path, monkeypatch, caplog):
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4 x")
     attachment = SimpleNamespace(file_path=str(pdf))
@@ -127,8 +151,12 @@ def test_live_classify_wraps_a_generic_api_error(tmp_path, monkeypatch):
     with pytest.raises(ClassificationError, match="Claude API request failed during classification"):
         classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa")])
 
+    assert "Claude API request failed" in caplog.text
+    assert str(pdf) in caplog.text
+    assert _DURATION_RE.search(caplog.text)
 
-def test_live_classify_raises_when_claude_answers_without_a_tool_call(tmp_path, monkeypatch):
+
+def test_live_classify_raises_when_claude_answers_without_a_tool_call(tmp_path, monkeypatch, caplog):
     """Tool use is forced via tool_choice, but the SDK doesn't guarantee the
     model actually honors it — this is the StopIteration guard's whole
     reason to exist."""
@@ -141,8 +169,11 @@ def test_live_classify_raises_when_claude_answers_without_a_tool_call(tmp_path, 
     with pytest.raises(ClassificationError, match="no tool_use block"):
         classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa")])
 
+    assert "no tool_use block" in caplog.text
+    assert "'text'" in caplog.text  # the block types actually returned, for diagnosis
 
-def test_live_classify_raises_on_a_missing_field_in_the_tool_response(tmp_path, monkeypatch):
+
+def test_live_classify_raises_on_a_missing_field_in_the_tool_response(tmp_path, monkeypatch, caplog):
     """Tool-use input isn't strictly validated against the schema (see this
     file's real-world comments) — a response missing a required key is a
     genuine failure mode, not just defensive paranoia."""
@@ -158,8 +189,11 @@ def test_live_classify_raises_on_a_missing_field_in_the_tool_response(tmp_path, 
     with pytest.raises(ClassificationError, match="missing or malformed fields"):
         classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa")])
 
+    assert "missing or malformed fields" in caplog.text
+    assert "instrument_model" in caplog.text  # the raw tool input, for diagnosis
 
-def test_live_classify_raises_on_a_non_numeric_confidence(tmp_path, monkeypatch):
+
+def test_live_classify_raises_on_a_non_numeric_confidence(tmp_path, monkeypatch, caplog):
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4 x")
     attachment = SimpleNamespace(file_path=str(pdf))
@@ -178,6 +212,9 @@ def test_live_classify_raises_on_a_non_numeric_confidence(tmp_path, monkeypatch)
     with pytest.raises(ClassificationError, match="missing or malformed fields"):
         classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa")])
 
+    assert "missing or malformed fields" in caplog.text
+    assert "very sure" in caplog.text  # the raw tool input, for diagnosis
+
 
 # ================= extraction._live_extract =================
 
@@ -192,7 +229,8 @@ def _template(fields=_FIELDS):
     return SimpleNamespace(field_schema={"fields": fields})
 
 
-def test_live_extract_parses_a_well_formed_flat_response(tmp_path, monkeypatch):
+def test_live_extract_parses_a_well_formed_flat_response(tmp_path, monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4 fake scan")
     attachment = SimpleNamespace(file_path=str(pdf))
@@ -214,6 +252,10 @@ def test_live_extract_parses_a_well_formed_flat_response(tmp_path, monkeypatch):
 
     assert fields == {"fault_description": "No see events", "labor_hours": 11.5, "retest_result": "pass"}
     assert confidences == {"fault_description": 0.92, "labor_hours": 0.88, "retest_result": 0.95}
+
+    assert "Claude extract API call" in caplog.text
+    assert _DURATION_RE.search(caplog.text)
+    assert "input_tokens=?" in caplog.text
 
 
 def test_live_extract_unwraps_a_single_key_wrapped_response(tmp_path, monkeypatch):
@@ -291,10 +333,11 @@ def test_live_extract_defaults_a_missing_field_to_none_value_and_zero_confidence
     assert confidences["labor_hours"] == 0.0
 
 
-def test_live_extract_treats_a_non_numeric_confidence_as_zero_without_dropping_the_value(tmp_path, monkeypatch):
+def test_live_extract_treats_a_non_numeric_confidence_as_zero_without_dropping_the_value(tmp_path, monkeypatch, caplog):
     """A non-numeric confidence shouldn't sink the whole extraction (per
     extraction.py's own comment) — it degrades to 'couldn't tell' but the
-    value is kept."""
+    value is kept. This is Claude's tool call not honoring its own schema,
+    so it's still worth a log line even though nothing raises."""
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4 x")
     attachment = SimpleNamespace(file_path=str(pdf))
@@ -316,9 +359,11 @@ def test_live_extract_treats_a_non_numeric_confidence_as_zero_without_dropping_t
 
     assert fields["fault_description"] == "No see events"
     assert confidences["fault_description"] == 0.0
+    assert "Non-numeric confidence" in caplog.text
+    assert "fault_description" in caplog.text
 
 
-def test_live_extract_wraps_authentication_error(tmp_path, monkeypatch):
+def test_live_extract_wraps_authentication_error(tmp_path, monkeypatch, caplog):
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4 x")
     attachment = SimpleNamespace(file_path=str(pdf))
@@ -328,8 +373,12 @@ def test_live_extract_wraps_authentication_error(tmp_path, monkeypatch):
     with pytest.raises(ExtractionError, match="authentication failed"):
         extraction._live_extract(attachment, _template())
 
+    assert "authentication failed" in caplog.text
+    assert str(pdf) in caplog.text
+    assert _DURATION_RE.search(caplog.text)
 
-def test_live_extract_wraps_a_generic_api_error(tmp_path, monkeypatch):
+
+def test_live_extract_wraps_a_generic_api_error(tmp_path, monkeypatch, caplog):
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4 x")
     attachment = SimpleNamespace(file_path=str(pdf))
@@ -339,8 +388,12 @@ def test_live_extract_wraps_a_generic_api_error(tmp_path, monkeypatch):
     with pytest.raises(ExtractionError, match="Claude API request failed during extraction"):
         extraction._live_extract(attachment, _template())
 
+    assert "Claude API request failed" in caplog.text
+    assert str(pdf) in caplog.text
+    assert _DURATION_RE.search(caplog.text)
 
-def test_live_extract_raises_when_claude_answers_without_a_tool_call(tmp_path, monkeypatch):
+
+def test_live_extract_raises_when_claude_answers_without_a_tool_call(tmp_path, monkeypatch, caplog):
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4 x")
     attachment = SimpleNamespace(file_path=str(pdf))
@@ -349,3 +402,6 @@ def test_live_extract_raises_when_claude_answers_without_a_tool_call(tmp_path, m
 
     with pytest.raises(ExtractionError, match="no tool_use block"):
         extraction._live_extract(attachment, _template())
+
+    assert "no tool_use block" in caplog.text
+    assert "'text'" in caplog.text
