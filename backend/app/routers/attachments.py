@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -38,6 +40,33 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session 
     db.commit()
     db.refresh(attachment)
     return attachment
+
+
+@router.get("/attachments/{attachment_id}/file")
+def get_attachment_file(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Serves the original scanned file back byte-for-byte off local disk
+    (§8: local disk for MVP) — the report screen's "View original scan"
+    link. Nothing here re-derives, re-encodes, or previews the file; it's
+    the same bytes upload_attachment wrote, so a technician can always check
+    the review screen's extracted values against the actual scan."""
+    attachment = db.get(models.Attachment, attachment_id)
+    if not attachment:
+        raise HTTPException(404, "Attachment not found")
+
+    path = Path(attachment.file_path)
+    if not path.exists():
+        # Genuinely seen in practice with the stub-mode E2E/demo databases,
+        # which get reseeded independently of storage/attachments/ on disk —
+        # a stale attachment row can outlive its file. Distinct from a
+        # missing row (404 above) so this is diagnosable rather than looking
+        # like a bad attachment_id.
+        raise HTTPException(404, "Attachment file is missing from storage")
+
+    # Strip the "<uuid>_" prefix upload_attachment added to dedupe filenames
+    # on disk, so the browser's download/save-as dialog shows the
+    # technician's own original filename rather than a UUID-prefixed one.
+    original_name = path.name.split("_", 1)[1] if "_" in path.name else path.name
+    return FileResponse(path, media_type=attachment.file_type or "application/octet-stream", filename=original_name)
 
 
 @router.post(

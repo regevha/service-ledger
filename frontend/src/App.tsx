@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ApiError,
+  attachmentFileUrl,
   classifyAttachment,
   confirmTemplate,
   createReport,
@@ -303,6 +304,7 @@ export default function App() {
                 onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
                 onSave={() => void handleSaveFields(false)}
                 onFinalize={() => void handleSaveFields(true)}
+                originalScanUrl={attachmentId ? attachmentFileUrl(attachmentId) : undefined}
               />
             )}
 
@@ -464,6 +466,7 @@ function ReviewScreen({
   onSave,
   onFinalize,
   title,
+  originalScanUrl,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
@@ -479,6 +482,10 @@ function ReviewScreen({
   // meaningless without fresh extraction confidences (an already-saved
   // report has none), so the reports list passes its own heading instead.
   title?: string;
+  // Link to the scanned original this review screen's values came from.
+  // Undefined hides the link — covers the brief window during live intake
+  // before the attachment finishes uploading.
+  originalScanUrl?: string;
 }) {
   const flaggedCount = template.field_schema.fields.filter(
     (f) => (fieldConfidences[f.name] ?? 1) < FIELD_CONFIDENCE_THRESHOLD
@@ -491,7 +498,14 @@ function ReviewScreen({
 
   return (
     <div className="section">
-      <div className="section-title">{heading}</div>
+      <div className="section-title-row">
+        <div className="section-title">{heading}</div>
+        {originalScanUrl && (
+          <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
+            View original scan
+          </a>
+        )}
+      </div>
 
       <div className="field-list">
         {template.field_schema.fields.map((field, i) => {
@@ -747,6 +761,9 @@ function ReportDetailScreen({ item, onBack }: { item: ReportListItem; onBack: ()
             report.status === 'extracted' || report.status === 'in_review' ? () => void handleSave(true) : undefined
           }
           title={`${REPORT_TYPE_LABEL[template.report_type]} — ${STATUS_LABEL[report.status]}`}
+          // §4: "one file per report" for MVP, so the first (only) attachment
+          // is the original this report's fields came from.
+          originalScanUrl={report.attachments[0] ? attachmentFileUrl(report.attachments[0].id) : undefined}
         />
       ) : report ? (
         <div className="empty-hint">
