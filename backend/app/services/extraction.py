@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
+import time
 from datetime import date
 from pathlib import Path
 
@@ -33,6 +35,7 @@ from app.config import get_settings
 from app.models import Attachment, ReportTemplate
 from app.services.errors import ExtractionError
 
+logger = logging.getLogger("app.services.extraction")
 settings = get_settings()
 
 _SAMPLE_MARKERS = ("wo-04587090", "sample", "work_order", "work-order")
@@ -212,6 +215,10 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dic
     tool = _build_extract_tool(fields)
     prompt = _EXTRACT_PROMPT_HEADER + "\n\nFields to extract:\n" + _field_list_for_prompt(fields)
 
+    # See the matching comment in classification.py — no APM/request tracing
+    # in this project, so this timer is the only record of how long a live
+    # Claude call actually took, on both the success and failure path.
+    call_started = time.perf_counter()
     try:
         response = _get_client().messages.create(
             model="claude-sonnet-5",
@@ -229,13 +236,41 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dic
             ],
         )
     except anthropic.AuthenticationError as e:
+        # Logged here (not just raised) because the router/worker only ever
+        # store str(e) on the job row — without this, an auth failure was
+        # previously invisible anywhere a human would actually look while
+        # debugging live (see the matching comment in classification.py).
+        logger.exception(
+            "Claude API authentication failed extracting attachment %s after %.2fs",
+            attachment.file_path,
+            time.perf_counter() - call_started,
+        )
         raise ExtractionError(f"Claude API authentication failed — check ANTHROPIC_API_KEY: {e}") from e
     except anthropic.APIError as e:
+        logger.exception(
+            "Claude API request failed extracting attachment %s after %.2fs",
+            attachment.file_path,
+            time.perf_counter() - call_started,
+        )
         raise ExtractionError(f"Claude API request failed during extraction: {e}") from e
+
+    usage = getattr(response, "usage", None)
+    logger.info(
+        "Claude extract API call for attachment %s completed in %.2fs (input_tokens=%s, output_tokens=%s)",
+        attachment.file_path,
+        time.perf_counter() - call_started,
+        getattr(usage, "input_tokens", "?"),
+        getattr(usage, "output_tokens", "?"),
+    )
 
     try:
         tool_use = next(block for block in response.content if block.type == "tool_use")
     except StopIteration as e:
+        logger.error(
+            "Claude returned no tool_use block extracting attachment %s (got block types: %s)",
+            attachment.file_path,
+            [getattr(block, "type", "?") for block in response.content],
+        )
         raise ExtractionError(
             "Claude did not return the expected tool call for extraction (no tool_use block in the response)"
         ) from e
@@ -265,7 +300,16 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dic
             # A non-numeric confidence shouldn't sink the whole extraction —
             # treat it as "couldn't tell," which is what a low confidence
             # already means to a reviewer, and keep the (possibly still
-            # useful) value.
+            # useful) value. Still worth a log line: this is Claude's tool
+            # call not honoring its own schema, and it was previously
+            # invisible — the field just silently showed up on the review
+            # screen flagged as low-confidence with no trace of why.
+            logger.warning(
+                "Non-numeric confidence for field %r on attachment %s (got %r) — treating as 0.0",
+                name,
+                attachment.file_path,
+                confidence,
+            )
             field_confidences[name] = 0.0
     return extracted_fields, field_confidences
 
