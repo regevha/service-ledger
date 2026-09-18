@@ -16,12 +16,22 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 from datetime import date
 
 from app.models import Instrument, Report, ReportStatus, ReportTemplate, ReportType
 
 
-def _make_report(db_session, *, model: str, report_type: ReportType, status: ReportStatus, report_date: date | None, technician: str):
+def _make_report(
+    db_session,
+    *,
+    model: str,
+    report_type: ReportType,
+    status: ReportStatus,
+    report_date: date | None,
+    technician: str,
+    extracted_fields: dict | None = None,
+):
     instrument = db_session.query(Instrument).filter(Instrument.model == model).one()
     template = (
         db_session.query(ReportTemplate)
@@ -34,7 +44,7 @@ def _make_report(db_session, *, model: str, report_type: ReportType, status: Rep
         instrument_id=instrument.id,
         template_id=template.id,
         status=status,
-        extracted_fields={},
+        extracted_fields=extracted_fields if extracted_fields is not None else {},
         technician_name=technician,
         report_date=report_date,
     )
@@ -141,3 +151,36 @@ def test_export_csv_applies_the_same_filters_as_search(client, seeded):
     rows_by_status = list(csv.DictReader(io.StringIO(by_status.text)))
     assert len(rows_by_status) == 1
     assert rows_by_status[0]["status"] == "in_review"
+
+
+def test_export_csv_extracted_fields_column_is_valid_json(client, seeded):
+    """Regression test: extracted_fields_json used to be built with str() on
+    the dict, which produces Python repr syntax (True/None/single-quoted
+    strings) rather than JSON — looks right for a report with only string
+    values (every prior test here used extracted_fields={}), but
+    json.loads() throws on the very first boolean, null, or nested value,
+    despite the column being named and documented as JSON."""
+    fields = {
+        "retest_result": "pass",
+        "compensation_matrix_updated": True,
+        "root_cause": None,
+        "components_replaced": ["injector O-ring", "sheath filter"],
+    }
+    report = _make_report(
+        seeded,
+        model="LSRFortessa",
+        report_type=ReportType.repair,
+        status=ReportStatus.finalized,
+        report_date=date(2026, 3, 1),
+        technician="R. Tester",
+        extracted_fields=fields,
+    )
+
+    resp = client.get("/reports/export")
+    rows = list(csv.DictReader(io.StringIO(resp.text)))
+    assert len(rows) == 1
+    assert rows[0]["id"] == str(report.id)
+
+    # The whole point: this must parse as JSON, not raise on the boolean/
+    # null/list values a real report can have.
+    assert json.loads(rows[0]["extracted_fields_json"]) == fields
