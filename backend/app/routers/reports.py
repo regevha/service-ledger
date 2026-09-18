@@ -179,8 +179,23 @@ def update_report_fields(report_id: uuid.UUID, payload: schemas.ReportFieldsUpda
         raise HTTPException(404, "Report not found")
 
     data = payload.model_dump(exclude_unset=True)
-    if "extracted_fields" in data and data["extracted_fields"] is not None:
-        report.extracted_fields = {**(report.extracted_fields or {}), **data.pop("extracted_fields")}
+    if "extracted_fields" in data:
+        incoming = data.pop("extracted_fields")
+        if incoming is None:
+            # extracted_fields is a merge overlay (below) onto a NOT NULL
+            # column (§5's Report.extracted_fields) — an explicit null has no
+            # sensible merge semantics (it isn't "clear all fields", it's
+            # "no value"). This used to fall through the old `is not None`
+            # guard and reach the generic setattr loop below, writing NULL
+            # straight onto the row: db.commit() would persist it before
+            # FastAPI ever validated the response, so the 500 this endpoint
+            # raised left the report permanently unreadable (every later GET
+            # 500s the same way, since ReportOut requires a dict here).
+            # Reject it up front instead.
+            raise HTTPException(
+                422, "extracted_fields cannot be null — omit the field to leave it unchanged, or send {} to no-op."
+            )
+        report.extracted_fields = {**(report.extracted_fields or {}), **incoming}
     for key, value in data.items():
         setattr(report, key, value)
 
