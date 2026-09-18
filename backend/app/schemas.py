@@ -12,7 +12,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models import ExtractionJobStatus, InstrumentStatus, ReportStatus, ReportType
+from app.models import ExtractionJobKind, ExtractionJobStatus, InstrumentStatus, ReportStatus, ReportType
 
 
 # ---------- Instruments ----------
@@ -78,6 +78,28 @@ class ReportOut(BaseModel):
     finalized_at: datetime | None
 
 
+class ReportListItemOut(BaseModel):
+    """§7/§9: the denormalized shape GET /reports (filtered search) returns —
+    distinct from ReportOut, which stays the raw single-report detail shape
+    the review flow (PATCH .../fields, .../finalize) round-trips against.
+    A list screen needs instrument_model/report_type to render a readable
+    row without an extra round trip per report, so this builds them from the
+    same instrument/template relationships export_reports already reads —
+    it just returns them as JSON instead of flattening straight to CSV."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    status: ReportStatus
+    instrument_model: str | None
+    instrument_serial_number: str | None
+    report_type: ReportType | None
+    technician_name: str | None
+    report_date: date | None
+    created_at: datetime
+    finalized_at: datetime | None
+
+
 class ReportFieldsUpdate(BaseModel):
     """§9: PATCH /reports/{id}/fields — overwrites in place, no audit log in MVP."""
 
@@ -132,6 +154,7 @@ class ExtractionJobOut(BaseModel):
 
     id: uuid.UUID
     attachment_id: uuid.UUID
+    kind: ExtractionJobKind
     status: ExtractionJobStatus
     classification: dict | None
     field_confidences: dict | None

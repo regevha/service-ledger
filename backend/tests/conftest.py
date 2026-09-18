@@ -79,3 +79,27 @@ def client(seeded):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def run_worker():
+    """classify/extract (§9) now only enqueue a `pending` ExtractionJob and
+    return 202 (see app/worker.py) — the real work happens in
+    `app.worker.process_one_job`, which in production runs in a loop inside a
+    separate process (§3). Tests don't want a real background thread racing
+    assertions against a sleep-based poll, so this fixture drives the same
+    function synchronously and deterministically: call it right after hitting
+    an endpoint that enqueues a job, and every currently-pending job is fully
+    processed (classify, or extract, however many are queued) before it
+    returns.
+    """
+    from app.worker import process_one_job
+
+    def _run(max_jobs: int = 10) -> int:
+        processed = 0
+        with TestSessionLocal() as db:
+            while processed < max_jobs and process_one_job(db):
+                processed += 1
+        return processed
+
+    return _run

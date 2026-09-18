@@ -6,19 +6,24 @@ Claude API — conftest.py already forces USE_LIVE_CLAUDE=false for the whole
 suite so tests never spend a real call or depend on a developer's .env. The
 point here isn't to test Claude itself, it's to prove that when the live
 call fails (network error, bad key, a malformed response — all wrapped as
-ClassificationError/ExtractionError by the live path), the router records a
-failed ExtractionJob with a real error_message instead of letting the
-exception 500 out with no trace of what was attempted.
+ClassificationError/ExtractionError by the live path), the worker (§3)
+records a failed ExtractionJob with a real error_message instead of letting
+the exception take down the whole polling loop.
+
+Since classify/extract only enqueue a job now (§9's submit-and-poll
+contract) — the actual call happens in app.worker, not in the router — the
+functions to patch moved from app.routers.attachments to app.worker, and
+"did it fail" is now observed by draining the queue (run_worker) and reading
+the job back, not by asserting on the submit response's status code (which
+is always 202 the moment an attachment is found — see test_error_paths.py
+for that 404 case).
 """
 from __future__ import annotations
 
-import uuid
-
-from app import models
 from app.services.errors import ClassificationError, ExtractionError
 
 
-def test_classification_failure_records_failed_job_and_returns_502(client, seeded, monkeypatch):
+def test_classification_failure_records_failed_job(client, run_worker, monkeypatch):
     report = client.post("/reports", json={"technician_name": "R. Tester"}).json()
     upload = client.post(
         f"/reports/{report['id']}/attachments",
@@ -29,24 +34,20 @@ def test_classification_failure_records_failed_job_and_returns_502(client, seede
     def _boom(db, attachment):
         raise ClassificationError("Claude API request failed during classification: simulated outage")
 
-    monkeypatch.setattr("app.routers.attachments.run_classify", _boom)
+    monkeypatch.setattr("app.worker.run_classify", _boom)
 
-    resp = client.post(f"/attachments/{attachment['id']}/classify")
-    assert resp.status_code == 502
-    assert "simulated outage" in resp.json()["detail"]
+    submitted = client.post(f"/attachments/{attachment['id']}/classify")
+    assert submitted.status_code == 202
+    run_worker()
 
-    job = (
-        seeded.query(models.ExtractionJob)
-        .filter_by(attachment_id=uuid.UUID(attachment["id"]))
-        .one()
-    )
-    assert job.status == models.ExtractionJobStatus.failed
-    assert job.error_message is not None
-    assert "simulated outage" in job.error_message
-    assert job.completed_at is not None
+    job = client.get(f"/extraction-jobs/{submitted.json()['id']}").json()
+    assert job["status"] == "failed"
+    assert job["error_message"] is not None
+    assert "simulated outage" in job["error_message"]
+    assert job["completed_at"] is not None
 
 
-def test_extraction_failure_records_failed_job_and_returns_502(client, seeded, monkeypatch):
+def test_extraction_failure_records_failed_job(client, run_worker, monkeypatch):
     report = client.post("/reports", json={"technician_name": "R. Tester"}).json()
     upload = client.post(
         f"/reports/{report['id']}/attachments",
@@ -54,25 +55,21 @@ def test_extraction_failure_records_failed_job_and_returns_502(client, seeded, m
     )
     attachment = upload.json()
 
-    classification = client.post(f"/attachments/{attachment['id']}/classify").json()
+    submitted = client.post(f"/attachments/{attachment['id']}/classify")
+    run_worker()
+    classification = client.get(f"/extraction-jobs/{submitted.json()['id']}").json()["classification"]
     assert classification["resolved_template_id"] is not None  # confident stub guess, per classification.py
 
     def _boom(attachment, template):
         raise ExtractionError("Claude API request failed during extraction: simulated timeout")
 
-    monkeypatch.setattr("app.routers.attachments.run_extract", _boom)
+    monkeypatch.setattr("app.worker.run_extract", _boom)
 
-    resp = client.post(f"/attachments/{attachment['id']}/extract")
-    assert resp.status_code == 502
-    assert "simulated timeout" in resp.json()["detail"]
+    extraction = client.post(f"/attachments/{attachment['id']}/extract")
+    assert extraction.status_code == 202
+    run_worker()
 
-    job = (
-        seeded.query(models.ExtractionJob)
-        .filter_by(attachment_id=uuid.UUID(attachment["id"]))
-        .order_by(models.ExtractionJob.started_at.desc())
-        .first()
-    )
-    assert job is not None
-    assert job.status == models.ExtractionJobStatus.failed
-    assert job.error_message is not None
-    assert "simulated timeout" in job.error_message
+    job = client.get(f"/extraction-jobs/{extraction.json()['id']}").json()
+    assert job["status"] == "failed"
+    assert job["error_message"] is not None
+    assert "simulated timeout" in job["error_message"]

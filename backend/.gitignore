@@ -4,3 +4,4 @@ __pycache__/
 .env
 storage/attachments/**
 !storage/attachments/.gitkeep
+.coverage

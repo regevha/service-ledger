@@ -68,6 +68,21 @@ export interface Report {
   finalized_at: string | null;
 }
 
+// Denormalized shape GET /reports (filtered search) returns — distinct from
+// Report/ReportOut, which stays the raw single-report detail shape the
+// review flow round-trips against.
+export interface ReportListItem {
+  id: string;
+  status: ReportStatus;
+  instrument_model: string | null;
+  instrument_serial_number: string | null;
+  report_type: ReportType | null;
+  technician_name: string | null;
+  report_date: string | null;
+  created_at: string;
+  finalized_at: string | null;
+}
+
 export interface Attachment {
   id: string;
   report_id: string;
@@ -90,9 +105,12 @@ export interface ClassificationResult {
 
 export type ExtractionJobStatus = 'pending' | 'classifying' | 'extracting' | 'succeeded' | 'failed';
 
+export type ExtractionJobKind = 'classify' | 'extract';
+
 export interface ExtractionJob {
   id: string;
   attachment_id: string;
+  kind: ExtractionJobKind;
   status: ExtractionJobStatus;
   classification: Record<string, unknown> | null;
   field_confidences: Record<string, number> | null;
@@ -166,6 +184,37 @@ export function getReport(reportId: string): Promise<Report> {
   return apiFetch(`/reports/${reportId}`);
 }
 
+export interface ReportFilters {
+  instrument_id?: string;
+  report_type?: ReportType;
+  status?: ReportStatus;
+  date_from?: string;
+  date_to?: string;
+}
+
+export function listReports(filters: ReportFilters = {}): Promise<ReportListItem[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const qs = params.toString();
+  return apiFetch(`/reports${qs ? `?${qs}` : ''}`);
+}
+
+// Not routed through apiFetch — this is a direct link href, not a fetch: the
+// backend's GET /reports/export sets Content-Disposition: attachment, so a
+// plain browser navigation downloads the CSV without any JS/blob plumbing.
+// Same filter shape as listReports, so exporting always matches the current
+// on-screen search (§7/§9 — the backend keeps both endpoints' filters in sync).
+export function reportsExportUrl(filters: ReportFilters = {}): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const qs = params.toString();
+  return `${API_BASE}/reports/export${qs ? `?${qs}` : ''}`;
+}
+
 export function confirmTemplate(reportId: string, instrumentId: string, templateId: string): Promise<Report> {
   return apiFetch(`/reports/${reportId}/template`, {
     method: 'PATCH',
@@ -192,10 +241,41 @@ export function uploadAttachment(reportId: string, file: File): Promise<Attachme
   return apiFetch(`/reports/${reportId}/attachments`, { method: 'POST', body: form });
 }
 
-export function classifyAttachment(attachmentId: string): Promise<ClassificationResult> {
+// Both of these now only enqueue a job and return immediately (202) — the
+// actual Claude vision call happens in the background worker (app/worker.py,
+// CL-ARCH-001 §3), not inline in the request (a vision call runs seconds,
+// not milliseconds, and §3 is explicit that shouldn't block an HTTP
+// request). Callers poll the returned job with pollExtractionJob below.
+export function classifyAttachment(attachmentId: string): Promise<ExtractionJob> {
   return apiFetch(`/attachments/${attachmentId}/classify`, { method: 'POST' });
 }
 
 export function extractAttachment(attachmentId: string): Promise<ExtractionJob> {
   return apiFetch(`/attachments/${attachmentId}/extract`, { method: 'POST' });
+}
+
+export function getExtractionJob(jobId: string): Promise<ExtractionJob> {
+  return apiFetch(`/extraction-jobs/${jobId}`);
+}
+
+// Polls GET /extraction-jobs/{id} (§9) until the background worker (§3)
+// moves it out of pending/classifying/extracting. Resolves with the job
+// either way — succeeded or failed is a normal outcome for a caller to
+// branch on (see App.tsx's runClassification/runExtraction), not an
+// exception; only a genuinely stuck job (past timeoutMs) throws.
+export async function pollExtractionJob(
+  jobId: string,
+  opts: { intervalMs?: number; timeoutMs?: number } = {}
+): Promise<ExtractionJob> {
+  const intervalMs = opts.intervalMs ?? 400;
+  const timeoutMs = opts.timeoutMs ?? 90_000;
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const job = await getExtractionJob(jobId);
+    if (job.status === 'succeeded' || job.status === 'failed') return job;
+    if (Date.now() >= deadline) {
+      throw new ApiError(0, `Extraction job ${jobId} did not finish within ${Math.round(timeoutMs / 1000)}s.`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
 }
