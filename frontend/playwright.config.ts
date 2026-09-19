@@ -1,4 +1,16 @@
+import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
+
+// Pinned to this exact executable only where it actually exists (the cloud
+// sandbox this suite was first written in, which pre-installs Chromium here
+// rather than through Playwright's own browser cache — see PLAYWRIGHT_BROWSERS_PATH).
+// Anywhere else — a developer's own machine, CI — this is undefined and
+// Playwright launches whatever `npx playwright install chromium` put in its
+// own cache instead. Don't hardcode a path here without this guard: it
+// silently breaks `browserType.launch` everywhere the path doesn't exist,
+// with no hint beyond "executable doesn't exist at <path>".
+const SANDBOX_CHROMIUM = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const PINNED_CHROMIUM = existsSync(SANDBOX_CHROMIUM) ? SANDBOX_CHROMIUM : undefined;
 
 // A dedicated port + database for this suite — never the dev server on 8000
 // (which may be running USE_LIVE_CLAUDE=true against real demo data, per
@@ -29,11 +41,11 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     launchOptions: {
-      // Pre-installed in this environment (see PLAYWRIGHT_BROWSERS_PATH) —
-      // pinned explicitly rather than relying on version auto-detection,
-      // the same executable every ad hoc verification script this session
-      // has used successfully.
-      executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+      // undefined (see above) falls back to Playwright's own installed
+      // browser, which is what every machine other than that one sandbox
+      // needs. --no-sandbox is for running as root in that same sandbox/CI;
+      // harmless but unnecessary on a normal desktop, kept for both.
+      ...(PINNED_CHROMIUM ? { executablePath: PINNED_CHROMIUM } : {}),
       args: ['--no-sandbox'],
     },
   },
