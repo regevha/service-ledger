@@ -1,5 +1,5 @@
 /**
- * Typed client for the ServiceLedger backend (see CL-TDD-001 §6 for the
+ * Typed client for the ServiceLedger backend (see SL-TDD-001 §6 for the
  * full endpoint table). Shapes here mirror backend/app/schemas.py field for
  * field rather than approximating them, so a backend schema change is a
  * compile error here, not a silent runtime mismatch.
@@ -15,7 +15,7 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.repl
 // ExtractionJobKind below are real Python Enum classes on the backend
 // (app/models.py) — these five used to be hand-typed string-literal unions
 // here, a second copy of the backend's enums kept in sync by discipline
-// alone (and ExtractionJobKind wasn't mirrored at all). CL-ARCH-001 §3
+// alone (and ExtractionJobKind wasn't mirrored at all). SL-ARCH-001 §3
 // specifically cites OpenAPI codegen ("typed request/response shapes for
 // free") as the reason this project is split into a separate frontend/
 // backend in the first place, so deriving them from the backend's own
@@ -287,7 +287,7 @@ export function attachmentFileUrl(attachmentId: string): string {
 
 // Both of these now only enqueue a job and return immediately (202) — the
 // actual Claude vision call happens in the background worker (app/worker.py,
-// CL-ARCH-001 §3), not inline in the request (a vision call runs seconds,
+// SL-ARCH-001 §3), not inline in the request (a vision call runs seconds,
 // not milliseconds, and §3 is explicit that shouldn't block an HTTP
 // request). Callers poll the returned job with pollExtractionJob below.
 export function classifyAttachment(attachmentId: string): Promise<ExtractionJob> {

@@ -4,7 +4,7 @@ This is the fix for a hardcoding finding: frontend/src/api.ts used to hand-
 type InstrumentStatus, ReportType, ReportStatus, ExtractionJobStatus, and
 ExtractionJobKind as string-literal unions that duplicated app/models.py's
 real enum classes, with nothing keeping the two in sync but discipline —
-despite CL-ARCH-001 §3 explicitly citing OpenAPI codegen as the reason this
+despite SL-ARCH-001 §3 explicitly citing OpenAPI codegen as the reason this
 project is split into a separate frontend/backend in the first place
 ("FastAPI's automatic OpenAPI schema also gives the React client typed
 request/response shapes for free via codegen"). That promise was never

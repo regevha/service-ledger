@@ -1,7 +1,7 @@
 import type { TemplateField } from '../api';
 
 /**
- * Renders one editable control per template field type (CL-ARCH-001 §5's
+ * Renders one editable control per template field type (SL-ARCH-001 §5's
  * field_schema types) and reports value changes back up as plain JS values
  * matching what PATCH /reports/{id}/fields expects in extracted_fields.
  *

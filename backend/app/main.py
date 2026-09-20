@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ServiceLedger API",
-    description="Implements the API surface in CL-ARCH-001 §9 — see the architecture spec for the full design rationale.",
+    description="Implements the API surface in SL-ARCH-001 §9 — see the architecture spec for the full design rationale.",
     version="0.1.0",
     lifespan=lifespan,
 )

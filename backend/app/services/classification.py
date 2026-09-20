@@ -85,7 +85,7 @@ def _stable_unit(*parts: str) -> float:
 
 def _live_classify(db: Session, attachment: Attachment, instruments: list[Instrument]) -> tuple[ClassificationGuess, ClassificationGuess]:
     """The real Claude vision call. Sends the scanned PDF as a `document`
-    content block (native multi-page PDF support — see CL-TDD-001 §1) and
+    content block (native multi-page PDF support — see SL-TDD-001 §1) and
     forces a tool call so the model's answer comes back as validated JSON
     rather than free text to parse (§4: "returns ... a confidence for
     each")."""

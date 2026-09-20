@@ -9,7 +9,7 @@ plus the template's field list to Claude and parses back a value + confidence
 per field via a forced tool call, same as classification.py.
 
 `source_snippet` (spec §4/§10) isn't threaded through to the return value
-here — there's no `extraction_jobs` column to put it in yet (CL-TDD-001 §9
+here — there's no `extraction_jobs` column to put it in yet (SL-TDD-001 §9
 lists this as a known gap) — but the extraction prompt still enforces the
 privacy design behind it: never pull contact, billing, or contract details
 into a field's value, even when they sit right next to the relevant text.

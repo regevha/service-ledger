@@ -1,7 +1,7 @@
 """Seeds the four report_templates rows described in spec §5 (v0.12).
 
 Field lists are transcribed field-for-field from the spec's tables — see
-CL-ARCH-001 §5 for the unit notes and the rationale behind each template's
+SL-ARCH-001 §5 for the unit notes and the rationale behind each template's
 shape (why repair and, as of v0.12, preventive_maintenance both stay one
 shared row while calibration still splits by model, why JSONB over a wide
 table, etc). This module only encodes the already-decided shape; run it once
@@ -51,7 +51,7 @@ SPECTRAL_CALIBRATION_FIELDS = [
 # LSRFortessa repairs, a FACSAria III repair, and a FACSDiscover S8 repair —
 # making this the only template confirmed against a document from every
 # model in scope. All four map cleanly with zero schema changes across the
-# whole set; see CL-ARCH-001 §5, §12 (v0.12).
+# whole set; see SL-ARCH-001 §5, §12 (v0.12).
 REPAIR_FIELDS = [
     {
         "name": "fault_description",
