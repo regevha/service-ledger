@@ -26,7 +26,31 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session 
 
     report_dir = settings.attachment_storage_path / str(report_id)
     report_dir.mkdir(parents=True, exist_ok=True)
-    dest = report_dir / f"{uuid.uuid4()}_{file.filename}"
+    # file.filename is entirely client-controlled — whatever name the
+    # uploader's browser/script sends, verbatim. Path(...).name strips any
+    # directory components (a "/" anywhere, a leading "/" for an absolute
+    # path, "../" traversal segments) down to the last path component before
+    # it ever reaches the filesystem, and falls back to a fixed name for the
+    # edge cases that have no usable name at all (no filename sent, or one
+    # that's just "." / ".." / empty after stripping). Previously, any
+    # filename containing "/" (e.g. "Scans/2024/report.pdf" from a
+    # nested-folder upload) embedded that slash as an extra, non-existent
+    # path segment below report_dir — write_bytes() then raised an unhandled
+    # FileNotFoundError, a hard 500 for what should just be an upload with an
+    # unusual name (confirmed via proof-of-concept during a file-handling
+    # security review; it never achieved a real path-traversal write, since
+    # the "<uuid>_" prefix glued onto the filename happened to turn a leading
+    # "../" into a literal, nonexistent directory name rather than a real
+    # parent reference — but crashing on ordinary-looking input is still a
+    # bug worth closing outright, independent of how it failed).
+    # Path(...).name on a bare "." or ".." returns the string unchanged (it
+    # only blanks out to "" for "", "/", or a path that *ends* in a trailing
+    # slash) — so those two need an explicit check, not just an `or "upload"`
+    # fallback on emptiness, to land on a real, unambiguous filename instead
+    # of a technically-harmless-but-confusing "<uuid>_.." on disk.
+    raw_name = Path(file.filename or "").name
+    safe_filename = raw_name if raw_name not in ("", ".", "..") else "upload"
+    dest = report_dir / f"{uuid.uuid4()}_{safe_filename}"
     contents = await file.read()
     dest.write_bytes(contents)
 
