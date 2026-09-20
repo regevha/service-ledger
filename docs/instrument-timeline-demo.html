@@ -1,0 +1,329 @@
+<title>Instrument Timeline</title>
+<meta name="description" content="Interactive drift chart demo for the ServiceLedger reporting layer (§7) — example calibration history for the FACSAria III">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg: #F6F4EF; --surface: #FFFFFF; --surface-2: #ECE9E0;
+    --border: #DDD7C9; --border-strong: #C7C0AC;
+    --text: #1B1F23; --text-muted: #5B6168; --text-faint: #8B8F86;
+    --accent: #146B85; --accent-strong: #0C5165; --accent-soft: #DCEDF1;
+    --good: #3D7A4A; --good-soft: #E1EEE1;
+    --warn: #96650F; --warn-soft: #F3E7CE;
+    --crit: #A13F2E; --crit-soft: #F3DFD9;
+    --shadow: 0 1px 2px rgba(27,31,35,0.06), 0 10px 28px -14px rgba(27,31,35,0.16);
+    --font-ui: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+    /* categorical (dataviz skill, slots 1-3: blue / orange / aqua) */
+    --s-violet: #2a78d6;
+    --s-blue:   #eb6834;
+    --s-red:    #1baf7a;
+    --grid: #E1DFD5;
+    --axis: #C7C2B4;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #14181B; --surface: #1B2024; --surface-2: #21262B;
+      --border: #2C3237; --border-strong: #3A4147;
+      --text: #E8E6DF; --text-muted: #9BA0A5; --text-faint: #6D7278;
+      --accent: #5EC2DE; --accent-strong: #8AD6EC; --accent-soft: #17323C;
+      --good: #86C08F; --good-soft: #1F3323;
+      --warn: #E3BD6E; --warn-soft: #3A2F16;
+      --crit: #E0917E; --crit-soft: #3B241F;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.5);
+      --s-violet: #3987e5; --s-blue: #d95926; --s-red: #199e70;
+      --grid: #262B2F; --axis: #3A4147;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #14181B; --surface: #1B2024; --surface-2: #21262B;
+    --border: #2C3237; --border-strong: #3A4147;
+    --text: #E8E6DF; --text-muted: #9BA0A5; --text-faint: #6D7278;
+    --accent: #5EC2DE; --accent-strong: #8AD6EC; --accent-soft: #17323C;
+    --good: #86C08F; --good-soft: #1F3323;
+    --warn: #E3BD6E; --warn-soft: #3A2F16;
+    --crit: #E0917E; --crit-soft: #3B241F;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.5);
+    --s-violet: #3987e5; --s-blue: #d95926; --s-red: #199e70;
+    --grid: #262B2F; --axis: #3A4147;
+  }
+  *{ box-sizing:border-box; }
+  body{ background: var(--bg); color: var(--text); font-family: var(--font-ui); margin:0; }
+  .wrap{ max-width: 1080px; margin:0 auto; padding: 20px 16px 64px; }
+
+  .banner{
+    display:flex; align-items:center; justify-content:center; gap:10px; font-size:0.78rem; color: var(--text-muted);
+    padding: 8px 14px; margin-bottom:16px; border:1px dashed var(--border-strong); border-radius:8px; background: var(--surface);
+  }
+  .banner b{ color: var(--text); }
+
+  .app{ background: var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow: var(--shadow); overflow:hidden; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 20px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .brand{ display:flex; align-items:center; gap:9px; font-weight:700; }
+  .brand .mark{ width:20px; height:20px; border-radius:6px; background: linear-gradient(135deg, var(--accent), var(--accent-strong)); flex:none; }
+  .crumbs{ font-size:0.82rem; color: var(--text-muted); }
+  .crumbs b{ color:var(--text); font-weight:600; }
+
+  .subbar{ padding:16px 20px; border-bottom:1px solid var(--border); background: var(--surface-2); display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .subbar h1{ font-size:1.15rem; margin:0 0 4px; }
+  .subbar .meta{ font-size:0.8rem; color: var(--text-muted); }
+  .btn{ font-family: var(--font-ui); font-size:0.78rem; font-weight:600; padding:8px 14px; border-radius:8px; border:1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor:pointer; }
+
+  .stat-row{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; padding: 18px 20px 4px; }
+  @media (max-width:700px){ .stat-row{ grid-template-columns: 1fr; } }
+  .stat-tile{ border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .stat-tile .k{ font-size:0.72rem; color: var(--text-muted); display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+  .stat-tile .dot{ width:9px; height:9px; border-radius:3px; flex:none; }
+  .stat-tile .v{ font-size:1.5rem; font-weight:700; }
+  .stat-tile .d{ font-size:0.76rem; margin-top:2px; }
+  .stat-tile .d.crit{ color: var(--crit); font-weight:700; }
+  .stat-tile .d.muted{ color: var(--text-faint); }
+  .stat-tile.flag{ border-color: var(--crit); background: var(--crit-soft); }
+
+  .chart-card{ padding: 12px 20px 20px; }
+  .chart-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .legend{ display:flex; gap:16px; flex-wrap:wrap; font-size:0.78rem; color: var(--text-muted); }
+  .legend .item{ display:flex; align-items:center; gap:6px; }
+  .legend .key{ width:14px; height:2px; border-radius:2px; }
+
+  .chart-wrap{ position:relative; }
+  svg{ display:block; width:100%; height:auto; overflow: visible; }
+  .tick-label{ font-family: var(--font-mono); font-size:10px; fill: var(--text-faint); }
+  .threshold-label{ font-family: var(--font-ui); font-size:10.5px; font-weight:600; fill: var(--crit); }
+  .end-label{ font-family: var(--font-ui); font-size:11px; font-weight:700; }
+
+  .crosshair{ stroke: var(--axis); stroke-width:1; pointer-events:none; opacity:0; }
+  .hover-dot{ pointer-events:none; opacity:0; }
+
+  .tooltip{
+    position:absolute; pointer-events:none; background: var(--surface); border:1px solid var(--border-strong);
+    border-radius:8px; box-shadow: var(--shadow); padding:9px 11px; font-size:0.78rem; min-width:150px;
+    opacity:0; transform: translate(-50%, -110%); transition: opacity 0.08s;
+  }
+  .tooltip .t-date{ font-weight:700; margin-bottom:6px; }
+  .tooltip .t-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:1px 0; }
+  .tooltip .t-key{ display:flex; align-items:center; gap:6px; color: var(--text-muted); }
+  .tooltip .t-key .line{ width:11px; height:2px; border-radius:2px; }
+  .tooltip .t-val{ font-family: var(--font-mono); font-weight:600; }
+
+  .hit-layer{ fill: transparent; }
+
+  .table-toggle{ margin-top:14px; }
+  table{ width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:10px; }
+  th, td{ text-align:right; padding:7px 10px; border-bottom:1px solid var(--border); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child{ text-align:left; font-family: var(--font-ui); }
+  th{ font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color: var(--text-faint); font-weight:600; }
+  td.flagged{ color: var(--crit); font-weight:700; }
+  .data-table{ display:none; overflow-x:auto; }
+  .data-table.show{ display:block; }
+</style>
+
+<div class="wrap">
+  <div class="banner">Example data — no real calibration history has been extracted yet. This shows what §7's instrument timeline would surface once it has.</div>
+
+  <div class="app">
+    <div class="topbar">
+      <div class="brand"><span class="mark"></span> ServiceLedger</div>
+      <div class="crumbs">Instruments <span>›</span> <b>FACSAria III</b> <span>›</span> Timeline</div>
+    </div>
+
+    <div class="subbar">
+      <div>
+        <h1>Baseline CV% — six calibrations</h1>
+        <div class="meta">FACSAria III · S/N A47291 · Apr 15 – Sep 15, 2026 · per-detector drift, §7</div>
+      </div>
+      <button class="btn" id="tableBtn" onclick="toggleTable()">View as table</button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-tile">
+        <div class="k"><span class="dot" style="background:var(--s-violet)"></span> Violet detector</div>
+        <div class="v">3.1%</div>
+        <div class="d muted">+0.1 pt since Aug 19</div>
+      </div>
+      <div class="stat-tile">
+        <div class="k"><span class="dot" style="background:var(--s-blue)"></span> Blue detector</div>
+        <div class="v">2.8%</div>
+        <div class="d muted">+0.1 pt since Aug 19</div>
+      </div>
+      <div class="stat-tile flag">
+        <div class="k"><span class="dot" style="background:var(--s-red)"></span> Red detector</div>
+        <div class="v">6.4%</div>
+        <div class="d crit">+0.7 pt · above the 5% limit</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="legend">
+          <span class="item"><span class="key" style="background:var(--s-violet)"></span> Violet detector</span>
+          <span class="item"><span class="key" style="background:var(--s-blue)"></span> Blue detector</span>
+          <span class="item"><span class="key" style="background:var(--s-red)"></span> Red detector</span>
+        </div>
+      </div>
+      <div class="chart-wrap" id="chartWrap">
+        <svg id="chart" viewBox="0 0 720 300" role="img" aria-label="Baseline CV percent per detector across six calibrations for the FACSAria III"></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+
+      <div class="table-toggle data-table" id="dataTable">
+        <table>
+          <thead><tr><th>Date</th><th>Violet</th><th>Blue</th><th>Red</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var dates = ["Apr 15","May 20","Jun 18","Jul 22","Aug 19","Sep 15"];
+  var series = [
+    { key:"violet", label:"Violet detector", color: "var(--s-violet)", cssVar:"--s-violet", values:[2.6,2.7,2.9,2.8,3.0,3.1] },
+    { key:"blue",   label:"Blue detector",   color: "var(--s-blue)",   cssVar:"--s-blue",   values:[2.3,2.4,2.5,2.6,2.7,2.8] },
+    { key:"red",    label:"Red detector",    color: "var(--s-red)",    cssVar:"--s-red",    values:[3.8,4.1,4.5,5.0,5.7,6.4] }
+  ];
+  var THRESHOLD = 5;
+  var yMax = 8;
+  var margin = { top: 14, right: 14, bottom: 28, left: 30 };
+  var W = 720, H = 300;
+  var plotW = W - margin.left - margin.right;
+  var plotH = H - margin.top - margin.bottom;
+
+  function xAt(i){ return margin.left + (i / (dates.length - 1)) * plotW; }
+  function yAt(v){ return margin.top + plotH - (v / yMax) * plotH; }
+
+  var svgns = "http://www.w3.org/2000/svg";
+  function el(tag, attrs){
+    var e = document.createElementNS(svgns, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function computedColor(cssVar){
+    return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+  }
+
+  function render(){
+    var svg = document.getElementById('chart');
+    svg.innerHTML = '';
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+    // gridlines + y ticks
+    var yTicks = [0, 2, 4, 6, 8];
+    yTicks.forEach(function(t){
+      var y = yAt(t);
+      svg.appendChild(el('line', { x1: margin.left, x2: W - margin.right, y1: y, y2: y, stroke: 'var(--grid)', 'stroke-width': 1 }));
+      var lbl = el('text', { x: margin.left - 8, y: y + 3, 'text-anchor': 'end', class: 'tick-label' });
+      lbl.textContent = t + '%';
+      svg.appendChild(lbl);
+    });
+
+    // x ticks
+    dates.forEach(function(d, i){
+      var lbl = el('text', { x: xAt(i), y: H - 8, 'text-anchor': 'middle', class: 'tick-label' });
+      lbl.textContent = d;
+      svg.appendChild(lbl);
+    });
+
+    // threshold line
+    var ty = yAt(THRESHOLD);
+    svg.appendChild(el('line', { x1: margin.left, x2: W - margin.right, y1: ty, y2: ty, stroke: 'var(--crit)', 'stroke-width': 1.5, 'stroke-dasharray': '4 4', opacity: 0.75 }));
+    var tlabel = el('text', { x: W - margin.right, y: ty - 6, 'text-anchor': 'end', class: 'threshold-label' });
+    tlabel.textContent = 'Spec limit · 5%';
+    svg.appendChild(tlabel);
+
+    // series lines + markers
+    series.forEach(function(s){
+      var pts = s.values.map(function(v, i){ return xAt(i) + ',' + yAt(v); }).join(' ');
+      svg.appendChild(el('polyline', { points: pts, fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+      s.values.forEach(function(v, i){
+        var isLast = i === s.values.length - 1;
+        var isOver = v > THRESHOLD;
+        svg.appendChild(el('circle', { cx: xAt(i), cy: yAt(v), r: 5, fill: s.color, stroke: 'var(--surface)', 'stroke-width': 2 }));
+        if (isOver){
+          svg.appendChild(el('circle', { cx: xAt(i), cy: yAt(v), r: 9, fill: 'none', stroke: 'var(--crit)', 'stroke-width': 1.5 }));
+        }
+      });
+    });
+
+    // direct label on the story series (red) endpoint only
+    var lastRed = series[2].values[series[2].values.length - 1];
+    var lx = xAt(dates.length - 1), ly = yAt(lastRed);
+    var callout = el('text', { x: lx - 10, y: ly - 14, 'text-anchor': 'end', class: 'end-label', fill: 'var(--crit)' });
+    callout.textContent = '6.4% · above spec';
+    svg.appendChild(callout);
+
+    // hover layer
+    var crosshair = el('line', { class: 'crosshair', x1:0, x2:0, y1: margin.top, y2: H - margin.bottom });
+    svg.appendChild(crosshair);
+    var hoverDots = series.map(function(s){
+      var c = el('circle', { class: 'hover-dot', r: 6, fill: s.color, stroke: 'var(--surface)', 'stroke-width': 2 });
+      svg.appendChild(c);
+      return c;
+    });
+    var hit = el('rect', { class: 'hit-layer', x: margin.left, y: margin.top, width: plotW, height: plotH });
+    svg.appendChild(hit);
+
+    var tooltip = document.getElementById('tooltip');
+    var wrap = document.getElementById('chartWrap');
+
+    function showAt(i, clientX, clientY){
+      var x = xAt(i);
+      crosshair.setAttribute('x1', x); crosshair.setAttribute('x2', x); crosshair.style.opacity = 1;
+      var rows = series.map(function(s, idx){
+        hoverDots[idx].setAttribute('cx', x);
+        hoverDots[idx].setAttribute('cy', yAt(s.values[i]));
+        hoverDots[idx].style.opacity = 1;
+        return '<div class="t-row"><span class="t-key"><span class="line" style="background:' + s.color + '"></span>' + s.label + '</span><span class="t-val">' + s.values[i].toFixed(1) + '%</span></div>';
+      }).join('');
+      tooltip.innerHTML = '<div class="t-date"></div>' + rows;
+      tooltip.querySelector('.t-date').textContent = dates[i];
+      var wrapRect = wrap.getBoundingClientRect();
+      var svgRect = svg.getBoundingClientRect();
+      var scale = svgRect.width / W;
+      var px = margin.left * scale + (x - margin.left) * scale;
+      tooltip.style.left = px + 'px';
+      tooltip.style.top = (yAt(Math.max.apply(null, series.map(function(s){return s.values[i];}))) * scale) + 'px';
+      tooltip.style.opacity = 1;
+    }
+    function hide(){
+      crosshair.style.opacity = 0;
+      hoverDots.forEach(function(d){ d.style.opacity = 0; });
+      tooltip.style.opacity = 0;
+    }
+    hit.addEventListener('pointermove', function(evt){
+      var rect = svg.getBoundingClientRect();
+      var scale = W / rect.width;
+      var localX = (evt.clientX - rect.left) * scale;
+      var i = Math.round((localX - margin.left) / plotW * (dates.length - 1));
+      i = Math.max(0, Math.min(dates.length - 1, i));
+      showAt(i, evt.clientX, evt.clientY);
+    });
+    hit.addEventListener('pointerleave', hide);
+  }
+
+  function buildTable(){
+    var body = document.getElementById('tableBody');
+    body.innerHTML = '';
+    dates.forEach(function(d, i){
+      var tr = document.createElement('tr');
+      var redVal = series[2].values[i];
+      tr.innerHTML = '<td>' + d + '</td><td>' + series[0].values[i].toFixed(1) + '%</td><td>' + series[1].values[i].toFixed(1) + '%</td>' +
+        '<td class="' + (redVal > THRESHOLD ? 'flagged' : '') + '">' + redVal.toFixed(1) + '%' + (redVal > THRESHOLD ? ' ⚠' : '') + '</td>';
+      body.appendChild(tr);
+    });
+  }
+
+  function toggleTable(){
+    var t = document.getElementById('dataTable');
+    var btn = document.getElementById('tableBtn');
+    t.classList.toggle('show');
+    btn.textContent = t.classList.contains('show') ? 'Hide table' : 'View as table';
+  }
+
+  render();
+  buildTable();
+  window.addEventListener('resize', render);
+</script>

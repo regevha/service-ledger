@@ -1,0 +1,933 @@
+<title>ServiceLedger</title>
+<meta name="description" content="Architecture & design specification for an instrument technical-report system">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* ============ TOKENS ============ */
+  :root{
+    --bg: #F6F5F1;
+    --surface: #FFFFFF;
+    --surface-2: #EDEBE4;
+    --text: #1C2024;
+    --text-muted: #5B6168;
+    --border: #DEDACF;
+    --border-strong: #C7C2B4;
+    --accent: #16748F;
+    --accent-strong: #0E5A70;
+    --accent-soft: #DEEEF2;
+    --accent-2: #A9683A;
+    --accent-2-soft: #F1E3D3;
+    --good: #3F7A4B;
+    --good-soft: #E1EEE1;
+    --warn: #96650F;
+    --warn-soft: #F3E7CE;
+    --crit: #A4402F;
+    --crit-soft: #F3DFD9;
+    --shadow: 0 1px 2px rgba(28,32,36,0.06), 0 8px 24px -12px rgba(28,32,36,0.12);
+    --font-head: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+    --font-body: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #15181B;
+      --surface: #1C2024;
+      --surface-2: #22262A;
+      --text: #E9E6DF;
+      --text-muted: #9BA0A5;
+      --border: #2E3338;
+      --border-strong: #3C4247;
+      --accent: #5EC2DE;
+      --accent-strong: #8AD6EC;
+      --accent-soft: #1B3640;
+      --accent-2: #E0A468;
+      --accent-2-soft: #3A2E1E;
+      --good: #86C08F;
+      --good-soft: #1F3323;
+      --warn: #E3BD6E;
+      --warn-soft: #3A2F16;
+      --crit: #E0917E;
+      --crit-soft: #3B241F;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #15181B;
+    --surface: #1C2024;
+    --surface-2: #22262A;
+    --text: #E9E6DF;
+    --text-muted: #9BA0A5;
+    --border: #2E3338;
+    --border-strong: #3C4247;
+    --accent: #5EC2DE;
+    --accent-strong: #8AD6EC;
+    --accent-soft: #1B3640;
+    --accent-2: #E0A468;
+    --accent-2-soft: #3A2E1E;
+    --good: #86C08F;
+    --good-soft: #1F3323;
+    --warn: #E3BD6E;
+    --warn-soft: #3A2F16;
+    --crit: #E0917E;
+    --crit-soft: #3B241F;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  *{ box-sizing: border-box; }
+  html{ background: var(--bg); }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.65;
+    padding-inline: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior: auto !important; }
+    *{ animation: none !important; transition: none !important; }
+  }
+  @media (prefers-reduced-motion: no-preference){
+    html{ scroll-behavior: smooth; }
+  }
+
+  img, svg{ max-width:100%; }
+  [hidden]{ display:none !important; }
+
+  a{ color: var(--accent-strong); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible{
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  h1,h2,h3,h4{
+    font-family: var(--font-head);
+    font-weight: 600;
+    text-wrap: balance;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+
+  code, .mono{ font-family: var(--font-mono); }
+
+  .measure{ max-width: 68ch; }
+
+  /* ============ TOP BAR ============ */
+  .topbar{
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 40;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    margin-inline: -20px;
+    padding-inline: 20px;
+  }
+  .topbar-inner{
+    max-width: 900px;
+    margin: 0 auto;
+    display:flex;
+    align-items:center;
+    gap: 18px;
+    padding-block: 10px;
+  }
+  .topbar-mark{
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    color: var(--text);
+    flex: none;
+  }
+  .topbar-mark span{ color: var(--accent-strong); }
+  .toc{
+    display:flex;
+    gap: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    font-family: var(--font-head);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  .toc::-webkit-scrollbar{ display:none; }
+  .toc a{
+    color: var(--text-muted);
+    white-space: nowrap;
+    text-decoration: none;
+    padding-block: 2px;
+    border-bottom: 2px solid transparent;
+  }
+  .toc a:hover{ color: var(--text); }
+  .toc a.active{ color: var(--accent-strong); border-bottom-color: var(--accent); }
+
+  /* ============ SHELL ============ */
+  .page{ max-width: 900px; margin: 0 auto; padding-bottom: 96px; }
+
+  /* ============ COVER ============ */
+  .cover{ padding-block: 44px 28px; }
+  .cover-eyebrow{
+    font-family: var(--font-head);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-strong);
+    margin: 0 0 10px;
+  }
+  .cover h1{
+    font-size: clamp(1.9rem, 4.4vw, 2.7rem);
+    line-height: 1.08;
+    margin: 0 0 12px;
+  }
+  .cover-sub{
+    font-family: var(--font-body);
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: 1.08rem;
+    margin: 0 0 26px;
+    max-width: 62ch;
+  }
+
+  .doc-control{
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .doc-control-title{
+    font-family: var(--font-head);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .doc-control-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: 620px){
+    .doc-control-grid{ grid-template-columns: repeat(2, 1fr); }
+  }
+  .dc-cell{
+    padding: 12px 16px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .dc-cell:nth-child(3n){ border-right: none; }
+  @media (max-width: 620px){
+    .dc-cell:nth-child(3n){ border-right: 1px solid var(--border); }
+    .dc-cell:nth-child(2n){ border-right: none; }
+  }
+  .dc-label{
+    font-family: var(--font-head);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display:block;
+    margin-bottom: 3px;
+  }
+  .dc-value{ font-family: var(--font-mono); font-size: 0.88rem; }
+  .status-pill{
+    display:inline-flex; align-items:center; gap:5px;
+    font-family: var(--font-head); font-size: 0.72rem; font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 2px 9px; border-radius: 99px;
+    background: var(--warn-soft); color: var(--warn);
+  }
+  .status-pill::before{ content:""; width:6px; height:6px; border-radius:50%; background: currentColor; }
+
+  /* ============ SECTIONS ============ */
+  section.doc-section{ padding-block: 40px; border-top: 1px solid var(--border); scroll-margin-top: 64px; }
+  .sec-eyebrow{
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--accent-strong);
+    margin: 0 0 6px;
+  }
+  .doc-section h2{ font-size: 1.5rem; margin: 0 0 4px; }
+  .sec-dek{ color: var(--text-muted); font-style: italic; margin: 0 0 22px; max-width: 62ch; }
+  .doc-section h3{ font-size: 1.12rem; margin: 30px 0 10px; }
+  .doc-section p{ margin: 0 0 14px; max-width: 68ch; }
+  .doc-section ul, .doc-section ol{ margin: 0 0 16px; padding-left: 1.3em; max-width: 66ch; }
+  .doc-section li{ margin-bottom: 6px; }
+  .doc-section li::marker{ color: var(--text-muted); }
+
+  /* ============ CALLOUTS ============ */
+  .callout{
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 16px;
+    border-radius: 0 4px 4px 0;
+    margin: 18px 0 22px;
+    max-width: 66ch;
+  }
+  .callout.warn{ border-color: var(--warn); background: var(--warn-soft); }
+  .callout-label{
+    font-family: var(--font-head); font-weight: 600; font-size: 0.72rem;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent-strong); display:block; margin-bottom: 4px;
+  }
+  .callout.warn .callout-label{ color: var(--warn); }
+  .callout p{ margin: 0; font-size: 0.94rem; }
+
+  /* ============ FIGURES / DIAGRAMS ============ */
+  figure.diagram{
+    margin: 20px 0 28px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 18px 18px 14px;
+    box-shadow: var(--shadow);
+  }
+  figure.diagram svg{ display:block; width:100%; height:auto; }
+  figure.diagram figcaption{
+    margin-top: 10px;
+    font-family: var(--font-head);
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+  .diagram text{ font-family: var(--font-mono); fill: currentColor; }
+
+  /* ============ TABLES ============ */
+  .table-wrap{ overflow-x: auto; margin: 16px 0 26px; border: 1px solid var(--border); border-radius: 6px; }
+  table{ border-collapse: collapse; width: 100%; min-width: 480px; font-size: 0.9rem; background: var(--surface); }
+  thead th{
+    text-align:left;
+    font-family: var(--font-head); font-weight: 600; font-size: 0.72rem;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted);
+    background: var(--surface-2);
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border-strong);
+    white-space: nowrap;
+  }
+  tbody td{ padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td{ border-bottom: none; }
+  td.field, th.field{ font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-strong); white-space: nowrap; }
+  td.mono{ font-family: var(--font-mono); font-size: 0.85rem; }
+
+  /* ============ ROADMAP ============ */
+  .phases{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0 26px; }
+  @media (max-width: 700px){ .phases{ grid-template-columns: 1fr; } }
+  .phase-card{
+    border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
+    padding: 16px; display:flex; flex-direction:column; gap:8px;
+  }
+  .phase-tag{
+    align-self:flex-start;
+    font-family: var(--font-head); font-weight:600; font-size:0.68rem; letter-spacing:0.08em;
+    text-transform:uppercase; padding: 3px 8px; border-radius: 99px;
+  }
+  .phase-tag.p1{ background: var(--good-soft); color: var(--good); }
+  .phase-tag.p2{ background: var(--accent-soft); color: var(--accent-strong); }
+  .phase-tag.p3{ background: var(--accent-2-soft); color: var(--accent-2); }
+  .phase-card h4{ margin: 0; font-size: 0.98rem; font-family: var(--font-head); }
+  .phase-card ul{ margin: 0; padding-left: 1.1em; font-size: 0.86rem; }
+  .phase-card li{ margin-bottom: 5px; }
+
+  /* ============ FOOTER ============ */
+  .doc-footer{
+    padding-top: 30px; margin-top: 10px; border-top: 1px solid var(--border);
+    color: var(--text-muted); font-size: 0.82rem; font-family: var(--font-head);
+    display:flex; justify-content:space-between; gap: 12px; flex-wrap:wrap;
+  }
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-mark">CALIBRATION<span>·</span>LEDGER</div>
+    <nav class="toc" id="toc" aria-label="Section navigation">
+      <a href="#overview">Overview</a>
+      <a href="#scope">Scope</a>
+      <a href="#domain">Domain</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#extraction">Extraction</a>
+      <a href="#data-model">Data model</a>
+      <a href="#entry">Review</a>
+      <a href="#reporting">Reporting</a>
+      <a href="#stack">Stack</a>
+      <a href="#api">API</a>
+      <a href="#nonfunctional">Non-functional</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#open">Open items</a>
+    </nav>
+  </div>
+</div>
+
+<div class="page">
+
+  <div class="cover">
+    <p class="cover-eyebrow">Architecture &amp; Design Specification</p>
+    <h1>ServiceLedger</h1>
+    <p class="cover-sub">A system of record for BD flow cytometer technical reports — the calibration and service history that keeps a shared instrument fleet in spec.</p>
+
+    <div class="doc-control">
+      <div class="doc-control-title">Document control</div>
+      <div class="doc-control-grid">
+        <div class="dc-cell"><span class="dc-label">Doc ID</span><span class="dc-value">SL-ARCH-001</span></div>
+        <div class="dc-cell"><span class="dc-label">Version</span><span class="dc-value">0.12 draft</span></div>
+        <div class="dc-cell"><span class="dc-label">Date</span><span class="dc-value">2026-09-16</span></div>
+        <div class="dc-cell"><span class="dc-label">Prepared for</span><span class="dc-value">Regev — single-user evaluation</span></div>
+        <div class="dc-cell"><span class="dc-label">Scope</span><span class="dc-value">FACSAria III, LSRFortessa, FACSDiscover S8</span></div>
+        <div class="dc-cell"><span class="dc-label">Status</span><span class="status-pill">Draft — for review</span></div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:16px;">
+      <span class="callout-label">Revised in v0.12</span>
+      <p><code class="mono">preventive_maintenance</code> (§5) is rebuilt from real evidence instead of a guess. Five new BD Care Work Order Service Reports arrived this round — a second LSRFortessa repair, a first FACSAria III repair, a first FACSDiscover S8 repair, and the first two PM visits seen at all (an LSRFortessa and a FACSDiscover S8) — showed the guessed per-model boolean checklist doesn't exist on the real form: PM reports narrate work performed in free text exactly like repair reports do, with no discrete per-check fields, no <code class="mono">laser_hours_logged</code>, and no <code class="mono">next_pm_due</code> (redundant with the existing <code class="mono">reports.next_service_due</code> column anyway). What the real form does add is a "Calibrated Tools" table, absent from repair reports, now modeled as <code class="mono">calibrated_tools</code>. With no model-specific fields surviving two documents across two different models, <code class="mono">preventive_maintenance</code> collapses from three per-model rows to one shared row — <code class="mono">report_templates</code> drops from six rows to four. The three new repair documents, spanning all three instrument models, further confirm that template needed no changes at all — <code class="mono">repair</code> is now the only report type checked against a real document from every model in scope.</p>
+    </div>
+    <div class="callout" style="margin-top:16px;">
+      <span class="callout-label">Revised in v0.11</span>
+      <p>Two additions, both requested directly rather than derived from other decisions. A new Fig. 1 in §0 gives the whole system a three-box, no-branching view — scan, review, approved — ahead of every later diagram's implementation detail, which renumbers the domain-model, architecture, and pipeline figures to Fig. 2–4. And avoiding traditional OCR, previously explained only as a design rationale in §4, is now stated as an explicit requirement: a new callout in §1 states it plainly, and the §4 callout is reframed from "design rationale" to "requirement" pointing back to it.</p>
+    </div>
+    <div class="callout" style="margin-top:16px;">
+      <span class="callout-label">Revised in v0.10</span>
+      <p>The intake flow flips from schema-first to document-first: a technician no longer picks instrument and report type before uploading (§4). The system classifies both from the scan itself, resolves the matching template, and only asks the technician to pick manually when it can't do that confidently. This pushes <code class="mono">reports.instrument_id</code> and <code class="mono">template_id</code> from required-at-creation to resolved-after-classification (§5), adds a classify step to the pipeline and a new endpoint for it (§4, §9), and adds a first review step — confirming what the system detected, with a correction re-running extraction against the right template (§6).</p>
+    </div>
+    <div class="callout" style="margin-top:16px;">
+      <span class="callout-label">Revised in v0.9</span>
+      <p>The <code class="mono">repair</code> template was checked against a real BD Care EU Work Order Service Report and revised to match it (§5): <code class="mono">work_performed</code> and part-level <code class="mono">components_replaced</code> are new, <code class="mono">downtime_hours</code> is replaced by <code class="mono">labor_hours</code> (the real form tracks labor time, not downtime), and the per-model repair split added in v0.8 is rolled back — the real document showed one shared work-order format regardless of instrument model. <code class="mono">fault_category</code> and <code class="mono">retest_result</code> stay in the template as technician-assigned fields (§6) even though neither appears on the source document itself. <code class="mono">report_templates</code> is back to six rows.</p>
+    </div>
+    <div class="callout" style="margin-top:16px;">
+      <span class="callout-label">Revised in v0.8</span>
+      <p><code class="mono">repair</code> now also splits by instrument model, the same way <code class="mono">preventive_maintenance</code> does — a sorter's and a spectral sorter's fault patterns share sort-stream-specific fields that a pure analyzer never needs (§5). All three report types now resolve by model, not just two: <code class="mono">report_templates</code> has eight rows for MVP instead of six.</p>
+    </div>
+    <div class="callout" style="margin-top:16px;">
+      <span class="callout-label">Revised in v0.7</span>
+      <p>Two of the three report types now vary by instrument model instead of using one shared schema per type (§2, §5): <code class="mono">calibration</code> splits into a CS&amp;T-based variant (FACSAria III, LSRFortessa) and a spectral variant (FACSDiscover S8), and <code class="mono">preventive_maintenance</code> gets one row per model, since a sorter's, an analyzer's, and a spectral sorter's checklists differ enough to need it. <code class="mono">report_templates</code> gains a nullable <code class="mono">model</code> column to carry this. Scanned originals are retained indefinitely — no retention window and no deletion job are planned, in any phase (§8, §10). Regulated or compliance-driven use (Part 11, e-signatures, chain of custody) is confirmed out of scope, not a later "if this grows" question, and is removed from the roadmap (§11).</p>
+    </div>
+  </div>
+
+  <section class="doc-section" id="overview">
+    <p class="sec-eyebrow">§0</p>
+    <h2>Overview &amp; goals</h2>
+    <p class="sec-dek">What this system is for, and why the record matters as much as the instrument.</p>
+    <p>Technicians servicing a shared fleet of BD flow cytometers — an LSRFortessa running CS&amp;T bead calibration this morning, a FACSAria III getting a jammed sample injector repaired this afternoon, a FACSDiscover S8 due for its quarterly preventive maintenance next week — currently leave that work as paper logs, scanned PDFs in a shared drive, or a spreadsheet someone maintains from memory. None of it is queryable. Nobody can answer "when did the violet-laser detector on the Fortessa last drift out of CV spec" or "what was actually replaced the last time the Aria's injector jammed" without opening a stack of PDFs by hand.</p>
+    <p>ServiceLedger gives every calibration, repair, and preventive-maintenance event on an instrument a structured, queryable record — captured by scanning the technician's existing printed form or PDF export from BD's own software (FACSDiva / CS&amp;T) and letting Claude's vision capability read it into structured fields. The record is the source of truth for two things: <em>is this instrument currently in spec</em>, and <em>what has been done to it, by whom, and when</em>.</p>
+    <p>Three goals drive every decision in this document:</p>
+    <ol>
+      <li><strong>Meet the printed form, don't replace it.</strong> BD's own software and field technicians already produce a calibration, repair, or PM sheet; the system reads that sheet rather than asking the technician to re-type it into a bespoke screen.</li>
+      <li><strong>Every report type has a different form, and that's permanent.</strong> A CS&amp;T calibration printout, a malfunction/repair report, and a preventive-maintenance checklist share almost no fields, even on the same instrument. The data model treats this as the normal case, not an edge case to special-case around.</li>
+      <li><strong>Ship the smallest thing that proves the concept.</strong> This phase is one evaluator, one instrument family, three report types — two of which resolve to a model-specific variant — and no history to reconstruct. Electron microscopy, other vendors, auditing, versioning, and multi-user roles are all deliberately deferred (§1, §5, §10, §11) until there's a real need driving each one.</li>
+    </ol>
+    <p>Stripped of every implementation detail below, every report the system handles moves through the same three stages:</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 760 150" role="img" aria-label="High-level flow: scan a new document, review the document, then show the approved document.">
+        <defs>
+          <marker id="arrow0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+        <g font-size="13">
+          <rect x="10" y="35" width="210" height="75" rx="4" fill="none" stroke="currentColor" stroke-width="1.4"></rect>
+          <text x="115" y="63" text-anchor="middle" font-weight="700">Scan new document</text>
+          <text x="115" y="84" text-anchor="middle" font-size="10" opacity="0.65">upload → classify →</text>
+          <text x="115" y="98" text-anchor="middle" font-size="10" opacity="0.65">extract (§4)</text>
+
+          <rect x="275" y="35" width="210" height="75" rx="4" fill="none" stroke="currentColor" stroke-width="1.4"></rect>
+          <text x="380" y="63" text-anchor="middle" font-weight="700">Review document</text>
+          <text x="380" y="84" text-anchor="middle" font-size="10" opacity="0.65">confirm classification,</text>
+          <text x="380" y="98" text-anchor="middle" font-size="10" opacity="0.65">correct fields (§6)</text>
+
+          <rect x="540" y="35" width="210" height="75" rx="4" fill="none" stroke="var(--good)" stroke-width="1.6"></rect>
+          <text x="645" y="63" text-anchor="middle" font-weight="700" fill="var(--good)">Show approved document</text>
+          <text x="645" y="84" text-anchor="middle" font-size="10" opacity="0.75">finalized, in fleet</text>
+          <text x="645" y="98" text-anchor="middle" font-size="10" opacity="0.75">history (§7)</text>
+
+          <line x1="220" y1="72" x2="273" y2="72" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow0)"></line>
+          <line x1="485" y1="72" x2="538" y2="72" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow0)"></line>
+        </g>
+      </svg>
+      <figcaption>Fig. 1 — The whole system in three stages: a technician scans a new document, reviews what the system read from it, and the approved document then shows up wherever finalized reports live. Everything else in this document is what makes each stage trustworthy.</figcaption>
+    </figure>
+  </section>
+
+  <section class="doc-section" id="scope">
+    <p class="sec-eyebrow">§1</p>
+    <h2>Users &amp; scope</h2>
+    <p class="sec-dek">Who this build is for today, and what's deliberately left out.</p>
+    <p>The current phase targets a single user evaluating the concept end-to-end: one person acting as both the technician entering data and the reviewer confirming AI-extracted fields. There is no multi-tenant, multi-role, or SSO requirement yet, and — per the scope decision for this phase — no audit trail and no report or template versioning either (see §5 and §10 for what that simplifies). Regulated or compliance-driven requirements (Part 11-style e-signatures, chain of custody, retention limits) are confirmed not relevant to this system at all, not merely deferred — scanned originals are kept indefinitely instead (§10). Two seams are still worth designing in now, because they cost nothing today and are expensive to retrofit:</p>
+    <ul>
+      <li><strong>Instrument and report-template records are already multi-instrument, multi-lab shaped</strong> (§5) — a <code class="mono">location</code> field on <code class="mono">instruments</code> costs nothing to add now and everything to backfill later.</li>
+      <li><strong>Auth is abstracted behind a single-user stub</strong> (§8) — swapping it for real multi-user auth touches one module, not the whole app.</li>
+    </ul>
+    <p>Instrument scope is narrower still: MVP covers a fixed fleet of three BD flow cytometers — a FACSAria III, an LSRFortessa, and a FACSDiscover S8. Electron microscopy and non-BD cytometry vendors are out of this phase entirely — not stubbed, not scaffolded — and return in Phase 3 (§11) if and when there's a real second fleet to support. Report-type scope covers the three events that make up a BD technician's day-to-day paperwork — calibration, malfunction/repair, and preventive maintenance — not the fuller repertoire (installation qualification, decommissioning) an instrument sees over its whole life. Those rarer report types are a later addition (§11), once these three are in production use. ServiceLedger also stands alone for this phase: there's no planned integration with a LIMS, ELN, or asset-management system, so instrument and report data lives only here, with no external system to reconcile against or export a live feed to.</p>
+    <div class="callout">
+      <span class="callout-label">Design rationale</span>
+      <p>Everything else — who-changed-what history, edit approval, report versions, a second instrument family — is real engineering effort that would sit unused or untested by a single evaluator with one fleet. Proving the extraction pipeline works well on one well-understood instrument family is worth more right now than spreading the same effort thin across formats from multiple vendors and categories. The seams above keep that narrowing cheap to undo later.</p>
+    </div>
+    <div class="callout warn">
+      <span class="callout-label">Requirement — no traditional OCR</span>
+      <p>Reading a scanned form into structured fields must not be built on template- or coordinate-based OCR. This is a hard requirement for this system, fixed regardless of phase or scale, not a default weighed against alternatives — see §4 for why coordinate-based extraction breaks across BD's own model and software variation, and why a vision-capable model reading against a described schema is used instead.</p>
+    </div>
+  </section>
+
+  <section class="doc-section" id="domain">
+    <p class="sec-eyebrow">§2</p>
+    <h2>Domain model</h2>
+    <p class="sec-dek">The handful of concepts everything else in this document is built from.</p>
+    <ul>
+      <li><strong>Instrument</strong> — a physical asset: one of the three BD flow cytometers in scope (a FACSAria III, an LSRFortessa, a FACSDiscover S8), identified by serial number, with a fixed <code class="mono">instrument_type</code> that stays open for other vendors and categories later.</li>
+      <li><strong>Report template</strong> — the expected shape of a report for a given instrument type, report type, and — where it applies — instrument model: what fields exist, their units, and which are required. MVP ships three report types, all on BD flow cytometers: calibration, malfunction/repair, and preventive maintenance. Calibration splits into a CS&amp;T variant (FACSAria III, LSRFortessa) and a spectral variant (FACSDiscover S8). Repair and preventive maintenance both stay a single shared template regardless of model — real BD service reports showed no model-specific structured fields on either (§5). Further report types and schema versioning are both later concerns (§11).</li>
+      <li><strong>Report</strong> — one filled-out record: a specific calibration or service event on a specific instrument, on a specific date, with field values conforming (loosely) to a template.</li>
+      <li><strong>Attachment</strong> — the scanned printed form or PDF export behind a report.</li>
+      <li><strong>Extraction job</strong> — one AI attempt to read an attachment: classifying instrument and report type first, then reading the resolved template into structured fields, with a confidence on every guess along the way.</li>
+    </ul>
+    <figure class="diagram">
+      <svg viewBox="0 0 630 300" role="img" aria-label="Domain model: an Instrument has many Reports, each Report is shaped by a Report Template, and has an Attachment behind it that was read by an Extraction Job.">
+        <defs>
+          <marker id="arrow1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+        <g font-size="12.5">
+          <rect x="30" y="120" width="140" height="52" rx="4" fill="none" stroke="currentColor" stroke-width="1.4"></rect>
+          <text x="100" y="141" text-anchor="middle" font-weight="600">Instrument</text>
+          <text x="100" y="158" text-anchor="middle" font-size="10.5" opacity="0.65">BD flow cytometer</text>
+
+          <rect x="250" y="120" width="150" height="52" rx="4" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <text x="325" y="141" text-anchor="middle" font-weight="700">Report</text>
+          <text x="325" y="158" text-anchor="middle" font-size="10.5" opacity="0.65">one service event</text>
+
+          <rect x="250" y="20" width="150" height="52" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3"></rect>
+          <text x="325" y="41" text-anchor="middle" font-weight="600">Report template</text>
+          <text x="325" y="58" text-anchor="middle" font-size="10.5" opacity="0.65">expected fields</text>
+
+          <rect x="480" y="30" width="130" height="52" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="545" y="51" text-anchor="middle" font-weight="600">Attachment</text>
+          <text x="545" y="68" text-anchor="middle" font-size="10.5" opacity="0.65">scanned original</text>
+
+          <rect x="480" y="120" width="130" height="52" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="545" y="141" text-anchor="middle" font-weight="600">Extraction job</text>
+          <text x="545" y="158" text-anchor="middle" font-size="10.5" opacity="0.65">AI read attempt</text>
+
+          <line x1="170" y1="146" x2="248" y2="146" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow1)"></line>
+          <text x="209" y="139" text-anchor="middle" font-size="10.5">1 : N</text>
+
+          <line x1="325" y1="118" x2="325" y2="76" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow1)"></line>
+          <text x="345" y="100" text-anchor="middle" font-size="10.5">shapes</text>
+
+          <line x1="400" y1="141" x2="478" y2="141" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow1)"></line>
+          <text x="439" y="134" text-anchor="middle" font-size="10.5">1 : 1</text>
+
+          <line x1="545" y1="82" x2="545" y2="118" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow1)"></line>
+          <text x="590" y="103" text-anchor="middle" font-size="10.5">read by</text>
+        </g>
+      </svg>
+      <figcaption>Fig. 2 — An Instrument owns many Reports; each Report is shaped by a Template and carries a scanned Attachment that an Extraction job reads into the Report's fields.</figcaption>
+    </figure>
+  </section>
+
+  <section class="doc-section" id="architecture">
+    <p class="sec-eyebrow">§3</p>
+    <h2>System architecture</h2>
+    <p class="sec-dek">Four moving parts: a browser SPA, an API, a database, and a worker that talks to Claude.</p>
+    <p>The extraction call to Claude's vision model runs seconds, not milliseconds — long enough that it shouldn't block an HTTP request. A single background worker process, polling a job table in Postgres, is the entire "queue" this needs at single-user scale; it upgrades to Redis/Celery later without changing the API contract, because the API already talks to extraction jobs asynchronously (submit → poll → result).</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 920 340" role="img" aria-label="Architecture diagram: the technician's browser talks to a React single page app, which calls a FastAPI backend over HTTPS and JSON. The backend reads and writes Postgres, stores scanned files in object storage, and enqueues extraction jobs that a background worker picks up and sends to the Claude API, writing results back to Postgres.">
+        <defs>
+          <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+        <g font-size="12.5">
+          <rect x="20" y="140" width="130" height="56" rx="4" fill="none" stroke="currentColor" stroke-width="1.3"></rect>
+          <text x="85" y="163" text-anchor="middle" font-weight="600">Technician</text>
+          <text x="85" y="180" text-anchor="middle" font-size="10.5" opacity="0.65">browser / phone</text>
+
+          <rect x="205" y="140" width="130" height="56" rx="4" fill="none" stroke="currentColor" stroke-width="1.3"></rect>
+          <text x="270" y="163" text-anchor="middle" font-weight="600">React SPA</text>
+          <text x="270" y="180" text-anchor="middle" font-size="10.5" opacity="0.65">Vite + TS</text>
+
+          <rect x="390" y="140" width="150" height="56" rx="4" fill="none" stroke="currentColor" stroke-width="1.7"></rect>
+          <text x="465" y="163" text-anchor="middle" font-weight="700">FastAPI</text>
+          <text x="465" y="180" text-anchor="middle" font-size="10.5" opacity="0.65">REST + JSON</text>
+
+          <rect x="640" y="40" width="170" height="56" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="725" y="63" text-anchor="middle" font-weight="600">Postgres</text>
+          <text x="725" y="80" text-anchor="middle" font-size="10.5" opacity="0.65">instruments · reports</text>
+
+          <rect x="640" y="140" width="170" height="56" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="725" y="163" text-anchor="middle" font-weight="600">Object storage</text>
+          <text x="725" y="180" text-anchor="middle" font-size="10.5" opacity="0.65">scanned originals</text>
+
+          <rect x="390" y="250" width="150" height="56" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="465" y="273" text-anchor="middle" font-weight="600">Worker</text>
+          <text x="465" y="290" text-anchor="middle" font-size="10.5" opacity="0.65">polls job table</text>
+
+          <rect x="640" y="250" width="170" height="56" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.6"></rect>
+          <text x="725" y="273" text-anchor="middle" font-weight="700" fill="var(--accent)">Claude API</text>
+          <text x="725" y="290" text-anchor="middle" font-size="10.5" opacity="0.7">vision extraction</text>
+
+          <line x1="150" y1="168" x2="203" y2="168" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrow2)"></line>
+          <line x1="335" y1="168" x2="388" y2="168" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow2)"></line>
+          <text x="362" y="158" text-anchor="middle" font-size="10">HTTPS</text>
+
+          <line x1="540" y1="152" x2="638" y2="90" stroke="currentColor" stroke-width="1.1" marker-end="url(#arrow2)"></line>
+          <text x="605" y="115" text-anchor="middle" font-size="10">reads / writes</text>
+
+          <line x1="540" y1="163" x2="638" y2="163" stroke="currentColor" stroke-width="1.1" marker-end="url(#arrow2)"></line>
+          <text x="590" y="153" text-anchor="middle" font-size="10">stores scan</text>
+
+          <line x1="465" y1="196" x2="465" y2="248" stroke="currentColor" stroke-width="1.1" marker-end="url(#arrow2)"></line>
+          <text x="510" y="225" text-anchor="middle" font-size="10">enqueue job</text>
+
+          <line x1="540" y1="273" x2="638" y2="273" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#arrow2)"></line>
+          <text x="590" y="263" text-anchor="middle" font-size="10" fill="var(--accent)">extract()</text>
+
+          <polyline points="812,266 875,266 875,68 812,68" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrow2)"></polyline>
+          <text x="875" y="167" text-anchor="middle" font-size="10" transform="rotate(-90 875 167)">writes result</text>
+        </g>
+      </svg>
+      <figcaption>Fig. 3 — The SPA never talks to Claude directly: extraction is asynchronous, mediated by the worker, so the API key stays server-side and a slow vision call never blocks a page.</figcaption>
+    </figure>
+    <h3>Why this shape</h3>
+    <p>A separate frontend and backend (rather than a single Next.js app) is worth the extra moving part here specifically because the extraction pipeline is genuinely backend work — file handling, prompt construction, confidence scoring, retries — that benefits from Python's ecosystem (Pillow/pypdf for preprocessing, the Anthropic SDK) and from being testable independent of any UI. FastAPI's automatic OpenAPI schema also gives the React client typed request/response shapes for free via codegen.</p>
+  </section>
+
+  <section class="doc-section" id="extraction">
+    <p class="sec-eyebrow">§4</p>
+    <h2>AI extraction pipeline</h2>
+    <p class="sec-dek">A scanned form becomes structured, confidence-scored fields — then a human confirms before anything is final.</p>
+    <p>The intake is document-first: the technician doesn't pick an instrument or a report type before uploading — they just upload the scan, and the system figures out both from the document itself. Both the FACSAria III's and the LSRFortessa's model and serial number are typically printed right on a BD service form (e.g. "Installed Product: 647794E6 - LSRFortessa..."), so identifying <em>which instrument</em> this is is usually a confident read. <em>Which report type</em> is the harder call — a real BD Care Work Order carries the same generic layout for a repair, a PM visit, or a calibration, with only a small task-code field distinguishing them — so a wrong guess here is the costliest failure in the whole pipeline: it silently applies the wrong <code class="mono">field_schema</code>, asking for fields (<code class="mono">baseline_cv_percent</code> on what was actually a repair, say) that don't belong to the document at all. That asymmetry is why classification gets its own step, its own confidence score, and its own mandatory-review treatment, exactly like a low-confidence field does later in the same pipeline — never a silent guess.</p>
+    <ol>
+      <li><strong>Upload.</strong> Technician scans the printed form (or uploads a PDF export straight from the instrument's own software) and attaches it to a report shell. This is the only entry path for MVP — there is no blank-form fallback.</li>
+      <li><strong>Preprocess.</strong> Multi-page PDFs are split to pages; images are oriented and downsampled to a size the vision model handles well.</li>
+      <li><strong>Classify.</strong> Claude reads the document against the closed set MVP actually has — three instruments × three report types — and returns an instrument guess, a report-type guess, and a confidence for each. Above threshold, the system resolves the matching template (§5) automatically and moves straight to extraction. Below threshold, extraction pauses and the technician picks instrument and/or report type manually — the old schema-first flow survives as this fallback, not as the default.</li>
+      <li><strong>Extract.</strong> Each page is sent to Claude with the resolved template's field list, units, and expected types, asking for a JSON object of <code class="mono">{ value, confidence, source_snippet }</code> per field — the snippet lets a reviewer see exactly what printed text the value came from. The prompt asks only for fields the template defines: anything else on the page — a customer account or contract number, a service engineer's email in a header or footer — is never requested and never lands in <code class="mono">extracted_fields</code>. <code class="mono">source_snippet</code> is likewise cropped tightly around the field itself, not the surrounding free text, so incidental contact or contract details don't enter the database through the review snippet either (§10).</li>
+      <li><strong>Score.</strong> Fields below a confidence threshold (tunable; starts around 0.7) are flagged for mandatory review rather than silently accepted. Printed source text means most fields should land well above this threshold; low readings tend to come from scan quality (glare, low contrast) rather than ambiguous input.</li>
+      <li><strong>Review.</strong> The technician's first checkpoint is confirming what step 3 detected — instrument and report type — before ever looking at a field value; correcting either re-runs extraction against the right template (§6), since every field extracted under a wrong guess is meaningless. Only then does the technician see the source scan side-by-side with the extracted form, flagged fields highlighted first, and accept, correct, or fill in what the model missed.</li>
+      <li><strong>Commit.</strong> On submit, the report moves from <code class="mono">extracted</code> to <code class="mono">finalized</code>. For MVP this simply writes the final field values to the report — there is no separate audit log of who changed what (§10, §11).</li>
+    </ol>
+    <figure class="diagram">
+      <svg viewBox="0 0 1100 205" role="img" aria-label="Extraction pipeline: scanned upload flows through preprocessing, then a Claude vision classify step identifies instrument and report type and resolves a template, falling back to a manual technician pick when uncertain; a second Claude vision call extracts fields against that resolved template, producing fields with confidence scores; low-confidence fields are flagged for mandatory human review before the report is committed as finalized.">
+        <defs>
+          <marker id="arrow3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+        <g font-size="12">
+          <rect x="10" y="70" width="120" height="52" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="70" y="93" text-anchor="middle" font-weight="600">Scan / photo</text>
+          <text x="70" y="109" text-anchor="middle" font-size="10" opacity="0.65">upload</text>
+
+          <rect x="175" y="70" width="120" height="52" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="235" y="93" text-anchor="middle" font-weight="600">Preprocess</text>
+          <text x="235" y="109" text-anchor="middle" font-size="10" opacity="0.65">split / orient</text>
+
+          <rect x="340" y="60" width="150" height="70" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.6"></rect>
+          <text x="415" y="82" text-anchor="middle" font-weight="700" fill="var(--accent)">Claude vision</text>
+          <text x="415" y="98" text-anchor="middle" font-size="10" opacity="0.75">classify: instrument</text>
+          <text x="415" y="113" text-anchor="middle" font-size="10" opacity="0.75">+ report type</text>
+
+          <rect x="535" y="60" width="160" height="70" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.6"></rect>
+          <text x="615" y="82" text-anchor="middle" font-weight="700" fill="var(--accent)">Claude vision</text>
+          <text x="615" y="98" text-anchor="middle" font-size="10" opacity="0.75">extract vs. resolved</text>
+          <text x="615" y="113" text-anchor="middle" font-size="10" opacity="0.75">template</text>
+
+          <rect x="740" y="15" width="150" height="52" rx="4" fill="none" stroke="var(--good)" stroke-width="1.3"></rect>
+          <text x="815" y="38" text-anchor="middle" font-weight="600" fill="var(--good)">High confidence</text>
+          <text x="815" y="54" text-anchor="middle" font-size="10" opacity="0.75">pre-filled, accepted</text>
+
+          <rect x="740" y="115" width="150" height="52" rx="4" fill="none" stroke="var(--warn)" stroke-width="1.3"></rect>
+          <text x="815" y="138" text-anchor="middle" font-weight="600" fill="var(--warn)">Low confidence</text>
+          <text x="815" y="154" text-anchor="middle" font-size="10" opacity="0.75">flagged, must review</text>
+
+          <rect x="945" y="60" width="140" height="70" rx="4" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <text x="1015" y="93" text-anchor="middle" font-weight="700">Finalized</text>
+          <text x="1015" y="109" text-anchor="middle" font-size="10" opacity="0.7">report record</text>
+
+          <line x1="130" y1="96" x2="173" y2="96" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow3)"></line>
+          <line x1="295" y1="96" x2="338" y2="96" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow3)"></line>
+          <line x1="490" y1="95" x2="533" y2="95" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#arrow3)"></line>
+          <text x="511" y="52" text-anchor="middle" font-size="9" opacity="0.7">confident match</text>
+          <line x1="695" y1="80" x2="738" y2="45" stroke="var(--good)" stroke-width="1.1" marker-end="url(#arrow3)"></line>
+          <line x1="695" y1="110" x2="738" y2="141" stroke="var(--warn)" stroke-width="1.1" marker-end="url(#arrow3)"></line>
+          <line x1="890" y1="41" x2="943" y2="80" stroke="currentColor" stroke-width="1.1" marker-end="url(#arrow3)"></line>
+          <line x1="890" y1="141" x2="943" y2="105" stroke="currentColor" stroke-width="1.1" marker-end="url(#arrow3)"></line>
+          <text x="918" y="65" text-anchor="middle" font-size="9.5">technician confirms</text>
+          <text x="918" y="165" text-anchor="middle" font-size="9.5">technician corrects</text>
+
+          <polyline points="365,130 365,172 610,172 610,132" fill="none" stroke="var(--warn)" stroke-width="1.1" stroke-dasharray="4 3" marker-end="url(#arrow3)"></polyline>
+          <text x="487" y="187" text-anchor="middle" font-size="9.5" fill="var(--warn)">uncertain → technician picks instrument + type manually</text>
+        </g>
+      </svg>
+      <figcaption>Fig. 4 — Classification gets the same treatment as field extraction: a confident match moves straight to extraction, an uncertain one falls back to a manual pick, and confidence scoring on the extracted fields themselves branches the flow again before anything reaches "finalized."</figcaption>
+    </figure>
+    <div class="callout warn">
+      <span class="callout-label">Requirement — why not traditional OCR, even for printed forms</span>
+      <p>Avoiding traditional OCR is a hard requirement for this system (§1), not a preference weighed against alternatives. Printed source text removes the hardest OCR problem, but not the layout problem: BD's own CS&amp;T and FACSDiva software print a fairly consistent report, but not an identical one — a FACSAria III's calibration report has a different laser/detector table than an LSRFortessa's, and the FACSDiscover S8's spectral workflow prints a differently-shaped report again, with layout drifting further across software versions. Template/coordinate-based OCR is brittle to that variation — it re-breaks with every instrument model or software update. A vision-capable model reading against a described schema, rather than fixed coordinates, tolerates that drift and still returns a confidence score per field, which a regex- or coordinate-based OCR pipeline doesn't give you at all.</p>
+    </div>
+  </section>
+
+  <section class="doc-section" id="data-model">
+    <p class="sec-eyebrow">§5</p>
+    <h2>Data model</h2>
+    <p class="sec-dek">Structured columns for what's always true of a report; a flexible schema for what's true only of one report type.</p>
+    <p>The central design decision: <code class="mono">instruments</code>, <code class="mono">reports</code>, and <code class="mono">report_templates</code> are real relational tables with real columns, but a report's instrument-specific readings live in a single <code class="mono">extracted_fields JSONB</code> column, validated at write-time against its template's <code class="mono">field_schema</code>. A new per-detector reading, or a whole new report type down the line, never needs its own migration — only its template does.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Table</th><th>Key columns</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td class="field">instruments</td><td class="mono">id, name, instrument_type, model, serial_number, location, status</td><td>The physical asset. <code class="mono">instrument_type</code> is fixed to <code class="mono">facs</code> for MVP — every instrument is a BD flow cytometer; <code class="mono">model</code> is one of the three in scope (<code class="mono">FACSAria III</code>, <code class="mono">LSRFortessa</code>, <code class="mono">FACSDiscover S8</code>). The enum stays open for other vendors and categories later.</td></tr>
+          <tr><td class="field">report_templates</td><td class="mono">id, instrument_type, report_type, model, field_schema (jsonb)</td><td>Defines the expected fields, units and types for one report type — and, where a model's hardware or workflow differs enough to need its own fields, one specific instrument <code class="mono">model</code>. A <code class="mono">NULL</code> <code class="mono">model</code> applies to every model of that <code class="mono">instrument_type</code> unless a model-specific row exists for the same <code class="mono">report_type</code>, which takes precedence. MVP has four rows across the three report types, detailed below — no version history (§11).</td></tr>
+          <tr><td class="field">reports</td><td class="mono">id, instrument_id (nullable), template_id (nullable), status, extracted_fields (jsonb), technician_name, report_date, finalized_at</td><td>One event. <code class="mono">instrument_id</code> and <code class="mono">template_id</code> start <code class="mono">NULL</code> — document-first intake (§4) resolves them after classification rather than requiring them at creation. <code class="mono">status</code>: <code class="mono">draft → classified → extracted → in_review → finalized</code>. Corrections after finalizing overwrite these fields in place — no version history in MVP.</td></tr>
+          <tr><td class="field">attachments</td><td class="mono">id, report_id, file_path, file_type, page_count</td><td>Pointer to the scanned original in object storage.</td></tr>
+          <tr><td class="field">extraction_jobs</td><td class="mono">id, attachment_id, status, classification (jsonb), field_confidences (jsonb), started_at, completed_at</td><td>One classify-then-extract attempt. <code class="mono">classification</code> holds the guessed instrument, report type, and each one's confidence — kept separately from <code class="mono">field_confidences</code> because it gates which template the rest of the job even runs against.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Report templates: three report types, four rows</h3>
+    <p>All are BD flow cytometer reports, but the split isn't uniform. <code class="mono">calibration</code> groups the fleet into two variants — a conventional sorter/analyzer and a spectral sorter run genuinely different QC workflows. <code class="mono">repair</code> and <code class="mono">preventive_maintenance</code> both stay a single shared template regardless of model: real BD Care Work Order Service Reports show the same paperwork used for a repair visit and a PM visit alike, with no model-specific structured fields on either.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Unit / notes</th></tr></thead>
+        <tbody>
+          <tr><td class="field" colspan="3" style="background:var(--surface-2); font-weight:600; color:var(--text);">facs · calibration — CS&amp;T (FACSAria III, LSRFortessa)</td></tr>
+          <tr><td class="field">laser_configuration</td><td class="mono">enum[]</td><td>e.g. 405nm, 488nm, 640nm</td></tr>
+          <tr><td class="field">cst_beads_lot</td><td class="mono">text</td><td>lot number, for traceability</td></tr>
+          <tr><td class="field">baseline_cv_percent</td><td class="mono">number[detector]</td><td>per-detector, flag if &gt; 5%</td></tr>
+          <tr><td class="field">pmt_voltages</td><td class="mono">number[detector]</td><td>volts</td></tr>
+          <tr><td class="field">fluidics_pressure_psi</td><td class="mono">number</td><td>psi</td></tr>
+          <tr><td class="field">compensation_matrix_updated</td><td class="mono">boolean</td><td>–</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>This is the <code class="mono">model</code>-<code class="mono">NULL</code> row for <code class="mono">calibration</code> — it's the fallback for any model that isn't FACSDiscover S8, which is why it doesn't name FACSAria III or LSRFortessa in the schema itself.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Unit / notes</th></tr></thead>
+        <tbody>
+          <tr><td class="field" colspan="3" style="background:var(--surface-2); font-weight:600; color:var(--text);">facs · calibration — spectral (FACSDiscover S8)</td></tr>
+          <tr><td class="field">laser_configuration</td><td class="mono">enum[]</td><td>e.g. 355nm, 405nm, 488nm, 561nm, 640nm</td></tr>
+          <tr><td class="field">spectral_qc_beads_lot</td><td class="mono">text</td><td>lot number, for traceability</td></tr>
+          <tr><td class="field">reference_controls_acquired</td><td class="mono">boolean</td><td>single-stain controls run for unmixing</td></tr>
+          <tr><td class="field">unmixing_error_percent</td><td class="mono">number</td><td>flag if above the instrument's threshold</td></tr>
+          <tr><td class="field">autofluorescence_extraction_verified</td><td class="mono">boolean</td><td>–</td></tr>
+          <tr><td class="field">imaging_focus_calibration_passed</td><td class="mono">boolean</td><td>S8-specific imaging module</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><em>This field set is the architecture team's best guess at what a spectral cytometer's startup/QC workflow captures, modeled on published spectral flow cytometry QC concepts rather than a real FACSDiscover S8 printout — it needs checking against BD's actual CS&amp;T/QC documentation for the S8 before implementation (§12).</em></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Unit / notes</th></tr></thead>
+        <tbody>
+          <tr><td class="field" colspan="3" style="background:var(--surface-2); font-weight:600; color:var(--text);">facs · repair — one shared template, all models</td></tr>
+          <tr><td class="field">fault_description</td><td class="mono">text</td><td>reported symptom — BD's own form splits this into a short Subject line and a longer Description; both map here</td></tr>
+          <tr><td class="field">root_cause</td><td class="mono">text</td><td>matches the form's own "Cause" section directly</td></tr>
+          <tr><td class="field">work_performed</td><td class="mono">text</td><td>the diagnostic/repair narrative — BD's form calls this "Work Performed / Solution Comments"</td></tr>
+          <tr><td class="field">components_replaced</td><td class="mono">object[]</td><td>one entry per part: part_name, part_number, qty — mirrors the form's "Parts Used" table</td></tr>
+          <tr><td class="field">labor_hours</td><td class="mono">number</td><td>hours — matches the form's "Labor" total rounded hours; the form's separate Travel hours aren't captured here</td></tr>
+          <tr><td class="field">fault_category</td><td class="mono">enum</td><td>fluidics, optics, electronics, software</td></tr>
+          <tr><td class="field">retest_result</td><td class="mono">enum</td><td>pass, fail, not retested</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>This template was checked against four real BD Care EU Work Order Service Reports rather than left as a guess (§12) — two LSRFortessa repairs, a FACSAria III repair, and a FACSDiscover S8 repair, making <code class="mono">repair</code> the only report type confirmed against a document from every model in scope. The first of those documents confirmed <code class="mono">fault_description</code> and <code class="mono">root_cause</code>, and surfaced <code class="mono">work_performed</code>, <code class="mono">labor_hours</code>, and the part-level structure of <code class="mono">components_replaced</code> — none of which the earlier draft had; the three that followed, across the other two models, needed no schema changes at all. Every one of the four showed the same repair paperwork used regardless of instrument model, with no model-specific structured fields anywhere on it — which is why <code class="mono">repair</code>, unlike <code class="mono">calibration</code>, stays a single shared row rather than splitting per model (<code class="mono">preventive_maintenance</code> reached the same conclusion on the same evidence-over-guess basis once real PM documents were checked — see below). <code class="mono">fault_category</code> and <code class="mono">retest_result</code> don't appear as discrete fields on the real form at all — pass/fail is just stated inside the <code class="mono">work_performed</code> narrative, and there's no fault taxonomy on it either. Both stay in the template anyway, assigned by the technician during review (§6) rather than extracted verbatim, because they're what makes filtering and reporting (§7) possible. <code class="mono">root_cause</code> stays free text rather than a structured fault-code taxonomy — confirmed as sufficient for MVP rather than a gap to close.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Unit / notes</th></tr></thead>
+        <tbody>
+          <tr><td class="field" colspan="3" style="background:var(--surface-2); font-weight:600; color:var(--text);">facs · preventive_maintenance — one shared template, all models</td></tr>
+          <tr><td class="field">service_description</td><td class="mono">text</td><td>BD's Subject + Description lines — often just "Preventive Maintenance" verbatim</td></tr>
+          <tr><td class="field">work_performed</td><td class="mono">text</td><td>the maintenance narrative — cleaning, PM-kit exchange, checks performed, CS&amp;T baseline, final inspection outcome</td></tr>
+          <tr><td class="field">components_replaced</td><td class="mono">object[]</td><td>one entry per part: part_name, part_number, qty — mirrors the form's "Parts Used" table (PM kits, not fault repairs)</td></tr>
+          <tr><td class="field">calibrated_tools</td><td class="mono">object[]</td><td>one entry per tool: tool_id, tool_name, last_calibration_date, next_calibration_date — from the form's "Calibrated Tools" table, absent on repair reports</td></tr>
+          <tr><td class="field">labor_hours</td><td class="mono">number</td><td>hours — matches the form's "Labor" total rounded hours, same as repair</td></tr>
+          <tr><td class="field">verification_result</td><td class="mono">enum</td><td>pass, fail, not verified — technician-assigned, mirrors repair's retest_result</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>This template was a guess as recently as v0.11 — a per-model boolean checklist (<code class="mono">fluidics_system_flushed</code>, <code class="mono">filters_replaced</code>, <code class="mono">sheath_waste_tank_serviced</code>, a per-laser <code class="mono">laser_hours_logged</code>, <code class="mono">firmware_version_verified</code>, <code class="mono">next_pm_due</code>, plus sort- and imaging-specific additions per model) modeled on generic PM checklist concepts rather than a real BD printout. A real LSRFortessa half-year PM report (§12) contradicted nearly all of it: the form carries no discrete per-check fields anywhere — it's the same free-text "Work Performed" narrative as a repair report — and neither <code class="mono">laser_hours_logged</code> nor <code class="mono">next_pm_due</code> appear on it at all (the latter also duplicated the <code class="mono">reports.next_service_due</code> real column that already exists across every report type, below). What the real form does have that repair reports don't is a "Calibrated Tools" table — the external multimeters, laser power meters, and pressure meters used during the visit, each with its own last/next calibration date — now modeled as <code class="mono">calibrated_tools</code>. <code class="mono">verification_result</code> stays in the template the same way <code class="mono">fault_category</code> and <code class="mono">retest_result</code> do for repair: not on the source form, assigned by the technician during review (§6) because it's what makes fleet-wide "is this instrument in spec" reporting (§7) possible. And with no model-specific structured fields surviving contact with a real document, <code class="mono">preventive_maintenance</code> collapses from three per-model rows to one shared row — the same evidence-over-guess move <code class="mono">repair</code> made in v0.9. Checked against two real documents so far — an LSRFortessa visit and a FACSDiscover S8 visit, the latter's own imaging/optical checks ("Did optical cleaning and alignment," "Image calibration passed," "Accudrop test passed") sitting in the same free-text narrative rather than as discrete fields, and its own Calibrated Tools table listing the same kind of external metrology equipment, just different units and dates. Only a FACSAria III PM report remains unchecked (§12).</p>
+    <p>Across every report — regardless of report type or template variant — <code class="mono">technician_name</code>, <code class="mono">service_actions</code>, <code class="mono">parts_replaced</code>, and <code class="mono">next_service_due</code> live as real columns on <code class="mono">reports</code> rather than in any template's JSONB, because the reporting layer (§7) filters and sorts on them regardless of report type or model.</p>
+    <div class="callout">
+      <span class="callout-label">Design rationale — why JSONB, not one wide table</span>
+      <p>Three kinds of variation push toward JSONB rather than fixed columns. Across report types, a calibration's <code class="mono">baseline_cv_percent</code>, a repair's <code class="mono">work_performed</code>, and a PM's <code class="mono">calibrated_tools</code> have nothing in common — a single <code class="mono">reports</code> table with a column for every field across all three would be mostly null on any given row. Within a single report type, calibration still varies by instrument model — a FACSDiscover S8's spectral calibration fields don't exist on the other two models' CS&amp;T rows; repair and preventive maintenance both turned out not to need this axis at all, once checked against real service reports (§5). And within a single template, some fields are themselves per-detector, with a count that varies sharply across the fleet — a conventional multi-PMT FACSAria III versus a FACSDiscover S8, whose spectral detection array runs many more channels. A JSONB field validated against its resolved template's <code class="mono">field_schema</code> absorbs all three kinds of variation without a wider-and-wider table of nullable, model-specific columns.</p>
+    </div>
+  </section>
+
+  <section class="doc-section" id="entry">
+    <p class="sec-eyebrow">§6</p>
+    <h2>Review &amp; correction</h2>
+    <p class="sec-dek">Every report starts from a scan for MVP — the generated form exists to review and correct it, not to fill it from scratch.</p>
+    <p>A report's template <code class="mono">field_schema</code> drives a generated review form on the frontend, so a new instrument type or a changed field list is a template edit, not a frontend release. Two flows converge on the same report record, and both require an attachment — there is no blank-form, no-scan path in this phase:</p>
+    <ul>
+      <li><strong>Scan, then confirm</strong> — the extraction flow in §4, ending with the technician reviewing pre-filled values.</li>
+      <li><strong>Scan, then fill the gaps</strong> — extraction handles most fields; anything the model couldn't read (a smudge, a field the scan cut off) is left blank and highlighted for manual entry rather than blocking the whole report.</li>
+    </ul>
+    <p>Before either flow reaches a single field, there's a checkpoint neither had to worry about under the old schema-first intake: confirming what step 3 of §4 classified. The review screen opens with the detected instrument and report type shown as a normal pre-filled, editable pair — high-confidence classifications look exactly like a high-confidence field elsewhere on the form. Accepting them moves straight into field review. Changing either one re-runs extraction against the newly resolved template before showing any fields, since values extracted under the wrong template aren't corrections to make, they're noise to discard.</p>
+    <p>Editing a <em>finalized</em> report in this phase overwrites its fields in place — there is no version history, so a correction replaces the previous value rather than sitting alongside it. That tradeoff is acceptable for a single evaluator; §10 and §11 cover when it stops being acceptable and what replaces it.</p>
+  </section>
+
+  <section class="doc-section" id="reporting">
+    <p class="sec-eyebrow">§7</p>
+    <h2>Reporting &amp; analytics</h2>
+    <p class="sec-dek">The payoff for structuring the data: questions that were previously "go open forty PDFs."</p>
+    <ul>
+      <li><strong>Instrument timeline</strong> — every report for one instrument, chronological, with drift/trend lines for any numeric field across its history (e.g. baseline CV% per detector over the last twelve calibrations). Since calibration now has two template variants, a trend field is model-specific too — a FACSAria III's or LSRFortessa's timeline trends <code class="mono">baseline_cv_percent</code>, while a FACSDiscover S8's trends its own <code class="mono">unmixing_error_percent</code>; the two are never combined into one fleet-wide series.</li>
+      <li><strong>Fleet dashboard</strong> — status at a glance across all instruments: days since last calibration, anything currently out of spec, upcoming <code class="mono">next_service_due</code> dates.</li>
+      <li><strong>Filtered search</strong> — by instrument, report type, date range, technician, or specific field values (e.g. "every calibration where <code class="mono">baseline_cv_percent</code> on any detector exceeds 5%").</li>
+      <li><strong>Exports</strong> — CSV of any filtered view for spreadsheet work; a formatted PDF of an individual report for sharing outside the system.</li>
+      <li><strong>Natural-language query</strong> (phase 2+) — a question like "which instruments needed more than one repair in the last six months" translated by Claude into a filter against the reporting API, not a raw SQL pass-through, so it can't touch data outside the same permission boundary a normal query would.</li>
+    </ul>
+    <div class="callout">
+      <span class="callout-label">Design rationale</span>
+      <p>Trend and drift reporting only work because <code class="mono">extracted_fields</code> is JSONB with known keys per template, not free text — Postgres can index and aggregate into <code class="mono">extracted_fields->>'baseline_cv_percent'</code> directly. This is the payoff for insisting on template-validated extraction back in §4 rather than accepting whatever shape the model returns.</p>
+    </div>
+  </section>
+
+  <section class="doc-section" id="stack">
+    <p class="sec-eyebrow">§8</p>
+    <h2>Technology stack</h2>
+    <p class="sec-dek">Chosen for this specific pipeline, not defaults.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Layer</th><th>Choice</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td class="field">Frontend</td><td class="mono">React + Vite + TypeScript</td><td>Generated forms from JSON schema, typed API client from FastAPI's OpenAPI spec.</td></tr>
+          <tr><td class="field">Backend</td><td class="mono">FastAPI (Python)</td><td>Async I/O for extraction polling; Pydantic models double as request validation and template schema validation.</td></tr>
+          <tr><td class="field">Database</td><td class="mono">PostgreSQL</td><td>Relational core + JSONB for template-shaped fields; native indexing on JSONB paths for §7.</td></tr>
+          <tr><td class="field">File storage</td><td class="mono">Local disk (dev) → S3-compatible bucket</td><td>Scanned originals kept separate from the DB; swappable without touching the schema. Retained indefinitely by design — no lifecycle policy or deletion job (§10).</td></tr>
+          <tr><td class="field">AI extraction</td><td class="mono">Anthropic API (Claude, vision)</td><td>Reads BD's CS&amp;T/FACSDiva printouts, which vary by instrument model and software version, against a described schema; returns confidence per field.</td></tr>
+          <tr><td class="field">Background jobs</td><td class="mono">Single polling worker (dev) → Celery/Redis (scale)</td><td>Async extraction without blocking requests; upgrade path doesn't change the API contract.</td></tr>
+          <tr><td class="field">Auth</td><td class="mono">Single-user stub → session-based multi-user (phase 2)</td><td>Swapping the stub for real login touches one module, not the schema.</td></tr>
+          <tr><td class="field">Migrations</td><td class="mono">Alembic</td><td>Keeps schema changes reviewable as templates and tables evolve, even without version history on the data itself.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="doc-section" id="api">
+    <p class="sec-eyebrow">§9</p>
+    <h2>Representative API surface</h2>
+    <p class="sec-dek">Not exhaustive — enough to show the shape of the resource model.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Method &amp; path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">POST /instruments</td><td>Register a new instrument</td></tr>
+          <tr><td class="mono">GET /report-templates?instrument_type=facs&amp;model=</td><td>List templates for an instrument type, resolved to a model-specific variant when one exists for that <code class="mono">model</code> and report type — also what the manual fallback picker in §4 calls when classification is uncertain</td></tr>
+          <tr><td class="mono">POST /reports</td><td>Start a bare draft report — no instrument or template yet; document-first intake resolves both after classification</td></tr>
+          <tr><td class="mono">POST /reports/{id}/attachments</td><td>Upload a scanned original</td></tr>
+          <tr><td class="mono">POST /attachments/{id}/classify</td><td>Guess instrument and report type from the document and resolve a template; returns each guess with its confidence</td></tr>
+          <tr><td class="mono">PATCH /reports/{id}/template</td><td>Confirm or override the classified instrument/template; an override re-triggers extraction against the new template</td></tr>
+          <tr><td class="mono">POST /attachments/{id}/extract</td><td>Enqueue an extraction job against the report's resolved template</td></tr>
+          <tr><td class="mono">GET /extraction-jobs/{id}</td><td>Poll job status, classification result, and per-field confidence</td></tr>
+          <tr><td class="mono">PATCH /reports/{id}/fields</td><td>Apply corrections directly to the report's fields (overwrites in place — no audit log in MVP)</td></tr>
+          <tr><td class="mono">POST /reports/{id}/finalize</td><td>Mark a report finalized</td></tr>
+          <tr><td class="mono">GET /reports?instrument_id=&amp;date_from=&amp;status=</td><td>Filtered search (§7)</td></tr>
+          <tr><td class="mono">GET /instruments/{id}/trend?field=baseline_cv_percent</td><td>Time series for one field, one instrument</td></tr>
+          <tr><td class="mono">GET /reports/export?format=csv</td><td>Bulk export of a filtered view</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="doc-section" id="nonfunctional">
+    <p class="sec-eyebrow">§10</p>
+    <h2>Non-functional considerations</h2>
+    <h3>Data sensitivity</h3>
+    <p>Scanned service logs can incidentally carry more than instrument state — a customer account or contract number, a service engineer's email address, sample IDs or project names visible on the same page. None of that is wanted, and none of it is collected: no template's <code class="mono">field_schema</code> defines a contact, billing, or contract field, the extraction prompt asks only for fields the template defines (§4), and the <code class="mono">source_snippet</code> kept per field is cropped tightly around that field rather than the surrounding text. That data may still exist on the scanned original itself — the raw attachment isn't redacted, only what gets parsed out of it — so object storage access should be scoped as tightly as auth allows even at single-user scale, and attachments should never be sent anywhere except the extraction call itself.</p>
+    <h3>Auditing and versioning — deliberately out of scope for now</h3>
+    <p>MVP has no record of who changed a field, when, or what it used to say, and no history of a report or template across edits — a correction simply overwrites the previous value. That's a real tradeoff, not an oversight: with one evaluator there's no second party to audit against, so the tradeoff costs nothing yet. It stops being free the moment a second technician can quietly change another's report, or a template changes underneath reports that already reference it — at that point, an append-only edit log and versioned templates (§11, Phase 2) become necessary rather than nice-to-have.</p>
+    <h3>Scalability path</h3>
+    <p>Nothing here assumes single-user forever: <code class="mono">instruments.location</code> and the auth stub (§1) are the two seams that carry this design from one evaluator toward a multi-technician deployment without a schema rewrite. Audit logging and versioning are additive tables when they're built (§11) — they don't require reshaping <code class="mono">reports</code> or <code class="mono">report_templates</code> as they exist today.</p>
+    <div class="callout">
+      <span class="callout-label">Retention: indefinite, by decision</span>
+      <p>MVP has no delete path for attachments — no endpoint, no retention job, nothing prunes old scans — and that's now a confirmed design decision rather than a placeholder to revisit: scanned originals are retained indefinitely, and regulated or compliance-driven use (Part 11, chain-of-custody, right-to-erasure) is confirmed not relevant to this system. Unlike auditing and versioning (above), retention and deletion aren't on the roadmap for any later phase — if that ever changes, it would be a different system, not a future phase of this one.</p>
+    </div>
+  </section>
+
+  <section class="doc-section" id="roadmap">
+    <p class="sec-eyebrow">§11</p>
+    <h2>Phased roadmap</h2>
+    <p class="sec-dek">Built to be useful after phase 1 alone — each later phase adds, it doesn't unblock.</p>
+    <div class="phases">
+      <div class="phase-card">
+        <span class="phase-tag p1">Phase 1 — MVP</span>
+        <h4>Single-user evaluation</h4>
+        <ul>
+          <li>BD flow cytometers only — calibration (CS&amp;T + spectral variants), plus shared malfunction/repair and preventive-maintenance templates; <code class="mono">repair</code> is verified against real BD service reports from all three instrument models, <code class="mono">preventive_maintenance</code> from two of three</li>
+          <li>Document-first intake: scan upload → Claude classifies instrument &amp; report type (manual fallback if uncertain) → extraction → review → finalize</li>
+          <li>Instrument list, report history, filtered search</li>
+          <li>CSV export</li>
+        </ul>
+      </div>
+      <div class="phase-card">
+        <span class="phase-tag p2">Phase 2 — Team</span>
+        <h4>Multi-technician rollout</h4>
+        <ul>
+          <li>Rarer report templates — installation qualification, decommissioning</li>
+          <li>Real auth, technician / reviewer roles</li>
+          <li>Field-level audit trail (who changed what, when)</li>
+          <li>Report &amp; template versioning</li>
+          <li>Fleet dashboard, drift charts, due-date alerts</li>
+          <li>PDF report generation</li>
+          <li>Fully manual entry path (no scan required)</li>
+        </ul>
+      </div>
+      <div class="phase-card">
+        <span class="phase-tag p3">Phase 3 — Org scale</span>
+        <h4>Beyond one fleet</h4>
+        <ul>
+          <li>Multi-site / department scoping, SSO</li>
+          <li>Natural-language analytics queries</li>
+          <li>Automatic out-of-spec anomaly flags</li>
+          <li>Additional instrument families — electron microscopy, non-BD cytometry vendors</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc-section" id="open">
+    <p class="sec-eyebrow">§12</p>
+    <h2>Open questions for you</h2>
+    <p class="sec-dek">Decisions that shape Phase 1 but are yours to make, not architectural defaults to assume.</p>
+    <ul>
+      <li>The FACSDiscover S8 spectral calibration field list in §5 (<code class="mono">spectral_qc_beads_lot</code>, <code class="mono">reference_controls_acquired</code>, <code class="mono">unmixing_error_percent</code>, <code class="mono">autofluorescence_extraction_verified</code>, <code class="mono">imaging_focus_calibration_passed</code>) is a plausible guess, not a match confirmed against a real S8 CS&amp;T/QC printout — worth checking against actual BD documentation or a sample report before this template is built.</li>
+      <li><code class="mono">preventive_maintenance</code> (§5) is now confirmed shared and model-agnostic against two real documents — an LSRFortessa visit and a FACSDiscover S8 visit, neither carrying any model-specific structured field. Only a FACSAria III PM report remains unchecked; if one turns up genuinely sort-specific (a real per-model reason, not the guessed one this template used through v0.11), the shared row would need to split again. (<code class="mono">repair</code> reached full three-model confirmation this round — see §5 — so this is now the only template with a model still unchecked.)</li>
+      <li>Classify (§4) and extract are described as two steps against two schemas, but nothing requires them to be two separate model calls — a single prompt could plausibly do both at once. That's an implementation-time cost/latency tradeoff, not an architectural one, but worth deciding deliberately rather than defaulting to whichever is easiest to build first.</li>
+      <li>The classification confidence threshold is assumed to reuse the same ~0.7 starting point as field-level scoring (§4), but getting the report type wrong is a costlier mistake than one wrong field — it may deserve a stricter threshold of its own rather than inheriting the field-level default.</li>
+    </ul>
+  </section>
+
+  <div class="doc-footer">
+    <span>ServiceLedger — Architecture &amp; Design Specification</span>
+    <span>v0.12 draft · 2026-09-16</span>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  try{
+    var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+    var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    if(!('IntersectionObserver' in window) || !sections.length) return;
+    var current = null;
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          var id = '#' + entry.target.id;
+          links.forEach(function(a){ a.classList.toggle('active', a.getAttribute('href') === id); });
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function(s){ io.observe(s); });
+  }catch(e){}
+})();
+</script>

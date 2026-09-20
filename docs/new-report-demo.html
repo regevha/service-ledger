@@ -1,0 +1,496 @@
+<title>New Report Upload</title>
+<meta name="description" content="Interactive demo of the ServiceLedger document-first intake — upload a scan and watch the system classify the instrument and report type, confirming only when it isn't sure">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg: #F6F4EF; --surface: #FFFFFF; --surface-2: #ECE9E0;
+    --border: #DDD7C9; --border-strong: #C7C0AC;
+    --text: #1B1F23; --text-muted: #5B6168; --text-faint: #8B8F86;
+    --accent: #146B85; --accent-strong: #0C5165; --accent-soft: #DCEDF1;
+    --good: #3D7A4A; --good-soft: #E1EEE1;
+    --warn: #96650F; --warn-soft: #F3E7CE;
+    --crit: #A13F2E; --crit-soft: #F3DFD9;
+    --shadow: 0 1px 2px rgba(27,31,35,0.06), 0 10px 28px -14px rgba(27,31,35,0.16);
+    --font-ui: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #14181B; --surface: #1B2024; --surface-2: #21262B;
+      --border: #2C3237; --border-strong: #3A4147;
+      --text: #E8E6DF; --text-muted: #9BA0A5; --text-faint: #6D7278;
+      --accent: #5EC2DE; --accent-strong: #8AD6EC; --accent-soft: #17323C;
+      --good: #86C08F; --good-soft: #1F3323;
+      --warn: #E3BD6E; --warn-soft: #3A2F16;
+      --crit: #E0917E; --crit-soft: #3B241F;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #14181B; --surface: #1B2024; --surface-2: #21262B;
+    --border: #2C3237; --border-strong: #3A4147;
+    --text: #E8E6DF; --text-muted: #9BA0A5; --text-faint: #6D7278;
+    --accent: #5EC2DE; --accent-strong: #8AD6EC; --accent-soft: #17323C;
+    --good: #86C08F; --good-soft: #1F3323;
+    --warn: #E3BD6E; --warn-soft: #3A2F16;
+    --crit: #E0917E; --crit-soft: #3B241F;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.5);
+  }
+  *{ box-sizing:border-box; }
+  body{ background: var(--bg); color: var(--text); font-family: var(--font-ui); margin:0; }
+  .wrap{ max-width: 860px; margin:0 auto; padding: 20px 16px 64px; }
+
+  .banner{
+    display:flex; align-items:center; justify-content:center; gap:10px; font-size:0.78rem; color: var(--text-muted);
+    padding: 8px 14px; margin-bottom:16px; border:1px dashed var(--border-strong); border-radius:8px; background: var(--surface);
+    text-align:center; line-height:1.5;
+  }
+  .banner b{ color: var(--text); }
+
+  .app{ background: var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow: var(--shadow); overflow:hidden; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 20px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .brand{ display:flex; align-items:center; gap:9px; font-weight:700; }
+  .brand .mark{ width:20px; height:20px; border-radius:6px; background: linear-gradient(135deg, var(--accent), var(--accent-strong)); flex:none; }
+  .crumbs{ font-size:0.82rem; color: var(--text-muted); }
+  .crumbs b{ color:var(--text); font-weight:600; }
+
+  .subbar{ padding:16px 20px; border-bottom:1px solid var(--border); background: var(--surface-2); }
+  .subbar h1{ font-size:1.15rem; margin:0 0 4px; }
+  .subbar .meta{ font-size:0.8rem; color: var(--text-muted); }
+
+  .steps{ display:flex; align-items:center; gap:8px; padding:16px 20px 4px; }
+  .step{ display:flex; align-items:center; gap:8px; font-size:0.78rem; font-weight:600; color: var(--text-faint); white-space:nowrap; }
+  .step .num{ width:20px; height:20px; border-radius:50%; background: var(--surface-2); border:1px solid var(--border-strong); display:flex; align-items:center; justify-content:center; font-size:0.7rem; flex:none; }
+  .step.active{ color: var(--text); }
+  .step.active .num{ background: var(--accent); border-color: var(--accent); color:#fff; }
+  .step.done .num{ background: var(--good); border-color: var(--good); color:#fff; }
+  .step-line{ flex:1; height:1px; background: var(--border-strong); min-width:16px; }
+
+  .section{ padding: 18px 20px; border-bottom:1px solid var(--border); }
+  .section-title{ font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color: var(--text-faint); margin-bottom:12px; }
+
+  .dropzone{
+    border:2px dashed var(--border-strong); border-radius:12px; padding: 30px 20px; text-align:center; cursor:pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .dropzone:hover, .dropzone.drag{ border-color: var(--accent); background: var(--accent-soft); }
+  .dropzone .icon{ font-size:1.7rem; margin-bottom:8px; }
+  .dropzone .primary{ font-weight:600; font-size:0.92rem; margin-bottom:3px; }
+  .dropzone .secondary{ font-size:0.78rem; color: var(--text-muted); }
+  .sample-row{ display:flex; justify-content:center; margin-top:12px; }
+
+  .btn{ font-family: var(--font-ui); font-size:0.82rem; font-weight:600; padding:9px 16px; border-radius:8px; border:1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor:pointer; }
+  .btn.link{ border:none; background:none; color: var(--accent-strong); text-decoration:underline; padding:0; font-size:0.78rem; }
+  .btn.ghost{ border:none; background:none; color: var(--accent-strong); font-size:0.76rem; padding:2px 0; text-decoration:underline; }
+  .btn.primary{ background: var(--accent); border-color: var(--accent); color:#fff; }
+  .btn.primary:disabled{ background: var(--border-strong); border-color: var(--border-strong); color: var(--text-faint); cursor:not-allowed; }
+  .btn.small{ padding:6px 12px; font-size:0.76rem; }
+
+  .file-chip{
+    display:none; align-items:center; justify-content:space-between; gap:10px; margin-top:12px;
+    border:1px solid var(--border); border-radius:8px; padding:10px 12px; background: var(--surface-2);
+  }
+  .file-chip.show{ display:flex; }
+  .file-chip .fname{ font-family: var(--font-mono); font-size:0.82rem; }
+  .file-chip .fsize{ font-size:0.72rem; color: var(--text-faint); }
+  .file-chip .remove{ font-size:0.74rem; color: var(--crit); background:none; border:none; cursor:pointer; font-family:var(--font-ui); }
+
+  .cta-row{ display:flex; justify-content:flex-end; padding: 18px 20px; }
+
+  .progress-panel{ display:none; padding:18px 20px 20px; }
+  .progress-panel.show{ display:block; }
+  .progress-step{ display:flex; align-items:center; gap:10px; padding:8px 0; font-size:0.86rem; color: var(--text-faint); }
+  .progress-step .pnum{ width:22px; height:22px; border-radius:50%; border:1.5px solid var(--border-strong); display:flex; align-items:center; justify-content:center; font-size:0.72rem; flex:none; }
+  .progress-step.active{ color: var(--text); font-weight:600; }
+  .progress-step.active .pnum{ border-color: var(--accent); }
+  .progress-step.active .pnum .spinner{ width:10px; height:10px; border-radius:50%; border:2px solid var(--accent-soft); border-top-color: var(--accent); animation: spin 0.7s linear infinite; }
+  .progress-step.done{ color: var(--good); }
+  .progress-step.done .pnum{ background: var(--good); border-color: var(--good); color:#fff; }
+  .progress-divider{ height:1px; background: var(--border); margin:6px 0 6px 11px; }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .classify-panel{ display:none; padding: 4px 20px 4px; }
+  .classify-panel.show{ display:block; }
+  .classify-intro{ font-size:0.82rem; color: var(--text-muted); margin: 2px 0 16px; line-height:1.5; }
+
+  .class-row{ border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+  .class-row.warn{ border-color: var(--warn); background: var(--warn-soft); }
+  .class-row .crow-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .class-row .clabel{ font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color: var(--text-faint); }
+  .class-row.warn .clabel{ color: var(--warn); }
+  .class-row .cval-line{ display:flex; align-items:center; gap:10px; margin-top:6px; flex-wrap:wrap; }
+  .class-row .cval{ font-size:1rem; font-weight:600; }
+  .conf-badge{ font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:99px; background: var(--good-soft); color: var(--good); white-space:nowrap; }
+  .conf-badge.warn{ background: var(--warn-soft); color: var(--warn); border:1px solid var(--warn); }
+  .conf-badge.confirmed{ background: var(--good-soft); color: var(--good); }
+  .cnote{ font-size:0.78rem; color: var(--warn); margin-top:8px; line-height:1.5; }
+  .cactions{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  .cselect-row{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+  select.cselect{ font-family: var(--font-ui); font-size:0.86rem; padding:6px 10px; border-radius:6px; border:1px solid var(--border-strong); background: var(--surface); color: var(--text); }
+
+  .resolve-hint{
+    margin-top:4px; font-size:0.82rem; padding:10px 13px; border-radius:8px;
+    background: var(--accent-soft); color: var(--accent-strong); display:none; align-items:flex-start; gap:8px; line-height:1.5;
+  }
+  .resolve-hint.show{ display:flex; }
+  .resolve-hint b{ font-weight:700; }
+
+  .success-panel{ display:none; text-align:center; padding: 8px 10px 4px; }
+  .success-panel.show{ display:block; }
+  .success-panel .tick{ width:44px; height:44px; border-radius:50%; background: var(--good-soft); color: var(--good); display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin:0 auto 12px; }
+  .success-panel h3{ margin:0 0 6px; }
+  .success-panel p{ color: var(--text-muted); font-size:0.86rem; margin:0 0 16px; }
+  .success-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+</style>
+
+<div class="wrap">
+  <div class="banner">This is a working demo — upload a scan and watch the system classify the instrument and report type on its own, only asking you to confirm when it isn't confident. Try <b>the sample scan</b> for a case where report type needs your confirmation.</div>
+
+  <div class="app">
+    <div class="topbar">
+      <div class="brand"><span class="mark"></span> ServiceLedger</div>
+      <div class="crumbs">Instruments <span>›</span> <b>New report</b></div>
+    </div>
+    <div class="subbar">
+      <h1>Start a new report</h1>
+      <div class="meta">Upload the scanned form or PDF export — the instrument and report type are detected from the document itself.</div>
+    </div>
+
+    <div class="steps">
+      <div class="step active" id="stepnum-1"><span class="num">1</span> Upload</div>
+      <div class="step-line"></div>
+      <div class="step" id="stepnum-2"><span class="num">2</span> Classify</div>
+      <div class="step-line"></div>
+      <div class="step" id="stepnum-3"><span class="num">3</span> Extract</div>
+    </div>
+
+    <div id="mainForm">
+      <div class="section" style="border-bottom:none;">
+        <div class="section-title">Scanned original</div>
+        <div class="dropzone" id="dropzone">
+          <div class="icon">📄</div>
+          <div class="primary">Drop a scan or PDF here, or click to browse</div>
+          <div class="secondary">Printed BD service forms and PDF exports — one file per report, any instrument, any report type</div>
+          <input type="file" id="fileInput" hidden>
+        </div>
+        <div class="sample-row">
+          <button class="btn link" id="sampleBtn">or use the sample scan (WO-04587090.pdf)</button>
+        </div>
+        <div class="file-chip" id="fileChip">
+          <span><span class="fname" id="fileName"></span> <span class="fsize" id="fileSize"></span></span>
+          <button class="remove" id="removeFile">Remove</button>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <button class="btn primary" id="startBtn" disabled>Classify document</button>
+      </div>
+    </div>
+
+    <div class="progress-panel" id="progressPanel">
+      <div class="progress-step" id="pstep-1"><span class="pnum">1</span> Uploading scan</div>
+      <div class="progress-step" id="pstep-2"><span class="pnum">2</span> Preprocessing (split / orient pages)</div>
+      <div class="progress-step" id="pstep-3"><span class="pnum">3</span> Classifying instrument &amp; report type</div>
+      <div class="progress-divider"></div>
+      <div class="progress-step" id="pstep-4"><span class="pnum">4</span> Reading with Claude vision (resolved template)</div>
+      <div class="progress-step" id="pstep-5"><span class="pnum">5</span> Scoring field confidence</div>
+    </div>
+
+    <div class="classify-panel" id="classifyPanel">
+      <div class="section-title">Detected from the document</div>
+      <div class="classify-intro">Instrument ID is usually a confident read — model and serial are printed right on the form. Report type is the harder call: a repair, a PM visit and a calibration all share the same layout on a real BD work order.</div>
+
+      <div class="class-row" id="row-instrument">
+        <div class="crow-top">
+          <span class="clabel">Instrument</span>
+          <span class="conf-badge" id="instrumentBadge"></span>
+        </div>
+        <div class="cval-line">
+          <span class="cval" id="instrumentVal"></span>
+          <button class="btn ghost" id="instrumentChangeBtn">Change</button>
+        </div>
+        <div class="cselect-row" id="instrumentSelectRow" style="display:none;">
+          <select class="cselect" id="instrumentSelect">
+            <option value="FACSAria III">FACSAria III</option>
+            <option value="LSRFortessa">LSRFortessa</option>
+            <option value="FACSDiscover S8">FACSDiscover S8</option>
+          </select>
+          <button class="btn small primary" id="instrumentSaveBtn">Save</button>
+          <button class="btn small" id="instrumentCancelBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div class="class-row" id="row-type">
+        <div class="crow-top">
+          <span class="clabel">Report type</span>
+          <span class="conf-badge" id="typeBadge"></span>
+        </div>
+        <div class="cval-line">
+          <span class="cval" id="typeVal"></span>
+          <button class="btn ghost" id="typeChangeBtn">Change</button>
+        </div>
+        <div class="cnote" id="typeNote" style="display:none;"></div>
+        <div class="cselect-row" id="typeSelectRow" style="display:none;">
+          <select class="cselect" id="typeSelect">
+            <option value="calibration">Calibration</option>
+            <option value="repair">Malfunction / repair</option>
+            <option value="pm">Preventive maintenance</option>
+          </select>
+          <button class="btn small primary" id="typeSaveBtn">Save</button>
+          <button class="btn small" id="typeCancelBtn">Cancel</button>
+        </div>
+        <div class="cactions" id="typeConfirmRow" style="display:none;">
+          <button class="btn small primary" id="typeConfirmBtn">This is right — confirm</button>
+        </div>
+      </div>
+
+      <div class="resolve-hint" id="resolveHint"></div>
+
+      <div class="cta-row" style="padding:16px 0 20px;">
+        <button class="btn primary" id="continueBtn" disabled>Continue to extraction →</button>
+      </div>
+    </div>
+
+    <div class="success-panel" id="successPanel">
+      <div class="tick">✓</div>
+      <h3>Ready for review</h3>
+      <p id="successMeta">7 fields extracted · 3 need your attention</p>
+      <div class="success-actions">
+        <a class="btn primary" id="goReviewBtn" href="https://claude.ai/artifact/9LGHM3bZnyT9vXBg3ZGaav" target="_blank" rel="noopener">Go to review →</a>
+        <button class="btn" onclick="resetDemo()">Start another report</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var CONFIDENT = 0.85;
+  var TYPE_LABELS = { calibration: 'Calibration', repair: 'Malfunction / repair', pm: 'Preventive maintenance' };
+
+  var resolveText = {
+    "FACSAria III::calibration": "Resolves to the <b>CS&amp;T calibration template</b> — the same one used for the LSRFortessa.",
+    "FACSAria III::repair": "Uses the <b>shared repair template</b> — identical for every model.",
+    "FACSAria III::pm": "Resolves to the <b>FACSAria III preventive-maintenance checklist</b> — core checks plus sort-stream additions.",
+    "LSRFortessa::calibration": "Resolves to the <b>CS&amp;T calibration template</b> — the same one used for the FACSAria III.",
+    "LSRFortessa::repair": "Uses the <b>shared repair template</b> — identical for every model.",
+    "LSRFortessa::pm": "Resolves to the <b>LSRFortessa preventive-maintenance checklist</b> — core checks only, no sort-stream hardware to add.",
+    "FACSDiscover S8::calibration": "Resolves to the <b>spectral calibration template</b> — built only for the FACSDiscover S8.",
+    "FACSDiscover S8::repair": "Uses the <b>shared repair template</b> — identical for every model.",
+    "FACSDiscover S8::pm": "Resolves to the <b>FACSDiscover S8 preventive-maintenance checklist</b> — core checks plus sort-stream and imaging additions."
+  };
+
+  var SCENARIOS = {
+    sample: {
+      instrument: { value: 'LSRFortessa', confidence: 0.96 },
+      type: { key: 'repair', confidence: 0.58,
+        note: "Same generic work-order layout as a PM visit or calibration — only a small task-code field tells them apart, so confidence lands below the 0.70 review threshold. The guess is correct; it still needs your confirmation." },
+      success: '7 fields extracted · 3 need your attention'
+    },
+    generic: {
+      instrument: { value: 'FACSAria III', confidence: 0.94 },
+      type: { key: 'pm', confidence: 0.91, note: null },
+      success: '6 fields extracted · 1 needs your attention'
+    }
+  };
+
+  var state = { file: null, scenario: null, classification: null };
+
+  function setFile(name, size, scenarioKey){
+    state.file = { name: name, size: size };
+    state.scenario = scenarioKey;
+    document.getElementById('fileName').textContent = name;
+    document.getElementById('fileSize').textContent = size;
+    document.getElementById('fileChip').classList.add('show');
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stepnum-1').classList.add('done');
+  }
+
+  document.getElementById('dropzone').addEventListener('click', function(){ document.getElementById('fileInput').click(); });
+  document.getElementById('fileInput').addEventListener('change', function(e){
+    var f = e.target.files[0];
+    if (f) setFile(f.name, Math.round(f.size/1024) + ' KB', 'generic');
+  });
+  ['dragover','dragleave','drop'].forEach(function(evt){
+    document.getElementById('dropzone').addEventListener(evt, function(e){
+      e.preventDefault();
+      this.classList.toggle('drag', evt === 'dragover');
+      if (evt === 'drop' && e.dataTransfer.files[0]){
+        var f = e.dataTransfer.files[0];
+        setFile(f.name, Math.round(f.size/1024) + ' KB', 'generic');
+      }
+    });
+  });
+  document.getElementById('sampleBtn').addEventListener('click', function(){
+    setFile('WO-04587090.pdf', '143 KB', 'sample');
+  });
+  document.getElementById('removeFile').addEventListener('click', function(){
+    state.file = null;
+    state.scenario = null;
+    document.getElementById('fileChip').classList.remove('show');
+    document.getElementById('fileInput').value = '';
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stepnum-1').classList.remove('done');
+  });
+
+  document.getElementById('startBtn').addEventListener('click', function(){
+    document.getElementById('mainForm').style.display = 'none';
+    document.getElementById('progressPanel').classList.add('show');
+    document.getElementById('stepnum-2').classList.add('active');
+    runSteps([1,2,3], function(){
+      document.getElementById('progressPanel').classList.remove('show');
+      showClassification();
+    });
+  });
+
+  function runSteps(nums, onDone){
+    var i = 0;
+    function next(){
+      if (i > 0){
+        var prev = document.getElementById('pstep-' + nums[i-1]);
+        prev.classList.remove('active');
+        prev.classList.add('done');
+        prev.querySelector('.pnum').innerHTML = '✓';
+      }
+      if (i < nums.length){
+        var cur = document.getElementById('pstep-' + nums[i]);
+        cur.classList.add('active');
+        cur.querySelector('.pnum').innerHTML = '<span class="spinner"></span>';
+        i++;
+        setTimeout(next, 700);
+      } else {
+        setTimeout(onDone, 400);
+      }
+    }
+    next();
+  }
+
+  function badgeHtml(confidence, confirmed){
+    if (confirmed) return '<span class="conf-badge confirmed">✓ confirmed</span>';
+    if (confidence >= CONFIDENT) return '<span class="conf-badge">' + Math.round(confidence*100) + '% confident</span>';
+    return '<span class="conf-badge warn">' + Math.round(confidence*100) + '% — needs confirmation</span>';
+  }
+
+  function showClassification(){
+    var sc = SCENARIOS[state.scenario];
+    state.classification = {
+      instrument: { value: sc.instrument.value, confidence: sc.instrument.confidence, resolved: sc.instrument.confidence >= CONFIDENT },
+      type: { key: sc.type.key, confidence: sc.type.confidence, note: sc.type.note, resolved: sc.type.confidence >= CONFIDENT }
+    };
+    renderInstrumentRow();
+    renderTypeRow();
+    updateResolveHint();
+    updateContinueBtn();
+    document.getElementById('classifyPanel').classList.add('show');
+  }
+
+  function renderInstrumentRow(){
+    var c = state.classification.instrument;
+    var row = document.getElementById('row-instrument');
+    row.classList.toggle('warn', !c.resolved);
+    document.getElementById('instrumentVal').textContent = c.value;
+    document.getElementById('instrumentBadge').innerHTML = badgeHtml(c.confidence, c.resolved && c.confidence < CONFIDENT ? true : c.confidence >= CONFIDENT);
+    document.getElementById('instrumentSelectRow').style.display = 'none';
+  }
+
+  function renderTypeRow(){
+    var c = state.classification.type;
+    var row = document.getElementById('row-type');
+    var lowConf = c.confidence < CONFIDENT;
+    row.classList.toggle('warn', lowConf && !c.resolved);
+    document.getElementById('typeVal').textContent = TYPE_LABELS[c.key];
+    document.getElementById('typeBadge').innerHTML = badgeHtml(c.confidence, c.resolved && lowConf ? true : c.confidence >= CONFIDENT);
+    var note = document.getElementById('typeNote');
+    if (c.note && !c.resolved){ note.textContent = c.note; note.style.display = 'block'; } else { note.style.display = 'none'; }
+    document.getElementById('typeConfirmRow').style.display = (lowConf && !c.resolved) ? 'flex' : 'none';
+    document.getElementById('typeSelectRow').style.display = 'none';
+  }
+
+  document.getElementById('instrumentChangeBtn').addEventListener('click', function(){
+    document.getElementById('instrumentSelect').value = state.classification.instrument.value;
+    document.getElementById('instrumentSelectRow').style.display = 'flex';
+  });
+  document.getElementById('instrumentCancelBtn').addEventListener('click', function(){
+    document.getElementById('instrumentSelectRow').style.display = 'none';
+  });
+  document.getElementById('instrumentSaveBtn').addEventListener('click', function(){
+    var v = document.getElementById('instrumentSelect').value;
+    state.classification.instrument = { value: v, confidence: 1, resolved: true };
+    renderInstrumentRow();
+    updateResolveHint();
+    updateContinueBtn();
+  });
+
+  document.getElementById('typeChangeBtn').addEventListener('click', function(){
+    document.getElementById('typeSelect').value = state.classification.type.key;
+    document.getElementById('typeSelectRow').style.display = 'flex';
+  });
+  document.getElementById('typeCancelBtn').addEventListener('click', function(){
+    document.getElementById('typeSelectRow').style.display = 'none';
+  });
+  document.getElementById('typeSaveBtn').addEventListener('click', function(){
+    var v = document.getElementById('typeSelect').value;
+    state.classification.type = { key: v, confidence: 1, note: null, resolved: true };
+    renderTypeRow();
+    updateResolveHint();
+    updateContinueBtn();
+  });
+  document.getElementById('typeConfirmBtn').addEventListener('click', function(){
+    state.classification.type.resolved = true;
+    renderTypeRow();
+    updateResolveHint();
+    updateContinueBtn();
+  });
+
+  function updateResolveHint(){
+    var hint = document.getElementById('resolveHint');
+    var c = state.classification;
+    if (c.instrument.resolved && c.type.resolved){
+      var key = c.instrument.value + '::' + c.type.key;
+      hint.innerHTML = '<span>→</span><span>' + resolveText[key] + '</span>';
+      hint.classList.add('show');
+    } else {
+      hint.classList.remove('show');
+    }
+  }
+
+  function updateContinueBtn(){
+    var c = state.classification;
+    document.getElementById('continueBtn').disabled = !(c.instrument.resolved && c.type.resolved);
+  }
+
+  document.getElementById('continueBtn').addEventListener('click', function(){
+    document.getElementById('classifyPanel').classList.remove('show');
+    document.getElementById('stepnum-2').classList.remove('active');
+    document.getElementById('stepnum-2').classList.add('done');
+    document.getElementById('stepnum-3').classList.add('active');
+    document.getElementById('progressPanel').classList.add('show');
+    runSteps([4,5], function(){
+      document.getElementById('progressPanel').classList.remove('show');
+      document.getElementById('stepnum-3').classList.add('done');
+      document.getElementById('successMeta').textContent = SCENARIOS[state.scenario].success;
+      document.getElementById('successPanel').classList.add('show');
+    });
+  });
+
+  function resetDemo(){
+    state = { file: null, scenario: null, classification: null };
+    document.getElementById('fileChip').classList.remove('show');
+    document.getElementById('fileInput').value = '';
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('mainForm').style.display = 'block';
+    document.getElementById('classifyPanel').classList.remove('show');
+    document.getElementById('successPanel').classList.remove('show');
+    document.getElementById('resolveHint').classList.remove('show');
+    [1,2,3,4,5].forEach(function(n){
+      var el = document.getElementById('pstep-' + n);
+      el.classList.remove('active','done');
+      el.querySelector('.pnum').textContent = n;
+    });
+    ['instrumentSelectRow','typeSelectRow'].forEach(function(id){ document.getElementById(id).style.display = 'none'; });
+    document.getElementById('stepnum-1').classList.remove('done');
+    document.getElementById('stepnum-2').classList.remove('active','done');
+    document.getElementById('stepnum-3').classList.remove('active','done');
+  }
+</script>

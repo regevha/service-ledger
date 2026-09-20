@@ -1,0 +1,290 @@
+<title>ServiceLedger Tracker</title>
+<meta name="description" content="Build tracker for the ServiceLedger project — evidence documents, spec revisions, backend, review demos, and the paused frontend build.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style id="page-style">
+  :root{
+    --bg: #F6F4EF;
+    --surface: #FFFFFF;
+    --surface-2: #ECE9E0;
+    --border: #DDD7C9;
+    --border-strong: #C7C0AC;
+    --text: #1B1F23;
+    --text-muted: #5B6168;
+    --text-faint: #8B8F86;
+    --accent: #146B85;
+    --accent-strong: #0C5165;
+    --accent-soft: #DCEDF1;
+    --good: #3D7A4A;
+    --good-soft: #E1EEE1;
+    --warn: #96650F;
+    --warn-soft: #F3E7CE;
+    --shadow: 0 1px 2px rgba(27,31,35,0.06), 0 10px 28px -14px rgba(27,31,35,0.16);
+    --font-ui: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #14181B; --surface: #1B2024; --surface-2: #21262B;
+      --border: #2C3237; --border-strong: #3A4147;
+      --text: #E8E6DF; --text-muted: #9BA0A5; --text-faint: #6D7278;
+      --accent: #5EC2DE; --accent-strong: #8AD6EC; --accent-soft: #17323C;
+      --good: #86C08F; --good-soft: #1F3323;
+      --warn: #E3BD6E; --warn-soft: #3A2F16;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #14181B; --surface: #1B2024; --surface-2: #21262B;
+    --border: #2C3237; --border-strong: #3A4147;
+    --text: #E8E6DF; --text-muted: #9BA0A5; --text-faint: #6D7278;
+    --accent: #5EC2DE; --accent-strong: #8AD6EC; --accent-soft: #17323C;
+    --good: #86C08F; --good-soft: #1F3323;
+    --warn: #E3BD6E; --warn-soft: #3A2F16;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.5);
+  }
+  *{ box-sizing:border-box; }
+  body{ background: var(--bg); color: var(--text); font-family: var(--font-ui); margin:0; }
+  .wrap{ max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+
+  .masthead{ display:flex; align-items:center; gap:9px; font-weight:700; margin-bottom:18px; }
+  .masthead .mark{ width:20px; height:20px; border-radius:6px; background: linear-gradient(135deg, var(--accent), var(--accent-strong)); flex:none; }
+  .masthead .name{ font-size:0.95rem; }
+  .masthead .sub{ color: var(--text-faint); font-weight:500; font-size:0.85rem; }
+
+  .hero{
+    background: var(--surface); border:1px solid var(--border); border-radius:14px;
+    box-shadow: var(--shadow); padding:22px 24px; margin-bottom:22px;
+    display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap;
+  }
+  .hero h1{ font-size:1.4rem; margin:0 0 5px; text-wrap:balance; }
+  .hero p{ margin:0; color: var(--text-muted); font-size:0.86rem; max-width:52ch; line-height:1.5; }
+  .progress-block{ flex:none; min-width:220px; }
+  .progress-num{ font-family: var(--font-mono); font-size:1.6rem; font-weight:600; font-variant-numeric: tabular-nums; }
+  .progress-num span{ color: var(--text-faint); font-size:1rem; font-weight:500; }
+  .progress-bar{ width:220px; height:8px; border-radius:999px; background: var(--surface-2); overflow:hidden; margin-top:8px; }
+  .progress-fill{ height:100%; background: var(--accent); border-radius:999px; transition: width 0.3s ease; }
+  .progress-label{ font-size:0.72rem; color: var(--text-faint); margin-top:6px; }
+
+  .sections{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:start; }
+  @media (max-width: 760px){ .sections{ grid-template-columns: 1fr; } }
+  .section-card{
+    background: var(--surface); border:1px solid var(--border); border-radius:12px;
+    box-shadow: var(--shadow); overflow:hidden;
+  }
+  .section-card.paused{ opacity:0.82; }
+  .section-head{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:13px 16px; border-bottom:1px solid var(--border); background: var(--surface-2);
+  }
+  .section-head h2{ font-size:0.9rem; margin:0; }
+  .section-count{ font-family: var(--font-mono); font-size:0.74rem; font-weight:600; color: var(--text-muted); white-space:nowrap; }
+  .section-count.done-all{ color: var(--good); }
+  .paused-pill{
+    font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;
+    background: var(--warn-soft); color: var(--warn); padding:2px 8px; border-radius:999px; margin-left:8px;
+  }
+
+  .task-list{ display:flex; flex-direction:column; }
+  .task{
+    display:flex; align-items:flex-start; gap:11px; padding:11px 16px;
+    border-bottom:1px solid var(--border); cursor:pointer;
+  }
+  .task:last-child{ border-bottom:none; }
+  .task:hover{ background: color-mix(in srgb, var(--accent-soft) 40%, transparent); }
+  .task-box{
+    width:16px; height:16px; border-radius:5px; border:1.5px solid var(--border-strong);
+    flex:none; margin-top:2px; display:flex; align-items:center; justify-content:center;
+    background: var(--surface); transition: background 0.15s, border-color 0.15s;
+  }
+  .task.done .task-box{ background: var(--good); border-color: var(--good); }
+  .task-box svg{ width:10px; height:10px; opacity:0; transition: opacity 0.1s; }
+  .task.done .task-box svg{ opacity:1; }
+  .task-body{ flex:1; min-width:0; }
+  .task-text{ font-size:0.85rem; line-height:1.4; color: var(--text); }
+  .task.done .task-text{ color: var(--text-faint); text-decoration: line-through; text-decoration-color: var(--border-strong); }
+  .task-meta{ font-size:0.74rem; color: var(--text-faint); margin-top:3px; line-height:1.5; }
+  .task-meta code{ font-family: var(--font-mono); background: var(--surface-2); padding:1px 5px; border-radius:4px; font-size:0.7rem; }
+
+  .footer-note{
+    margin-top:20px; font-size:0.76rem; color: var(--text-faint); text-align:center; line-height:1.6;
+  }
+  .save-flag{ font-size:0.7rem; color: var(--text-faint); text-align:center; margin-top:6px; min-height:14px; }
+</style>
+
+<div class="wrap">
+  <div class="masthead"><span class="mark"></span> <span class="name">ServiceLedger</span><span class="sub">&nbsp;· build tracker</span></div>
+
+  <div class="hero">
+    <div>
+      <h1>What's left to ship</h1>
+      <p>Tracks the whole build against SL-ARCH-001 — real evidence documents, the spec itself, the backend, the review demos, and the frontend on hold. Check things off as they land.</p>
+    </div>
+    <div class="progress-block">
+      <div class="progress-num" id="progressNum">0 <span>/ 0 done</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="progress-label" id="progressLabel"></div>
+    </div>
+  </div>
+
+  <div class="sections" id="sections"></div>
+
+  <div class="footer-note">Click any item to toggle it. Changes save to this page automatically.</div>
+  <div class="save-flag" id="saveFlag"></div>
+</div>
+
+<script id="app-script">
+(function(){
+  var STATE = [
+    { id: "sec-evidence", title: "Document evidence — BD Care service reports", items: [
+      { id: "doc-lsr-repair-1", done: true, text: "LSRFortessa repair · WO-04587090", meta: "The first real document — grounded the repair template (v0.9)" },
+      { id: "doc-lsr-repair-2", done: true, text: "LSRFortessa repair · WO-04565227", meta: "Second repair case — confirmed no schema drift" },
+      { id: "doc-aria-repair", done: true, text: "FACSAria III repair · WO-01873748", meta: "Confirmed repair on a second instrument model" },
+      { id: "doc-s8-repair", done: true, text: "FACSDiscover S8 repair · WO-04220290", meta: "Confirmed repair across all three models — no schema changes needed" },
+      { id: "doc-lsr-pm", done: true, text: "LSRFortessa PM · WO-04482967", meta: "Drove the preventive_maintenance redesign (v0.12)" },
+      { id: "doc-s8-pm", done: true, text: "FACSDiscover S8 PM · WO-04271950", meta: "Confirmed the redesigned PM template on a second model" },
+      { id: "doc-aria-pm", done: false, text: "FACSAria III PM report", meta: "Last model needed to fully close preventive_maintenance (§12)" }
+    ]},
+    { id: "sec-spec", title: "Architecture spec — SL-ARCH-001", items: [
+      { id: "spec-v012", done: true, text: "v0.12 published", meta: "PM template redesign + repair confirmed across all 3 models" },
+      { id: "spec-s8-cal", done: false, text: "FACSDiscover S8 spectral calibration fields", meta: "Still an unconfirmed guess — needs a real S8 calibration document (§12)" },
+      { id: "spec-one-call", done: false, text: "Classify + extract: one Claude call or two", meta: "Cost/latency tradeoff to decide deliberately, not an architectural one (§12)" },
+      { id: "spec-threshold", done: false, text: "Classification confidence threshold", meta: "Decide separately from the field-level 0.7 default (§12)" }
+    ]},
+    { id: "sec-backend", title: "Backend — FastAPI + Postgres", items: [
+      { id: "be-pipeline", done: true, text: "Document-first pipeline scaffolded", meta: "classify → extract → review → finalize, with passing tests" },
+      { id: "be-docs-sync", done: true, text: "seed_templates.py + README kept in sync", meta: "Updated alongside every template revision this round" },
+      { id: "be-live-claude", done: false, text: "Swap stubbed classify()/extract() for live Claude calls", meta: "The two functions the whole pipeline routes through" },
+      { id: "be-worker", done: false, text: "Background worker for async extraction", meta: "Currently runs inline — a deferred Phase 1 gap" }
+    ]},
+    { id: "sec-demos", title: "Review-screen demos", items: [
+      { id: "demo-new-report", done: true, text: "new-report-demo.html" },
+      { id: "demo-timeline", done: true, text: "instrument-timeline-demo.html" },
+      { id: "demo-repair", done: true, text: "repair-review-demo.html", meta: "Regenerated on the FACSAria III bleach-line case" },
+      { id: "demo-pm", done: true, text: "pm-review-demo.html", meta: "New — FACSDiscover S8 visit, showcases calibrated_tools" }
+    ]},
+    { id: "sec-frontend", title: "Frontend build", paused: true, items: [
+      { id: "fe-scaffold", done: false, text: "Vite React scaffold → real app code", meta: "Paused at your request — scaffold only, no screens yet" },
+      { id: "fe-screens", done: false, text: "API client, New Report screen, Reports list screen" },
+      { id: "fe-build", done: false, text: "Single-file HTML build + delivery" }
+    ]}
+  ];
+
+  var els = {};
+  var artifactPromise = (window.claude && window.claude.use) ? window.claude.use('artifact') : Promise.resolve(null);
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  function counts(items){
+    var done = items.filter(function(i){ return i.done; }).length;
+    return { done: done, total: items.length };
+  }
+
+  function renderTask(item){
+    var meta = item.meta ? '<div class="task-meta">' + escapeHtml(item.meta) + '</div>' : '';
+    return '<div class="task' + (item.done ? ' done' : '') + '" data-id="' + item.id + '" role="checkbox" aria-checked="' + item.done + '" tabindex="0">' +
+      '<span class="task-box"><svg viewBox="0 0 10 10" fill="none"><path d="M1.5 5.2L4 7.7L8.5 2.3" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+      '<div class="task-body"><div class="task-text">' + escapeHtml(item.text) + '</div>' + meta + '</div>' +
+    '</div>';
+  }
+
+  function renderSection(sec){
+    var c = counts(sec.items);
+    var pausedPill = sec.paused ? '<span class="paused-pill">On hold</span>' : '';
+    var countClass = (c.done === c.total) ? 'section-count done-all' : 'section-count';
+    return '<div class="section-card' + (sec.paused ? ' paused' : '') + '" data-section="' + sec.id + '">' +
+      '<div class="section-head"><h2>' + escapeHtml(sec.title) + pausedPill + '</h2>' +
+      '<span class="' + countClass + '">' + c.done + ' / ' + c.total + '</span></div>' +
+      '<div class="task-list">' + sec.items.map(renderTask).join('') + '</div>' +
+    '</div>';
+  }
+
+  function allItems(){
+    var out = [];
+    STATE.forEach(function(sec){ sec.items.forEach(function(i){ out.push(i); }); });
+    return out;
+  }
+
+  function render(){
+    els.sections.innerHTML = STATE.map(renderSection).join('');
+    var all = allItems();
+    var done = all.filter(function(i){ return i.done; }).length;
+    var total = all.length;
+    var pct = total ? Math.round((done / total) * 100) : 0;
+    els.progressNum.innerHTML = done + ' <span>/ ' + total + ' done</span>';
+    els.progressFill.style.width = pct + '%';
+    els.progressLabel.textContent = pct + '% complete';
+  }
+
+  function findItem(id){
+    for (var s = 0; s < STATE.length; s++){
+      for (var i = 0; i < STATE[s].items.length; i++){
+        if (STATE[s].items[i].id === id) return STATE[s].items[i];
+      }
+    }
+    return null;
+  }
+
+  function fullDocument(){
+    var styleTag = document.getElementById('page-style').outerHTML;
+    var scriptTag = document.getElementById('app-script').outerHTML;
+    var bodyInner = document.querySelector('.wrap').outerHTML;
+    return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n' +
+      '<title>ServiceLedger Tracker</title>\n' +
+      '<meta name="description" content="Build tracker for the ServiceLedger project.">\n' +
+      '<link rel="preconnect" href="https://fonts.googleapis.com">\n' +
+      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">\n' +
+      styleTag + '\n</head>\n<body>\n' + bodyInner + '\n' + scriptTag + '\n</body>\n</html>';
+  }
+
+  async function persist(){
+    try {
+      var cap = await artifactPromise;
+      if (!cap) { els.saveFlag.textContent = ''; return; }
+      els.saveFlag.textContent = 'Saving…';
+      await cap.publish(fullDocument());
+      els.saveFlag.textContent = 'Saved';
+      setTimeout(function(){ if (els.saveFlag.textContent === 'Saved') els.saveFlag.textContent = ''; }, 1500);
+    } catch (e) {
+      // conflict: the shell is already reloading this view to the winning version.
+      // any other failure: leave the local toggle in place, just don't claim it saved.
+      if (e && e.code !== 'conflict') { els.saveFlag.textContent = ''; }
+    }
+  }
+
+  function toggle(id){
+    var item = findItem(id);
+    if (!item) return;
+    item.done = !item.done;
+    render();
+    persist();
+  }
+
+  function onClick(e){
+    var row = e.target.closest('.task');
+    if (row) toggle(row.getAttribute('data-id'));
+  }
+
+  function onKey(e){
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var row = e.target.closest('.task');
+    if (row) { e.preventDefault(); toggle(row.getAttribute('data-id')); }
+  }
+
+  els.sections = document.getElementById('sections');
+  els.progressNum = document.getElementById('progressNum');
+  els.progressFill = document.getElementById('progressFill');
+  els.progressLabel = document.getElementById('progressLabel');
+  els.saveFlag = document.getElementById('saveFlag');
+  els.sections.addEventListener('click', onClick);
+  els.sections.addEventListener('keydown', onKey);
+  render();
+})();
+</script>
