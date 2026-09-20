@@ -221,7 +221,7 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dic
     call_started = time.perf_counter()
     try:
         response = _get_client().messages.create(
-            model="claude-sonnet-5",
+            model=settings.anthropic_model,
             max_tokens=4096,
             tools=[tool],
             tool_choice={"type": "tool", "name": _EXTRACT_TOOL_NAME},

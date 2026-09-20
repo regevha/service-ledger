@@ -76,6 +76,32 @@ _DURATION_RE = re.compile(r"\d+\.\d\ds")
 # ================= classification._live_classify =================
 
 
+def test_live_classify_sends_the_configured_model(tmp_path, monkeypatch):
+    """anthropic_model is a real setting (app/config.py), not a literal baked
+    into this call — regression test for the hardcoding this replaced:
+    classification.py and extraction.py each used to hardcode their own
+    "claude-sonnet-5" literal with no setting backing either one."""
+    pdf = tmp_path / "scan.pdf"
+    pdf.write_bytes(b"%PDF-1.4 x")
+    attachment = SimpleNamespace(file_path=str(pdf))
+    fake_client = _FakeClient(
+        response=_tool_use_response(
+            {
+                "instrument_model": "LSRFortessa",
+                "instrument_confidence": 0.9,
+                "report_type": "repair",
+                "report_type_confidence": 0.9,
+            }
+        )
+    )
+    monkeypatch.setattr(classification, "_get_client", lambda: fake_client)
+    monkeypatch.setattr(classification.settings, "anthropic_model", "claude-test-model-x")
+
+    classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa")])
+
+    assert fake_client.messages.calls[0]["model"] == "claude-test-model-x"
+
+
 def test_live_classify_parses_a_well_formed_tool_response(tmp_path, monkeypatch, caplog):
     caplog.set_level(logging.INFO)
     pdf = tmp_path / "scan.pdf"
@@ -227,6 +253,30 @@ _FIELDS = [
 
 def _template(fields=_FIELDS):
     return SimpleNamespace(field_schema={"fields": fields})
+
+
+def test_live_extract_sends_the_configured_model(tmp_path, monkeypatch):
+    pdf = tmp_path / "scan.pdf"
+    pdf.write_bytes(b"%PDF-1.4 x")
+    attachment = SimpleNamespace(file_path=str(pdf))
+    fake_client = _FakeClient(
+        response=_tool_use_response(
+            {
+                "fault_description": "x",
+                "fault_description__confidence": 0.9,
+                "labor_hours": 1.0,
+                "labor_hours__confidence": 0.9,
+                "retest_result": "pass",
+                "retest_result__confidence": 0.9,
+            }
+        )
+    )
+    monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
+    monkeypatch.setattr(extraction.settings, "anthropic_model", "claude-test-model-x")
+
+    extraction._live_extract(attachment, _template())
+
+    assert fake_client.messages.calls[0]["model"] == "claude-test-model-x"
 
 
 def test_live_extract_parses_a_well_formed_flat_response(tmp_path, monkeypatch, caplog):

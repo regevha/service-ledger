@@ -15,6 +15,20 @@ from pydantic import BaseModel, ConfigDict
 from app.models import ExtractionJobKind, ExtractionJobStatus, InstrumentStatus, ReportStatus, ReportType
 
 
+# ---------- App config ----------
+
+
+class AppConfigOut(BaseModel):
+    """GET /config (§4/§12): the confidence thresholds the frontend used to
+    hardcode as its own literal copies of app/config.py's settings. Those two
+    numbers drive real UI behavior (review-flagging, badge coloring), so a
+    backend .env change used to silently desync the UI instead of the UI
+    just reading the real value from here."""
+
+    field_confidence_threshold: float
+    classification_confidence_threshold: float
+
+
 # ---------- Instruments ----------
 
 

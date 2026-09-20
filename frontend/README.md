@@ -31,6 +31,32 @@ If you are developing a production application, we recommend enabling type-aware
 
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
 
+## Regenerating API types from the backend
+
+`src/api.ts` derives its five backend-enum types (`InstrumentStatus`,
+`ReportType`, `ReportStatus`, `ExtractionJobStatus`, `ExtractionJobKind`) from
+`src/generated/api-schema.ts` rather than hand-typing them — that file is
+generated from the backend's own OpenAPI schema, so it can't silently drift
+from `backend/app/models.py`'s real enum classes the way a hand-copied union
+type could. `src/generated/api-schema.ts` is committed (so a build never
+needs Python or a backend checkout); regenerate it after changing a backend
+enum or any response shape those five types touch:
+
+```bash
+# 1. From backend/, with its venv active — no running server or database
+#    needed, this only imports the already-defined FastAPI app object:
+python -m scripts.export_openapi > ../frontend/openapi.json
+
+# 2. From frontend/ — turns that schema into real TypeScript types:
+npm run codegen
+```
+
+The other hand-written interfaces in `api.ts` (`Instrument`, `Report`,
+`ReportTemplate`, ...) are left alone on purpose — they're small, stable, and
+more readable authored directly than as a deep generated-schema lookup; only
+the enums, where backend/frontend drift is easy and silent, are sourced from
+the generated file.
+
 ## End-to-end tests (Playwright)
 
 `tests/e2e/` covers the flows a screen-by-screen manual pass would otherwise

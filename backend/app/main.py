@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import seed_instruments, seed_templates
+from app import schemas, seed_instruments, seed_templates
+from app.config import get_settings
 from app.db import SessionLocal
 from app.routers import attachments, instruments, report_templates, reports
 
@@ -47,3 +48,16 @@ app.include_router(attachments.router)
 @app.get("/health", tags=["meta"])
 def health():
     return {"status": "ok"}
+
+
+@app.get("/config", response_model=schemas.AppConfigOut, tags=["meta"])
+def get_app_config():
+    """§4/§12: the two confidence thresholds, so the frontend can read the
+    real backend-configured values instead of hardcoding its own copy (see
+    schemas.AppConfigOut) — App.tsx used to duplicate these as its own
+    literals, silently drifting from a backend .env change."""
+    settings = get_settings()
+    return schemas.AppConfigOut(
+        field_confidence_threshold=settings.field_confidence_threshold,
+        classification_confidence_threshold=settings.classification_confidence_threshold,
+    )

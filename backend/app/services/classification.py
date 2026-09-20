@@ -115,7 +115,7 @@ def _live_classify(db: Session, attachment: Attachment, instruments: list[Instru
     call_started = time.perf_counter()
     try:
         response = _get_client().messages.create(
-            model="claude-sonnet-5",
+            model=settings.anthropic_model,
             max_tokens=1024,
             tools=[tool],
             tool_choice={"type": "tool", "name": _CLASSIFY_TOOL_NAME},

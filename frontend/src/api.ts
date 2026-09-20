@@ -5,11 +5,32 @@
  * compile error here, not a silent runtime mismatch.
  */
 
+import type { components } from './generated/api-schema';
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') || 'http://localhost:8000';
 
 // ---------- Shapes (mirrors app/schemas.py) ----------
 
-export type InstrumentStatus = 'active' | 'maintenance' | 'retired';
+// InstrumentStatus/ReportType/ReportStatus/ExtractionJobStatus/
+// ExtractionJobKind below are real Python Enum classes on the backend
+// (app/models.py) — these five used to be hand-typed string-literal unions
+// here, a second copy of the backend's enums kept in sync by discipline
+// alone (and ExtractionJobKind wasn't mirrored at all). CL-ARCH-001 §3
+// specifically cites OpenAPI codegen ("typed request/response shapes for
+// free") as the reason this project is split into a separate frontend/
+// backend in the first place, so deriving them from the backend's own
+// generated schema — instead of retyping them — is that promise actually
+// wired up. `src/generated/api-schema.ts` is produced by `npm run codegen`
+// (see README's "Regenerating API types from the backend") from
+// backend/scripts/export_openapi.py's output; regenerate it after any
+// change to a backend enum or response shape.
+//
+// The other interfaces below (Instrument, Report, ReportTemplate, ...) stay
+// hand-written — they're stable, small, and more readable authored directly
+// than as a deep `components['schemas'][...]` lookup; only the enums, which
+// are exactly where uncaught backend/frontend drift is easy and silent, are
+// sourced from the generated schema.
+export type InstrumentStatus = components['schemas']['InstrumentStatus'];
 
 export interface Instrument {
   id: string;
@@ -21,7 +42,7 @@ export interface Instrument {
   status: InstrumentStatus;
 }
 
-export type ReportType = 'calibration' | 'repair' | 'preventive_maintenance';
+export type ReportType = components['schemas']['ReportType'];
 
 export type FieldType =
   | 'text'
@@ -51,7 +72,7 @@ export interface ReportTemplate {
   field_schema: { fields: TemplateField[] };
 }
 
-export type ReportStatus = 'draft' | 'classified' | 'extracted' | 'in_review' | 'finalized';
+export type ReportStatus = components['schemas']['ReportStatus'];
 
 export interface Report {
   id: string;
@@ -104,9 +125,9 @@ export interface ClassificationResult {
   resolved_instrument_id: string | null;
 }
 
-export type ExtractionJobStatus = 'pending' | 'classifying' | 'extracting' | 'succeeded' | 'failed';
+export type ExtractionJobStatus = components['schemas']['ExtractionJobStatus'];
 
-export type ExtractionJobKind = 'classify' | 'extract';
+export type ExtractionJobKind = components['schemas']['ExtractionJobKind'];
 
 export interface ExtractionJob {
   id: string;
@@ -118,6 +139,14 @@ export interface ExtractionJob {
   error_message: string | null;
   started_at: string | null;
   completed_at: string | null;
+}
+
+// GET /config (§4/§12): the confidence thresholds, read from the backend's
+// own settings instead of a hardcoded frontend copy of them — see
+// backend/app/schemas.py's AppConfigOut for why this exists.
+export interface AppConfig {
+  field_confidence_threshold: number;
+  classification_confidence_threshold: number;
 }
 
 // ---------- Fetch plumbing ----------
@@ -159,6 +188,12 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
+}
+
+// ---------- App config ----------
+
+export function getAppConfig(): Promise<AppConfig> {
+  return apiFetch('/config');
 }
 
 // ---------- Instruments ----------

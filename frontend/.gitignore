@@ -18,6 +18,13 @@ dist-ssr
 /playwright-report/
 /playwright/.cache/
 
+# Intermediate output of `npm run codegen` (see README's "Regenerating API
+# types from the backend") — regenerated on demand from the backend's own
+# OpenAPI schema, so it isn't itself the source of truth worth committing.
+# src/generated/api-schema.ts, which is generated *from* this file, IS
+# committed — that's the actual file the rest of the frontend imports from.
+/openapi.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
