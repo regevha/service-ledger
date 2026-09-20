@@ -1,0 +1,407 @@
+<title>Repair Review Demo</title>
+<meta name="description" content="Interactive demo of the ServiceLedger repair-review screen, populated with real extraction results from a FACSAria III BD Care service report">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg: #F6F4EF;
+    --surface: #FFFFFF;
+    --surface-2: #ECE9E0;
+    --border: #DDD7C9;
+    --border-strong: #C7C0AC;
+    --text: #1B1F23;
+    --text-muted: #5B6168;
+    --text-faint: #8B8F86;
+    --accent: #146B85;
+    --accent-strong: #0C5165;
+    --accent-soft: #DCEDF1;
+    --good: #3D7A4A;
+    --good-soft: #E1EEE1;
+    --warn: #96650F;
+    --warn-soft: #F3E7CE;
+    --crit: #A13F2E;
+    --crit-soft: #F3DFD9;
+    --shadow: 0 1px 2px rgba(27,31,35,0.06), 0 10px 28px -14px rgba(27,31,35,0.16);
+    --font-ui: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #14181B; --surface: #1B2024; --surface-2: #21262B;
+      --border: #2C3237; --border-strong: #3A4147;
+      --text: #E8E6DF; --text-muted: #9BA0A5; --text-faint: #6D7278;
+      --accent: #5EC2DE; --accent-strong: #8AD6EC; --accent-soft: #17323C;
+      --good: #86C08F; --good-soft: #1F3323;
+      --warn: #E3BD6E; --warn-soft: #3A2F16;
+      --crit: #E0917E; --crit-soft: #3B241F;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.5);
+    }
+    :root:not([data-theme="light"]) .tag.warn{ background: var(--warn-soft); }
+  }
+  :root[data-theme="dark"]{
+    --bg: #14181B; --surface: #1B2024; --surface-2: #21262B;
+    --border: #2C3237; --border-strong: #3A4147;
+    --text: #E8E6DF; --text-muted: #9BA0A5; --text-faint: #6D7278;
+    --accent: #5EC2DE; --accent-strong: #8AD6EC; --accent-soft: #17323C;
+    --good: #86C08F; --good-soft: #1F3323;
+    --warn: #E3BD6E; --warn-soft: #3A2F16;
+    --crit: #E0917E; --crit-soft: #3B241F;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.5);
+  }
+  :root[data-theme="dark"] .tag.warn{ background: var(--warn-soft); }
+  *{ box-sizing:border-box; }
+  body{ background: var(--bg); color: var(--text); font-family: var(--font-ui); margin:0; }
+  .wrap{ max-width: 1240px; margin: 0 auto; padding: 20px 16px 64px; }
+
+  .banner{
+    display:flex; align-items:center; gap:10px; justify-content:center;
+    font-size:0.78rem; color: var(--text-muted); padding: 8px 14px; margin-bottom:16px;
+    border:1px dashed var(--border-strong); border-radius:8px; background: var(--surface);
+  }
+  .banner b{ color: var(--text); }
+
+  .app{
+    background: var(--surface); border:1px solid var(--border); border-radius:14px;
+    box-shadow: var(--shadow); overflow:hidden;
+  }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding: 13px 20px; border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  .brand{ display:flex; align-items:center; gap:9px; font-weight:700; }
+  .brand .mark{ width:20px; height:20px; border-radius:6px; background: linear-gradient(135deg, var(--accent), var(--accent-strong)); flex:none; }
+  .crumbs{ font-size:0.82rem; color: var(--text-muted); }
+  .crumbs b{ color:var(--text); font-weight:600; }
+  .counter-pill{
+    font-size:0.74rem; font-weight:700; padding:5px 12px; border-radius:999px;
+    background: var(--warn-soft); color: var(--warn); display:flex; align-items:center; gap:6px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .counter-pill.done{ background: var(--good-soft); color: var(--good); }
+  .counter-pill::before{ content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+
+  .subbar{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    padding: 16px 20px; border-bottom:1px solid var(--border); background: var(--surface-2);
+  }
+  .subbar h1{ font-size:1.15rem; margin:0 0 4px; }
+  .subbar .meta{ font-size:0.8rem; color: var(--text-muted); }
+  .actions{ display:flex; gap:10px; flex:none; }
+  button{ font-family: var(--font-ui); cursor:pointer; }
+  .btn{
+    font-size:0.82rem; font-weight:600; padding:9px 16px; border-radius:8px;
+    border:1px solid var(--border-strong); background: var(--surface); color: var(--text);
+  }
+  .btn.ghost{ border-color:transparent; background:transparent; color: var(--text-muted); }
+  .btn.primary{ background: var(--accent); border-color: var(--accent); color:#fff; }
+  .btn.primary:disabled{ background: var(--border-strong); border-color: var(--border-strong); color: var(--text-faint); cursor:not-allowed; }
+  .btn.primary.finalized{ background: var(--good); border-color: var(--good); }
+  .btn.small{ font-size:0.72rem; padding:5px 10px; border-radius:6px; }
+
+  .layout{ display:grid; grid-template-columns: 0.9fr 1.1fr; }
+  @media (max-width: 880px){ .layout{ grid-template-columns: 1fr; } }
+
+  .pane{ padding:18px 20px; }
+  .pane-left{ border-right:1px solid var(--border); background: color-mix(in srgb, var(--surface-2) 45%, var(--surface)); }
+  .pane-title{ font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color: var(--text-faint); margin-bottom:12px; }
+
+  .privacy-note{
+    font-size:0.76rem; color: var(--text-muted); background: var(--accent-soft); border:1px solid var(--border);
+    border-radius:8px; padding:9px 11px; margin-bottom:14px; line-height:1.5;
+  }
+  .privacy-note b{ color: var(--accent-strong); }
+
+  .quote{
+    border-left:3px solid var(--border-strong); padding: 3px 0 3px 12px; margin-bottom:16px;
+  }
+  .quote .qlabel{ font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color: var(--text-faint); margin-bottom:4px; display:flex; align-items:center; gap:6px;}
+  .quote .qtext{ font-size:0.85rem; line-height:1.55; color: var(--text); }
+  .quote .qtext.mono{ font-family: var(--font-mono); font-size:0.8rem; }
+  .quote .qtext.empty{ color: var(--text-faint); font-style:italic; }
+  .badge-mini{
+    width:16px; height:16px; border-radius:50%; color:#fff; font-size:0.6rem; font-weight:700;
+    display:inline-flex; align-items:center; justify-content:center; flex:none;
+  }
+
+  .field-list{ display:flex; flex-direction:column; gap:12px; }
+  .field{
+    border:1px solid var(--border); border-radius:10px; padding:13px 14px;
+    border-left: 4px solid var(--border-strong); background: var(--surface);
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .field.pending{ border-left-color: var(--warn); background: var(--warn-soft); }
+  .field.ok{ border-left-color: var(--good); }
+  .field-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+  .field-label{ display:flex; align-items:center; gap:8px; font-weight:600; font-size:0.86rem; }
+  .field-tags{ display:flex; align-items:center; gap:6px; }
+  .tag{ font-size:0.66rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .tag.good{ background: var(--good-soft); color: var(--good); }
+  .tag.warn{ background: #FBE9C8; color: var(--warn); }
+  .tag.assign{ background: var(--accent-soft); color: var(--accent-strong); }
+
+  textarea, input[type=text], select{
+    width:100%; font-family: var(--font-mono); font-size:0.82rem; color:var(--text);
+    background: var(--surface); border:1px solid var(--border-strong); border-radius:7px; padding:8px 10px;
+  }
+  select{ font-family: var(--font-ui); font-weight:600; }
+  textarea{ resize: vertical; min-height:64px; line-height:1.5; }
+  .field.pending textarea, .field.pending input, .field.pending select{ border-color:#D9A03F; }
+
+  .field-note{ font-size:0.74rem; color: var(--text-muted); margin-top:7px; line-height:1.5; }
+  .field-note.warn{ color: var(--warn); font-weight:600; }
+  .field-row-actions{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:9px; }
+
+  .visit-list{ display:flex; flex-direction:column; gap:6px; }
+  .visit{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:0.8rem; background:var(--surface-2); border-radius:6px; padding:6px 10px; }
+  .visit-total{ display:flex; justify-content:space-between; font-size:0.82rem; font-weight:700; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-strong); }
+
+  .part-row{ display:grid; grid-template-columns: 1.6fr 0.8fr 0.5fr; gap:8px; margin-bottom:8px; }
+  .part-row label{ font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color: var(--text-faint); display:block; margin-bottom:4px; }
+  @media (max-width: 520px){ .part-row{ grid-template-columns: 1fr; } }
+
+  .legend{
+    display:flex; gap:16px; flex-wrap:wrap; padding:12px 20px; border-top:1px solid var(--border);
+    font-size:0.74rem; color: var(--text-muted); background: var(--surface-2);
+  }
+  .legend .item{ display:flex; align-items:center; gap:6px; }
+  .swatch{ width:9px; height:9px; border-radius:3px; }
+  .swatch.warn{ background: var(--warn); }
+  .swatch.good{ background: var(--good); }
+  .swatch.assign{ background: var(--accent); }
+
+  .success-banner{
+    display:none; align-items:center; gap:10px; background: var(--good-soft); color: var(--good);
+    font-size:0.86rem; font-weight:600; padding:12px 20px; border-bottom:1px solid var(--border);
+  }
+  .success-banner.show{ display:flex; }
+</style>
+
+<div class="wrap">
+
+  <div class="banner">This is a working demo — click a flagged field, edit it, or hit Finalize. Data below is <b>real</b>, taken from the BD Care service report you uploaded.</div>
+
+  <div class="app">
+    <div class="success-banner" id="successBanner">✓ Report finalized — all fields reviewed and written to the record.</div>
+
+    <div class="topbar">
+      <div class="brand"><span class="mark"></span> ServiceLedger</div>
+      <div class="crumbs">Instruments <span>›</span> <b>FACSAria III</b> <span>›</span> Repair report</div>
+      <div class="counter-pill" id="counterPill">3 fields need your attention</div>
+    </div>
+
+    <div class="subbar">
+      <div>
+        <h1>Malfunction / Repair Report</h1>
+        <div class="meta">FACSAria III · S/N P648282B3003 · Work Order WO-01873748 · extracted from a real BD Care service report</div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="resetDemo()">Reset demo</button>
+        <button class="btn primary" id="finalizeBtn" disabled onclick="finalizeReport()">Finalize report</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="pane pane-left">
+        <div class="pane-title">Source excerpts (Work Order WO-01873748)</div>
+
+        <div class="privacy-note"><b>Not shown here:</b> the customer name, account, address and phone number printed on the real form. Per the extraction design (§4/§10 of the spec), contact and contract details are never requested by the prompt in the first place, and each field's stored <code style="font-family:var(--font-mono);">source_snippet</code> is cropped tightly around that field — not the surrounding text — so incidental details sitting right next to a relevant field don't slip in through the snippet either (see field 1, below).</div>
+
+        <div class="quote">
+          <div class="qlabel"><span class="badge-mini" style="background:var(--good);">1</span> Service Requested / Reported Symptom</div>
+          <div class="qtext">"Subject: Air bubble in bleach line in ARIA III 648282B3 S/N P648282B3003. Description: Air bubble in bleach line."</div>
+          <div class="qtext" style="margin-top:4px; color: var(--text-faint); font-size:0.76rem;">The form's own line also reads "<span style="text-decoration:line-through;">By Shachar on 18/04/2021</span>" — the reporting engineer's name and a date, incidental to the symptom itself. That falls outside this field's cropped snippet, so it's neither stored nor shown here.</div>
+        </div>
+
+        <div class="quote">
+          <div class="qlabel"><span class="badge-mini" style="background:var(--good);">2</span> Cause</div>
+          <div class="qtext">"Cracked connector"</div>
+        </div>
+
+        <div class="quote">
+          <div class="qlabel"><span class="badge-mini" style="background:var(--good);">3</span> Work Performed / Solution Comments</div>
+          <div class="qtext">"Replaced quick connector on the wet cart. connector was slightly cracked. checked the system while priming few times to verify proper operation. bleach filter is full with Facs Clean fluid. system is ready to use."</div>
+        </div>
+
+        <div class="quote">
+          <div class="qlabel"><span class="badge-mini" style="background:var(--warn);">4</span> Parts</div>
+          <div class="qtext mono">"641922 - Face Seal 1/4-28 PMCD12 Panel Mt Fm" · Part Number: 641922 · Line Qty: 1</div>
+        </div>
+
+        <div class="quote" style="border-left-color:var(--border-strong);">
+          <div class="qlabel"><span class="badge-mini" style="background:var(--good);">5</span> Labor</div>
+          <div class="qtext mono">18/04/2021 10:30–13:30 → 3 hrs<br><span style="color:var(--text-faint);">Travel (not counted here): 9:00–10:00 + 16:30–17:30 → 2 hrs</span></div>
+        </div>
+      </div>
+
+      <div class="pane">
+        <div class="pane-title">Extracted fields</div>
+        <div class="field-list">
+
+          <div class="field ok">
+            <div class="field-top">
+              <span class="field-label"><span class="badge-mini" style="background:var(--good);">1</span> Fault description</span>
+              <span class="tag good">96% confident</span>
+            </div>
+            <input type="text" value="Air bubble in bleach line">
+          </div>
+
+          <div class="field ok">
+            <div class="field-top">
+              <span class="field-label"><span class="badge-mini" style="background:var(--good);">2</span> Root cause</span>
+              <span class="tag good">94% confident</span>
+            </div>
+            <input type="text" value="Cracked connector">
+          </div>
+
+          <div class="field ok">
+            <div class="field-top">
+              <span class="field-label"><span class="badge-mini" style="background:var(--good);">3</span> Work performed</span>
+              <span class="tag good">89% confident</span>
+            </div>
+            <textarea style="min-height:88px;">Replaced quick connector on the wet cart — connector was slightly cracked. Verified operation with several priming cycles. Bleach filter full with FACSClean fluid. System ready to use.</textarea>
+          </div>
+
+          <div class="field pending" id="field-parts">
+            <div class="field-top">
+              <span class="field-label"><span class="badge-mini" style="background:var(--warn);">4</span> Components replaced</span>
+              <span class="field-tags"><span class="tag warn">61% confident</span></span>
+            </div>
+            <div class="part-row">
+              <div><label>Part name</label><input type="text" id="part-name" value="Face Seal 1/4-28 PMCD12 Panel Mt Fm" oninput="onPartsInput()"></div>
+              <div><label>Part number</label><input type="text" id="part-number" value="641922" oninput="onPartsInput()"></div>
+              <div><label>Qty</label><input type="text" id="part-qty" value="1" oninput="onPartsInput()"></div>
+            </div>
+            <div class="field-note warn">⚠ The form's own "Part In" column runs the description and part number together as one string — split here, but worth a glance before confirming.</div>
+            <div class="field-row-actions">
+              <span></span>
+              <button class="btn small primary" id="parts-confirm" onclick="confirmField('parts')">Confirm split</button>
+            </div>
+          </div>
+
+          <div class="field ok">
+            <div class="field-top">
+              <span class="field-label"><span class="badge-mini" style="background:var(--good);">5</span> Labor hours</span>
+              <span class="tag good">97% confident</span>
+            </div>
+            <input type="text" value="3">
+            <div class="field-note">One visit, one labor block — the form's separate 2 hrs of travel time isn't captured in this field (§5).</div>
+          </div>
+
+          <div class="field pending" id="field-category">
+            <div class="field-top">
+              <span class="field-label">Fault category</span>
+              <span class="field-tags"><span class="tag assign">assign on review</span></span>
+            </div>
+            <select id="category-select" onchange="confirmField('category')">
+              <option value="" selected>— choose a category —</option>
+              <option value="fluidics">Fluidics</option>
+              <option value="optics">Optics</option>
+              <option value="electronics">Electronics</option>
+              <option value="software">Software</option>
+            </select>
+            <div class="field-note">Not printed on the form — the technician assigns this for filtering (§7). Suggested from context: Fluidics.</div>
+          </div>
+
+          <div class="field pending" id="field-retest">
+            <div class="field-top">
+              <span class="field-label">Retest result</span>
+              <span class="field-tags"><span class="tag assign">confirm suggestion</span></span>
+            </div>
+            <select id="retest-select" onchange="confirmField('retest')">
+              <option value="" selected>— confirm result —</option>
+              <option value="pass">Pass</option>
+              <option value="fail">Fail</option>
+              <option value="not_retested">Not retested</option>
+            </select>
+            <div class="field-note">Inferred from "checked the system … to verify proper operation" and "system is ready to use" — 84% confident, but this is a suggestion, not a form field.</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="item"><span class="swatch good"></span> Above the confidence threshold — pre-filled</span>
+      <span class="item"><span class="swatch warn"></span> Below threshold — needs a look</span>
+      <span class="item"><span class="swatch assign"></span> Not on the form — technician assigns it</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  var pending = { parts: false, category: false, retest: false };
+
+  function updateCounter(){
+    var remaining = Object.values(pending).filter(function(v){ return !v; }).length;
+    var pill = document.getElementById('counterPill');
+    var btn = document.getElementById('finalizeBtn');
+    if (remaining === 0){
+      pill.textContent = 'All fields reviewed';
+      pill.classList.add('done');
+      btn.disabled = false;
+    } else {
+      pill.textContent = remaining + ' field' + (remaining === 1 ? '' : 's') + ' need' + (remaining === 1 ? 's' : '') + ' your attention';
+      pill.classList.remove('done');
+      btn.disabled = true;
+    }
+  }
+
+  function confirmField(key){
+    if (key === 'parts'){
+      var name = document.getElementById('part-name').value.trim();
+      var num = document.getElementById('part-number').value.trim();
+      if (!name || !num) return;
+    }
+    if (key === 'category' && !document.getElementById('category-select').value) return;
+    if (key === 'retest' && !document.getElementById('retest-select').value) return;
+
+    pending[key] = true;
+    var el = document.getElementById('field-' + key);
+    el.classList.remove('pending');
+    el.classList.add('ok');
+    if (key === 'parts'){
+      document.getElementById('parts-confirm').disabled = true;
+      ['part-name','part-number','part-qty'].forEach(function(id){ document.getElementById(id).readOnly = true; });
+    }
+    updateCounter();
+  }
+
+  function onPartsInput(){
+    var name = document.getElementById('part-name').value.trim();
+    var num = document.getElementById('part-number').value.trim();
+    document.getElementById('parts-confirm').disabled = !(name && num);
+  }
+
+  function finalizeReport(){
+    if (document.getElementById('finalizeBtn').disabled) return;
+    document.getElementById('successBanner').classList.add('show');
+    var btn = document.getElementById('finalizeBtn');
+    btn.textContent = 'Finalized ✓';
+    btn.classList.add('finalized');
+    btn.disabled = true;
+  }
+
+  function resetDemo(){
+    pending = { parts: false, category: false, retest: false };
+    document.getElementById('part-name').value = 'Face Seal 1/4-28 PMCD12 Panel Mt Fm';
+    document.getElementById('part-number').value = '641922';
+    document.getElementById('part-qty').value = '1';
+    ['part-name','part-number','part-qty'].forEach(function(id){ document.getElementById(id).readOnly = false; });
+    document.getElementById('parts-confirm').disabled = false;
+    document.getElementById('category-select').value = '';
+    document.getElementById('retest-select').value = '';
+    ['parts','category','retest'].forEach(function(k){
+      var el = document.getElementById('field-' + k);
+      el.classList.add('pending');
+      el.classList.remove('ok');
+    });
+    document.getElementById('successBanner').classList.remove('show');
+    var btn = document.getElementById('finalizeBtn');
+    btn.textContent = 'Finalize report';
+    btn.classList.remove('finalized');
+    updateCounter();
+  }
+
+  updateCounter();
+</script>
