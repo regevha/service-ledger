@@ -1,7 +1,7 @@
-# Calibration Ledger — backend scaffold
+# ServiceLedger — backend scaffold
 
 A working implementation of the API surface described in **CL-ARCH-001 §9**
-(the Calibration Ledger architecture spec, v0.14) — real FastAPI, real
+(the ServiceLedger architecture spec, v0.14) — real FastAPI, real
 Postgres with JSONB templates, real Alembic migrations, a real background
 worker, real tests, and a real React frontend (`frontend/`, not covered by
 this README — see its own scripts). `classify()` and `extract()` can run
@@ -59,7 +59,7 @@ frontend/
 ## Running it
 
 Requires Postgres reachable at the URL in `.env` (copy `.env.example` — the
-default matches a local `calibration_ledger` database/role created for you
+default matches a local `service_ledger` database/role created for you
 already in this environment; adjust for yours).
 
 ```bash
@@ -90,7 +90,7 @@ uvicorn app.main:app --reload
 python -m app.worker
 ```
 
-Run the tests (against a separate `calibration_ledger_test` database — see
+Run the tests (against a separate `service_ledger_test` database — see
 `tests/conftest.py`; 9 files, 58 tests, `USE_LIVE_CLAUDE` force-set to
 `false` for the whole run):
 

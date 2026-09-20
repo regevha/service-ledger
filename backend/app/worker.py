@@ -257,7 +257,7 @@ def run_forever() -> None:
     it with a half-open transaction."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s worker %(levelname)s %(message)s")
     logger.info(
-        "Calibration Ledger worker starting (poll interval %.1fs, live_claude=%s)",
+        "ServiceLedger worker starting (poll interval %.1fs, live_claude=%s)",
         settings.worker_poll_interval_seconds,
         settings.use_live_claude,
     )

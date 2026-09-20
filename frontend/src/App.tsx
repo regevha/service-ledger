@@ -260,7 +260,7 @@ export default function App() {
   return (
     <div className="wrap">
       <div className="masthead">
-        <span className="mark" /> Calibration Ledger
+        <span className="mark" /> ServiceLedger
         <span className="masthead-sub">core review loop</span>
       </div>
 

@@ -15,9 +15,9 @@ const PINNED_CHROMIUM = existsSync(SANDBOX_CHROMIUM) ? SANDBOX_CHROMIUM : undefi
 // A dedicated port + database for this suite — never the dev server on 8000
 // (which may be running USE_LIVE_CLAUDE=true against real demo data, per
 // backend/.env) and never backend/tests/conftest.py's own
-// calibration_ledger_test database (whose schema is created/dropped around
+// service_ledger_test database (whose schema is created/dropped around
 // each pytest session, so its tables may not exist between pytest runs).
-// calibration_ledger_e2e is a one-time manual createdb (see README.md) that
+// service_ledger_e2e is a one-time manual createdb (see README.md) that
 // this suite owns end to end: reset_db.py truncates it before every run.
 //
 // Exported (not just local to this file) so spec files build their own
@@ -28,7 +28,7 @@ const PINNED_CHROMIUM = existsSync(SANDBOX_CHROMIUM) ? SANDBOX_CHROMIUM : undefi
 // failing for an unrelated-looking reason.
 export const BACKEND_PORT = 8001;
 const FRONTEND_PORT = 5174;
-const E2E_DATABASE_URL = 'postgresql+psycopg2://calibration_ledger:calibration_ledger_dev@localhost:5432/calibration_ledger_e2e';
+const E2E_DATABASE_URL = 'postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger_e2e';
 
 export default defineConfig({
   testDir: './tests/e2e',

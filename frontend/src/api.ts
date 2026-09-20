@@ -1,5 +1,5 @@
 /**
- * Typed client for the Calibration Ledger backend (see CL-TDD-001 §6 for the
+ * Typed client for the ServiceLedger backend (see CL-TDD-001 §6 for the
  * full endpoint table). Shapes here mirror backend/app/schemas.py field for
  * field rather than approximating them, so a backend schema change is a
  * compile error here, not a silent runtime mismatch.

@@ -1,6 +1,6 @@
 """Test fixtures.
 
-Runs against a real Postgres database (calibration_ledger_test) rather than
+Runs against a real Postgres database (service_ledger_test) rather than
 an in-memory/sqlite substitute: the whole point of §5's JSONB design is
 Postgres-specific behavior, which SQLite doesn't faithfully stand in for.
 Tables are truncated between tests instead of using a rollback-per-test
@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker
 
 os.environ.setdefault(
     "DATABASE_URL",
-    "postgresql+psycopg2://calibration_ledger:calibration_ledger_dev@localhost:5432/calibration_ledger_test",
+    "postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger_test",
 )
 # Force stub mode regardless of the developer's own backend/.env: these tests
 # upload fake, non-PDF byte strings and assert exact hardcoded stub values
