@@ -93,3 +93,35 @@ the app's own DB role doesn't have `CREATEDB`:
 sudo -u postgres createdb service_ledger_e2e
 sudo -u postgres psql -c "ALTER DATABASE service_ledger_e2e OWNER TO service_ledger;"
 ```
+
+### Live-Claude smoke test (real API, opt-in)
+
+`tests/e2e-live/live-claude-smoke.spec.ts` runs the same upload→classify→
+extract→review→finalize flow against the *real* Claude API instead of the
+stub — useful for sanity-checking that path still works end to end, since
+nothing in `tests/e2e/` exercises it (that suite's fixtures and assertions
+are stub-specific — see the comments in `playwright.config.ts`). It's opt-in
+by construction: a separate config (`playwright.live.config.ts`) with its
+own `testDir`, so `npm run test:e2e` never touches it and never needs a real
+API key to run.
+
+Needs two things in the environment, neither committed here:
+
+- `ANTHROPIC_API_KEY` — the config throws immediately if it's missing.
+- `LIVE_SMOKE_FIXTURE_PATH` — an absolute path to a real scanned service
+  report PDF. Never committed to this repo (same reason
+  `backend/app/seed_demo_reports.py` never commits the real PDFs its own
+  demo data came from: these are real third-party service records). The
+  spec skips cleanly, rather than failing, if this isn't set to a file that
+  exists.
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-... LIVE_SMOKE_FIXTURE_PATH=/path/to/a/real/scan.pdf \
+  npx playwright test --config=playwright.live.config.ts
+```
+
+Costs two real API calls (one classify, one extract) per run. Assertions
+are deliberately loose compared to the stub suite — a live model's exact
+wording/confidence can vary slightly from run to run — so this checks for
+the absence of errors and that the report was routed to a
+report-type-specific field, not byte-for-byte field values.
