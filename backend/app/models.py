@@ -1,6 +1,6 @@
 """SQLAlchemy models — a direct implementation of the spec's §5 data model.
 
-Table shapes, column names, and nullability all mirror CL-ARCH-001 §5 exactly:
+Table shapes, column names, and nullability all mirror SL-ARCH-001 §5 exactly:
 `reports.instrument_id` / `template_id` are nullable because document-first
 intake (§4) resolves them after classification rather than at creation, and
 `extraction_jobs.classification` is a separate JSONB column from

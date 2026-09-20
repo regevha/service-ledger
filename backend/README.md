@@ -1,6 +1,6 @@
 # ServiceLedger — backend scaffold
 
-A working implementation of the API surface described in **CL-ARCH-001 §9**
+A working implementation of the API surface described in **SL-ARCH-001 §9**
 (the ServiceLedger architecture spec, v0.14) — real FastAPI, real
 Postgres with JSONB templates, real Alembic migrations, a real background
 worker, real tests, and a real React frontend (`frontend/`, not covered by
@@ -10,13 +10,13 @@ against a deterministic stub; the test suite always forces the stub (see
 `tests/conftest.py`) so it never spends a real API call or depends on a
 developer's local `.env`.
 
-Read CL-ARCH-001 (the published architecture spec) and its companion
-CL-TDD-001 (the technical design document — modules, request lifecycles, API
+Read SL-ARCH-001 (the published architecture spec) and its companion
+SL-TDD-001 (the technical design document — modules, request lifecycles, API
 surface, all at commit-level accuracy) first if you haven't — this scaffold
 makes no design decisions of its own; it implements what's already there,
 section by section, and every non-obvious choice in the code points back to
 the section that justifies it. This README is the quickest way to run it;
-CL-TDD-001 is the fuller reference if you're changing it.
+SL-TDD-001 is the fuller reference if you're changing it.
 
 ## What's here
 
@@ -226,7 +226,7 @@ rather than the flattened/stringified failure mode found earlier, which is
 the correct answer when the source document has no calibration data to
 report. That derisks the schema shape; it can't confirm extraction
 *accuracy* on this field type without a real calibration document, which
-CL-ARCH-001 §12 already lists as still needed for the FACSDiscover S8
+SL-ARCH-001 §12 already lists as still needed for the FACSDiscover S8
 spectral fields.
 
 ### Confirming the live path actually ran
