@@ -3,11 +3,11 @@
 instance).
 
 Deliberately separate from tests/conftest.py's pytest fixtures: that database
-(calibration_ledger_test) gets its schema created and dropped per pytest
+(service_ledger_test) gets its schema created and dropped per pytest
 session, so its tables may or may not exist at any given moment depending on
 whether a pytest run is currently in progress — not something a second,
 independently-run test suite should depend on. This script targets its own
-database (calibration_ledger_e2e by convention, set via DATABASE_URL) and is
+database (service_ledger_e2e by convention, set via DATABASE_URL) and is
 idempotent either way: create_all only creates what's missing, and the
 TRUNCATE is a no-op on empty tables.
 

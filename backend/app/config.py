@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     database_url: str = (
-        "postgresql+psycopg2://calibration_ledger:calibration_ledger_dev@localhost:5432/calibration_ledger"
+        "postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger"
     )
 
     attachment_storage_dir: str = "./storage/attachments"

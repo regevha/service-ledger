@@ -82,14 +82,14 @@ the ports a developer might already have running for manual testing
 before every run via `backend/app/testing/reset_db.py`, then relies on
 `app.main`'s own startup hook to reseed the instrument fleet and report
 templates — see that router's docstring for why this is a *separate*
-database from `backend/tests/conftest.py`'s `calibration_ledger_test`.
+database from `backend/tests/conftest.py`'s `service_ledger_test`.
 
 **One-time setup**: this suite needs its own Postgres database
-(`calibration_ledger_e2e`), owned by the same role the backend already uses,
+(`service_ledger_e2e`), owned by the same role the backend already uses,
 created once per environment — it isn't provisioned automatically because
 the app's own DB role doesn't have `CREATEDB`:
 
 ```bash
-sudo -u postgres createdb calibration_ledger_e2e
-sudo -u postgres psql -c "ALTER DATABASE calibration_ledger_e2e OWNER TO calibration_ledger;"
+sudo -u postgres createdb service_ledger_e2e
+sudo -u postgres psql -c "ALTER DATABASE service_ledger_e2e OWNER TO service_ledger;"
 ```

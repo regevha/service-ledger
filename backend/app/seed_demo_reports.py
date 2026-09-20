@@ -3,8 +3,8 @@ so a fresh dev database's Reports screen has more than the one flagship
 sample document to show — useful for demos and screenshots.
 
 **Not wired into `app.main`'s lifespan on purpose** — that lifespan also
-backs `tests/conftest.py`'s `client` fixture (against `calibration_ledger_test`)
-and the Playwright e2e suite's backend (against `calibration_ledger_e2e`),
+backs `tests/conftest.py`'s `client` fixture (against `service_ledger_test`)
+and the Playwright e2e suite's backend (against `service_ledger_e2e`),
 both of which assert on exact report counts/statuses. Auto-seeding demo rows
 there would silently inflate those counts and break assertions that were
 never written expecting extra reports to exist. Run this by hand against
