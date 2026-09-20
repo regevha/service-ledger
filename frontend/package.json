@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "codegen": "npx --yes openapi-typescript@7.13.0 openapi.json -o src/generated/api-schema.ts"
   },
   "dependencies": {
     "react": "^19.2.8",

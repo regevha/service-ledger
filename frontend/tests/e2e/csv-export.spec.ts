@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { BACKEND_PORT } from '../../playwright.config';
 
 // The Export CSV link (§7/§9's export_reports, kept in filter-parity with
 // search_reports) — its href tracks the active filters, and a real click
 // downloads a CSV containing exactly the filtered rows.
 
-const API_BASE = 'http://localhost:8001';
+const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 test('export link reflects the active filter and downloads the filtered CSV', async ({ page, request }) => {
   const marker = `E2E-Export-${Date.now()}`;

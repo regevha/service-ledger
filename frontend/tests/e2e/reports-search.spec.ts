@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
+import { BACKEND_PORT } from '../../playwright.config';
 
 // The reports search/list screen (§7/§9) — filters, the empty state, and the
 // click-through into the review screen for an already-created report.
@@ -10,7 +11,7 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 // visible rows rather than asserting an absolute row count — which stays
 // correct regardless of what other specs in the same run created.
 
-const API_BASE = 'http://localhost:8001';
+const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function seedReport(
   request: APIRequestContext,

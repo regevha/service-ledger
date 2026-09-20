@@ -8,6 +8,7 @@ import {
   extractAttachment,
   findTemplate,
   finalizeReport,
+  getAppConfig,
   getReport,
   listInstruments,
   listReports,
@@ -15,6 +16,7 @@ import {
   reportsExportUrl,
   updateReportFields,
   uploadAttachment,
+  type AppConfig,
   type ClassificationResult,
   type Instrument,
   type Report,
@@ -27,12 +29,15 @@ import {
 import { FieldControl } from './components/FieldEditor';
 import './App.css';
 
-// Mirrors backend/app/config.py defaults. Cosmetic only here — badge color
-// on the review screen and on the classify-confirm step — the actual
-// classify/extract gating decision is already made server-side (a resolved
-// report/template vs. a 502) before the frontend ever sees these numbers.
-const FIELD_CONFIDENCE_THRESHOLD = 0.7;
-const CLASSIFICATION_CONFIDENCE_THRESHOLD = 0.85;
+// Fallback only, for the brief window before GET /config resolves (or if it
+// fails) — matches backend/app/config.py's own defaults so behavior is
+// unchanged in that window. The real values always come from the backend
+// from then on (see the config state below); this used to be two hardcoded
+// constants with no connection to the backend's actual settings at all.
+const DEFAULT_APP_CONFIG: AppConfig = {
+  field_confidence_threshold: 0.7,
+  classification_confidence_threshold: 0.85,
+};
 
 const REPORT_TYPE_LABEL: Record<ReportType, string> = {
   calibration: 'Calibration',
@@ -67,6 +72,7 @@ function ConfidenceBadge({ confidence, threshold }: { confidence: number; thresh
 export default function App() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [instrumentsError, setInstrumentsError] = useState<string | null>(null);
+  const [config, setConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
 
   // Independent of `phase` below — `phase` is the single-report intake state
   // machine (upload → classify → review → done), while `view` just switches
@@ -93,6 +99,15 @@ export default function App() {
     listInstruments()
       .then(setInstruments)
       .catch((e: unknown) => setInstrumentsError(e instanceof ApiError ? e.message : 'Could not load instruments.'));
+  }, []);
+
+  useEffect(() => {
+    // Cosmetic-only if this never resolves (badge color / review-flagging),
+    // so failure here just means staying on DEFAULT_APP_CONFIG rather than
+    // surfacing a banner the way instrumentsError does above.
+    getAppConfig()
+      .then(setConfig)
+      .catch(() => undefined);
   }, []);
 
   const instrumentByModel = useMemo(() => {
@@ -260,7 +275,7 @@ export default function App() {
 
       <div className="app-shell">
         {view === 'reports' ? (
-          <ReportsListScreen instruments={instruments} />
+          <ReportsListScreen instruments={instruments} fieldConfidenceThreshold={config.field_confidence_threshold} />
         ) : (
           <>
             <StepBar phase={phase} />
@@ -292,6 +307,7 @@ export default function App() {
                 setPickInstrumentModel={setPickInstrumentModel}
                 pickReportType={pickReportType}
                 setPickReportType={setPickReportType}
+                classificationConfidenceThreshold={config.classification_confidence_threshold}
                 onConfirm={() => void handleConfirmClassification()}
               />
             )}
@@ -301,6 +317,7 @@ export default function App() {
                 template={template}
                 fields={fields}
                 fieldConfidences={fieldConfidences}
+                fieldConfidenceThreshold={config.field_confidence_threshold}
                 onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
                 onSave={() => void handleSaveFields(false)}
                 onFinalize={() => void handleSaveFields(true)}
@@ -403,6 +420,7 @@ function ConfirmClassificationScreen({
   setPickInstrumentModel,
   pickReportType,
   setPickReportType,
+  classificationConfidenceThreshold,
   onConfirm,
 }: {
   classification: ClassificationResult;
@@ -411,6 +429,7 @@ function ConfirmClassificationScreen({
   setPickInstrumentModel: (v: string) => void;
   pickReportType: ReportType;
   setPickReportType: (v: ReportType) => void;
+  classificationConfidenceThreshold: number;
   onConfirm: () => void;
 }) {
   return (
@@ -424,7 +443,7 @@ function ConfirmClassificationScreen({
       <div className="class-row">
         <div className="crow-top">
           <span className="clabel">Instrument</span>
-          <ConfidenceBadge confidence={classification.instrument.confidence} threshold={CLASSIFICATION_CONFIDENCE_THRESHOLD} />
+          <ConfidenceBadge confidence={classification.instrument.confidence} threshold={classificationConfidenceThreshold} />
         </div>
         <select value={pickInstrumentModel} onChange={(e) => setPickInstrumentModel(e.target.value)}>
           {instruments.map((inst) => (
@@ -438,7 +457,7 @@ function ConfirmClassificationScreen({
       <div className="class-row">
         <div className="crow-top">
           <span className="clabel">Report type</span>
-          <ConfidenceBadge confidence={classification.report_type.confidence} threshold={CLASSIFICATION_CONFIDENCE_THRESHOLD} />
+          <ConfidenceBadge confidence={classification.report_type.confidence} threshold={classificationConfidenceThreshold} />
         </div>
         <select value={pickReportType} onChange={(e) => setPickReportType(e.target.value as ReportType)}>
           {(Object.keys(REPORT_TYPE_LABEL) as ReportType[]).map((rt) => (
@@ -462,6 +481,7 @@ function ReviewScreen({
   template,
   fields,
   fieldConfidences,
+  fieldConfidenceThreshold,
   onChange,
   onSave,
   onFinalize,
@@ -471,6 +491,7 @@ function ReviewScreen({
   template: ReportTemplate;
   fields: Record<string, unknown>;
   fieldConfidences: Record<string, number>;
+  fieldConfidenceThreshold: number;
   onChange: (name: string, value: unknown) => void;
   onSave: () => void;
   // Undefined hides the finalize button entirely — used when browsing an
@@ -488,7 +509,7 @@ function ReviewScreen({
   originalScanUrl?: string;
 }) {
   const flaggedCount = template.field_schema.fields.filter(
-    (f) => (fieldConfidences[f.name] ?? 1) < FIELD_CONFIDENCE_THRESHOLD
+    (f) => (fieldConfidences[f.name] ?? 1) < fieldConfidenceThreshold
   ).length;
   const heading =
     title ??
@@ -510,7 +531,7 @@ function ReviewScreen({
       <div className="field-list">
         {template.field_schema.fields.map((field, i) => {
           const confidence = fieldConfidences[field.name];
-          const flagged = confidence !== undefined && confidence < FIELD_CONFIDENCE_THRESHOLD;
+          const flagged = confidence !== undefined && confidence < fieldConfidenceThreshold;
           return (
             <div className={`field ${flagged ? 'pending' : 'ok'}`} key={field.name}>
               <div className="field-top">
@@ -521,7 +542,7 @@ function ReviewScreen({
                   {field.name.replace(/_/g, ' ')}
                   {field.unit && <span className="field-unit"> ({field.unit})</span>}
                 </span>
-                {confidence !== undefined && <ConfidenceBadge confidence={confidence} threshold={FIELD_CONFIDENCE_THRESHOLD} />}
+                {confidence !== undefined && <ConfidenceBadge confidence={confidence} threshold={fieldConfidenceThreshold} />}
               </div>
               <FieldControl field={field} value={fields[field.name]} onChange={(v) => onChange(field.name, v)} />
               {field.notes && <div className="field-note">{field.notes}</div>}
@@ -544,7 +565,13 @@ function ReviewScreen({
   );
 }
 
-function ReportsListScreen({ instruments }: { instruments: Instrument[] }) {
+function ReportsListScreen({
+  instruments,
+  fieldConfidenceThreshold,
+}: {
+  instruments: Instrument[];
+  fieldConfidenceThreshold: number;
+}) {
   const [filters, setFilters] = useState<ReportFilters>({});
   const [items, setItems] = useState<ReportListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -571,7 +598,13 @@ function ReportsListScreen({ instruments }: { instruments: Instrument[] }) {
   }, [filters]);
 
   if (selectedItem) {
-    return <ReportDetailScreen item={selectedItem} onBack={() => setSelectedItem(null)} />;
+    return (
+      <ReportDetailScreen
+        item={selectedItem}
+        onBack={() => setSelectedItem(null)}
+        fieldConfidenceThreshold={fieldConfidenceThreshold}
+      />
+    );
   }
 
   const hasFilters = Boolean(filters.instrument_id || filters.report_type || filters.status || filters.date_from || filters.date_to);
@@ -686,7 +719,15 @@ function ReportsListScreen({ instruments }: { instruments: Instrument[] }) {
   );
 }
 
-function ReportDetailScreen({ item, onBack }: { item: ReportListItem; onBack: () => void }) {
+function ReportDetailScreen({
+  item,
+  onBack,
+  fieldConfidenceThreshold,
+}: {
+  item: ReportListItem;
+  onBack: () => void;
+  fieldConfidenceThreshold: number;
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<Report | null>(null);
@@ -755,6 +796,7 @@ function ReportDetailScreen({ item, onBack }: { item: ReportListItem; onBack: ()
           template={template}
           fields={fields}
           fieldConfidences={{}}
+          fieldConfidenceThreshold={fieldConfidenceThreshold}
           onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
           onSave={() => void handleSave(false)}
           onFinalize={

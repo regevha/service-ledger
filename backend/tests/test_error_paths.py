@@ -25,6 +25,21 @@ def test_health_check():
     assert resp.json() == {"status": "ok"}
 
 
+def test_config_endpoint_returns_the_real_configured_thresholds(client, monkeypatch):
+    """Regression test for a hardcoding fix: the frontend used to hardcode
+    its own copy of these two thresholds (App.tsx) instead of reading them
+    from the backend — GET /config exists so it can read the real,
+    currently-configured values instead."""
+    from app.main import get_settings as main_get_settings
+
+    monkeypatch.setattr(main_get_settings(), "field_confidence_threshold", 0.42)
+    monkeypatch.setattr(main_get_settings(), "classification_confidence_threshold", 0.99)
+
+    resp = client.get("/config")
+    assert resp.status_code == 200
+    assert resp.json() == {"field_confidence_threshold": 0.42, "classification_confidence_threshold": 0.99}
+
+
 def test_upload_attachment_404_on_missing_report(client):
     resp = client.post(
         f"/reports/{uuid.uuid4()}/attachments",

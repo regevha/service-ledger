@@ -36,6 +36,11 @@ class Settings(BaseSettings):
 
     use_live_claude: bool = False
     anthropic_api_key: str = ""
+    # Was a literal "claude-sonnet-5" duplicated separately inside both
+    # classification.py's and extraction.py's messages.create() calls, with
+    # no setting backing it despite this module's own docstring — a model
+    # bump meant editing two files and hoping both were caught. One place now.
+    anthropic_model: str = "claude-sonnet-5"
     # Explicit rather than relying on the SDK's undocumented defaults: the
     # client already retries connection errors/408/409/429/5xx internally
     # with backoff up to this count before classify()/extract() ever see an

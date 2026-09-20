@@ -19,7 +19,14 @@ const PINNED_CHROMIUM = existsSync(SANDBOX_CHROMIUM) ? SANDBOX_CHROMIUM : undefi
 // each pytest session, so its tables may not exist between pytest runs).
 // calibration_ledger_e2e is a one-time manual createdb (see README.md) that
 // this suite owns end to end: reset_db.py truncates it before every run.
-const BACKEND_PORT = 8001;
+//
+// Exported (not just local to this file) so spec files build their own
+// direct request.post/get URLs (see reports-search.spec.ts, csv-export.spec.ts,
+// field-editing.spec.ts) from this one number instead of a second hardcoded
+// "8001" literal — changing this without also catching every duplicate used
+// to be exactly the kind of drift nothing would catch until a spec started
+// failing for an unrelated-looking reason.
+export const BACKEND_PORT = 8001;
 const FRONTEND_PORT = 5174;
 const E2E_DATABASE_URL = 'postgresql+psycopg2://calibration_ledger:calibration_ledger_dev@localhost:5432/calibration_ledger_e2e';
 
