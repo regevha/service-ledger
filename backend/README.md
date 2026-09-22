@@ -1,7 +1,7 @@
 # ServiceLedger — backend scaffold
 
 A working implementation of the API surface described in **SL-ARCH-001 §9**
-(the ServiceLedger architecture spec, v0.14) — real FastAPI, real
+(the ServiceLedger architecture spec, v0.13) — real FastAPI, real
 Postgres with JSONB templates, real Alembic migrations, a real background
 worker, real tests, and a real React frontend (`frontend/`, not covered by
 this README — see its own scripts). `classify()` and `extract()` can run

@@ -376,14 +376,18 @@
       <div class="doc-control-title">Document control</div>
       <div class="doc-control-grid">
         <div class="dc-cell"><span class="dc-label">Doc ID</span><span class="dc-value">SL-ARCH-001</span></div>
-        <div class="dc-cell"><span class="dc-label">Version</span><span class="dc-value">0.12 draft</span></div>
-        <div class="dc-cell"><span class="dc-label">Date</span><span class="dc-value">2026-09-16</span></div>
+        <div class="dc-cell"><span class="dc-label">Version</span><span class="dc-value">0.13 draft</span></div>
+        <div class="dc-cell"><span class="dc-label">Date</span><span class="dc-value">2026-09-22</span></div>
         <div class="dc-cell"><span class="dc-label">Prepared for</span><span class="dc-value">Regev — single-user evaluation</span></div>
         <div class="dc-cell"><span class="dc-label">Scope</span><span class="dc-value">FACSAria III, LSRFortessa, FACSDiscover S8</span></div>
         <div class="dc-cell"><span class="dc-label">Status</span><span class="status-pill">Draft — for review</span></div>
       </div>
     </div>
 
+    <div class="callout" style="margin-top:16px;">
+      <span class="callout-label">Revised in v0.13</span>
+      <p>This round documents implementation, not a design change: five features built since v0.12 are folded into §7, §9, and §11, which had drifted behind the actual build. §7 no longer describes the instrument timeline and fleet dashboard in future tense — both shipped, as the instrument detail page's trend chart and the Analytics tab's fleet-wide roll-ups (parts, labor hours, pass/fail rate) — and the timeline's trend field is no longer model-specific by design: <code class="mono">GET /instruments/{id}/trend-fields</code> derives the chartable field list from whatever numeric fields an instrument's own finalized reports actually resolved to, so it generalizes across templates rather than hardcoding <code class="mono">baseline_cv_percent</code> vs. <code class="mono">unmixing_error_percent</code> per model. §9 gains the endpoints that shipped alongside these: <code class="mono">PATCH /instruments/{id}</code>, <code class="mono">GET /instruments/{id}/trend-fields</code>, <code class="mono">GET /analytics/fleet</code>, and the <code class="mono">report_templates</code> CRUD routes. §11's Phase 1 list now includes the structured template editor and the instrument create/edit UI, both of which shipped ahead of the roadmap rather than waiting on Phase 2 — neither carries an audit trail or versioning, so §10's scope decision still holds. §12 drops the classification-confidence-threshold question: it's resolved in <code class="mono">config.py</code> as <code class="mono">classification_confidence_threshold = 0.85</code>, distinct from the field-level <code class="mono">0.7</code> default the question worried would be reused unchanged.</p>
+    </div>
     <div class="callout" style="margin-top:16px;">
       <span class="callout-label">Revised in v0.12</span>
       <p><code class="mono">preventive_maintenance</code> (§5) is rebuilt from real evidence instead of a guess. Five new BD Care Work Order Service Reports arrived this round — a second LSRFortessa repair, a first FACSAria III repair, a first FACSDiscover S8 repair, and the first two PM visits seen at all (an LSRFortessa and a FACSDiscover S8) — showed the guessed per-model boolean checklist doesn't exist on the real form: PM reports narrate work performed in free text exactly like repair reports do, with no discrete per-check fields, no <code class="mono">laser_hours_logged</code>, and no <code class="mono">next_pm_due</code> (redundant with the existing <code class="mono">reports.next_service_due</code> column anyway). What the real form does add is a "Calibrated Tools" table, absent from repair reports, now modeled as <code class="mono">calibrated_tools</code>. With no model-specific fields surviving two documents across two different models, <code class="mono">preventive_maintenance</code> collapses from three per-model rows to one shared row — <code class="mono">report_templates</code> drops from six rows to four. The three new repair documents, spanning all three instrument models, further confirm that template needed no changes at all — <code class="mono">repair</code> is now the only report type checked against a real document from every model in scope.</p>
@@ -778,15 +782,16 @@
     <h2>Reporting &amp; analytics</h2>
     <p class="sec-dek">The payoff for structuring the data: questions that were previously "go open forty PDFs."</p>
     <ul>
-      <li><strong>Instrument timeline</strong> — every report for one instrument, chronological, with drift/trend lines for any numeric field across its history (e.g. baseline CV% per detector over the last twelve calibrations). Since calibration now has two template variants, a trend field is model-specific too — a FACSAria III's or LSRFortessa's timeline trends <code class="mono">baseline_cv_percent</code>, while a FACSDiscover S8's trends its own <code class="mono">unmixing_error_percent</code>; the two are never combined into one fleet-wide series.</li>
-      <li><strong>Fleet dashboard</strong> — status at a glance across all instruments: days since last calibration, anything currently out of spec, upcoming <code class="mono">next_service_due</code> dates.</li>
-      <li><strong>Filtered search</strong> — by instrument, report type, date range, technician, or specific field values (e.g. "every calibration where <code class="mono">baseline_cv_percent</code> on any detector exceeds 5%").</li>
-      <li><strong>Exports</strong> — CSV of any filtered view for spreadsheet work; a formatted PDF of an individual report for sharing outside the system.</li>
-      <li><strong>Natural-language query</strong> (phase 2+) — a question like "which instruments needed more than one repair in the last six months" translated by Claude into a filter against the reporting API, not a raw SQL pass-through, so it can't touch data outside the same permission boundary a normal query would.</li>
+      <li><strong>Instrument timeline — shipped.</strong> The instrument detail page's trend chart plots any numeric field across an instrument's finalized report history (e.g. <code class="mono">baseline_cv_percent</code> per detector over its last several calibrations), with a legend and hover tooltip for a per-detector/per-laser field and a single line for a flat one. Unlike the model-specific field list originally planned here, the chartable field list isn't hardcoded per model at all: <code class="mono">GET /instruments/{id}/trend-fields</code> derives it from whatever numeric fields that specific instrument's own finalized reports actually resolved to, so a FACSAria III only ever offers <code class="mono">baseline_cv_percent</code>/<code class="mono">fluidics_pressure_psi</code>-style calibration fields because that's what its reports carry, a new template's numeric fields show up automatically, and nothing fleet-wide ever mixes one model's fields with another's.</li>
+      <li><strong>Fleet dashboard — partially shipped.</strong> The Analytics tab (<code class="mono">GET /analytics/fleet</code>) covers the roll-up half: total labor hours, units replaced, most-replaced parts, labor hours by instrument and by fault category, and pass/fail rate by report type — all computed live from finalized reports, nothing cached. Per-instrument "days since last calibration" / "currently out of spec" / upcoming <code class="mono">next_service_due</code> status-at-a-glance is not built yet and stays a real gap.</li>
+      <li><strong>Filtered search — shipped.</strong> The Reports tab filters by instrument, report type, and status (date range and technician are not yet exposed as filters, though both are real columns per §5). Filtering on a specific field value inside <code class="mono">extracted_fields</code> (e.g. "every calibration where <code class="mono">baseline_cv_percent</code> exceeds 5%") is not built.</li>
+      <li><strong>Exports — CSV shipped, PDF not.</strong> <code class="mono">GET /reports/export</code> exports the active filtered view as CSV. A formatted per-report PDF for sharing outside the system doesn't exist yet.</li>
+      <li><strong>Structured template &amp; instrument management — shipped, not originally scoped here.</strong> A CRUD editor for <code class="mono">report_templates</code> (create/edit/delete a template's field schema, including enum options and object[] item schemas) and for the instrument fleet (create/edit every field but <code class="mono">instrument_type</code>, via <code class="mono">PATCH /instruments/{id}</code>) both shipped as part of Phase 1 (§11) — ahead of §10's audit/versioning boundary, since neither carries edit history, matching the single-evaluator tradeoff §10 already accepts.</li>
+      <li><strong>Natural-language query</strong> (phase 2+, unbuilt) — a question like "which instruments needed more than one repair in the last six months" translated by Claude into a filter against the reporting API, not a raw SQL pass-through, so it can't touch data outside the same permission boundary a normal query would.</li>
     </ul>
     <div class="callout">
       <span class="callout-label">Design rationale</span>
-      <p>Trend and drift reporting only work because <code class="mono">extracted_fields</code> is JSONB with known keys per template, not free text — Postgres can index and aggregate into <code class="mono">extracted_fields->>'baseline_cv_percent'</code> directly. This is the payoff for insisting on template-validated extraction back in §4 rather than accepting whatever shape the model returns.</p>
+      <p>Trend, drift, and roll-up reporting all work the same way because <code class="mono">extracted_fields</code> is JSONB with known keys per template, not free text — Postgres can index and aggregate into <code class="mono">extracted_fields->>'baseline_cv_percent'</code> directly. This is the payoff for insisting on template-validated extraction back in §4 rather than accepting whatever shape the model returns, and it's also why the trend chart's field list above can be derived rather than hardcoded — the same JSONB keys that back a chart are just as queryable for "what fields does this instrument actually have."</p>
     </div>
   </section>
 
@@ -820,7 +825,12 @@
         <thead><tr><th>Method &amp; path</th><th>Purpose</th></tr></thead>
         <tbody>
           <tr><td class="mono">POST /instruments</td><td>Register a new instrument</td></tr>
+          <tr><td class="mono">PATCH /instruments/{id}</td><td>Edit an instrument — every field but <code class="mono">instrument_type</code> — backing the Instruments tab's create/edit UI (§7); rejects a duplicate <code class="mono">serial_number</code> with a 409</td></tr>
           <tr><td class="mono">GET /report-templates?instrument_type=facs&amp;model=</td><td>List templates for an instrument type, resolved to a model-specific variant when one exists for that <code class="mono">model</code> and report type — also what the manual fallback picker in §4 calls when classification is uncertain</td></tr>
+          <tr><td class="mono">GET /report-templates/all</td><td>List every template row, unresolved — backs the Templates tab's list view (§7)</td></tr>
+          <tr><td class="mono">POST /report-templates</td><td>Create a template's field schema — backs the Templates tab's structured field editor (§7)</td></tr>
+          <tr><td class="mono">PATCH /report-templates/{id}</td><td>Edit a template's field schema</td></tr>
+          <tr><td class="mono">DELETE /report-templates/{id}</td><td>Delete a template</td></tr>
           <tr><td class="mono">POST /reports</td><td>Start a bare draft report — no instrument or template yet; document-first intake resolves both after classification</td></tr>
           <tr><td class="mono">POST /reports/{id}/attachments</td><td>Upload a scanned original</td></tr>
           <tr><td class="mono">POST /attachments/{id}/classify</td><td>Guess instrument and report type from the document and resolve a template; returns each guess with its confidence</td></tr>
@@ -830,8 +840,10 @@
           <tr><td class="mono">PATCH /reports/{id}/fields</td><td>Apply corrections directly to the report's fields (overwrites in place — no audit log in MVP)</td></tr>
           <tr><td class="mono">POST /reports/{id}/finalize</td><td>Mark a report finalized</td></tr>
           <tr><td class="mono">GET /reports?instrument_id=&amp;date_from=&amp;status=</td><td>Filtered search (§7)</td></tr>
-          <tr><td class="mono">GET /instruments/{id}/trend?field=baseline_cv_percent</td><td>Time series for one field, one instrument</td></tr>
+          <tr><td class="mono">GET /instruments/{id}/trend-fields</td><td>Which numeric fields this instrument's own finalized reports actually have data for — drives the trend chart's field picker (§7), not a fixed per-model list</td></tr>
+          <tr><td class="mono">GET /instruments/{id}/trend?field=baseline_cv_percent</td><td>Time series for one field, one instrument — supports both a flat <code class="mono">number</code> field and a <code class="mono">number[detector]</code>/<code class="mono">number[laser]</code> map field</td></tr>
           <tr><td class="mono">GET /reports/export?format=csv</td><td>Bulk export of a filtered view</td></tr>
+          <tr><td class="mono">GET /analytics/fleet</td><td>Fleet-wide roll-ups from finalized repair/PM reports: labor hours, parts replaced, pass/fail rate — backs the Analytics tab (§7)</td></tr>
         </tbody>
       </table>
     </div>
@@ -865,6 +877,7 @@
           <li>Document-first intake: scan upload → Claude classifies instrument &amp; report type (manual fallback if uncertain) → extraction → review → finalize</li>
           <li>Instrument list, report history, filtered search</li>
           <li>CSV export</li>
+          <li><em>Shipped ahead of plan:</em> a structured template editor (create/edit/delete a report type's field schema) and an instrument fleet editor (create/edit every field but <code class="mono">instrument_type</code>) — §7/§9 — plus fleet-wide analytics roll-ups and the per-instrument trend chart, both originally described here only as later-phase reporting</li>
         </ul>
       </div>
       <div class="phase-card">
@@ -900,14 +913,14 @@
     <ul>
       <li>The FACSDiscover S8 spectral calibration field list in §5 (<code class="mono">spectral_qc_beads_lot</code>, <code class="mono">reference_controls_acquired</code>, <code class="mono">unmixing_error_percent</code>, <code class="mono">autofluorescence_extraction_verified</code>, <code class="mono">imaging_focus_calibration_passed</code>) is a plausible guess, not a match confirmed against a real S8 CS&amp;T/QC printout — worth checking against actual BD documentation or a sample report before this template is built.</li>
       <li><code class="mono">preventive_maintenance</code> (§5) is now confirmed shared and model-agnostic against two real documents — an LSRFortessa visit and a FACSDiscover S8 visit, neither carrying any model-specific structured field. Only a FACSAria III PM report remains unchecked; if one turns up genuinely sort-specific (a real per-model reason, not the guessed one this template used through v0.11), the shared row would need to split again. (<code class="mono">repair</code> reached full three-model confirmation this round — see §5 — so this is now the only template with a model still unchecked.)</li>
-      <li>Classify (§4) and extract are described as two steps against two schemas, but nothing requires them to be two separate model calls — a single prompt could plausibly do both at once. That's an implementation-time cost/latency tradeoff, not an architectural one, but worth deciding deliberately rather than defaulting to whichever is easiest to build first.</li>
-      <li>The classification confidence threshold is assumed to reuse the same ~0.7 starting point as field-level scoring (§4), but getting the report type wrong is a costlier mistake than one wrong field — it may deserve a stricter threshold of its own rather than inheriting the field-level default.</li>
+      <li><em>Resolved:</em> classify and extract shipped as two separate model calls against two schemas, matching the description in §4 rather than a combined single-prompt approach — <code class="mono">app/services/classification.py</code> and <code class="mono">app/services/extraction.py</code> are distinct modules, each with its own stub/live-Claude switch.</li>
+      <li><em>Resolved:</em> the classification confidence threshold does not reuse the field-level default — <code class="mono">config.py</code> sets <code class="mono">classification_confidence_threshold = 0.85</code> separately from <code class="mono">field_confidence_threshold = 0.7</code>, reflecting that a wrong report-type guess is a costlier mistake than one wrong field.</li>
     </ul>
   </section>
 
   <div class="doc-footer">
     <span>ServiceLedger — Architecture &amp; Design Specification</span>
-    <span>v0.12 draft · 2026-09-16</span>
+    <span>v0.13 draft · 2026-09-22</span>
   </div>
 
 </div>
