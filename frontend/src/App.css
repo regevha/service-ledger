@@ -865,3 +865,95 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Instrument detail ---------- */
+
+.detail-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.detail-nav-row .back-link {
+  margin-bottom: 0;
+}
+
+.instrument-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.instrument-meta {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Distinct from report status pills (.status-draft etc. above) even though
+   they share the same .status-pill base — an instrument's "active" isn't a
+   report status, just the same pill visual language reused for a different
+   kind of state. */
+.instrument-status-active {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.instrument-status-maintenance {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.instrument-status-retired {
+  background: var(--surface-2);
+  color: var(--text-faint);
+}
+
+.instrument-report-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.instrument-report-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1.2fr 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  text-align: left;
+}
+.instrument-report-row-head {
+  background: var(--surface-2);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+}
+.instrument-report-row-body {
+  font-family: var(--font-ui);
+  font-size: 0.86rem;
+  color: var(--text);
+  background: var(--surface);
+  border: none;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  width: 100%;
+}
+.instrument-report-row-body:hover {
+  background: var(--accent-soft);
+}
+
+@media (max-width: 620px) {
+  .instrument-report-row {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 4px;
+  }
+  .instrument-report-row-head {
+    display: none;
+  }
+}
