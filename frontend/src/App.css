@@ -957,3 +957,142 @@ textarea {
     display: none;
   }
 }
+
+/* ---------- Instrument trend chart ---------- */
+
+.trend-section {
+  margin-bottom: 24px;
+}
+.trend-section .section-title-row select {
+  font-size: 0.82rem;
+}
+
+.trend-chart-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+}
+.trend-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+/* The line-chart legend's swatch is a short stroke, not a square — marks
+   mirror a line series with a line key, a bar/area series with a rect
+   (.legend-swatch above). */
+.legend-key {
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.trend-chart-wrap {
+  position: relative;
+}
+.trend-chart-wrap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.trend-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.trend-tick-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--text-faint);
+}
+.trend-end-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text-muted);
+}
+.trend-crosshair {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.trend-tooltip {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  min-width: 140px;
+  transform: translate(-50%, -8px);
+}
+.trend-tooltip-date {
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.trend-tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 1px 0;
+}
+.trend-tooltip-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+.trend-tooltip-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-table-wrap {
+  overflow-x: auto;
+}
+.trend-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.trend-table th,
+.trend-table td {
+  text-align: right;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.trend-table th:first-child,
+.trend-table td:first-child {
+  text-align: left;
+  font-family: var(--font-ui);
+}
+.trend-table th {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.trend-single-point {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+}

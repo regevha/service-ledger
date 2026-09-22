@@ -69,7 +69,10 @@ test('instrument detail page: reached from the reports filter, shows history, an
   await page.click('button:has-text("View instrument details")');
 
   // ---- Instrument header + stats ----
-  await expect(page.locator('.section-title')).toContainText('FACSAria III');
+  // .section-title also now labels the trend chart and the "Report history"
+  // heading below it (InstrumentTrendChart.tsx), so the instrument's own
+  // name — always the page's first .section-title — needs .first() here.
+  await expect(page.locator('.section-title').first()).toContainText('FACSAria III');
   await expect(page.locator('.instrument-meta')).toContainText('FACSAria III');
   await expect(page.locator('.instrument-meta')).toContainText('A47291');
   await expect(page.locator('.status-pill.instrument-status-active')).toContainText('Active');

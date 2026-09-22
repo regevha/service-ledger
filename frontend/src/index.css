@@ -22,6 +22,21 @@
   --font-ui: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
   color-scheme: light dark;
+
+  /* dataviz skill's reference categorical palette, slots 1-5 (of 8) in
+     their validated fixed order — blue/orange/aqua/yellow/magenta. Used by
+     InstrumentTrendChart for a number[detector]/number[laser] field's
+     per-key series (up to 5 lasers on the FACSDiscover S8 spectral
+     template, seed_templates.py's SPECTRAL_CALIBRATION_FIELDS). This order
+     clears every adjacent-pair CVD/contrast gate in both modes for line
+     charts specifically (the skill's palette.md) — never reorder or swap
+     individual slots, and never assign a series its color by rank/value
+     (only by which key it is), or the CVD guarantee no longer holds. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -44,6 +59,14 @@
     --crit: #e0917e;
     --crit-soft: #3b241f;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.5);
+
+    /* Same 5 slots, stepped for the dark surface — the dataviz skill
+       validates this as its own set, not a flip of the light values. */
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
   }
 }
 

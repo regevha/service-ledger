@@ -22,6 +22,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments/{instrument_id}/trend-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Instrument Trend Fields
+         * @description Which fields GET .../trend can actually chart for this instrument —
+         *     derived from the real templates its own finalized reports resolved to,
+         *     not a hardcoded list, so a new template's numeric fields show up here
+         *     automatically and a technically-possible-but-never-used field never
+         *     shows up as a dead end. Backs the instrument detail page's field picker
+         *     (docs/instrument-timeline-demo.html's mockup skipped this entirely — it
+         *     hardcoded one field for one instrument).
+         */
+        get: operations["instrument_trend_fields_instruments__instrument_id__trend_fields_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/instruments/{instrument_id}/trend": {
         parameters: {
             query?: never;
@@ -31,9 +57,12 @@ export interface paths {
         };
         /**
          * Instrument Trend
-         * @description §7/§9: time series for one field, one instrument. Only reports that
-         *     actually have that key in extracted_fields (as a plain number) contribute
-         *     a point — a calibration-only field on a repair-heavy instrument just
+         * @description §7/§9: time series for one field, one instrument — a plain number per
+         *     point for a flat "number" field, or a {key: value} map per point (one
+         *     entry per detector/laser) for a number[detector]/number[laser] field.
+         *     Only reports that actually have that key in extracted_fields, as a real
+         *     number or a dict containing at least one real number, contribute a
+         *     point — a calibration-only field on a repair-heavy instrument just
          *     yields a short series, not an error.
          */
         get: operations["instrument_trend_instruments__instrument_id__trend_get"];
@@ -858,6 +887,50 @@ export interface components {
             /** Fields */
             fields?: components["schemas"]["TemplateFieldIn"][] | null;
         };
+        /**
+         * TrendFieldOut
+         * @description One entry of GET /instruments/{id}/trend-fields: a field this
+         *     instrument's own finalized reports actually have data for, restricted to
+         *     field_schema's three numeric-capable types (`number`,
+         *     `number[detector]`, `number[laser]`) — the same three
+         *     TemplateFieldType members the structured template editor also treats as
+         *     numeric. `type` tells the caller which shape GET .../trend?field=<name>
+         *     returns: a plain float for `number`, a {key: value} map per point for
+         *     the other two (routers/instruments.py::instrument_trend_fields).
+         */
+        TrendFieldOut: {
+            /** Name */
+            name: string;
+            type: components["schemas"]["TemplateFieldType"];
+            /** Unit */
+            unit?: string | null;
+        };
+        /** TrendOut */
+        TrendOut: {
+            /**
+             * Instrument Id
+             * Format: uuid
+             */
+            instrument_id: string;
+            /** Field */
+            field: string;
+            /** Points */
+            points: components["schemas"]["TrendPointOut"][];
+        };
+        /** TrendPointOut */
+        TrendPointOut: {
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /** Report Date */
+            report_date: string | null;
+            /** Value */
+            value: number | {
+                [key: string]: number;
+            };
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -933,6 +1006,37 @@ export interface operations {
             };
         };
     };
+    instrument_trend_fields_instruments__instrument_id__trend_fields_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                instrument_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendFieldOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     instrument_trend_instruments__instrument_id__trend_get: {
         parameters: {
             query: {
@@ -953,7 +1057,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["TrendOut"];
                 };
             };
             /** @description Validation Error */

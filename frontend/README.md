@@ -73,8 +73,11 @@ Analytics tab's fleet-wide roll-ups, the Templates tab's structured field
 editor (create → edit → delete, including the enum-options tag-input and
 the object[] item_schema column builder), the instrument detail page's
 report history and its nav stack (a report opened from an instrument page
-returns to that page, not the top-level list), and the app's error states
-(an unreachable backend, a failed classification call).
+returns to that page, not the top-level list), its trend chart (the field
+picker, a `number[detector]` field's multi-series legend/hover/table, a
+flat `number` field's single series, and the single-report/no-data
+fallbacks), and the app's error states (an unreachable backend, a failed
+classification call).
 
 ### Instrument detail page
 
@@ -89,13 +92,30 @@ backend endpoint needed, since the fleet is small enough (§1: a fixed
 3-instrument list) to already be fully loaded by `App`'s own `useEffect`
 and looked up by id client-side.
 
-Deliberately doesn't chart anything yet: `docs/instrument-timeline-demo.html`
-mocks a per-detector calibration-drift line chart, but that's a
-`number[detector]` field (one value per detector key), and the existing
-`GET /instruments/{id}/trend` endpoint only supports flat single-number
-fields (it explicitly filters out dict values) — charting the mockup's real
-per-detector series means extending that endpoint first, not just wiring up
-what exists. Left for a follow-up.
+### Trend chart
+
+The real, generalized version of `docs/instrument-timeline-demo.html`'s
+hardcoded per-detector calibration-drift mockup — a follow-up to the
+instrument detail page above, once `GET /instruments/{id}/trend` grew
+support for `number[detector]`/`number[laser]` map fields (it originally
+only supported flat single-number fields, explicitly filtering out dict
+values).
+
+`GET /instruments/{id}/trend-fields` (new) drives the field picker — it
+derives the list from the real templates the instrument's own finalized
+reports actually resolved to (via each report's `template.field_schema`),
+so a technically-chartable-but-never-used field never appears as a dead
+end, and a new template's numeric fields show up automatically. Picking a
+field calls the widened `GET .../trend?field=...`, and `InstrumentTrendChart.tsx`
+renders the result as a hand-rolled SVG line chart (no charting library —
+consistent with `AnalyticsScreen.tsx`'s own hand-rolled bars), following the
+dataviz skill's procedure: one series per `number[detector]`/`number[laser]`
+key (or a single series for a flat `number` field) in the app's fixed
+`--series-1..5` categorical order, a legend whenever there are ≥ 2 series, a
+hover crosshair with a one-tooltip-per-date readout, and a table-view
+toggle so every value stays reachable without hovering. A field with fewer
+than two data points falls back to a plain "only one report has recorded
+this so far" message instead of a one-point chart.
 
 ```bash
 npm run test:e2e       # headless run
