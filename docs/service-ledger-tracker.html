@@ -1,5 +1,5 @@
 <title>ServiceLedger Tracker</title>
-<meta name="description" content="Build tracker for the ServiceLedger project — evidence documents, spec revisions, backend, review demos, and the paused frontend build.">
+<meta name="description" content="Build tracker for the ServiceLedger project — evidence documents, spec revisions, backend, review demos, and the frontend.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -119,7 +119,7 @@
   <div class="hero">
     <div>
       <h1>What's left to ship</h1>
-      <p>Tracks the whole build against SL-ARCH-001 — real evidence documents, the spec itself, the backend, the review demos, and the frontend on hold. Check things off as they land.</p>
+      <p>Tracks the whole build against SL-ARCH-001 — real evidence documents, the spec itself, the backend, the review demos, and the frontend. Check things off as they land.</p>
     </div>
     <div class="progress-block">
       <div class="progress-num" id="progressNum">0 <span>/ 0 done</span></div>
@@ -155,8 +155,12 @@
     { id: "sec-backend", title: "Backend — FastAPI + Postgres", items: [
       { id: "be-pipeline", done: true, text: "Document-first pipeline scaffolded", meta: "classify → extract → review → finalize, with passing tests" },
       { id: "be-docs-sync", done: true, text: "seed_templates.py + README kept in sync", meta: "Updated alongside every template revision this round" },
-      { id: "be-live-claude", done: false, text: "Swap stubbed classify()/extract() for live Claude calls", meta: "The two functions the whole pipeline routes through" },
-      { id: "be-worker", done: false, text: "Background worker for async extraction", meta: "Currently runs inline — a deferred Phase 1 gap" }
+      { id: "be-live-claude", done: true, text: "Swap stubbed classify()/extract() for live Claude calls", meta: "Live via ANTHROPIC_API_KEY + USE_LIVE_CLAUDE=true; the stub stays the default so the test suite (and a casual `uvicorn` run) never spends a real call" },
+      { id: "be-worker", done: true, text: "Background worker for async extraction", meta: "app/worker.py — SELECT ... FOR UPDATE SKIP LOCKED, recovers jobs orphaned by a crash (§3); classify/extract now enqueue-and-poll instead of running inline" },
+      { id: "be-analytics", done: true, text: "GET /analytics/fleet", meta: "Fleet-wide roll-ups — parts merged by part_number, labor hours, pass/fail — from already-finalized reports, no new columns" },
+      { id: "be-templates-crud", done: true, text: "Report template CRUD", meta: "GET .../all, POST/PATCH/DELETE .../{id} — backs the Templates tab's structured field editor" },
+      { id: "be-instrument-trend", done: true, text: "Instrument trend endpoints", meta: "GET .../trend-fields (real per-instrument template usage) + a widened GET .../trend (flat number and number[detector]/number[laser] maps)" },
+      { id: "be-instrument-crud", done: true, text: "PATCH /instruments/{id}", meta: "Every field but instrument_type editable — backs the Instruments tab's create/edit UI" }
     ]},
     { id: "sec-demos", title: "Review-screen demos", items: [
       { id: "demo-new-report", done: true, text: "new-report-demo.html" },
@@ -164,10 +168,15 @@
       { id: "demo-repair", done: true, text: "repair-review-demo.html", meta: "Regenerated on the FACSAria III bleach-line case" },
       { id: "demo-pm", done: true, text: "pm-review-demo.html", meta: "New — FACSDiscover S8 visit, showcases calibrated_tools" }
     ]},
-    { id: "sec-frontend", title: "Frontend build", paused: true, items: [
-      { id: "fe-scaffold", done: false, text: "Vite React scaffold → real app code", meta: "Paused at your request — scaffold only, no screens yet" },
-      { id: "fe-screens", done: false, text: "API client, New Report screen, Reports list screen" },
-      { id: "fe-build", done: false, text: "Single-file HTML build + delivery" }
+    { id: "sec-frontend", title: "Frontend — React + Vite", items: [
+      { id: "fe-app", done: true, text: "Real app, not a scaffold", meta: "App.tsx — document-first intake (upload → classify → extract → review → finalize), reports search/filter/CSV export" },
+      { id: "fe-analytics", done: true, text: "Analytics tab", meta: "Fleet-wide roll-ups as stat tiles + hand-rolled bar charts" },
+      { id: "fe-templates", done: true, text: "Templates tab", meta: "Structured field-schema editor — create/edit/delete, enum-options tag input, object[] item_schema column builder" },
+      { id: "fe-instrument-detail", done: true, text: "Instrument detail page", meta: "Metadata, stat tiles, full report history — reached from the Reports filter or a report's own \"View instrument\" link" },
+      { id: "fe-trend-chart", done: true, text: "Instrument trend chart", meta: "The real version of instrument-timeline-demo.html's mockup — per-detector/laser line chart, hover crosshair, legend, table-view fallback" },
+      { id: "fe-instruments-tab", done: true, text: "Instruments tab", meta: "Create/edit UI for the fleet — replaces \"POST /instruments from a script, then edit the DB by hand\"" },
+      { id: "fe-e2e", done: true, text: "Playwright e2e suite", meta: "11 specs, 19 tests, against a real running backend + worker" },
+      { id: "fe-build", done: false, text: "Production build & deployment", meta: "Supersedes the old \"single-file HTML build\" plan — the real app is a client/server pair, not a static export. `npm run build` (tsc -b && vite build) exists; nothing's actually deployed/hosted yet, it's dev-only today (vite dev server + uvicorn)" }
     ]}
   ];
 
