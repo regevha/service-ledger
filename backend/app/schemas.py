@@ -126,6 +126,29 @@ _LEAF_FIELD_TYPES = {
 _OPTIONS_FIELD_TYPES = {TemplateFieldType.enum, TemplateFieldType.enum_list}
 
 
+class ItemSchemaColumn(BaseModel):
+    """One column of an object[] field's row shape. A *list* of these, not a
+    `{name: type}` dict — Postgres's JSONB storage does not preserve object
+    key order (it reorders by key length then lexicographically on its
+    binary encoding), so a template author's chosen column order (e.g.
+    "part_name, part_number, qty") silently scrambled into
+    "qty, part_name, part_number" on every read, in the review screen's
+    object-array table, the template editor, and the PDF export alike. A
+    JSON *array* has no such problem — Postgres round-trips JSONB array
+    element order exactly — so the column list is one instead of a dict's
+    keys."""
+
+    name: str
+    type: TemplateFieldType
+
+
+def _check_no_duplicate_column_names(columns: list[ItemSchemaColumn], field_name: str) -> None:
+    names = [c.name for c in columns]
+    dupes = sorted({n for n in names if names.count(n) > 1})
+    if dupes:
+        raise ValueError(f"Field '{field_name}': duplicate item_schema column name(s): {dupes}")
+
+
 class TemplateFieldIn(BaseModel):
     """One row of the structured editor's field list. `options` and
     `item_schema` are conditionally required/forbidden by `type` — the same
@@ -137,7 +160,7 @@ class TemplateFieldIn(BaseModel):
     unit: str | None = None
     notes: str | None = None
     options: list[str] | None = None
-    item_schema: dict[str, TemplateFieldType] | None = None
+    item_schema: list[ItemSchemaColumn] | None = None
 
     @model_validator(mode="after")
     def _check_shape(self) -> "TemplateFieldIn":
@@ -158,7 +181,8 @@ class TemplateFieldIn(BaseModel):
         if not wants_item_schema and self.item_schema:
             raise ValueError(f"Field '{name}': item_schema is only valid for object[] fields")
         if wants_item_schema and self.item_schema:
-            bad = sorted(t.value for t in self.item_schema.values() if t not in _LEAF_FIELD_TYPES)
+            _check_no_duplicate_column_names(self.item_schema, name)
+            bad = sorted(c.type.value for c in self.item_schema if c.type not in _LEAF_FIELD_TYPES)
             if bad:
                 allowed = sorted(t.value for t in _LEAF_FIELD_TYPES)
                 raise ValueError(f"Field '{name}': item_schema column types must be one of {allowed}, got {bad}")

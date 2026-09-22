@@ -109,8 +109,11 @@ def _stub_value(field: dict, attachment_key: str):
             return [v.strip() for v in notes.split("e.g.", 1)[1].split(",")]
         return []
     if ftype == "object[]":
-        item_schema = field.get("item_schema", {})
-        return [{k: _stub_value({"name": k, "type": v}, attachment_key) for k, v in item_schema.items()}]
+        # A list of {name, type} columns, not a dict — see ItemSchemaColumn's
+        # docstring (schemas.py) for why: Postgres's JSONB storage doesn't
+        # preserve object key order, only array element order.
+        item_schema = field.get("item_schema") or []
+        return [{col["name"]: _stub_value(col, attachment_key) for col in item_schema}]
     return None
 
 
@@ -138,13 +141,16 @@ def _leaf_json_schema(ftype: str, options: list[str] | None = None) -> dict:
 def _field_value_schema(field: dict) -> dict:
     ftype = field["type"]
     if ftype == "object[]":
-        item_schema = field.get("item_schema", {})
+        # See _stub_value above — item_schema is a list of {name, type}
+        # columns, not a dict, so its order survives Postgres's JSONB
+        # storage.
+        item_schema = field.get("item_schema") or []
         return {
             "type": "array",
             "items": {
                 "type": "object",
-                "properties": {k: _leaf_json_schema(v) for k, v in item_schema.items()},
-                "required": list(item_schema.keys()),
+                "properties": {col["name"]: _leaf_json_schema(col["type"]) for col in item_schema},
+                "required": [col["name"] for col in item_schema],
             },
         }
     return _leaf_json_schema(ftype, field.get("options"))

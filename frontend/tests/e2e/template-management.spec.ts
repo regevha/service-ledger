@@ -60,16 +60,34 @@ test('create, edit, and delete a report template through the structured field ed
   const row3 = page.locator('.schema-field-row').nth(2);
   await row3.locator('[aria-label="Field name"]').fill('components_replaced');
   await row3.locator('[aria-label="Field type"]').selectOption('object[]');
-  // A fresh object[] field starts with no columns — add one and leave its
-  // default name/type (column_1 / text) rather than renaming.
+  // Two columns, named so a length-based reorder (Postgres's old JSONB
+  // key-reordering bug — see schemas.py's ItemSchemaColumn docstring) would
+  // visibly flip them: "quantity" (8 chars) would sort after the shorter
+  // "id" under that bug, but item_schema is a list now, so insertion order
+  // should survive a save + reopen unchanged.
   await row3.locator('button:has-text("+ Add column")').click();
-  await expect(row3.locator('.item-schema-row')).toHaveCount(1);
+  await row3.locator('.item-schema-row').nth(0).locator('[aria-label="Column name"]').fill('quantity');
+  await row3.locator('.item-schema-row').nth(0).locator('[aria-label="Column name"]').blur();
+  await row3.locator('button:has-text("+ Add column")').click();
+  await row3.locator('.item-schema-row').nth(1).locator('[aria-label="Column name"]').fill('id');
+  await row3.locator('.item-schema-row').nth(1).locator('[aria-label="Column name"]').blur();
+  await expect(row3.locator('.item-schema-row')).toHaveCount(2);
 
   await page.click('button:has-text("Save changes")');
 
   await expect(page.locator('.section-title').first()).toContainText('Report templates');
   const updatedRow = page.locator('.template-row-body', { hasText: uniqueModel });
   await expect(updatedRow).toContainText('3');
+
+  // ---- Reopen and confirm the column order survived the save (the actual
+  // regression check for the JSONB-ordering fix) ----
+  await updatedRow.locator('button:has-text("Edit")').click();
+  const reopenedRow3 = page.locator('.schema-field-row').nth(2);
+  const columnNames = await reopenedRow3.locator('.item-schema-row [aria-label="Column name"]').evaluateAll(
+    (inputs) => inputs.map((el) => (el as HTMLInputElement).value)
+  );
+  expect(columnNames).toEqual(['quantity', 'id']);
+  await page.click('button:has-text("Cancel")');
 
   // ---- Delete: two-step confirm, cancel first to check it's a no-op ----
   await updatedRow.locator('button:has-text("Delete")').click();

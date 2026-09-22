@@ -13,6 +13,7 @@ import {
   listInstruments,
   listReports,
   pollExtractionJob,
+  reportPdfUrl,
   reportsExportUrl,
   updateReportFields,
   uploadAttachment,
@@ -356,6 +357,7 @@ export default function App() {
                 onSave={() => void handleSaveFields(false)}
                 onFinalize={() => void handleSaveFields(true)}
                 originalScanUrl={attachmentId ? attachmentFileUrl(attachmentId) : undefined}
+                pdfUrl={report ? reportPdfUrl(report.id) : undefined}
               />
             )}
 
@@ -521,6 +523,7 @@ function ReviewScreen({
   onFinalize,
   title,
   originalScanUrl,
+  pdfUrl,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
@@ -541,6 +544,11 @@ function ReviewScreen({
   // Undefined hides the link — covers the brief window during live intake
   // before the attachment finishes uploading.
   originalScanUrl?: string;
+  // §7/§11: a formatted PDF of this exact report, always available once a
+  // template's resolved (GET /reports/{id}/pdf only 409s on that) — unlike
+  // originalScanUrl, this is never undefined-because-still-uploading, since
+  // the review screen itself only renders once `template` exists.
+  pdfUrl?: string;
 }) {
   const flaggedCount = template.field_schema.fields.filter(
     (f) => (fieldConfidences[f.name] ?? 1) < fieldConfidenceThreshold
@@ -558,6 +566,11 @@ function ReviewScreen({
         {originalScanUrl && (
           <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
             View original scan
+          </a>
+        )}
+        {pdfUrl && (
+          <a className="btn small" href={pdfUrl}>
+            Download PDF
           </a>
         )}
       </div>
@@ -920,6 +933,7 @@ function ReportDetailScreen({
           // §4: "one file per report" for MVP, so the first (only) attachment
           // is the original this report's fields came from.
           originalScanUrl={report.attachments[0] ? attachmentFileUrl(report.attachments[0].id) : undefined}
+          pdfUrl={reportPdfUrl(report.id)}
         />
       ) : report ? (
         <div className="empty-hint">

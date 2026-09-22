@@ -123,7 +123,25 @@ def test_object_list_field_rejects_non_leaf_item_schema_column(client):
                 {
                     "name": "parts",
                     "type": "object[]",
-                    "item_schema": {"part_name": "text", "nested": "object[]"},
+                    "item_schema": [{"name": "part_name", "type": "text"}, {"name": "nested", "type": "object[]"}],
+                }
+            ],
+        },
+    )
+    assert resp.status_code == 422
+
+
+def test_object_list_field_rejects_duplicate_item_schema_column_names(client):
+    resp = client.post(
+        "/report-templates",
+        json={
+            "report_type": "repair",
+            "model": "X",
+            "fields": [
+                {
+                    "name": "parts",
+                    "type": "object[]",
+                    "item_schema": [{"name": "part_name", "type": "text"}, {"name": "part_name", "type": "number"}],
                 }
             ],
         },
@@ -141,13 +159,54 @@ def test_object_list_field_with_item_schema_round_trips(client):
                 {
                     "name": "components_replaced",
                     "type": "object[]",
-                    "item_schema": {"part_name": "text", "qty": "number"},
+                    "item_schema": [{"name": "part_name", "type": "text"}, {"name": "qty", "type": "number"}],
                 }
             ],
         },
     )
     assert resp.status_code == 201
-    assert resp.json()["field_schema"]["fields"][0]["item_schema"] == {"part_name": "text", "qty": "number"}
+    assert resp.json()["field_schema"]["fields"][0]["item_schema"] == [
+        {"name": "part_name", "type": "text"},
+        {"name": "qty", "type": "number"},
+    ]
+
+
+def test_object_list_field_item_schema_column_order_survives_a_real_db_round_trip(client):
+    """Regression test for the actual bug this list-shaped item_schema fixes:
+    Postgres's JSONB storage reorders a JSON *object*'s keys (by key length
+    then lexicographically on the binary encoding) but preserves a JSON
+    *array*'s element order exactly. A dict-shaped item_schema (the old
+    representation) would come back as [qty, part_name, part_number] here —
+    shortest key first — regardless of what was sent; a list-shaped one
+    comes back exactly as sent. Five columns, deliberately in an order
+    Postgres's old key-length reordering would have scrambled (a naive
+    alphabetical or length-sorted default would also happen to look right
+    for many field lists, so this uses a column order that's neither, to
+    make sure the fix isn't accidentally passing for the wrong reason)."""
+    columns = [
+        {"name": "z_last_check", "type": "date"},
+        {"name": "a_first_note", "type": "text"},
+        {"name": "qty", "type": "number"},
+        {"name": "mid_length_id", "type": "text"},
+        {"name": "b", "type": "boolean"},
+    ]
+    create_resp = client.post(
+        "/report-templates",
+        json={
+            "report_type": "repair",
+            "model": "OrderCheck-9000",
+            "fields": [{"name": "custom_rows", "type": "object[]", "item_schema": columns}],
+        },
+    )
+    assert create_resp.status_code == 201
+    template_id = create_resp.json()["id"]
+
+    # Read it back through a fresh GET — not just the create response — so
+    # this actually exercises a round trip through Postgres's JSONB storage,
+    # not just Pydantic echoing the request body back.
+    get_resp = client.get(f"/report-templates/{template_id}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["field_schema"]["fields"][0]["item_schema"] == columns
 
 
 def test_create_report_template_conflicts_on_duplicate_type_model(client):

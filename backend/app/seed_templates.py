@@ -71,7 +71,15 @@ REPAIR_FIELDS = [
         "type": "object[]",
         "unit": None,
         "notes": "one entry per part; mirrors the form's \"Parts Used\" table",
-        "item_schema": {"part_name": "text", "part_number": "text", "qty": "number"},
+        # A list of {name, type} columns, not a {name: type} dict — see
+        # ItemSchemaColumn's docstring (schemas.py) for why: this is exactly
+        # the column order the object-array table renders, and a dict's key
+        # order doesn't survive Postgres's JSONB storage.
+        "item_schema": [
+            {"name": "part_name", "type": "text"},
+            {"name": "part_number", "type": "text"},
+            {"name": "qty", "type": "number"},
+        ],
     },
     {"name": "labor_hours", "type": "number", "unit": "hours", "notes": "rounded total from the form's \"Labor\" line"},
     {
@@ -124,19 +132,23 @@ PM_FIELDS = [
         "type": "object[]",
         "unit": None,
         "notes": "one entry per part; mirrors the form's \"Parts Used\" table (PM kits, not fault repairs)",
-        "item_schema": {"part_name": "text", "part_number": "text", "qty": "number"},
+        "item_schema": [
+            {"name": "part_name", "type": "text"},
+            {"name": "part_number", "type": "text"},
+            {"name": "qty", "type": "number"},
+        ],
     },
     {
         "name": "calibrated_tools",
         "type": "object[]",
         "unit": None,
         "notes": "external test equipment used, from the form's \"Calibrated Tools\" table — not present on repair reports",
-        "item_schema": {
-            "tool_id": "text",
-            "tool_name": "text",
-            "last_calibration_date": "date",
-            "next_calibration_date": "date",
-        },
+        "item_schema": [
+            {"name": "tool_id", "type": "text"},
+            {"name": "tool_name", "type": "text"},
+            {"name": "last_calibration_date", "type": "date"},
+            {"name": "next_calibration_date", "type": "date"},
+        ],
     },
     {"name": "labor_hours", "type": "number", "unit": "hours", "notes": "rounded total from the form's \"Labor\" line"},
     {

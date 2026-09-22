@@ -132,16 +132,29 @@ test('editing an object[] field (add/edit/remove rows) persists through Save cor
   const dataRows = field.locator('.object-array-row:not(.object-array-head)');
   await expect(dataRows).toHaveCount(1);
 
-  // ObjectArrayInput renders one input per itemSchema key, in the order
-  // Object.entries(itemSchema) yields — but item_schema round-trips through
-  // Postgres as jsonb, and jsonb does not preserve an object's insertion
-  // order (it re-sorts keys shortest-first, then lexicographically), so the
-  // rendered column order isn't the {part_name, part_number, qty} order
-  // seed_templates.py declares. Reading the actual header row rather than
-  // assuming a fixed index is what makes this robust to that — and it's
-  // exactly the sort of drift a test that only checked "some input" rather
-  // than "the right input" would have missed silently.
-  const headings = await field.locator('.object-array-head span').allTextContents();
+  // ObjectArrayInput renders one input per item_schema column, in
+  // declaration order — item_schema is now a list of {name, type} columns
+  // (schemas.py's ItemSchemaColumn), not a {name: type} dict, specifically
+  // because a dict's key order doesn't survive item_schema's round trip
+  // through Postgres as jsonb (jsonb re-sorts an object's keys
+  // shortest-first, then lexicographically, but preserves a JSON array's
+  // element order exactly). Reading the actual header row rather than
+  // assuming a fixed index is still the more robust way to write this test
+  // regardless — it wouldn't silently start passing for the wrong reason if
+  // a future template ever declared components_replaced's columns in a
+  // different order.
+  // The head row has one trailing empty <span/> after the real column
+  // labels (it sits above the per-row "Remove" button column) — filtered
+  // out here since it's not a column name.
+  const headings = (await field.locator('.object-array-head span').allTextContents())
+    .map((h) => h.trim())
+    .filter(Boolean);
+  // The actual regression check for the JSONB key-reordering bug: with a
+  // list-shaped item_schema, these come back in exactly the order
+  // seed_templates.py declares them (part_name, part_number, qty) rather
+  // than Postgres's old shortest-key-first reordering (qty, part_name,
+  // part_number).
+  expect(headings).toEqual(['part name', 'part number', 'qty']);
   const colIndex = (label: string) => {
     const i = headings.findIndex((h) => h.trim() === label);
     if (i === -1) throw new Error(`column "${label}" not found among ${JSON.stringify(headings)}`);
