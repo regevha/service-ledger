@@ -34,6 +34,7 @@ def search_reports(
     date_from: date | None = None,
     date_to: date | None = None,
     status: models.ReportStatus | None = None,
+    technician: str | None = None,
     db: Session = Depends(get_db),
 ):
     """§7/§9: filtered search — the browse/list view, not a single report's
@@ -41,7 +42,13 @@ def search_reports(
     review flow round-trips against). Returns the denormalized
     ReportListItemOut shape so a list screen can render instrument/report
     type without a lookup per row, the same relationships export_reports
-    already reads."""
+    already reads.
+
+    `technician` is a case-insensitive partial match (ILIKE), not equality
+    like the other filters — unlike instrument/report type/status, which
+    come from a fixed dropdown, `technician_name` is free text a technician
+    typed on intake (§4), so "smith" should find "Jane Smith" without the
+    caller needing the exact stored casing/spelling."""
     query = db.query(models.Report)
     if instrument_id:
         query = query.filter(models.Report.instrument_id == instrument_id)
@@ -53,6 +60,8 @@ def search_reports(
         query = query.filter(models.Report.report_date <= date_to)
     if status:
         query = query.filter(models.Report.status == status)
+    if technician:
+        query = query.filter(models.Report.technician_name.ilike(f"%{technician}%"))
     reports = query.order_by(models.Report.created_at.desc()).all()
     return [
         schemas.ReportListItemOut(
@@ -77,14 +86,16 @@ def export_reports(
     date_from: date | None = None,
     date_to: date | None = None,
     status: models.ReportStatus | None = None,
+    technician: str | None = None,
     db: Session = Depends(get_db),
 ):
     """§7/§9: bulk CSV export of a filtered view — the same filter set as
     search_reports above, so exporting always matches what's on screen in the
-    reports list/search. extracted_fields is flattened to a JSON string
-    column rather than one column per possible field — the whole point of
-    JSONB (§5) is that the field set varies by template, so a fixed CSV
-    schema would defeat it."""
+    reports list/search (technician included, same ILIKE partial match — see
+    that function's docstring). extracted_fields is flattened to a JSON
+    string column rather than one column per possible field — the whole
+    point of JSONB (§5) is that the field set varies by template, so a fixed
+    CSV schema would defeat it."""
     query = db.query(models.Report)
     if instrument_id:
         query = query.filter(models.Report.instrument_id == instrument_id)
@@ -96,6 +107,8 @@ def export_reports(
         query = query.filter(models.Report.report_date <= date_to)
     if status:
         query = query.filter(models.Report.status == status)
+    if technician:
+        query = query.filter(models.Report.technician_name.ilike(f"%{technician}%"))
     reports = query.order_by(models.Report.report_date).all()
 
     buffer = io.StringIO()

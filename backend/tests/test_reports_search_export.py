@@ -97,6 +97,37 @@ def test_search_filters_by_report_type_and_status_and_date_range(client, seeded)
     assert [r["id"] for r in by_instrument] == [str(repair.id)]
 
 
+def test_search_filters_by_technician_case_insensitive_partial_match(client, seeded):
+    """technician is ILIKE, not equality (§7) — a caller typing "tester" or
+    "TESTER" should find "R. Tester" without knowing the exact stored
+    casing/spelling, unlike the fixed-dropdown filters above."""
+    repair = _make_report(
+        seeded,
+        model="LSRFortessa",
+        report_type=ReportType.repair,
+        status=ReportStatus.finalized,
+        report_date=date(2026, 3, 1),
+        technician="R. Tester",
+    )
+    calibration = _make_report(
+        seeded,
+        model="FACSDiscover S8",
+        report_type=ReportType.calibration,
+        status=ReportStatus.in_review,
+        report_date=date(2026, 6, 15),
+        technician="A. Tech",
+    )
+
+    by_partial = client.get("/reports", params={"technician": "tester"}).json()
+    assert [r["id"] for r in by_partial] == [str(repair.id)]
+
+    by_different_case = client.get("/reports", params={"technician": "A. TECH"}).json()
+    assert [r["id"] for r in by_different_case] == [str(calibration.id)]
+
+    by_no_match = client.get("/reports", params={"technician": "nonexistent"}).json()
+    assert by_no_match == []
+
+
 def test_export_csv_applies_the_same_filters_as_search(client, seeded):
     repair = _make_report(
         seeded,
@@ -151,6 +182,12 @@ def test_export_csv_applies_the_same_filters_as_search(client, seeded):
     rows_by_status = list(csv.DictReader(io.StringIO(by_status.text)))
     assert len(rows_by_status) == 1
     assert rows_by_status[0]["status"] == "in_review"
+
+    # Same ILIKE partial/case-insensitive match as search_reports (§7) —
+    # exported rows must always match what the search screen shows.
+    by_technician = client.get("/reports/export", params={"technician": "r. tester"})
+    rows_by_technician = list(csv.DictReader(io.StringIO(by_technician.text)))
+    assert [r["id"] for r in rows_by_technician] == [str(repair.id)]
 
 
 def test_export_csv_extracted_fields_column_is_valid_json(client, seeded):
