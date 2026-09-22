@@ -44,16 +44,11 @@ export interface Instrument {
 
 export type ReportType = components['schemas']['ReportType'];
 
-export type FieldType =
-  | 'text'
-  | 'number'
-  | 'boolean'
-  | 'date'
-  | 'enum'
-  | 'enum[]'
-  | 'object[]'
-  | 'number[detector]'
-  | 'number[laser]';
+// Used to be hand-typed here — the last gap this README section (see
+// "Regenerating API types from the backend") called out — until template
+// management (backend/app/schemas.py's TemplateFieldType) gave it a real
+// backend enum to derive from, same as the five above.
+export type FieldType = components['schemas']['TemplateFieldType'];
 
 export interface TemplateField {
   name: string;
@@ -247,6 +242,65 @@ export function findTemplate(model: string, reportType: ReportType): Promise<Rep
   return apiFetch<ReportTemplate[]>(
     `/report-templates?${new URLSearchParams({ model, report_type: reportType })}`
   ).then((list) => list[0] ?? null);
+}
+
+// ---------- Report template management ----------
+//
+// Structured-editor CRUD (the Templates tab) — mirrors backend/app/schemas.py's
+// TemplateFieldIn/TemplateCreate/TemplateUpdate field for field. Distinct
+// from the plain TemplateField above only in that unit/notes/options/
+// item_schema are all optional here: the editor builds these payloads from
+// scratch as the technician fills in the form, so nothing is guaranteed
+// present the way a template already saved by the backend is.
+export interface TemplateFieldPayload {
+  name: string;
+  type: FieldType;
+  unit?: string | null;
+  notes?: string | null;
+  options?: string[];
+  item_schema?: Record<string, FieldType>;
+}
+
+export interface TemplateCreatePayload {
+  instrument_type?: string;
+  report_type: ReportType;
+  model?: string | null;
+  fields: TemplateFieldPayload[];
+}
+
+// All optional — PATCH /report-templates/{id} uses exclude_unset semantics
+// (see schemas.py's TemplateUpdate), so a key genuinely omitted here (not
+// sent as JSON at all) leaves that column unchanged, while `model: null`
+// explicitly clears it to the any-model fallback. Never omit `model` and
+// expect a clear; call sites must decide and send accordingly.
+export interface TemplateUpdatePayload {
+  report_type?: ReportType;
+  model?: string | null;
+  fields?: TemplateFieldPayload[];
+}
+
+// GET /report-templates/all — every row, unresolved (unlike findTemplate
+// above, which returns resolve_template()'s one-per-report-type pick). The
+// Templates tab's list view needs every variant, including ones no model
+// currently resolves to.
+export function listAllReportTemplates(): Promise<ReportTemplate[]> {
+  return apiFetch('/report-templates/all');
+}
+
+export function getReportTemplate(templateId: string): Promise<ReportTemplate> {
+  return apiFetch(`/report-templates/${templateId}`);
+}
+
+export function createReportTemplate(payload: TemplateCreatePayload): Promise<ReportTemplate> {
+  return apiFetch('/report-templates', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateReportTemplate(templateId: string, payload: TemplateUpdatePayload): Promise<ReportTemplate> {
+  return apiFetch(`/report-templates/${templateId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function deleteReportTemplate(templateId: string): Promise<void> {
+  return apiFetch(`/report-templates/${templateId}`, { method: 'DELETE' });
 }
 
 // ---------- Reports ----------

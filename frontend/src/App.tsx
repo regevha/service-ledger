@@ -28,6 +28,7 @@ import {
 } from './api';
 import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { FieldControl } from './components/FieldEditor';
+import { TemplateManagerScreen } from './components/TemplateManager';
 import { REPORT_TYPE_LABEL } from './labels';
 import './App.css';
 
@@ -74,7 +75,7 @@ export default function App() {
   // machine (upload → classify → review → done), while `view` just switches
   // which top-level screen is showing. Switching to 'reports' and back
   // leaves an in-progress intake exactly where it was.
-  const [view, setView] = useState<'new' | 'reports' | 'analytics'>('new');
+  const [view, setView] = useState<'new' | 'reports' | 'analytics' | 'templates'>('new');
 
   const [phase, setPhase] = useState<Phase>({ name: 'intake' });
 
@@ -270,11 +271,16 @@ export default function App() {
         <button className={`view-tab ${view === 'analytics' ? 'active' : ''}`} onClick={() => setView('analytics')}>
           Analytics
         </button>
+        <button className={`view-tab ${view === 'templates' ? 'active' : ''}`} onClick={() => setView('templates')}>
+          Templates
+        </button>
       </div>
 
       <div className="app-shell">
         {view === 'analytics' ? (
           <AnalyticsScreen />
+        ) : view === 'templates' ? (
+          <TemplateManagerScreen />
         ) : view === 'reports' ? (
           <ReportsListScreen instruments={instruments} fieldConfidenceThreshold={config.field_confidence_threshold} />
         ) : (
