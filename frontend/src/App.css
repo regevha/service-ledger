@@ -779,6 +779,15 @@ textarea {
   justify-self: end;
 }
 
+.instrument-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  text-align: left;
+}
+
 .schema-form-row {
   display: flex;
   gap: 16px;
@@ -857,6 +866,10 @@ textarea {
   }
   .template-row-head {
     display: none;
+  }
+  .instrument-row {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 6px;
   }
   .schema-field-main {
     grid-template-columns: 1fr;

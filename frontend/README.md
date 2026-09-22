@@ -76,21 +76,47 @@ report history and its nav stack (a report opened from an instrument page
 returns to that page, not the top-level list), its trend chart (the field
 picker, a `number[detector]` field's multi-series legend/hover/table, a
 flat `number` field's single series, and the single-report/no-data
-fallbacks), and the app's error states (an unreachable backend, a failed
-classification call).
+fallbacks), the Instruments tab's create → edit cycle (including that a
+save there shows up immediately in the Reports tab's instrument filter, and
+that a duplicate-serial-number conflict surfaces as a real error banner),
+and the app's error states (an unreachable backend, a failed classification
+call).
 
 ### Instrument detail page
 
 Reached from the Reports tab — pick an instrument in the filter row, then
 "View instrument details", or open any report and follow its "View
-instrument: ..." link — rather than a standalone Instruments tab, since
-there's no instrument create/edit UI yet to anchor one (`POST /instruments`
-is still API/seed-script only). Shows the instrument's own metadata, two
-stat tiles (report count / most recent activity), and its full report
-history via the existing `GET /reports?instrument_id=` filter — no new
-backend endpoint needed, since the fleet is small enough (§1: a fixed
-3-instrument list) to already be fully loaded by `App`'s own `useEffect`
-and looked up by id client-side.
+instrument: ..." link. Shows the instrument's own metadata, two stat tiles
+(report count / most recent activity), and its full report history via the
+existing `GET /reports?instrument_id=` filter — no new backend endpoint
+needed, since the fleet is small enough (§1: a fixed 3-instrument list, at
+least until the Instruments tab below lets it grow) to already be fully
+loaded by `App`'s own `useEffect` and looked up by id client-side.
+
+### Instruments tab
+
+`InstrumentManager.tsx` — create/edit for the fleet, replacing "`POST
+/instruments` from a script or curl, then edit the row in the DB by hand for
+anything else" as the only way to add an instrument or fix a typo'd serial
+number, rename, relocate, or retire one. A standalone tab (rather than
+folding create/edit into the instrument detail page above) now that there's
+somewhere to anchor a fleet-wide list, following the same list/create/edit
+`ManagerMode` pattern as the Templates tab.
+
+Unlike `TemplateManagerScreen` (its own independent fetch, since nothing
+else needs the template list), the instrument list is already loaded once
+at the top of `App.tsx` and threaded down to the Reports filter and the
+instrument detail page — so `InstrumentManagerScreen` takes that same
+`instruments` array and a `refresh` callback as props instead of keeping a
+second copy, and a create/edit here is reflected in the Reports filter and
+instrument detail page immediately, not just after a reload.
+
+Every field but `instrument_type` is editable via the backend's new `PATCH
+/instruments/{id}` (fixed to `"facs"` for MVP — models.py's own doc
+comment — and nothing in the UI offers another value to pick yet). A new
+instrument is always created active; status only becomes something to
+change once it already exists, so the create form has no Status field at
+all, only the edit form does.
 
 ### Trend chart
 

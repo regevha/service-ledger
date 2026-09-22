@@ -22,6 +22,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments/{instrument_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Instrument
+         * @description Every field but `instrument_type` is editable — the create/edit UI
+         *     this backs (frontend's new Instruments tab) replaces "edit the DB/seed
+         *     script by hand" as the only way to fix a typo'd serial number, rename an
+         *     instrument, move it to a new bench, or change its status once §5's fixed
+         *     3-instrument fleet stops being fixed in practice.
+         */
+        patch: operations["update_instrument_instruments__instrument_id__patch"];
+        trace?: never;
+    };
     "/instruments/{instrument_id}/trend-fields": {
         parameters: {
             query?: never;
@@ -638,6 +662,27 @@ export interface components {
          */
         InstrumentStatus: "active" | "maintenance" | "retired";
         /**
+         * InstrumentUpdate
+         * @description PATCH /instruments/{id} — every field optional so a caller only sends
+         *     what's changing; `instrument_type` is deliberately not editable here (it's
+         *     a fixed "facs" for MVP per the Instrument model's own doc comment, with
+         *     nothing in the UI to pick another value yet). Which fields the caller
+         *     actually sent is read via `model_fields_set` in the router, the same
+         *     partial-update pattern TemplateUpdate below already uses, so an omitted
+         *     field is left alone rather than overwritten with None.
+         */
+        InstrumentUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Serial Number */
+            serial_number?: string | null;
+            /** Location */
+            location?: string | null;
+            status?: components["schemas"]["InstrumentStatus"] | null;
+        };
+        /**
          * PartUsageOut
          * @description One row of GET /analytics/fleet's parts_replaced (fleet-wide, sorted by
          *     total_qty desc) — aggregated from every finalized report's
@@ -988,6 +1033,41 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_instrument_instruments__instrument_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                instrument_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstrumentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

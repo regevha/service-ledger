@@ -42,6 +42,25 @@ export interface Instrument {
   status: InstrumentStatus;
 }
 
+// instrument_type is deliberately left out here too — schemas.py's
+// InstrumentCreate/InstrumentUpdate don't expose it either (see
+// InstrumentManager.tsx's comment: nothing in the UI picks a value other
+// than the fixed "facs" default yet).
+export interface InstrumentCreatePayload {
+  name: string;
+  model: string;
+  serial_number: string;
+  location?: string | null;
+}
+
+export interface InstrumentUpdatePayload {
+  name?: string;
+  model?: string;
+  serial_number?: string;
+  location?: string | null;
+  status?: InstrumentStatus;
+}
+
 export type ReportType = components['schemas']['ReportType'];
 
 // Used to be hand-typed here — the last gap this README section (see
@@ -228,6 +247,14 @@ export function getAppConfig(): Promise<AppConfig> {
 
 export function listInstruments(): Promise<Instrument[]> {
   return apiFetch('/instruments');
+}
+
+export function createInstrument(payload: InstrumentCreatePayload): Promise<Instrument> {
+  return apiFetch('/instruments', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateInstrument(instrumentId: string, payload: InstrumentUpdatePayload): Promise<Instrument> {
+  return apiFetch(`/instruments/${instrumentId}`, { method: 'PATCH', body: JSON.stringify(payload) });
 }
 
 // ---------- Instrument trend ----------
