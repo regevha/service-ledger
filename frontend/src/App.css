@@ -574,3 +574,167 @@ textarea {
     align-items: flex-start;
   }
 }
+
+/* ---------- Fleet analytics ---------- */
+
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.stat-tile {
+  flex: 1 1 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.stat-label {
+  font-size: 0.76rem;
+  color: var(--text-faint);
+}
+
+.chart-section {
+  margin-bottom: 24px;
+}
+.chart-section:last-child {
+  margin-bottom: 0;
+}
+.chart-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.chart-footnote {
+  margin: 8px 0 0;
+}
+
+.bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.9fr) 2fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.bar-row-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bar-label {
+  font-size: 0.82rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-sublabel {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+.bar-track {
+  height: 10px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+}
+.bar-value {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.legend-swatch.good {
+  background: var(--good);
+}
+.legend-swatch.crit {
+  background: var(--crit);
+}
+.legend-swatch.other {
+  background: var(--border-strong);
+}
+
+.stack-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stack-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.9fr) 2fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.stack-track {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.stack-seg {
+  height: 100%;
+}
+.stack-seg.good {
+  background: var(--good);
+}
+.stack-seg.crit {
+  background: var(--crit);
+}
+.stack-seg.other {
+  background: var(--border-strong);
+}
+
+@media (max-width: 620px) {
+  .bar-row,
+  .stack-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .bar-value {
+    text-align: left;
+  }
+}

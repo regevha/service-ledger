@@ -149,6 +149,39 @@ export interface AppConfig {
   classification_confidence_threshold: number;
 }
 
+// GET /analytics/fleet — mirrors backend/app/schemas.py's FleetAnalyticsOut
+// field for field; see services/analytics.py for how each number is derived.
+export interface PartUsage {
+  part_name: string;
+  part_number: string | null;
+  times_replaced: number;
+  total_qty: number;
+}
+
+export interface InstrumentRollup {
+  instrument_id: string;
+  name: string;
+  model: string;
+  serial_number: string;
+  report_count: number;
+  total_labor_hours: number;
+}
+
+export interface PassFailBreakdown {
+  pass_count: number;
+  fail_count: number;
+  other_count: number;
+  total: number;
+}
+
+export interface FleetAnalytics {
+  parts_replaced: PartUsage[];
+  total_labor_hours: number;
+  labor_hours_by_instrument: InstrumentRollup[];
+  labor_hours_by_fault_category: Record<string, number>;
+  pass_fail_by_report_type: Record<string, PassFailBreakdown>;
+}
+
 // ---------- Fetch plumbing ----------
 
 export class ApiError extends Error {
@@ -200,6 +233,12 @@ export function getAppConfig(): Promise<AppConfig> {
 
 export function listInstruments(): Promise<Instrument[]> {
   return apiFetch('/instruments');
+}
+
+// ---------- Analytics ----------
+
+export function getFleetAnalytics(): Promise<FleetAnalytics> {
+  return apiFetch('/analytics/fleet');
 }
 
 // ---------- Report templates ----------

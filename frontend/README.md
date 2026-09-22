@@ -63,8 +63,10 @@ the generated file.
 have to re-check before every milestone: the confident upload→classify→
 extract→review→finalize happy path, the uncertain-report-type manual-confirm
 detour, the reports search/filter screen (including the empty state and
-editing an already-finalized report), CSV export, and the app's error states
-(an unreachable backend, a failed classification call).
+editing an already-finalized report), CSV export, the FieldEditor's
+array-shaped controls (per-detector number maps, object-array tables), the
+Analytics tab's fleet-wide roll-ups, and the app's error states (an
+unreachable backend, a failed classification call).
 
 ```bash
 npm run test:e2e       # headless run
