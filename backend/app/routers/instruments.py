@@ -17,8 +17,8 @@ _SERIAL_CONFLICT = "An instrument with this serial number already exists"
 # — the only ones GET .../trend-fields offers and GET .../trend can chart.
 # A flat "number" contributes one point per report; the other two contribute
 # a {key: value} map per report (one entry per detector/laser).
-_TREND_MAP_TYPES = {"number[detector]", "number[laser]"}
-_TRENDABLE_TYPES = {"number", *_TREND_MAP_TYPES}
+_TREND_MAP_TYPES = {schemas.TemplateFieldType.number_detector, schemas.TemplateFieldType.number_laser}
+_TRENDABLE_TYPES = {schemas.TemplateFieldType.number, *_TREND_MAP_TYPES}
 
 
 @router.post("/instruments", response_model=schemas.InstrumentOut, status_code=201)

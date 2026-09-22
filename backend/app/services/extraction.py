@@ -28,6 +28,7 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.models import Attachment, ReportTemplate
+from app.schemas import TemplateFieldType
 from app.services.claude_client import (
     SAMPLE_MARKERS as _SAMPLE_MARKERS,
     call_claude_tool,
@@ -69,27 +70,27 @@ line"."""
 
 def _stub_value(field: dict, attachment_key: str):
     name, ftype = field["name"], field["type"]
-    if ftype == "text":
+    if ftype == TemplateFieldType.text:
         return f"[stub] {name.replace('_', ' ')} read from {attachment_key}"
-    if ftype == "boolean":
+    if ftype == TemplateFieldType.boolean:
         return _stable_unit(attachment_key, name) > 0.3
-    if ftype == "date":
+    if ftype == TemplateFieldType.date:
         return date.today().isoformat()
-    if ftype == "number":
+    if ftype == TemplateFieldType.number:
         return round(1 + _stable_unit(attachment_key, name) * 10, 1)
-    if ftype in ("number[detector]", "number[laser]"):
-        axis = "detector" if ftype == "number[detector]" else "laser"
+    if ftype in (TemplateFieldType.number_detector, TemplateFieldType.number_laser):
+        axis = "detector" if ftype == TemplateFieldType.number_detector else "laser"
         return {f"{axis}_{i}": round(1 + _stable_unit(attachment_key, name, str(i)) * 5, 2) for i in range(1, 4)}
-    if ftype == "enum":
+    if ftype == TemplateFieldType.enum:
         options = field.get("options") or ["unspecified"]
         return options[int(_stable_unit(attachment_key, name) * len(options))]
-    if ftype == "enum[]":
+    if ftype == TemplateFieldType.enum_list:
         # e.g. "e.g. 405nm, 488nm, 640nm" -> ["405nm", "488nm", "640nm"]
         notes = field.get("notes") or ""
         if "e.g." in notes:
             return [v.strip() for v in notes.split("e.g.", 1)[1].split(",")]
         return []
-    if ftype == "object[]":
+    if ftype == TemplateFieldType.object_list:
         # A list of {name, type} columns, not a dict — see ItemSchemaColumn's
         # docstring (schemas.py) for why: Postgres's JSONB storage doesn't
         # preserve object key order, only array element order.
@@ -102,17 +103,17 @@ def _stub_value(field: dict, attachment_key: str):
 
 
 def _leaf_json_schema(ftype: str, options: list[str] | None = None) -> dict:
-    if ftype == "text" or ftype == "date":
+    if ftype == TemplateFieldType.text or ftype == TemplateFieldType.date:
         return {"type": "string"}
-    if ftype == "number":
+    if ftype == TemplateFieldType.number:
         return {"type": "number"}
-    if ftype == "boolean":
+    if ftype == TemplateFieldType.boolean:
         return {"type": "boolean"}
-    if ftype == "enum":
+    if ftype == TemplateFieldType.enum:
         return {"type": "string", "enum": options or []}
-    if ftype == "enum[]":
+    if ftype == TemplateFieldType.enum_list:
         return {"type": "array", "items": {"type": "string"}}
-    if ftype in ("number[detector]", "number[laser]"):
+    if ftype in (TemplateFieldType.number_detector, TemplateFieldType.number_laser):
         return {"type": "object", "additionalProperties": {"type": "number"}}
     # Fallback for anything unanticipated — accept any JSON value rather than
     # failing the whole extraction over one odd field type.
@@ -121,7 +122,7 @@ def _leaf_json_schema(ftype: str, options: list[str] | None = None) -> dict:
 
 def _field_value_schema(field: dict) -> dict:
     ftype = field["type"]
-    if ftype == "object[]":
+    if ftype == TemplateFieldType.object_list:
         # See _stub_value above — item_schema is a list of {name, type}
         # columns, not a dict, so its order survives Postgres's JSONB
         # storage.

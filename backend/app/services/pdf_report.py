@@ -29,6 +29,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from app import models
+from app.schemas import TemplateFieldType
 
 _REPORT_TYPE_LABEL = {
     models.ReportType.calibration: "Calibration",
@@ -74,12 +75,12 @@ def _format_value(field: dict, value: object) -> str:
     field_type = field.get("type")
     unit = field.get("unit")
 
-    if field_type == "boolean" and isinstance(value, bool):
+    if field_type == TemplateFieldType.boolean and isinstance(value, bool):
         return "Yes" if value else "No"
-    if field_type == "enum[]":
+    if field_type == TemplateFieldType.enum_list:
         items = value if isinstance(value, list) else []
         return ", ".join(escape(str(v)) for v in items) if items else _EM_DASH
-    if field_type in ("number[detector]", "number[laser]"):
+    if field_type in (TemplateFieldType.number_detector, TemplateFieldType.number_laser):
         entries = value if isinstance(value, dict) else {}
         if not entries:
             return _EM_DASH
@@ -88,9 +89,9 @@ def _format_value(field: dict, value: object) -> str:
 
     if value in (None, ""):
         return _EM_DASH
-    if field_type == "text":
+    if field_type == TemplateFieldType.text:
         return _safe(str(value))
-    if field_type == "number" and isinstance(value, (int, float)) and not isinstance(value, bool):
+    if field_type == TemplateFieldType.number and isinstance(value, (int, float)) and not isinstance(value, bool):
         # int-valued floats (extraction/stub data is JSON, so a whole number
         # still round-trips as e.g. 2.0) print as "2", not "2.0" — %g drops
         # the trailing zero the way a technician would actually write it.
@@ -167,7 +168,7 @@ def render_report_pdf(report: models.Report) -> bytes:
 
             story.append(Paragraph(label, label_style))
 
-            if field.get("type") == "object[]":
+            if field.get("type") == TemplateFieldType.object_list:
                 rows = value if isinstance(value, list) else []
                 # item_schema is a list of {name, type} columns, not a dict —
                 # see ItemSchemaColumn's docstring (schemas.py): a dict's key

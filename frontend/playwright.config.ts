@@ -28,7 +28,9 @@ const PINNED_CHROMIUM = existsSync(SANDBOX_CHROMIUM) ? SANDBOX_CHROMIUM : undefi
 // failing for an unrelated-looking reason.
 export const BACKEND_PORT = 8001;
 const FRONTEND_PORT = 5174;
-const E2E_DATABASE_URL = 'postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger_e2e';
+// Exported for the same reason as BACKEND_PORT above — playwright.live.config.ts
+// imports this instead of redefining its own copy of the literal.
+export const E2E_DATABASE_URL = 'postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger_e2e';
 
 export default defineConfig({
   testDir: './tests/e2e',

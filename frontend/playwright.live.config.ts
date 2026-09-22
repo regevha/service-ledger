@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
-import { BACKEND_PORT } from './playwright.config';
+import { BACKEND_PORT, E2E_DATABASE_URL } from './playwright.config';
 
 // A separate, opt-in config for the one spec in tests/e2e-live/ that exercises
 // the real Claude API end to end through the UI — everything in tests/e2e/
@@ -35,7 +35,6 @@ if (!ANTHROPIC_API_KEY) {
 // launched it, so there's no state to keep separate between the two.
 const LIVE_BACKEND_PORT = BACKEND_PORT;
 const FRONTEND_PORT = 5175; // different from playwright.config.ts's 5174 so the two configs never collide if run back to back without waiting for teardown
-const E2E_DATABASE_URL = 'postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger_e2e';
 
 export default defineConfig({
   testDir: './tests/e2e-live',
