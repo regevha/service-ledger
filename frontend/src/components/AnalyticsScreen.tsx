@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { ApiError, getFleetAnalytics, type FleetAnalytics, type InstrumentRollup, type PartUsage } from '../api';
+import { useState } from 'react';
+import { getFleetAnalytics, type FleetAnalytics, type InstrumentRollup, type PartUsage } from '../api';
+import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
 
 /**
@@ -171,27 +172,14 @@ function PassFailSection({ byReportType }: { byReportType: FleetAnalytics['pass_
 
 export function AnalyticsScreen() {
   const [data, setData] = useState<FleetAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    getFleetAnalytics()
-      .then((result) => {
-        if (!cancelled) setData(result);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof ApiError ? e.message : 'Could not load fleet analytics.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { loading, error } = useAsyncEffect(
+    async (isCancelled) => {
+      const result = await getFleetAnalytics();
+      if (!isCancelled()) setData(result);
+    },
+    [],
+    'Could not load fleet analytics.'
+  );
 
   if (loading) {
     return (

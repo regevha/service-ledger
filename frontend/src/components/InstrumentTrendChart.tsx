@@ -1,12 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ApiError,
-  getInstrumentTrend,
-  getInstrumentTrendFields,
-  type InstrumentTrend,
-  type TrendField,
-  type TrendPoint,
-} from '../api';
+import { useMemo, useRef, useState } from 'react';
+import { getInstrumentTrend, getInstrumentTrendFields, type InstrumentTrend, type TrendField, type TrendPoint } from '../api';
+import { useAsyncEffect } from '../hooks/useAsyncEffect';
 
 /**
  * The instrument detail page's trend chart — the real version of
@@ -312,44 +306,32 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
   const [fields, setFields] = useState<TrendField[] | null>(null);
   const [selectedField, setSelectedField] = useState<string>('');
   const [trend, setTrend] = useState<InstrumentTrend | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    getInstrumentTrendFields(instrumentId)
-      .then((list) => {
-        if (cancelled) return;
-        setFields(list);
-        if (list.length) setSelectedField(list[0].name);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof ApiError ? e.message : 'Could not load chartable fields.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [instrumentId]);
+  // A failure here leaves `fields` at null, which the `fields === null`
+  // check below already renders as "still loading" — so, as before this was
+  // pulled out to useAsyncEffect, this particular error is intentionally
+  // never reached by a banner (the early return happens first) and this
+  // call's own `error`/`loading` are deliberately left unused here.
+  useAsyncEffect(
+    async (isCancelled) => {
+      const list = await getInstrumentTrendFields(instrumentId);
+      if (isCancelled()) return;
+      setFields(list);
+      if (list.length) setSelectedField(list[0].name);
+    },
+    [instrumentId],
+    'Could not load chartable fields.'
+  );
 
-  useEffect(() => {
-    if (!selectedField) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    getInstrumentTrend(instrumentId, selectedField)
-      .then((t) => {
-        if (!cancelled) setTrend(t);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof ApiError ? e.message : 'Could not load this field\'s history.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [instrumentId, selectedField]);
+  const { loading, error } = useAsyncEffect(
+    async (isCancelled) => {
+      if (!selectedField) return;
+      const t = await getInstrumentTrend(instrumentId, selectedField);
+      if (!isCancelled()) setTrend(t);
+    },
+    [instrumentId, selectedField],
+    "Could not load this field's history."
+  );
 
   if (fields === null) {
     return null; // still loading the field list — the page's own history table below carries the loading state
