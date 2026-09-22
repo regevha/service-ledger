@@ -17,39 +17,26 @@ document is easy.
 from __future__ import annotations
 
 import base64
-import hashlib
 import logging
-import time
 from pathlib import Path
 
-import anthropic
-from anthropic import Anthropic
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models import Attachment, Instrument, ReportTemplate, ReportType
 from app.schemas import ClassificationGuess, ClassificationResult
+from app.services.claude_client import (
+    SAMPLE_MARKERS as _SAMPLE_MARKERS,
+    call_claude_tool,
+    extract_tool_use,
+    get_client as _get_client,
+    stable_unit as _stable_unit,
+)
 from app.services.errors import ClassificationError
 from app.services.templates import resolve_template
 
 logger = logging.getLogger("app.services.classification")
 settings = get_settings()
-
-_SAMPLE_MARKERS = ("wo-04587090", "sample", "work_order", "work-order")
-
-_client: Anthropic | None = None
-
-
-def _get_client() -> Anthropic:
-    global _client
-    if _client is None:
-        _client = Anthropic(
-            api_key=settings.anthropic_api_key,
-            timeout=settings.anthropic_timeout_seconds,
-            max_retries=settings.anthropic_max_retries,
-        )
-    return _client
-
 
 _CLASSIFY_TOOL_NAME = "record_classification"
 
@@ -74,13 +61,6 @@ Give confidence scores that reflect real uncertainty. A clean, legible, unambigu
 read deserves something like 0.9-0.98. Anything you had to infer rather than read \
 directly, or where the document is ambiguous between two categories, deserves \
 meaningfully lower — do not default to a high number out of politeness."""
-
-
-def _stable_unit(*parts: str) -> float:
-    """A float in [0, 1), stable for the same inputs — stands in for "model
-    confidence" without needing an actual model call."""
-    digest = hashlib.sha256("|".join(parts).encode()).hexdigest()
-    return int(digest[:8], 16) / 0xFFFFFFFF
 
 
 def _live_classify(db: Session, attachment: Attachment, instruments: list[Instrument]) -> tuple[ClassificationGuess, ClassificationGuess]:
@@ -108,13 +88,9 @@ def _live_classify(db: Session, attachment: Attachment, instruments: list[Instru
         },
     }
 
-    # §-none-yet: there's no APM/request tracing in this project, so this
-    # timer is the only record of how long a live Claude call actually took
-    # — worth having on both the success and failure path (a slow classify
-    # is a real "why is the job stuck" question during a demo).
-    call_started = time.perf_counter()
-    try:
-        response = _get_client().messages.create(
+    response = call_claude_tool(
+        client=_get_client(),
+        request_kwargs=dict(
             model=settings.anthropic_model,
             max_tokens=1024,
             tools=[tool],
@@ -128,52 +104,23 @@ def _live_classify(db: Session, attachment: Attachment, instruments: list[Instru
                     ],
                 }
             ],
-        )
-    except anthropic.AuthenticationError as e:
-        # Not retried by the SDK (a bad key won't fix itself) — worth its own
-        # message since "check ANTHROPIC_API_KEY" is a much faster diagnosis
-        # than the generic APIError message below. Logged here (not just
-        # raised) because the router/worker only ever store str(e) on the
-        # job row — without this, an auth failure was previously invisible
-        # anywhere a human would actually look while debugging live.
-        logger.exception(
-            "Claude API authentication failed classifying attachment %s after %.2fs",
-            attachment.file_path,
-            time.perf_counter() - call_started,
-        )
-        raise ClassificationError(f"Claude API authentication failed — check ANTHROPIC_API_KEY: {e}") from e
-    except anthropic.APIError as e:
-        # Covers everything else the SDK can raise for this call (connection
-        # errors, timeouts, rate limits, 5xx) — already retried internally
-        # up to settings.anthropic_max_retries before landing here, so the
-        # elapsed time here includes all of those retries, not just one shot.
-        logger.exception(
-            "Claude API request failed classifying attachment %s after %.2fs",
-            attachment.file_path,
-            time.perf_counter() - call_started,
-        )
-        raise ClassificationError(f"Claude API request failed during classification: {e}") from e
-
-    usage = getattr(response, "usage", None)
-    logger.info(
-        "Claude classify API call for attachment %s completed in %.2fs (input_tokens=%s, output_tokens=%s)",
-        attachment.file_path,
-        time.perf_counter() - call_started,
-        getattr(usage, "input_tokens", "?"),
-        getattr(usage, "output_tokens", "?"),
+        ),
+        error_cls=ClassificationError,
+        logger=logger,
+        attachment_path=attachment.file_path,
+        verb="classify",
+        gerund="classifying",
+        noun="classification",
     )
 
-    try:
-        tool_use = next(block for block in response.content if block.type == "tool_use")
-    except StopIteration as e:
-        logger.error(
-            "Claude returned no tool_use block classifying attachment %s (got block types: %s)",
-            attachment.file_path,
-            [getattr(block, "type", "?") for block in response.content],
-        )
-        raise ClassificationError(
-            "Claude did not return the expected tool call for classification (no tool_use block in the response)"
-        ) from e
+    tool_use = extract_tool_use(
+        response,
+        error_cls=ClassificationError,
+        logger=logger,
+        attachment_path=attachment.file_path,
+        gerund="classifying",
+        noun="classification",
+    )
 
     data = tool_use.input
     try:

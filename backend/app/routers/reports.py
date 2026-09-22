@@ -17,6 +17,38 @@ from app.services.pdf_report import render_report_pdf
 router = APIRouter(tags=["reports"])
 
 
+def _filtered_reports_query(
+    db: Session,
+    *,
+    instrument_id: uuid.UUID | None,
+    report_type: models.ReportType | None,
+    date_from: date | None,
+    date_to: date | None,
+    status: models.ReportStatus | None,
+    technician: str | None,
+):
+    """The filter chain search_reports and export_reports both apply —
+    pulled out so export_reports' own docstring promise ("exporting always
+    matches what's on screen") is enforced by construction instead of by
+    remembering to edit both call sites identically. `technician` is a
+    case-insensitive partial match (ILIKE), not equality like the other
+    filters — see search_reports' docstring for why."""
+    query = db.query(models.Report)
+    if instrument_id:
+        query = query.filter(models.Report.instrument_id == instrument_id)
+    if report_type:
+        query = query.join(models.ReportTemplate).filter(models.ReportTemplate.report_type == report_type)
+    if date_from:
+        query = query.filter(models.Report.report_date >= date_from)
+    if date_to:
+        query = query.filter(models.Report.report_date <= date_to)
+    if status:
+        query = query.filter(models.Report.status == status)
+    if technician:
+        query = query.filter(models.Report.technician_name.ilike(f"%{technician}%"))
+    return query
+
+
 @router.post("/reports", response_model=schemas.ReportOut, status_code=201)
 def create_report(payload: schemas.ReportCreate, db: Session = Depends(get_db)):
     """§9: start a bare draft — no instrument or template yet. Document-first
@@ -50,19 +82,15 @@ def search_reports(
     come from a fixed dropdown, `technician_name` is free text a technician
     typed on intake (§4), so "smith" should find "Jane Smith" without the
     caller needing the exact stored casing/spelling."""
-    query = db.query(models.Report)
-    if instrument_id:
-        query = query.filter(models.Report.instrument_id == instrument_id)
-    if report_type:
-        query = query.join(models.ReportTemplate).filter(models.ReportTemplate.report_type == report_type)
-    if date_from:
-        query = query.filter(models.Report.report_date >= date_from)
-    if date_to:
-        query = query.filter(models.Report.report_date <= date_to)
-    if status:
-        query = query.filter(models.Report.status == status)
-    if technician:
-        query = query.filter(models.Report.technician_name.ilike(f"%{technician}%"))
+    query = _filtered_reports_query(
+        db,
+        instrument_id=instrument_id,
+        report_type=report_type,
+        date_from=date_from,
+        date_to=date_to,
+        status=status,
+        technician=technician,
+    )
     reports = query.order_by(models.Report.created_at.desc()).all()
     return [
         schemas.ReportListItemOut(
@@ -97,19 +125,15 @@ def export_reports(
     string column rather than one column per possible field — the whole
     point of JSONB (§5) is that the field set varies by template, so a fixed
     CSV schema would defeat it."""
-    query = db.query(models.Report)
-    if instrument_id:
-        query = query.filter(models.Report.instrument_id == instrument_id)
-    if report_type:
-        query = query.join(models.ReportTemplate).filter(models.ReportTemplate.report_type == report_type)
-    if date_from:
-        query = query.filter(models.Report.report_date >= date_from)
-    if date_to:
-        query = query.filter(models.Report.report_date <= date_to)
-    if status:
-        query = query.filter(models.Report.status == status)
-    if technician:
-        query = query.filter(models.Report.technician_name.ilike(f"%{technician}%"))
+    query = _filtered_reports_query(
+        db,
+        instrument_id=instrument_id,
+        report_type=report_type,
+        date_from=date_from,
+        date_to=date_to,
+        status=status,
+        technician=technician,
+    )
     reports = query.order_by(models.Report.report_date).all()
 
     buffer = io.StringIO()
