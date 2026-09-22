@@ -33,6 +33,7 @@ backend/
     seed_instruments.py      The fixed 3-instrument fleet (§1)
     seed_templates.py        The four report_templates rows (§5)
     seed_demo_reports.py     3 real finalized demo reports for the Reports screen — optional, manual only
+    seed_trend_demo.py       5 synthetic calibration reports for the FACSAria III, for the trend chart — optional, manual only
     routers/
       instruments.py         POST/GET/PATCH /instruments (PATCH backs the Instruments tab's create/edit UI —
                               every field but instrument_type is editable), GET /instruments/{id}/trend-fields
@@ -91,6 +92,13 @@ python -m app.seed_templates
 # document to show. NOT auto-run on startup, unlike the two seeds above —
 # see the module docstring for why (it would pollute the test/e2e databases).
 python -m app.seed_demo_reports
+
+# optional — 5 synthetic calibration reports for the FACSAria III, spaced
+# two months apart, so the instrument detail page's trend chart has a real
+# multi-point line (a multi-series number[detector] field plus a flat
+# number field) instead of the single-report fallback. Also NOT auto-run,
+# same reason as seed_demo_reports above.
+python -m app.seed_trend_demo
 
 uvicorn app.main:app --reload
 # → http://127.0.0.1:8000/docs for interactive OpenAPI docs

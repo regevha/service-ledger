@@ -14,12 +14,12 @@ your own dev database instead, same as `seed_instruments`/`seed_templates`:
 
 The three reports below are real `classify()`/`extract()` results from a
 live Claude run (2026-09-18) against three of the six real BD Care EU Work
-Order Service Reports this project validates against (see
-`backend/validate_live.py`) — one per instrument, covering both the repair
-and preventive_maintenance report types not already exercised by the
-original flagship sample (`extraction.py::_SAMPLE_REPAIR_VALUES`). The
-values are hardcoded here rather than re-fetched live so seeding is free,
-deterministic, and doesn't burn an API call or need a key.
+Order Service Reports this project validates against — one per instrument,
+covering both the repair and preventive_maintenance report types not
+already exercised by the original flagship sample
+(`extraction.py::_SAMPLE_REPAIR_VALUES`). The values are hardcoded here
+rather than re-fetched live so seeding is free, deterministic, and doesn't
+burn an API call or need a key.
 
 The original scanned PDFs are never committed (`.gitignore`'s
 `storage/attachments/**` — they're real third-party service records, kept
