@@ -182,3 +182,73 @@ class ExtractionJobOut(BaseModel):
     error_message: str | None = None
     started_at: datetime | None
     completed_at: datetime | None
+
+
+# ---------- Fleet analytics ----------
+
+
+class PartUsageOut(BaseModel):
+    """One row of GET /analytics/fleet's parts_replaced (fleet-wide, sorted by
+    total_qty desc) — aggregated from every finalized report's
+    components_replaced entries (repair and preventive_maintenance both
+    carry that field with the same {part_name, part_number, qty} shape, see
+    seed_templates.py). Keyed by (part_name, part_number) so two different
+    parts that happen to share a name don't get merged."""
+
+    part_name: str
+    part_number: str | None
+    # Number of *reports* whose components_replaced mentioned this part —
+    # distinct from total_qty (units), since one report can replace several
+    # units of the same part in one visit.
+    times_replaced: int
+    total_qty: float
+
+
+class InstrumentRollupOut(BaseModel):
+    """One row of GET /analytics/fleet's labor_hours_by_instrument. Every
+    active instrument appears here, including one with zero qualifying
+    reports — a trouble-free instrument is itself a meaningful data point,
+    not an absence to hide."""
+
+    instrument_id: uuid.UUID
+    name: str
+    model: str
+    serial_number: str
+    # Finalized repair/preventive_maintenance reports with a numeric
+    # labor_hours value — calibration reports never carry labor_hours
+    # (seed_templates.py), so they never contribute here.
+    report_count: int
+    total_labor_hours: float
+
+
+class PassFailBreakdownOut(BaseModel):
+    """retest_result (repair) / verification_result (preventive_maintenance)
+    tallied across every finalized report of that type. other_count covers
+    both the templates' own non-pass/fail option ("not retested"/"not
+    verified") and a report that never got that field filled in at all —
+    both are "not a confirmed pass", so this doesn't silently drop them from
+    the total the way filtering them out would."""
+
+    pass_count: int
+    fail_count: int
+    other_count: int
+    total: int
+
+
+class FleetAnalyticsOut(BaseModel):
+    """GET /analytics/fleet (new): fleet-wide roll-ups computed entirely from
+    fields every finalized report already carries — no new columns, no new
+    tables. See services/analytics.py for exactly how each number is derived."""
+
+    parts_replaced: list[PartUsageOut]
+    total_labor_hours: float
+    labor_hours_by_instrument: list[InstrumentRollupOut]
+    # Keyed by whatever fault_category values actually appear in the data
+    # (repair only — seed_templates.py's REPAIR_FIELDS) rather than a
+    # hardcoded copy of that enum's options, so this can't silently drift
+    # from the real template if its options list ever changes.
+    labor_hours_by_fault_category: dict[str, float]
+    # Keyed by ReportType.value ("repair" / "preventive_maintenance") —
+    # always both, even at zero, so the frontend never has to guess whether
+    # a missing key means zero or means "not implemented yet".
+    pass_fail_by_report_type: dict[str, PassFailBreakdownOut]

@@ -26,7 +26,9 @@ import {
   type ReportTemplate,
   type ReportType,
 } from './api';
+import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { FieldControl } from './components/FieldEditor';
+import { REPORT_TYPE_LABEL } from './labels';
 import './App.css';
 
 // Fallback only, for the brief window before GET /config resolves (or if it
@@ -37,12 +39,6 @@ import './App.css';
 const DEFAULT_APP_CONFIG: AppConfig = {
   field_confidence_threshold: 0.7,
   classification_confidence_threshold: 0.85,
-};
-
-const REPORT_TYPE_LABEL: Record<ReportType, string> = {
-  calibration: 'Calibration',
-  repair: 'Malfunction / repair',
-  preventive_maintenance: 'Preventive maintenance',
 };
 
 const STATUS_LABEL: Record<ReportStatus, string> = {
@@ -78,7 +74,7 @@ export default function App() {
   // machine (upload → classify → review → done), while `view` just switches
   // which top-level screen is showing. Switching to 'reports' and back
   // leaves an in-progress intake exactly where it was.
-  const [view, setView] = useState<'new' | 'reports'>('new');
+  const [view, setView] = useState<'new' | 'reports' | 'analytics'>('new');
 
   const [phase, setPhase] = useState<Phase>({ name: 'intake' });
 
@@ -271,10 +267,15 @@ export default function App() {
         <button className={`view-tab ${view === 'reports' ? 'active' : ''}`} onClick={() => setView('reports')}>
           Reports
         </button>
+        <button className={`view-tab ${view === 'analytics' ? 'active' : ''}`} onClick={() => setView('analytics')}>
+          Analytics
+        </button>
       </div>
 
       <div className="app-shell">
-        {view === 'reports' ? (
+        {view === 'analytics' ? (
+          <AnalyticsScreen />
+        ) : view === 'reports' ? (
           <ReportsListScreen instruments={instruments} fieldConfidenceThreshold={config.field_confidence_threshold} />
         ) : (
           <>
