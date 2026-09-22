@@ -1,4 +1,4 @@
-import type { TemplateField } from '../api';
+import type { ItemSchemaColumn, TemplateField } from '../api';
 
 /**
  * Renders one editable control per template field type (SL-ARCH-001 §5's
@@ -76,11 +76,14 @@ function ObjectArrayInput({
   onChange,
 }: {
   value: Record<string, unknown>[];
-  itemSchema: Record<string, string>;
+  // A list, not a dict — see ItemSchemaColumn (api.ts) for why: this is
+  // exactly the column order rendered below, and Postgres's JSONB storage
+  // only preserves a JSON array's element order, not an object's key order.
+  itemSchema: ItemSchemaColumn[];
   onChange: (v: Record<string, unknown>[]) => void;
 }) {
   const rows = Array.isArray(value) ? value : [];
-  const columns = Object.entries(itemSchema);
+  const columns = Array.isArray(itemSchema) ? itemSchema : [];
 
   function updateRow(i: number, key: string, v: unknown) {
     const next = rows.map((row, j) => (i === j ? { ...row, [key]: v } : row));
@@ -90,7 +93,7 @@ function ObjectArrayInput({
     onChange(rows.filter((_, j) => j !== i));
   }
   function addRow() {
-    const blank = Object.fromEntries(columns.map(([key]) => [key, '']));
+    const blank = Object.fromEntries(columns.map((c) => [c.name, '']));
     onChange([...rows, blank]);
   }
 
@@ -110,15 +113,15 @@ function ObjectArrayInput({
       {rows.length > 0 && (
         <div className="object-array-table">
           <div className="object-array-row object-array-head" style={rowGridStyle}>
-            {columns.map(([key]) => (
-              <span key={key}>{key.replace(/_/g, ' ')}</span>
+            {columns.map((c) => (
+              <span key={c.name}>{c.name.replace(/_/g, ' ')}</span>
             ))}
             <span />
           </div>
           {rows.map((row, i) => (
             <div className="object-array-row" key={i} style={rowGridStyle}>
-              {columns.map(([key, type]) => (
-                <span key={key}>{leafInput(row[key], type as LeafType, (v) => updateRow(i, key, v))}</span>
+              {columns.map((c) => (
+                <span key={c.name}>{leafInput(row[c.name], c.type as LeafType, (v) => updateRow(i, c.name, v))}</span>
               ))}
               <button type="button" className="row-remove" onClick={() => removeRow(i)} aria-label="Remove row">
                 Remove
@@ -203,7 +206,7 @@ export function FieldControl({
       return (
         <ObjectArrayInput
           value={(value as Record<string, unknown>[]) ?? []}
-          itemSchema={field.item_schema ?? {}}
+          itemSchema={field.item_schema ?? []}
           onChange={onChange}
         />
       );

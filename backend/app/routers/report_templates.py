@@ -63,7 +63,11 @@ def _field_to_dict(field: schemas.TemplateFieldIn) -> dict:
     if field.options is not None:
         out["options"] = field.options
     if field.item_schema is not None:
-        out["item_schema"] = {key: value.value for key, value in field.item_schema.items()}
+        # A list, not a dict — see ItemSchemaColumn's docstring (schemas.py):
+        # Postgres's JSONB storage doesn't preserve object key order, but it
+        # does preserve JSON array element order, so the column order a
+        # template author chose survives the round trip through the DB.
+        out["item_schema"] = [{"name": col.name, "type": col.type.value} for col in field.item_schema]
     return out
 
 

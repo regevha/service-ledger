@@ -69,13 +69,24 @@ export type ReportType = components['schemas']['ReportType'];
 // backend enum to derive from, same as the five above.
 export type FieldType = components['schemas']['TemplateFieldType'];
 
+// A list of {name, type} columns, not a {name: type} dict — Postgres's
+// JSONB storage doesn't preserve an object's key order (it reorders by key
+// length then lexicographically on the binary encoding), only a JSON
+// array's element order, so a template author's chosen column order (e.g.
+// "part_name, part_number, qty") would otherwise come back scrambled on
+// every read. See backend/app/schemas.py's ItemSchemaColumn docstring.
+export interface ItemSchemaColumn {
+  name: string;
+  type: FieldType;
+}
+
 export interface TemplateField {
   name: string;
   type: FieldType;
   unit: string | null;
   notes: string | null;
   options?: string[];
-  item_schema?: Record<string, string>;
+  item_schema?: ItemSchemaColumn[];
 }
 
 export interface ReportTemplate {
@@ -318,7 +329,7 @@ export interface TemplateFieldPayload {
   unit?: string | null;
   notes?: string | null;
   options?: string[];
-  item_schema?: Record<string, FieldType>;
+  item_schema?: ItemSchemaColumn[];
 }
 
 export interface TemplateCreatePayload {
@@ -421,6 +432,14 @@ export function updateReportFields(
 
 export function finalizeReport(reportId: string): Promise<Report> {
   return apiFetch(`/reports/${reportId}/finalize`, { method: 'POST' });
+}
+
+// Not routed through apiFetch — same reasoning as reportsExportUrl/
+// attachmentFileUrl above: GET /reports/{id}/pdf sets Content-Disposition:
+// attachment, so a plain link href downloads the PDF without any JS/blob
+// plumbing here.
+export function reportPdfUrl(reportId: string): string {
+  return `${API_BASE}/reports/${reportId}/pdf`;
 }
 
 // ---------- Attachments / extraction ----------

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.db import get_db
+from app.services.pdf_report import render_report_pdf
 
 router = APIRouter(tags=["reports"])
 
@@ -163,6 +164,34 @@ def get_report(report_id: uuid.UUID, db: Session = Depends(get_db)):
     if not report:
         raise HTTPException(404, "Report not found")
     return report
+
+
+@router.get("/reports/{report_id}/pdf")
+def get_report_pdf(report_id: uuid.UUID, db: Session = Depends(get_db)):
+    """§7/§11: a formatted single-report PDF for sharing outside the system —
+    the "PDF report generation" line in the Phase 2 roadmap, shipped early
+    the same way the structured template/instrument editors were (§7's own
+    "shipped ahead of plan" note). Mirrors the review screen's field_schema
+    walk (see services/pdf_report.py's docstring) rather than a separate
+    layout, so the PDF never shows something the technician didn't actually
+    see and finalize on screen.
+
+    Requires a resolved template — same 409 precondition extract_attachment
+    already enforces, since there's no field_schema to render otherwise."""
+    report = db.get(models.Report, report_id)
+    if not report:
+        raise HTTPException(404, "Report not found")
+    if not report.template_id:
+        raise HTTPException(
+            409, "Report has no resolved instrument/template yet — classify the attachment and confirm a template first (§4)."
+        )
+
+    pdf_bytes = render_report_pdf(report)
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=report_{report_id}.pdf"},
+    )
 
 
 @router.patch("/reports/{report_id}/template", response_model=schemas.ReportOut)

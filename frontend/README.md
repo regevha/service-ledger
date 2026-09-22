@@ -68,7 +68,8 @@ have to re-check before every milestone: the confident upload→classify→
 extract→review→finalize happy path, the uncertain-report-type manual-confirm
 detour, the reports search/filter screen (including the empty state, the
 debounced technician free-text filter's case-insensitive partial match, and
-editing an already-finalized report), CSV export, the FieldEditor's
+editing an already-finalized report), CSV export, the per-report PDF
+download (present once a template's resolved, absent otherwise), the FieldEditor's
 array-shaped controls (per-detector number maps, object-array tables), the
 Analytics tab's fleet-wide roll-ups, the Templates tab's structured field
 editor (create → edit → delete, including the enum-options tag-input and

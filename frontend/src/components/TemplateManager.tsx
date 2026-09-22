@@ -6,6 +6,7 @@ import {
   listAllReportTemplates,
   updateReportTemplate,
   type FieldType,
+  type ItemSchemaColumn,
   type ReportTemplate,
   type ReportType,
   type TemplateField,
@@ -50,61 +51,66 @@ const LEAF_TYPE_OPTIONS: { value: FieldType; label: string }[] = [
 function defaultFieldFor(type: FieldType): TemplateField {
   const base: TemplateField = { name: '', type, unit: null, notes: null };
   if (type === 'enum' || type === 'enum[]') return { ...base, options: [] };
-  if (type === 'object[]') return { ...base, item_schema: {} };
+  if (type === 'object[]') return { ...base, item_schema: [] };
   return base;
 }
 
+// A list of {name, type} columns, not a {name: type} dict — see
+// ItemSchemaColumn (api.ts) for why: a dict's key order doesn't survive
+// Postgres's JSONB storage, only a JSON array's element order does, and this
+// editor is exactly what determines that order in the first place. Columns
+// are still addressed by name (not index) for rename/type-change/remove, the
+// same identity the old dict-keyed version used — the backend now also
+// rejects duplicate column names outright (schemas.py), which the old dict
+// shape could silently merge into data loss on a rename collision.
 function ItemSchemaEditor({
   itemSchema,
   onChange,
 }: {
-  itemSchema: Record<string, string>;
-  onChange: (v: Record<string, string>) => void;
+  itemSchema: ItemSchemaColumn[];
+  onChange: (v: ItemSchemaColumn[]) => void;
 }) {
-  const columns = Object.entries(itemSchema);
+  const columns = itemSchema;
 
-  function renameColumn(oldKey: string, newKey: string) {
-    const trimmed = newKey.trim();
-    if (!trimmed || trimmed === oldKey) return;
-    const next: Record<string, string> = {};
-    for (const [key, value] of columns) next[key === oldKey ? trimmed : key] = value;
-    onChange(next);
+  function renameColumn(name: string, newName: string) {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === name) return;
+    onChange(columns.map((c) => (c.name === name ? { ...c, name: trimmed } : c)));
   }
-  function setColumnType(key: string, type: string) {
-    onChange({ ...itemSchema, [key]: type });
+  function setColumnType(name: string, type: FieldType) {
+    onChange(columns.map((c) => (c.name === name ? { ...c, type } : c)));
   }
-  function removeColumn(key: string) {
-    const next = { ...itemSchema };
-    delete next[key];
-    onChange(next);
+  function removeColumn(name: string) {
+    onChange(columns.filter((c) => c.name !== name));
   }
   function addColumn() {
+    const existingNames = new Set(columns.map((c) => c.name));
     let n = 1;
-    while (`column_${n}` in itemSchema) n += 1;
-    onChange({ ...itemSchema, [`column_${n}`]: 'text' });
+    while (existingNames.has(`column_${n}`)) n += 1;
+    onChange([...columns, { name: `column_${n}`, type: 'text' }]);
   }
 
   return (
     <div className="schema-field-extra">
       <span className="schema-field-extra-label">Table columns</span>
       {columns.length === 0 && <div className="empty-hint">No columns yet.</div>}
-      {columns.map(([key, type]) => (
-        <div className="item-schema-row" key={key}>
+      {columns.map((c) => (
+        <div className="item-schema-row" key={c.name}>
           <input
             type="text"
             className="text-input"
-            defaultValue={key}
+            defaultValue={c.name}
             aria-label="Column name"
-            onBlur={(e) => renameColumn(key, e.target.value)}
+            onBlur={(e) => renameColumn(c.name, e.target.value)}
           />
-          <select value={type} onChange={(e) => setColumnType(key, e.target.value)} aria-label="Column type">
+          <select value={c.type} onChange={(e) => setColumnType(c.name, e.target.value as FieldType)} aria-label="Column type">
             {LEAF_TYPE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
           </select>
-          <button type="button" className="row-remove" onClick={() => removeColumn(key)}>
+          <button type="button" className="row-remove" onClick={() => removeColumn(c.name)}>
             Remove
           </button>
         </div>
@@ -205,7 +211,7 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
           )}
 
           {field.type === 'object[]' && (
-            <ItemSchemaEditor itemSchema={field.item_schema ?? {}} onChange={(item_schema) => updateField(i, { item_schema })} />
+            <ItemSchemaEditor itemSchema={field.item_schema ?? []} onChange={(item_schema) => updateField(i, { item_schema })} />
           )}
         </div>
       ))}
@@ -223,7 +229,7 @@ function fieldToPayload(field: TemplateField): TemplateFieldPayload {
     unit: field.unit || null,
     notes: field.notes || null,
     ...(field.options ? { options: field.options } : {}),
-    ...(field.item_schema ? { item_schema: field.item_schema as Record<string, FieldType> } : {}),
+    ...(field.item_schema ? { item_schema: field.item_schema } : {}),
   };
 }
 

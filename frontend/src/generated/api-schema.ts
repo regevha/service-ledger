@@ -176,6 +176,12 @@ export interface paths {
          *     ReportListItemOut shape so a list screen can render instrument/report
          *     type without a lookup per row, the same relationships export_reports
          *     already reads.
+         *
+         *     `technician` is a case-insensitive partial match (ILIKE), not equality
+         *     like the other filters — unlike instrument/report type/status, which
+         *     come from a fixed dropdown, `technician_name` is free text a technician
+         *     typed on intake (§4), so "smith" should find "Jane Smith" without the
+         *     caller needing the exact stored casing/spelling.
          */
         get: operations["search_reports_reports_get"];
         put?: never;
@@ -202,10 +208,11 @@ export interface paths {
          * Export Reports
          * @description §7/§9: bulk CSV export of a filtered view — the same filter set as
          *     search_reports above, so exporting always matches what's on screen in the
-         *     reports list/search. extracted_fields is flattened to a JSON string
-         *     column rather than one column per possible field — the whole point of
-         *     JSONB (§5) is that the field set varies by template, so a fixed CSV
-         *     schema would defeat it.
+         *     reports list/search (technician included, same ILIKE partial match — see
+         *     that function's docstring). extracted_fields is flattened to a JSON
+         *     string column rather than one column per possible field — the whole
+         *     point of JSONB (§5) is that the field set varies by template, so a fixed
+         *     CSV schema would defeat it.
          */
         get: operations["export_reports_reports_export_get"];
         put?: never;
@@ -225,6 +232,35 @@ export interface paths {
         };
         /** Get Report */
         get: operations["get_report_reports__report_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/{report_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Report Pdf
+         * @description §7/§11: a formatted single-report PDF for sharing outside the system —
+         *     the "PDF report generation" line in the Phase 2 roadmap, shipped early
+         *     the same way the structured template/instrument editors were (§7's own
+         *     "shipped ahead of plan" note). Mirrors the review screen's field_schema
+         *     walk (see services/pdf_report.py's docstring) rather than a separate
+         *     layout, so the PDF never shows something the technician didn't actually
+         *     see and finalize on screen.
+         *
+         *     Requires a resolved template — same 409 precondition extract_attachment
+         *     already enforces, since there's no field_schema to render otherwise.
+         */
+        get: operations["get_report_pdf_reports__report_id__pdf_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -683,6 +719,24 @@ export interface components {
             status?: components["schemas"]["InstrumentStatus"] | null;
         };
         /**
+         * ItemSchemaColumn
+         * @description One column of an object[] field's row shape. A *list* of these, not a
+         *     `{name: type}` dict — Postgres's JSONB storage does not preserve object
+         *     key order (it reorders by key length then lexicographically on its
+         *     binary encoding), so a template author's chosen column order (e.g.
+         *     "part_name, part_number, qty") silently scrambled into
+         *     "qty, part_name, part_number" on every read, in the review screen's
+         *     object-array table, the template editor, and the PDF export alike. A
+         *     JSON *array* has no such problem — Postgres round-trips JSONB array
+         *     element order exactly — so the column list is one instead of a dict's
+         *     keys.
+         */
+        ItemSchemaColumn: {
+            /** Name */
+            name: string;
+            type: components["schemas"]["TemplateFieldType"];
+        };
+        /**
          * PartUsageOut
          * @description One row of GET /analytics/fleet's parts_replaced (fleet-wide, sorted by
          *     total_qty desc) — aggregated from every finalized report's
@@ -899,9 +953,7 @@ export interface components {
             /** Options */
             options?: string[] | null;
             /** Item Schema */
-            item_schema?: {
-                [key: string]: components["schemas"]["TemplateFieldType"];
-            } | null;
+            item_schema?: components["schemas"]["ItemSchemaColumn"][] | null;
         };
         /**
          * TemplateFieldType
@@ -1342,6 +1394,7 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 status?: components["schemas"]["ReportStatus"] | null;
+                technician?: string | null;
             };
             header?: never;
             path?: never;
@@ -1410,6 +1463,7 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 status?: components["schemas"]["ReportStatus"] | null;
+                technician?: string | null;
             };
             header?: never;
             path?: never;
@@ -1455,6 +1509,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_pdf_reports__report_id__pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
