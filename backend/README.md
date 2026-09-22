@@ -60,7 +60,7 @@ frontend/
   src/api.ts                   Fetch wrappers for every route above
   src/components/AnalyticsScreen.tsx  The Analytics tab — renders GET /analytics/fleet as stat tiles + bar charts
   src/components/TemplateManager.tsx  The Templates tab — structured field-schema editor + template list/CRUD
-  tests/e2e/                   8 Playwright specs (12 tests) against a running backend
+  tests/e2e/                   9 Playwright specs (14 tests) against a running backend
 ```
 
 ## Running it
@@ -105,7 +105,7 @@ Run the tests (against a separate `service_ledger_test` database — see
 pytest
 ```
 
-The frontend has its own suite — 8 Playwright specs, 12 tests, against a
+The frontend has its own suite — 9 Playwright specs, 14 tests, against a
 running backend — run from `frontend/` (see its `package.json`).
 
 ## The document-first flow, live

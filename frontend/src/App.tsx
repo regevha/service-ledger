@@ -29,7 +29,7 @@ import {
 import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { FieldControl } from './components/FieldEditor';
 import { TemplateManagerScreen } from './components/TemplateManager';
-import { REPORT_TYPE_LABEL } from './labels';
+import { INSTRUMENT_STATUS_LABEL, REPORT_TYPE_LABEL } from './labels';
 import './App.css';
 
 // Fallback only, for the brief window before GET /config resolves (or if it
@@ -572,6 +572,15 @@ function ReviewScreen({
   );
 }
 
+// The reports list, one report's detail, and one instrument's detail are
+// three screens sharing this one tab — a small nav stack (rather than three
+// independent booleans) so "back" from a report opened via the instrument
+// page returns to that instrument page, not all the way out to the list.
+type ReportsScreen =
+  | { kind: 'list' }
+  | { kind: 'instrument'; instrumentId: string }
+  | { kind: 'report'; item: ReportListItem; returnTo: { kind: 'list' } | { kind: 'instrument'; instrumentId: string } };
+
 function ReportsListScreen({
   instruments,
   fieldConfidenceThreshold,
@@ -583,7 +592,7 @@ function ReportsListScreen({
   const [items, setItems] = useState<ReportListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState<ReportListItem | null>(null);
+  const [screen, setScreen] = useState<ReportsScreen>({ kind: 'list' });
 
   useEffect(() => {
     let cancelled = false;
@@ -604,12 +613,26 @@ function ReportsListScreen({
     };
   }, [filters]);
 
-  if (selectedItem) {
+  if (screen.kind === 'report') {
     return (
       <ReportDetailScreen
-        item={selectedItem}
-        onBack={() => setSelectedItem(null)}
+        item={screen.item}
+        instruments={instruments}
+        onBack={() => setScreen(screen.returnTo)}
+        onViewInstrument={(instrumentId) => setScreen({ kind: 'instrument', instrumentId })}
         fieldConfidenceThreshold={fieldConfidenceThreshold}
+      />
+    );
+  }
+
+  if (screen.kind === 'instrument') {
+    const instrumentId = screen.instrumentId;
+    return (
+      <InstrumentDetailScreen
+        instrumentId={instrumentId}
+        instruments={instruments}
+        onBack={() => setScreen({ kind: 'list' })}
+        onOpenReport={(item) => setScreen({ kind: 'report', item, returnTo: { kind: 'instrument', instrumentId } })}
       />
     );
   }
@@ -673,6 +696,15 @@ function ReportsListScreen({
           onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value || undefined }))}
         />
 
+        {filters.instrument_id && (
+          <button
+            className="btn small"
+            onClick={() => setScreen({ kind: 'instrument', instrumentId: filters.instrument_id! })}
+          >
+            View instrument details →
+          </button>
+        )}
+
         {hasFilters && (
           <button className="btn small" onClick={() => setFilters({})}>
             Clear filters
@@ -708,7 +740,11 @@ function ReportsListScreen({
               <span>Status</span>
             </div>
             {items.map((r) => (
-              <button className="report-row report-row-body" key={r.id} onClick={() => setSelectedItem(r)}>
+              <button
+                className="report-row report-row-body"
+                key={r.id}
+                onClick={() => setScreen({ kind: 'report', item: r, returnTo: { kind: 'list' } })}
+              >
                 <span>
                   {r.instrument_model ?? '—'}
                   {r.instrument_serial_number ? ` (${r.instrument_serial_number})` : ''}
@@ -728,11 +764,15 @@ function ReportsListScreen({
 
 function ReportDetailScreen({
   item,
+  instruments,
   onBack,
+  onViewInstrument,
   fieldConfidenceThreshold,
 }: {
   item: ReportListItem;
+  instruments: Instrument[];
   onBack: () => void;
+  onViewInstrument: (instrumentId: string) => void;
   fieldConfidenceThreshold: number;
 }) {
   const [loading, setLoading] = useState(true);
@@ -785,11 +825,23 @@ function ReportDetailScreen({
     }
   }
 
+  // report.instrument_id (raw ReportOut, §9) rather than item's own
+  // instrument_model/instrument_serial_number — those are already resolved
+  // display strings (§7), not the id this screen needs to navigate with.
+  const instrument = report?.instrument_id ? instruments.find((i) => i.id === report.instrument_id) : undefined;
+
   return (
     <div className="section">
-      <button className="btn small back-link" onClick={onBack}>
-        ← Back to reports
-      </button>
+      <div className="detail-nav-row">
+        <button className="btn small back-link" onClick={onBack}>
+          ← Back to reports
+        </button>
+        {instrument && (
+          <button className="btn small" onClick={() => onViewInstrument(instrument.id)}>
+            View instrument: {instrument.model} ({instrument.serial_number}) →
+          </button>
+        )}
+      </div>
 
       {error && <div className="banner banner-warn">{error}</div>}
 
@@ -820,6 +872,125 @@ function ReportDetailScreen({
           can't be shown here.
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function InstrumentDetailScreen({
+  instrumentId,
+  instruments,
+  onBack,
+  onOpenReport,
+}: {
+  instrumentId: string;
+  instruments: Instrument[];
+  onBack: () => void;
+  onOpenReport: (item: ReportListItem) => void;
+}) {
+  // The fleet is small and already fully loaded by App's own useEffect
+  // (§1: a fixed instrument list) — no need for a GET /instruments/{id}
+  // endpoint just to look one row up.
+  const instrument = instruments.find((i) => i.id === instrumentId);
+
+  const [items, setItems] = useState<ReportListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listReports({ instrument_id: instrumentId })
+      .then((list) => {
+        if (!cancelled) setItems(list);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof ApiError ? e.message : "Could not load this instrument's reports.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [instrumentId]);
+
+  // search_reports (GET /reports, §7) orders by created_at desc, so items[0]
+  // is the most recently touched report regardless of status — a draft
+  // someone just started is still "recent activity" worth surfacing here,
+  // not just the most recently finalized one.
+  const mostRecent = items[0];
+  const finalizedCount = items.filter((r) => r.status === 'finalized').length;
+
+  return (
+    <div className="section">
+      <button className="btn small back-link" onClick={onBack}>
+        ← Back to reports
+      </button>
+
+      {error && <div className="banner banner-warn">{error}</div>}
+
+      {!instrument ? (
+        <div className="empty-hint">This instrument could not be found.</div>
+      ) : (
+        <>
+          <div className="instrument-header">
+            <div>
+              <div className="section-title">{instrument.name}</div>
+              <div className="instrument-meta">
+                {instrument.model} · S/N {instrument.serial_number}
+                {instrument.location ? ` · ${instrument.location}` : ''}
+              </div>
+            </div>
+            <span className={`status-pill instrument-status-${instrument.status}`}>
+              {INSTRUMENT_STATUS_LABEL[instrument.status]}
+            </span>
+          </div>
+
+          <div className="stat-row">
+            <div className="stat-tile">
+              <span className="stat-value">{items.length}</span>
+              <span className="stat-label">Reports on file ({finalizedCount} finalized)</span>
+            </div>
+            <div className="stat-tile">
+              <span className="stat-value">
+                {mostRecent ? mostRecent.report_date ?? mostRecent.created_at.slice(0, 10) : '—'}
+              </span>
+              <span className="stat-label">
+                {mostRecent
+                  ? `Most recent activity — ${mostRecent.report_type ? REPORT_TYPE_LABEL[mostRecent.report_type] : 'report'}`
+                  : 'No reports on file yet'}
+              </span>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="working-panel">
+              <div className="spinner" />
+              <div>Loading report history…</div>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="empty-hint">No reports on file for this instrument yet.</div>
+          ) : (
+            <div className="instrument-report-table">
+              <div className="instrument-report-row instrument-report-row-head">
+                <span>Type</span>
+                <span>Technician</span>
+                <span>Report date</span>
+                <span>Status</span>
+              </div>
+              {items.map((r) => (
+                <button className="instrument-report-row instrument-report-row-body" key={r.id} onClick={() => onOpenReport(r)}>
+                  <span>{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
+                  <span>{r.technician_name ?? '—'}</span>
+                  <span>{r.report_date ?? '—'}</span>
+                  <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

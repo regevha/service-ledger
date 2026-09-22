@@ -71,8 +71,31 @@ editing an already-finalized report), CSV export, the FieldEditor's
 array-shaped controls (per-detector number maps, object-array tables), the
 Analytics tab's fleet-wide roll-ups, the Templates tab's structured field
 editor (create → edit → delete, including the enum-options tag-input and
-the object[] item_schema column builder), and the app's error states (an
-unreachable backend, a failed classification call).
+the object[] item_schema column builder), the instrument detail page's
+report history and its nav stack (a report opened from an instrument page
+returns to that page, not the top-level list), and the app's error states
+(an unreachable backend, a failed classification call).
+
+### Instrument detail page
+
+Reached from the Reports tab — pick an instrument in the filter row, then
+"View instrument details", or open any report and follow its "View
+instrument: ..." link — rather than a standalone Instruments tab, since
+there's no instrument create/edit UI yet to anchor one (`POST /instruments`
+is still API/seed-script only). Shows the instrument's own metadata, two
+stat tiles (report count / most recent activity), and its full report
+history via the existing `GET /reports?instrument_id=` filter — no new
+backend endpoint needed, since the fleet is small enough (§1: a fixed
+3-instrument list) to already be fully loaded by `App`'s own `useEffect`
+and looked up by id client-side.
+
+Deliberately doesn't chart anything yet: `docs/instrument-timeline-demo.html`
+mocks a per-detector calibration-drift line chart, but that's a
+`number[detector]` field (one value per detector key), and the existing
+`GET /instruments/{id}/trend` endpoint only supports flat single-number
+fields (it explicitly filters out dict values) — charting the mockup's real
+per-detector series means extending that endpoint first, not just wiring up
+what exists. Left for a follow-up.
 
 ```bash
 npm run test:e2e       # headless run
