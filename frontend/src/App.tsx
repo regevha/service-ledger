@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ApiError,
   attachmentFileUrl,
@@ -28,6 +28,7 @@ import {
 } from './api';
 import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { FieldControl } from './components/FieldEditor';
+import { InstrumentManagerScreen } from './components/InstrumentManager';
 import { InstrumentTrendSection } from './components/InstrumentTrendChart';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { INSTRUMENT_STATUS_LABEL, REPORT_TYPE_LABEL } from './labels';
@@ -69,6 +70,7 @@ function ConfidenceBadge({ confidence, threshold }: { confidence: number; thresh
 
 export default function App() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
+  const [instrumentsLoading, setInstrumentsLoading] = useState(true);
   const [instrumentsError, setInstrumentsError] = useState<string | null>(null);
   const [config, setConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
 
@@ -76,7 +78,7 @@ export default function App() {
   // machine (upload → classify → review → done), while `view` just switches
   // which top-level screen is showing. Switching to 'reports' and back
   // leaves an in-progress intake exactly where it was.
-  const [view, setView] = useState<'new' | 'reports' | 'analytics' | 'templates'>('new');
+  const [view, setView] = useState<'new' | 'reports' | 'analytics' | 'templates' | 'instruments'>('new');
 
   const [phase, setPhase] = useState<Phase>({ name: 'intake' });
 
@@ -93,11 +95,25 @@ export default function App() {
   const [pickInstrumentModel, setPickInstrumentModel] = useState('');
   const [pickReportType, setPickReportType] = useState<ReportType>('repair');
 
-  useEffect(() => {
-    listInstruments()
-      .then(setInstruments)
-      .catch((e: unknown) => setInstrumentsError(e instanceof ApiError ? e.message : 'Could not load instruments.'));
+  // A callback (not just an effect) because the new Instruments tab creates
+  // and edits rows in place — after a save there, this same list needs to
+  // refetch so the Reports filter dropdown and the instrument detail page
+  // (both fed by this one top-level `instruments` array) see the change
+  // immediately instead of only after a full reload.
+  const refreshInstruments = useCallback(() => {
+    setInstrumentsLoading(true);
+    return listInstruments()
+      .then((list) => {
+        setInstruments(list);
+        setInstrumentsError(null);
+      })
+      .catch((e: unknown) => setInstrumentsError(e instanceof ApiError ? e.message : 'Could not load instruments.'))
+      .finally(() => setInstrumentsLoading(false));
   }, []);
+
+  useEffect(() => {
+    void refreshInstruments();
+  }, [refreshInstruments]);
 
   useEffect(() => {
     // Cosmetic-only if this never resolves (badge color / review-flagging),
@@ -275,6 +291,9 @@ export default function App() {
         <button className={`view-tab ${view === 'templates' ? 'active' : ''}`} onClick={() => setView('templates')}>
           Templates
         </button>
+        <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} onClick={() => setView('instruments')}>
+          Instruments
+        </button>
       </div>
 
       <div className="app-shell">
@@ -282,6 +301,13 @@ export default function App() {
           <AnalyticsScreen />
         ) : view === 'templates' ? (
           <TemplateManagerScreen />
+        ) : view === 'instruments' ? (
+          <InstrumentManagerScreen
+            instruments={instruments}
+            loading={instrumentsLoading}
+            error={instrumentsError}
+            onRefresh={refreshInstruments}
+          />
         ) : view === 'reports' ? (
           <ReportsListScreen instruments={instruments} fieldConfidenceThreshold={config.field_confidence_threshold} />
         ) : (

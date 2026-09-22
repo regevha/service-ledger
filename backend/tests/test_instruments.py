@@ -190,3 +190,100 @@ def test_instrument_trend_fields_ignores_non_finalized_and_templateless_reports(
     resp = client.get(f"/instruments/{instrument.id}/trend-fields")
     assert resp.status_code == 200
     assert resp.json() == []
+
+
+# ---------- PATCH /instruments/{id} ----------
+
+
+def test_update_instrument_partial_update_only_touches_provided_fields(client):
+    created = client.post(
+        "/instruments",
+        json={"name": "Edit Me", "model": "TestModel-9000", "serial_number": "PATCH-0001", "location": "Bench 1"},
+    ).json()
+
+    resp = client.patch(f"/instruments/{created['id']}", json={"location": "Bench 2"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["location"] == "Bench 2"
+    # Everything not sent stays exactly as it was.
+    assert body["name"] == "Edit Me"
+    assert body["model"] == "TestModel-9000"
+    assert body["serial_number"] == "PATCH-0001"
+    assert body["status"] == "active"
+
+
+def test_update_instrument_can_change_status(client):
+    created = client.post(
+        "/instruments", json={"name": "Retiree", "model": "TestModel-9000", "serial_number": "PATCH-0002"}
+    ).json()
+
+    resp = client.patch(f"/instruments/{created['id']}", json={"status": "retired"})
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "retired"
+
+
+def test_update_instrument_can_change_every_editable_field_at_once(client):
+    created = client.post(
+        "/instruments", json={"name": "Old Name", "model": "OldModel", "serial_number": "PATCH-0003"}
+    ).json()
+
+    resp = client.patch(
+        f"/instruments/{created['id']}",
+        json={
+            "name": "New Name",
+            "model": "NewModel",
+            "serial_number": "PATCH-0003-NEW",
+            "location": "New Bench",
+            "status": "maintenance",
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["name"] == "New Name"
+    assert body["model"] == "NewModel"
+    assert body["serial_number"] == "PATCH-0003-NEW"
+    assert body["location"] == "New Bench"
+    assert body["status"] == "maintenance"
+
+
+def test_update_instrument_404_on_missing_instrument(client):
+    resp = client.patch(f"/instruments/{uuid.uuid4()}", json={"location": "Nowhere"})
+    assert resp.status_code == 404
+
+
+def test_update_instrument_rejects_explicit_null_on_a_required_field(client):
+    created = client.post(
+        "/instruments", json={"name": "No Null", "model": "TestModel-9000", "serial_number": "PATCH-0004"}
+    ).json()
+
+    resp = client.patch(f"/instruments/{created['id']}", json={"name": None})
+    assert resp.status_code == 422
+
+
+def test_update_instrument_conflicts_on_duplicate_serial_number(client):
+    first = client.post(
+        "/instruments", json={"name": "First", "model": "TestModel-9000", "serial_number": "PATCH-0005-A"}
+    ).json()
+    second = client.post(
+        "/instruments", json={"name": "Second", "model": "TestModel-9000", "serial_number": "PATCH-0005-B"}
+    ).json()
+
+    resp = client.patch(f"/instruments/{second['id']}", json={"serial_number": "PATCH-0005-A"})
+    assert resp.status_code == 409
+    # The conflict must not have partially applied.
+    unchanged = client.get("/instruments").json()
+    still_b = next(i for i in unchanged if i["id"] == second["id"])
+    assert still_b["serial_number"] == "PATCH-0005-B"
+
+
+def test_update_instrument_allows_resubmitting_its_own_current_serial_number(client):
+    created = client.post(
+        "/instruments", json={"name": "Self", "model": "TestModel-9000", "serial_number": "PATCH-0006"}
+    ).json()
+
+    # Re-sending the instrument's own serial number (e.g. a form that always
+    # submits every field) must not trip the "already exists" check against
+    # itself.
+    resp = client.patch(f"/instruments/{created['id']}", json={"serial_number": "PATCH-0006", "location": "Bench 3"})
+    assert resp.status_code == 200
+    assert resp.json()["location"] == "Bench 3"

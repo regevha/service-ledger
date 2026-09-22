@@ -3,12 +3,15 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
 from app.db import get_db
 
 router = APIRouter(tags=["instruments"])
+
+_SERIAL_CONFLICT = "An instrument with this serial number already exists"
 
 # field_schema's three numeric-capable types (schemas.py::TemplateFieldType)
 # — the only ones GET .../trend-fields offers and GET .../trend can chart.
@@ -21,10 +24,19 @@ _TRENDABLE_TYPES = {"number", *_TREND_MAP_TYPES}
 @router.post("/instruments", response_model=schemas.InstrumentOut, status_code=201)
 def create_instrument(payload: schemas.InstrumentCreate, db: Session = Depends(get_db)):
     if db.query(models.Instrument).filter(models.Instrument.serial_number == payload.serial_number).first():
-        raise HTTPException(409, "An instrument with this serial number already exists")
+        raise HTTPException(409, _SERIAL_CONFLICT)
     instrument = models.Instrument(**payload.model_dump())
     db.add(instrument)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Closes the race window between the pre-check above and the
+        # commit (two concurrent POSTs for the same serial number) — the
+        # DB's own unique constraint (models.py's Instrument.serial_number)
+        # is what actually stops the duplicate, this just turns the
+        # resulting IntegrityError into the same clean 409 as the pre-check.
+        db.rollback()
+        raise HTTPException(409, _SERIAL_CONFLICT)
     db.refresh(instrument)
     return instrument
 
@@ -32,6 +44,48 @@ def create_instrument(payload: schemas.InstrumentCreate, db: Session = Depends(g
 @router.get("/instruments", response_model=list[schemas.InstrumentOut])
 def list_instruments(db: Session = Depends(get_db)):
     return db.query(models.Instrument).order_by(models.Instrument.name).all()
+
+
+@router.patch("/instruments/{instrument_id}", response_model=schemas.InstrumentOut)
+def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdate, db: Session = Depends(get_db)):
+    """Every field but `instrument_type` is editable — the create/edit UI
+    this backs (frontend's new Instruments tab) replaces "edit the DB/seed
+    script by hand" as the only way to fix a typo'd serial number, rename an
+    instrument, move it to a new bench, or change its status once §5's fixed
+    3-instrument fleet stops being fixed in practice."""
+    instrument = db.get(models.Instrument, instrument_id)
+    if not instrument:
+        raise HTTPException(404, "Instrument not found")
+
+    # model_fields_set, not model_dump(exclude_unset=True) directly, so an
+    # explicit null on one of these NOT NULL columns is caught below instead
+    # of silently no-op'ing (InstrumentUpdate's fields all default to None,
+    # so "not sent" and "sent as null" would otherwise look identical).
+    provided = payload.model_fields_set
+    for field in ("name", "model", "serial_number", "status"):
+        if field in provided and getattr(payload, field) is None:
+            raise HTTPException(422, f"{field} cannot be null — omit it to leave it unchanged.")
+
+    if "serial_number" in provided and payload.serial_number != instrument.serial_number:
+        conflict = (
+            db.query(models.Instrument)
+            .filter(models.Instrument.serial_number == payload.serial_number, models.Instrument.id != instrument.id)
+            .first()
+        )
+        if conflict:
+            raise HTTPException(409, _SERIAL_CONFLICT)
+
+    for field in ("name", "model", "serial_number", "location", "status"):
+        if field in provided:
+            setattr(instrument, field, getattr(payload, field))
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, _SERIAL_CONFLICT)
+    db.refresh(instrument)
+    return instrument
 
 
 @router.get("/instruments/{instrument_id}/trend-fields", response_model=list[schemas.TrendFieldOut])
