@@ -66,7 +66,8 @@ the generated file.
 `tests/e2e/` covers the flows a screen-by-screen manual pass would otherwise
 have to re-check before every milestone: the confident upload→classify→
 extract→review→finalize happy path, the uncertain-report-type manual-confirm
-detour, the reports search/filter screen (including the empty state and
+detour, the reports search/filter screen (including the empty state, the
+debounced technician free-text filter's case-insensitive partial match, and
 editing an already-finalized report), CSV export, the FieldEditor's
 array-shaped controls (per-detector number maps, object-array tables), the
 Analytics tab's fleet-wide roll-ups, the Templates tab's structured field

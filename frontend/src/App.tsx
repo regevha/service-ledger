@@ -616,10 +616,22 @@ function ReportsListScreen({
   fieldConfidenceThreshold: number;
 }) {
   const [filters, setFilters] = useState<ReportFilters>({});
+  // Technician is free text (§4: typed at intake, not a dropdown), so it gets
+  // its own local state that updates on every keystroke for a responsive
+  // input, debounced into `filters` — the actual fetch trigger below — so
+  // "Jane Smith" doesn't fire nine separate /reports requests as it's typed.
+  const [technicianInput, setTechnicianInput] = useState(filters.technician ?? '');
   const [items, setItems] = useState<ReportListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [screen, setScreen] = useState<ReportsScreen>({ kind: 'list' });
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setFilters((f) => ({ ...f, technician: technicianInput || undefined }));
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [technicianInput]);
 
   useEffect(() => {
     let cancelled = false;
@@ -664,7 +676,9 @@ function ReportsListScreen({
     );
   }
 
-  const hasFilters = Boolean(filters.instrument_id || filters.report_type || filters.status || filters.date_from || filters.date_to);
+  const hasFilters = Boolean(
+    filters.instrument_id || filters.report_type || filters.status || filters.date_from || filters.date_to || filters.technician
+  );
 
   return (
     <div className="section">
@@ -723,6 +737,14 @@ function ReportsListScreen({
           onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value || undefined }))}
         />
 
+        <input
+          type="text"
+          aria-label="Technician"
+          placeholder="Technician"
+          value={technicianInput}
+          onChange={(e) => setTechnicianInput(e.target.value)}
+        />
+
         {filters.instrument_id && (
           <button
             className="btn small"
@@ -733,7 +755,13 @@ function ReportsListScreen({
         )}
 
         {hasFilters && (
-          <button className="btn small" onClick={() => setFilters({})}>
+          <button
+            className="btn small"
+            onClick={() => {
+              setFilters({});
+              setTechnicianInput('');
+            }}
+          >
             Clear filters
           </button>
         )}

@@ -376,7 +376,7 @@
       <div class="doc-control-title">Document control</div>
       <div class="doc-control-grid">
         <div class="dc-cell"><span class="dc-label">Doc ID</span><span class="dc-value">SL-ARCH-001</span></div>
-        <div class="dc-cell"><span class="dc-label">Version</span><span class="dc-value">0.13 draft</span></div>
+        <div class="dc-cell"><span class="dc-label">Version</span><span class="dc-value">0.14 draft</span></div>
         <div class="dc-cell"><span class="dc-label">Date</span><span class="dc-value">2026-09-22</span></div>
         <div class="dc-cell"><span class="dc-label">Prepared for</span><span class="dc-value">Regev — single-user evaluation</span></div>
         <div class="dc-cell"><span class="dc-label">Scope</span><span class="dc-value">FACSAria III, LSRFortessa, FACSDiscover S8</span></div>
@@ -384,6 +384,10 @@
       </div>
     </div>
 
+    <div class="callout" style="margin-top:16px;">
+      <span class="callout-label">Revised in v0.14</span>
+      <p>Closes the one gap v0.13's §7 refresh flagged in the same breath it was written: <code class="mono">GET /reports</code> and <code class="mono">GET /reports/export</code> now both accept a <code class="mono">technician</code> filter, joining instrument/report type/status/date range as fully shipped. It's a case-insensitive partial match (<code class="mono">ILIKE</code>), not equality like the others, because <code class="mono">technician_name</code> is free text typed at intake (§4) rather than a fixed dropdown value — the same reasoning already applied to why it's a real column at all (§5). The frontend debounces the free-text input client-side before it reaches the filter, so typing a name doesn't fire one request per keystroke.</p>
+    </div>
     <div class="callout" style="margin-top:16px;">
       <span class="callout-label">Revised in v0.13</span>
       <p>This round documents implementation, not a design change: five features built since v0.12 are folded into §7, §9, and §11, which had drifted behind the actual build. §7 no longer describes the instrument timeline and fleet dashboard in future tense — both shipped, as the instrument detail page's trend chart and the Analytics tab's fleet-wide roll-ups (parts, labor hours, pass/fail rate) — and the timeline's trend field is no longer model-specific by design: <code class="mono">GET /instruments/{id}/trend-fields</code> derives the chartable field list from whatever numeric fields an instrument's own finalized reports actually resolved to, so it generalizes across templates rather than hardcoding <code class="mono">baseline_cv_percent</code> vs. <code class="mono">unmixing_error_percent</code> per model. §9 gains the endpoints that shipped alongside these: <code class="mono">PATCH /instruments/{id}</code>, <code class="mono">GET /instruments/{id}/trend-fields</code>, <code class="mono">GET /analytics/fleet</code>, and the <code class="mono">report_templates</code> CRUD routes. §11's Phase 1 list now includes the structured template editor and the instrument create/edit UI, both of which shipped ahead of the roadmap rather than waiting on Phase 2 — neither carries an audit trail or versioning, so §10's scope decision still holds. §12 drops the classification-confidence-threshold question: it's resolved in <code class="mono">config.py</code> as <code class="mono">classification_confidence_threshold = 0.85</code>, distinct from the field-level <code class="mono">0.7</code> default the question worried would be reused unchanged.</p>
@@ -784,7 +788,7 @@
     <ul>
       <li><strong>Instrument timeline — shipped.</strong> The instrument detail page's trend chart plots any numeric field across an instrument's finalized report history (e.g. <code class="mono">baseline_cv_percent</code> per detector over its last several calibrations), with a legend and hover tooltip for a per-detector/per-laser field and a single line for a flat one. Unlike the model-specific field list originally planned here, the chartable field list isn't hardcoded per model at all: <code class="mono">GET /instruments/{id}/trend-fields</code> derives it from whatever numeric fields that specific instrument's own finalized reports actually resolved to, so a FACSAria III only ever offers <code class="mono">baseline_cv_percent</code>/<code class="mono">fluidics_pressure_psi</code>-style calibration fields because that's what its reports carry, a new template's numeric fields show up automatically, and nothing fleet-wide ever mixes one model's fields with another's.</li>
       <li><strong>Fleet dashboard — partially shipped.</strong> The Analytics tab (<code class="mono">GET /analytics/fleet</code>) covers the roll-up half: total labor hours, units replaced, most-replaced parts, labor hours by instrument and by fault category, and pass/fail rate by report type — all computed live from finalized reports, nothing cached. Per-instrument "days since last calibration" / "currently out of spec" / upcoming <code class="mono">next_service_due</code> status-at-a-glance is not built yet and stays a real gap.</li>
-      <li><strong>Filtered search — shipped.</strong> The Reports tab filters by instrument, report type, status, and date range (<code class="mono">date_from</code>/<code class="mono">date_to</code>, both real columns per §5). Filtering by technician is not exposed as a filter yet, though <code class="mono">technician_name</code> is also a real column. Filtering on a specific field value inside <code class="mono">extracted_fields</code> (e.g. "every calibration where <code class="mono">baseline_cv_percent</code> exceeds 5%") is not built.</li>
+      <li><strong>Filtered search — shipped.</strong> The Reports tab filters by instrument, report type, status, date range (<code class="mono">date_from</code>/<code class="mono">date_to</code>, both real columns per §5), and technician — the last a case-insensitive partial match (<code class="mono">ILIKE</code>) against <code class="mono">technician_name</code> rather than equality, since it's free text typed at intake (§4) rather than a fixed dropdown value, and debounced client-side so it doesn't re-query on every keystroke. Filtering on a specific field value inside <code class="mono">extracted_fields</code> (e.g. "every calibration where <code class="mono">baseline_cv_percent</code> exceeds 5%") is not built.</li>
       <li><strong>Exports — CSV shipped, PDF not.</strong> <code class="mono">GET /reports/export</code> exports the active filtered view as CSV. A formatted per-report PDF for sharing outside the system doesn't exist yet.</li>
       <li><strong>Structured template &amp; instrument management — shipped, not originally scoped here.</strong> A CRUD editor for <code class="mono">report_templates</code> (create/edit/delete a template's field schema, including enum options and object[] item schemas) and for the instrument fleet (create/edit every field but <code class="mono">instrument_type</code>, via <code class="mono">PATCH /instruments/{id}</code>) both shipped as part of Phase 1 (§11) — ahead of §10's audit/versioning boundary, since neither carries edit history, matching the single-evaluator tradeoff §10 already accepts.</li>
       <li><strong>Natural-language query</strong> (phase 2+, unbuilt) — a question like "which instruments needed more than one repair in the last six months" translated by Claude into a filter against the reporting API, not a raw SQL pass-through, so it can't touch data outside the same permission boundary a normal query would.</li>
@@ -839,7 +843,7 @@
           <tr><td class="mono">GET /extraction-jobs/{id}</td><td>Poll job status, classification result, and per-field confidence</td></tr>
           <tr><td class="mono">PATCH /reports/{id}/fields</td><td>Apply corrections directly to the report's fields (overwrites in place — no audit log in MVP)</td></tr>
           <tr><td class="mono">POST /reports/{id}/finalize</td><td>Mark a report finalized</td></tr>
-          <tr><td class="mono">GET /reports?instrument_id=&amp;date_from=&amp;status=</td><td>Filtered search (§7)</td></tr>
+          <tr><td class="mono">GET /reports?instrument_id=&amp;date_from=&amp;status=&amp;technician=</td><td>Filtered search (§7) — technician is an <code class="mono">ILIKE</code> partial match, the rest equality/range</td></tr>
           <tr><td class="mono">GET /instruments/{id}/trend-fields</td><td>Which numeric fields this instrument's own finalized reports actually have data for — drives the trend chart's field picker (§7), not a fixed per-model list</td></tr>
           <tr><td class="mono">GET /instruments/{id}/trend?field=baseline_cv_percent</td><td>Time series for one field, one instrument — supports both a flat <code class="mono">number</code> field and a <code class="mono">number[detector]</code>/<code class="mono">number[laser]</code> map field</td></tr>
           <tr><td class="mono">GET /reports/export?format=csv</td><td>Bulk export of a filtered view</td></tr>
@@ -920,7 +924,7 @@
 
   <div class="doc-footer">
     <span>ServiceLedger — Architecture &amp; Design Specification</span>
-    <span>v0.13 draft · 2026-09-22</span>
+    <span>v0.14 draft · 2026-09-22</span>
   </div>
 
 </div>

@@ -379,6 +379,7 @@ export interface ReportFilters {
   status?: ReportStatus;
   date_from?: string;
   date_to?: string;
+  technician?: string;
 }
 
 export function listReports(filters: ReportFilters = {}): Promise<ReportListItem[]> {

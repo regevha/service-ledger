@@ -93,6 +93,33 @@ test.describe('reports search screen', () => {
     await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
   });
 
+  test('filters by technician with a case-insensitive partial match', async ({ page, request }) => {
+    // Two distinct markers sharing no substring, so filtering by a piece of
+    // one can only ever surface that row — proves the ILIKE partial match
+    // (§7) narrows the list rather than just happening to include both.
+    const marker = `E2E-Tech-Match-${Date.now()}`;
+    const otherMarker = `E2E-Tech-Other-${Date.now()}`;
+    await seedReport(request, { model: 'FACSDiscover S8', reportType: 'calibration', technician: marker, finalize: true });
+    await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: otherMarker, finalize: true });
+
+    await page.goto('/');
+    await page.click('.view-tab:has-text("Reports")');
+    await page.waitForSelector('.report-table, .empty-hint');
+    await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
+    await expect(page.locator('.report-row-body', { hasText: otherMarker })).toBeVisible();
+
+    // A lowercased substring of just one marker's distinguishing part — the
+    // input is debounced (300ms), so wait for the list to actually narrow
+    // rather than asserting immediately after typing.
+    await page.fill('input[aria-label="Technician"]', 'tech-match');
+    await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
+    await expect(page.locator('.report-row-body', { hasText: otherMarker })).toHaveCount(0);
+
+    await page.click('button:has-text("Clear filters")');
+    await expect(page.locator('input[aria-label="Technician"]')).toHaveValue('');
+    await expect(page.locator('.report-row-body', { hasText: otherMarker })).toBeVisible();
+  });
+
   test('opens a report, hides finalize once already finalized, and back-navigates', async ({ page, request }) => {
     const marker = `E2E-Detail-${Date.now()}`;
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
