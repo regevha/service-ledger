@@ -33,14 +33,18 @@ See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rule
 
 ## Regenerating API types from the backend
 
-`src/api.ts` derives its five backend-enum types (`InstrumentStatus`,
-`ReportType`, `ReportStatus`, `ExtractionJobStatus`, `ExtractionJobKind`) from
-`src/generated/api-schema.ts` rather than hand-typing them — that file is
-generated from the backend's own OpenAPI schema, so it can't silently drift
-from `backend/app/models.py`'s real enum classes the way a hand-copied union
-type could. `src/generated/api-schema.ts` is committed (so a build never
-needs Python or a backend checkout); regenerate it after changing a backend
-enum or any response shape those five types touch:
+`src/api.ts` derives its six backend-enum types (`InstrumentStatus`,
+`ReportType`, `ReportStatus`, `ExtractionJobStatus`, `ExtractionJobKind`,
+`FieldType`) from `src/generated/api-schema.ts` rather than hand-typing
+them — that file is generated from the backend's own OpenAPI schema, so it
+can't silently drift from `backend/app/models.py`'s real enum classes (or,
+for `FieldType`, `backend/app/schemas.py::TemplateFieldType`) the way a
+hand-copied union type could. `FieldType` used to be the one exception here
+— hand-typed because no backend enum existed for it — until template
+management gave it a real one to derive from; every shared enum is now
+sourced from the backend. `src/generated/api-schema.ts` is committed (so a
+build never needs Python or a backend checkout); regenerate it after
+changing a backend enum or any response shape those six types touch:
 
 ```bash
 # 1. From backend/, with its venv active — no running server or database
@@ -65,7 +69,9 @@ extract→review→finalize happy path, the uncertain-report-type manual-confirm
 detour, the reports search/filter screen (including the empty state and
 editing an already-finalized report), CSV export, the FieldEditor's
 array-shaped controls (per-detector number maps, object-array tables), the
-Analytics tab's fleet-wide roll-ups, and the app's error states (an
+Analytics tab's fleet-wide roll-ups, the Templates tab's structured field
+editor (create → edit → delete, including the enum-options tag-input and
+the object[] item_schema column builder), and the app's error states (an
 unreachable backend, a failed classification call).
 
 ```bash

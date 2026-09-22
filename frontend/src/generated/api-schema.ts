@@ -52,19 +52,60 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Report Templates
-         * @description §9: also what the manual fallback picker in §4 calls when
-         *     classification is uncertain — the same resolution logic either way, so
-         *     the picker can never suggest a template classify() itself couldn't reach.
-         */
+        /** List Report Templates */
         get: operations["list_report_templates_report_templates_get"];
+        put?: never;
+        /** Create Report Template */
+        post: operations["create_report_template_report_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/report-templates/all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List All Report Templates
+         * @description The template-management screen's list view: every row, unresolved —
+         *     unlike GET /report-templates above, this doesn't pick one row per
+         *     report_type via resolve_template()'s model-fallback logic, since an
+         *     admin editing templates needs to see (and edit) every variant, including
+         *     ones a given model would never actually resolve to. Registered before
+         *     /report-templates/{template_id} below so "all" is never swallowed as a
+         *     template_id path param.
+         */
+        get: operations["list_all_report_templates_report_templates_all_get"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/report-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Report Template */
+        get: operations["get_report_template_report_templates__template_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Report Template */
+        delete: operations["delete_report_template_report_templates__template_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Report Template */
+        patch: operations["update_report_template_report_templates__template_id__patch"];
         trace?: never;
     };
     "/reports": {
@@ -324,6 +365,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analytics/fleet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fleet Analytics
+         * @description Fleet-wide roll-ups computed from every finalized report's already-
+         *     captured fields (components_replaced, labor_hours, fault_category,
+         *     retest_result/verification_result) — no new columns, nothing to backfill.
+         *     See services/analytics.py for exactly how each number is derived and why
+         *     only finalized reports contribute.
+         */
+        get: operations["fleet_analytics_analytics_fleet_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -450,6 +515,28 @@ export interface components {
          * @enum {string}
          */
         ExtractionJobStatus: "pending" | "classifying" | "extracting" | "succeeded" | "failed";
+        /**
+         * FleetAnalyticsOut
+         * @description GET /analytics/fleet (new): fleet-wide roll-ups computed entirely from
+         *     fields every finalized report already carries — no new columns, no new
+         *     tables. See services/analytics.py for exactly how each number is derived.
+         */
+        FleetAnalyticsOut: {
+            /** Parts Replaced */
+            parts_replaced: components["schemas"]["PartUsageOut"][];
+            /** Total Labor Hours */
+            total_labor_hours: number;
+            /** Labor Hours By Instrument */
+            labor_hours_by_instrument: components["schemas"]["InstrumentRollupOut"][];
+            /** Labor Hours By Fault Category */
+            labor_hours_by_fault_category: {
+                [key: string]: number;
+            };
+            /** Pass Fail By Report Type */
+            pass_fail_by_report_type: {
+                [key: string]: components["schemas"]["PassFailBreakdownOut"];
+            };
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -491,12 +578,74 @@ export interface components {
             status: components["schemas"]["InstrumentStatus"];
         };
         /**
+         * InstrumentRollupOut
+         * @description One row of GET /analytics/fleet's labor_hours_by_instrument. Every
+         *     active instrument appears here, including one with zero qualifying
+         *     reports — a trouble-free instrument is itself a meaningful data point,
+         *     not an absence to hide.
+         */
+        InstrumentRollupOut: {
+            /**
+             * Instrument Id
+             * Format: uuid
+             */
+            instrument_id: string;
+            /** Name */
+            name: string;
+            /** Model */
+            model: string;
+            /** Serial Number */
+            serial_number: string;
+            /** Report Count */
+            report_count: number;
+            /** Total Labor Hours */
+            total_labor_hours: number;
+        };
+        /**
          * InstrumentStatus
          * @description Not specified in the spec's data-model table — a reasonable MVP default,
          *     flagged here (rather than silently assumed) so it's easy to spot and revise.
          * @enum {string}
          */
         InstrumentStatus: "active" | "maintenance" | "retired";
+        /**
+         * PartUsageOut
+         * @description One row of GET /analytics/fleet's parts_replaced (fleet-wide, sorted by
+         *     total_qty desc) — aggregated from every finalized report's
+         *     components_replaced entries (repair and preventive_maintenance both
+         *     carry that field with the same {part_name, part_number, qty} shape, see
+         *     seed_templates.py). Keyed by (part_name, part_number) so two different
+         *     parts that happen to share a name don't get merged.
+         */
+        PartUsageOut: {
+            /** Part Name */
+            part_name: string;
+            /** Part Number */
+            part_number: string | null;
+            /** Times Replaced */
+            times_replaced: number;
+            /** Total Qty */
+            total_qty: number;
+        };
+        /**
+         * PassFailBreakdownOut
+         * @description retest_result (repair) / verification_result (preventive_maintenance)
+         *     tallied across every finalized report of that type. other_count covers
+         *     both the templates' own non-pass/fail option ("not retested"/"not
+         *     verified") and a report that never got that field filled in at all —
+         *     both are "not a confirmed pass", so this doesn't silently drop them from
+         *     the total the way filtering them out would.
+         */
+        PassFailBreakdownOut: {
+            /** Pass Count */
+            pass_count: number;
+            /** Fail Count */
+            fail_count: number;
+            /** Other Count */
+            other_count: number;
+            /** Total */
+            total: number;
+        };
         /**
          * ReportCreate
          * @description §9: POST /reports starts a bare draft — no instrument or template yet.
@@ -640,6 +789,75 @@ export interface components {
              */
             template_id: string;
         };
+        /**
+         * TemplateCreate
+         * @description POST /report-templates. `model=None` is the "applies to every model of
+         *     this instrument_type" fallback row (§2) — a real, meaningful choice, not
+         *     an omitted one, so it defaults to None rather than being required.
+         */
+        TemplateCreate: {
+            /**
+             * Instrument Type
+             * @default facs
+             */
+            instrument_type: string;
+            report_type: components["schemas"]["ReportType"];
+            /** Model */
+            model?: string | null;
+            /** Fields */
+            fields: components["schemas"]["TemplateFieldIn"][];
+        };
+        /**
+         * TemplateFieldIn
+         * @description One row of the structured editor's field list. `options` and
+         *     `item_schema` are conditionally required/forbidden by `type` — the same
+         *     shapes seed_templates.py's own field lists already follow by hand (see
+         *     e.g. REPAIR_FIELDS's fault_category/components_replaced entries).
+         */
+        TemplateFieldIn: {
+            /** Name */
+            name: string;
+            type: components["schemas"]["TemplateFieldType"];
+            /** Unit */
+            unit?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Options */
+            options?: string[] | null;
+            /** Item Schema */
+            item_schema?: {
+                [key: string]: components["schemas"]["TemplateFieldType"];
+            } | null;
+        };
+        /**
+         * TemplateFieldType
+         * @description Every field `type` value FieldEditor.tsx's FieldControl switches on —
+         *     kept here, not app/models.py, because it isn't a database column type
+         *     (field_schema stores the whole field list as one JSONB blob on
+         *     ReportTemplate, not as structured columns); this exists purely to
+         *     validate/document those values, and to give frontend/src/api.ts's
+         *     hand-typed `FieldType` union (its one remaining hand-typed enum,
+         *     noted in frontend/README.md) something real to derive from via
+         *     codegen instead.
+         * @enum {string}
+         */
+        TemplateFieldType: "text" | "number" | "boolean" | "date" | "enum" | "enum[]" | "object[]" | "number[detector]" | "number[laser]";
+        /**
+         * TemplateUpdate
+         * @description PATCH /report-templates/{id} — exclude_unset semantics, same
+         *     precedent as ReportFieldsUpdate: `model` can be explicitly nulled (falls
+         *     back to the any-model row), but `fields` has no sensible null (a
+         *     template with no field_schema breaks the review screen), so an explicit
+         *     null there is rejected the same way ReportFieldsUpdate rejects a null
+         *     extracted_fields.
+         */
+        TemplateUpdate: {
+            report_type?: components["schemas"]["ReportType"] | null;
+            /** Model */
+            model?: string | null;
+            /** Fields */
+            fields?: components["schemas"]["TemplateFieldIn"][] | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -771,6 +989,154 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportTemplateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_report_template_report_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportTemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_all_report_templates_report_templates_all_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportTemplateOut"][];
+                };
+            };
+        };
+    };
+    get_report_template_report_templates__template_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportTemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_report_template_report_templates__template_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_report_template_report_templates__template_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportTemplateOut"];
                 };
             };
             /** @description Validation Error */
@@ -1174,6 +1540,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fleet_analytics_analytics_fleet_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FleetAnalyticsOut"];
                 };
             };
         };

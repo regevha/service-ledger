@@ -38,7 +38,10 @@ function leafInput(value: unknown, type: string, onChange: (v: unknown) => void)
   return <input type="text" value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} />;
 }
 
-function EnumArrayInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+// Exported for reuse by TemplateManager.tsx's structured field-schema editor
+// (an enum/enum[] field's `options` list is built with the exact same
+// type-a-value-press-Enter tag UI as an enum[] field's own runtime value).
+export function EnumArrayInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const items = Array.isArray(value) ? value : [];
   return (
     <div className="tag-input">

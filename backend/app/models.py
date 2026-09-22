@@ -12,7 +12,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, func
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -102,6 +102,23 @@ class ReportTemplate(Base):
     where that resolution actually happens."""
 
     __tablename__ = "report_templates"
+    __table_args__ = (
+        # See alembic/versions/6b5fc4e1c3ca_*.py for the full rationale
+        # (COALESCE(model, '') instead of a plain unique constraint, so two
+        # NULL-model "any model" rows for the same (instrument_type,
+        # report_type) collide too) — declared here as well, not just in
+        # that migration, so `Base.metadata.create_all` (what
+        # tests/conftest.py builds the test database from) actually
+        # enforces it too, rather than only real deployments that ran the
+        # migration.
+        Index(
+            "uq_report_templates_type_model",
+            "instrument_type",
+            "report_type",
+            text("COALESCE(model, '')"),
+            unique=True,
+        ),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     instrument_type: Mapped[str] = mapped_column(String, nullable=False, default="facs")

@@ -738,3 +738,130 @@ textarea {
     text-align: left;
   }
 }
+
+/* ---------- Template management ---------- */
+
+.template-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.template-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1.4fr 0.7fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  text-align: left;
+}
+.template-row-head {
+  background: var(--surface-2);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+}
+.template-row-body {
+  font-family: var(--font-ui);
+  font-size: 0.86rem;
+  color: var(--text);
+  background: var(--surface);
+  border: none;
+  border-top: 1px solid var(--border);
+}
+.template-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-self: end;
+}
+
+.schema-form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.schema-form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  flex: 1 1 220px;
+}
+.schema-form-label select {
+  font-size: 0.86rem;
+}
+
+.schema-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.schema-field-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.schema-field-main {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.schema-field-order {
+  display: flex;
+  gap: 4px;
+}
+.schema-field-order .btn {
+  padding: 4px 8px;
+}
+.schema-field-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.schema-field-extra {
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.schema-field-extra-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+.item-schema-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 620px) {
+  .template-row {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 6px;
+  }
+  .template-row-head {
+    display: none;
+  }
+  .schema-field-main {
+    grid-template-columns: 1fr;
+  }
+  .schema-field-meta {
+    grid-template-columns: 1fr;
+  }
+}
