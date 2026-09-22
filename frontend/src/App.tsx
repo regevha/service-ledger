@@ -28,6 +28,7 @@ import {
 } from './api';
 import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { FieldControl } from './components/FieldEditor';
+import { InstrumentTrendSection } from './components/InstrumentTrendChart';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { INSTRUMENT_STATUS_LABEL, REPORT_TYPE_LABEL } from './labels';
 import './App.css';
@@ -962,6 +963,12 @@ function InstrumentDetailScreen({
                   : 'No reports on file yet'}
               </span>
             </div>
+          </div>
+
+          <InstrumentTrendSection instrumentId={instrumentId} />
+
+          <div className="section-title" style={{ marginTop: 18 }}>
+            Report history
           </div>
 
           {loading ? (

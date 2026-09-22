@@ -230,6 +230,39 @@ export function listInstruments(): Promise<Instrument[]> {
   return apiFetch('/instruments');
 }
 
+// ---------- Instrument trend ----------
+//
+// Backs the instrument detail page's trend chart. Mirrors
+// backend/app/schemas.py's TrendFieldOut/TrendPointOut/TrendOut — `type`
+// tells the caller which shape `value` has for a given field: a plain
+// number for "number", a {detector/laser key: value} map for the other two
+// FieldType members GET .../trend-fields ever returns.
+export interface TrendField {
+  name: string;
+  type: FieldType;
+  unit: string | null;
+}
+
+export interface TrendPoint {
+  report_id: string;
+  report_date: string | null;
+  value: number | Record<string, number>;
+}
+
+export interface InstrumentTrend {
+  instrument_id: string;
+  field: string;
+  points: TrendPoint[];
+}
+
+export function getInstrumentTrendFields(instrumentId: string): Promise<TrendField[]> {
+  return apiFetch(`/instruments/${instrumentId}/trend-fields`);
+}
+
+export function getInstrumentTrend(instrumentId: string, field: string): Promise<InstrumentTrend> {
+  return apiFetch(`/instruments/${instrumentId}/trend?${new URLSearchParams({ field })}`);
+}
+
 // ---------- Analytics ----------
 
 export function getFleetAnalytics(): Promise<FleetAnalytics> {

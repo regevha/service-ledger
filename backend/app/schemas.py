@@ -388,3 +388,36 @@ class FleetAnalyticsOut(BaseModel):
     # always both, even at zero, so the frontend never has to guess whether
     # a missing key means zero or means "not implemented yet".
     pass_fail_by_report_type: dict[str, PassFailBreakdownOut]
+
+
+# ---------- Instrument trend ----------
+
+
+class TrendFieldOut(BaseModel):
+    """One entry of GET /instruments/{id}/trend-fields: a field this
+    instrument's own finalized reports actually have data for, restricted to
+    field_schema's three numeric-capable types (`number`,
+    `number[detector]`, `number[laser]`) — the same three
+    TemplateFieldType members the structured template editor also treats as
+    numeric. `type` tells the caller which shape GET .../trend?field=<name>
+    returns: a plain float for `number`, a {key: value} map per point for
+    the other two (routers/instruments.py::instrument_trend_fields)."""
+
+    name: str
+    type: TemplateFieldType
+    unit: str | None = None
+
+
+class TrendPointOut(BaseModel):
+    report_id: uuid.UUID
+    report_date: date | None
+    # A plain float for a "number" field; a {detector/laser key: value} map
+    # for number[detector]/number[laser] — TrendFieldOut.type (above) is
+    # what tells the caller which shape to expect for a given field name.
+    value: float | dict[str, float]
+
+
+class TrendOut(BaseModel):
+    instrument_id: uuid.UUID
+    field: str
+    points: list[TrendPointOut]
