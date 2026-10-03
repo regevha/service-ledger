@@ -72,14 +72,27 @@ def compute_fleet_analytics(db: Session) -> schemas.FleetAnalyticsOut:
         report_type = report.template.report_type
         fields = report.extracted_fields or {}
 
+        # PartUsageOut.times_replaced is documented as "number of *reports*"
+        # that mentioned a part, not a count of components_replaced rows —
+        # total_qty is what's supposed to capture "replaced several units of
+        # the same part in one visit." Tracking which (part_name,
+        # part_number) keys this report has already counted keeps a report
+        # with two separate rows for the same part (e.g. two O-rings entered
+        # as two rows instead of one row with qty: 2) from inflating
+        # times_replaced past 1 for this report, while total_qty still sums
+        # every row's qty as before.
+        counted_this_report: set[tuple[str, str | None]] = set()
         for entry in fields.get("components_replaced") or []:
             if not isinstance(entry, dict):
                 continue
             part_name = entry.get("part_name")
             if not part_name:
                 continue
-            bucket = parts.setdefault((part_name, entry.get("part_number")), {"times_replaced": 0, "total_qty": 0.0})
-            bucket["times_replaced"] += 1
+            key = (part_name, entry.get("part_number"))
+            bucket = parts.setdefault(key, {"times_replaced": 0, "total_qty": 0.0})
+            if key not in counted_this_report:
+                bucket["times_replaced"] += 1
+                counted_this_report.add(key)
             qty = _as_number(entry.get("qty"))
             if qty is not None:
                 bucket["total_qty"] += qty

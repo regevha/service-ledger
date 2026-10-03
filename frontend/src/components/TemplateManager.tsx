@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ApiError,
   createReportTemplate,
@@ -71,10 +71,27 @@ function ItemSchemaEditor({
   onChange: (v: ItemSchemaColumn[]) => void;
 }) {
   const columns = itemSchema;
+  // Bumped per-column when a rename is rejected below, to force that
+  // column's (uncontrolled) name input to remount and re-read its
+  // defaultValue instead of keeping the rejected text on screen.
+  const [revertNonce, setRevertNonce] = useState<Record<string, number>>({});
 
   function renameColumn(name: string, newName: string) {
     const trimmed = newName.trim();
-    if (!trimmed || trimmed === name) return;
+    if (trimmed === name) return;
+    // A blank name is rejected the same way as a collision below: the
+    // input must be reset too, or it keeps showing empty while the old name
+    // is what actually gets saved.
+    if (!trimmed || columns.some((c) => c.name === trimmed)) {
+      // Reject a rename that collides with another existing column name.
+      // The backend rejects duplicate column names outright (schemas.py),
+      // and setColumnType/removeColumn below both match "the" column by
+      // c.name — silently allowing two columns to share a name here would
+      // make a later type change or remove on either one act on both at
+      // once instead of just the one the user touched.
+      setRevertNonce((prev) => ({ ...prev, [name]: (prev[name] ?? 0) + 1 }));
+      return;
+    }
     onChange(columns.map((c) => (c.name === name ? { ...c, name: trimmed } : c)));
   }
   function setColumnType(name: string, type: FieldType) {
@@ -99,6 +116,7 @@ function ItemSchemaEditor({
           <input
             type="text"
             className="text-input"
+            key={`name-${revertNonce[c.name] ?? 0}`}
             defaultValue={c.name}
             aria-label="Column name"
             onBlur={(e) => renameColumn(c.name, e.target.value)}
@@ -123,6 +141,22 @@ function ItemSchemaEditor({
 }
 
 export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[]; onChange: (fields: TemplateField[]) => void }) {
+  // TemplateField has no id of its own (api.ts) — key={i} used to key each
+  // row on its *position*. moveField's array-swap changes which index each
+  // field object lives at without ever unmounting anything, so on a reorder
+  // React reused the row-i DOM node (now holding row-j's data) in place —
+  // including any genuinely uncontrolled input inside it (an enum/enum[]
+  // field's option-tag input in EnumArrayInput, see FieldEditor.tsx), whose
+  // in-progress, uncommitted keystrokes then silently landed on whichever
+  // field ended up in that same screen position instead of following the
+  // row the user was actually typing into. fieldKeys is a locally-invented,
+  // per-row identity — never sent to the backend (fieldToPayload only ever
+  // reads name/type/unit/notes/options/item_schema off a field) — kept in
+  // lockstep with `fields` by this component's own add/remove/move handlers,
+  // the only things that ever change its length or order.
+  const [fieldKeys, setFieldKeys] = useState<number[]>(() => fields.map((_, i) => i));
+  const nextFieldKey = useRef(fields.length);
+
   function updateField(i: number, patch: Partial<TemplateField>) {
     onChange(fields.map((f, j) => (i === j ? { ...f, ...patch } : f)));
   }
@@ -132,6 +166,7 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
   }
   function removeField(i: number) {
     onChange(fields.filter((_, j) => j !== i));
+    setFieldKeys((prev) => prev.filter((_, j) => j !== i));
   }
   function moveField(i: number, dir: -1 | 1) {
     const j = i + dir;
@@ -139,16 +174,22 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
     const next = [...fields];
     [next[i], next[j]] = [next[j], next[i]];
     onChange(next);
+    setFieldKeys((prev) => {
+      const nextKeys = [...prev];
+      [nextKeys[i], nextKeys[j]] = [nextKeys[j], nextKeys[i]];
+      return nextKeys;
+    });
   }
   function addField() {
     onChange([...fields, defaultFieldFor('text')]);
+    setFieldKeys((prev) => [...prev, nextFieldKey.current++]);
   }
 
   return (
     <div className="schema-editor">
       {fields.length === 0 && <div className="empty-hint">No fields yet — add the first one below.</div>}
       {fields.map((field, i) => (
-        <div className="schema-field-row" key={i}>
+        <div className="schema-field-row" key={fieldKeys[i] ?? i}>
           <div className="schema-field-main">
             <div className="schema-field-order">
               <button type="button" className="btn small" disabled={i === 0} onClick={() => moveField(i, -1)} aria-label="Move field up">

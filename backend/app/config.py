@@ -19,6 +19,14 @@ class Settings(BaseSettings):
 
     attachment_storage_dir: str = "./storage/attachments"
 
+    # Upload limits, checked before anything is written to disk. The Claude
+    # API caps a whole request at about 32 MB and base64 adds a third on top
+    # of the file, so a PDF over ~20 MB could never be sent; images have a
+    # much smaller per-image limit (5 MB at the time of writing — check the
+    # API docs if either changes).
+    max_pdf_upload_bytes: int = 20 * 1024 * 1024
+    max_image_upload_bytes: int = 5 * 1024 * 1024
+
     # §4: fields below this confidence are flagged for mandatory review.
     field_confidence_threshold: float = 0.7
     # §12 open question, defaulted here: classification gets its own (stricter)

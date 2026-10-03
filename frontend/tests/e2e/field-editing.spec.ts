@@ -1,4 +1,5 @@
-import { test, expect, type APIRequestContext } from '@playwright/test';
+import { type APIRequestContext } from '@playwright/test';
+import { test, expect } from './coverage';
 import { BACKEND_PORT } from '../../playwright.config';
 
 // FieldEditor.tsx renders one interactive control per field_schema type

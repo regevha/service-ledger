@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
+from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
 
 router = APIRouter(tags=["attachments"])
 settings = get_settings()
@@ -23,6 +24,26 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session 
     report = db.get(models.Report, report_id)
     if not report:
         raise HTTPException(404, "Report not found")
+
+    # Validate the bytes before anything touches the disk. The type comes from
+    # the file's own leading bytes, never from the client-supplied
+    # content_type: that header is whatever the uploader's browser or script
+    # says (a "text/html" upload used to be stored with that type and served
+    # straight back from GET /attachments/{id}/file), and Claude needs the
+    # real type to read the file (services/documents.py).
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(422, "The uploaded file is empty.")
+    media_type = detect_media_type(contents)
+    if media_type is None:
+        raise HTTPException(415, f"Unsupported file type. Upload {ACCEPTED_DESCRIPTION}.")
+    limit = settings.max_pdf_upload_bytes if media_type == PDF else settings.max_image_upload_bytes
+    if len(contents) > limit:
+        raise HTTPException(
+            413,
+            f"This {'PDF' if media_type == PDF else 'image'} is {len(contents) / 1048576:.1f} MB; "
+            f"the limit is {limit // 1048576} MB. Reduce its size or resolution and upload it again.",
+        )
 
     report_dir = settings.attachment_storage_path / str(report_id)
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -51,13 +72,12 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session 
     raw_name = Path(file.filename or "").name
     safe_filename = raw_name if raw_name not in ("", ".", "..") else "upload"
     dest = report_dir / f"{uuid.uuid4()}_{safe_filename}"
-    contents = await file.read()
     dest.write_bytes(contents)
 
     attachment = models.Attachment(
         report_id=report_id,
         file_path=str(dest),
-        file_type=file.content_type or "application/octet-stream",
+        file_type=media_type,
         page_count=1,  # TODO: compute real page count once PDF preprocessing (§4 step 2) is wired in.
     )
     db.add(attachment)
@@ -110,6 +130,14 @@ def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db))
     attachment = db.get(models.Attachment, attachment_id)
     if not attachment:
         raise HTTPException(404, "Attachment not found")
+    if attachment.report.status == models.ReportStatus.finalized:
+        # Without this, classifying an attachment on an already-finalized
+        # report lets _run_classify_job (app/worker.py) silently overwrite
+        # instrument_id/template_id and revert status back to "classified"
+        # while finalized_at stays set — exactly the inconsistent state
+        # reports.py's confirm_template rejects with a 409, reachable here
+        # through an unguarded path instead.
+        raise HTTPException(409, "Cannot classify an attachment on a finalized report.")
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,
@@ -144,6 +172,12 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
         raise HTTPException(
             409, "Report has no resolved instrument/template yet — classify the attachment and confirm a template first (§4)."
         )
+    if report.status == models.ReportStatus.finalized:
+        # Same reasoning as classify_attachment above: without this,
+        # extracting on an already-finalized report lets _run_extract_job
+        # silently overwrite extracted_fields and revert status back to
+        # "extracted" while finalized_at stays set.
+        raise HTTPException(409, "Cannot extract an attachment on a finalized report.")
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,

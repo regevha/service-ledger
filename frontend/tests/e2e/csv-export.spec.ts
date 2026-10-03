@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './coverage';
 import { BACKEND_PORT } from '../../playwright.config';
 
 // The Export CSV link (§7/§9's export_reports, kept in filter-parity with

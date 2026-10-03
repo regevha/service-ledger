@@ -1,4 +1,5 @@
-import { test, expect, type APIRequestContext } from '@playwright/test';
+import { type APIRequestContext } from '@playwright/test';
+import { test, expect } from './coverage';
 import { BACKEND_PORT } from '../../playwright.config';
 
 // The reports search/list screen (§7/§9) — filters, the empty state, and the

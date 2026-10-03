@@ -16,6 +16,8 @@ import type { ReportTemplate } from '../api';
 export function ReviewScreen({
   template,
   fields,
+  reportDate,
+  onReportDateChange,
   fieldConfidences,
   fieldConfidenceThreshold,
   onChange,
@@ -27,6 +29,13 @@ export function ReviewScreen({
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
+  // The service-visit date (Report.report_date) — not a template field, but
+  // read off the document by the same extraction call, so it's reviewed and
+  // corrected here alongside them. Its extraction confidence arrives in
+  // fieldConfidences under the key "report_date" (a field name the backend
+  // reserves, so it can't clash with a template field). YYYY-MM-DD or null.
+  reportDate: string | null;
+  onReportDateChange: (value: string | null) => void;
   fieldConfidences: Record<string, number>;
   fieldConfidenceThreshold: number;
   onChange: (name: string, value: unknown) => void;
@@ -50,9 +59,14 @@ export function ReviewScreen({
   // the review screen itself only renders once `template` exists.
   pdfUrl?: string;
 }) {
-  const flaggedCount = template.field_schema.fields.filter(
-    (f) => (fieldConfidences[f.name] ?? 1) < fieldConfidenceThreshold
-  ).length;
+  const isFlagged = (name: string) => {
+    const confidence = fieldConfidences[name];
+    return confidence !== undefined && confidence < fieldConfidenceThreshold;
+  };
+  const reportDateConfidence = fieldConfidences.report_date;
+  const reportDateFlagged = isFlagged('report_date');
+  const flaggedCount =
+    template.field_schema.fields.filter((f) => isFlagged(f.name)).length + (reportDateFlagged ? 1 : 0);
   const heading =
     title ??
     `${REPORT_TYPE_LABEL[template.report_type]} — ${flaggedCount} field${flaggedCount === 1 ? '' : 's'} ${
@@ -76,9 +90,26 @@ export function ReviewScreen({
       </div>
 
       <div className="field-list">
+        <div className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}>
+          <div className="field-top">
+            <label className="field-label" htmlFor="review-report-date">
+              service date
+            </label>
+            {reportDateConfidence !== undefined && (
+              <ConfidenceBadge confidence={reportDateConfidence} threshold={fieldConfidenceThreshold} />
+            )}
+          </div>
+          <input
+            id="review-report-date"
+            type="date"
+            value={reportDate ?? ''}
+            onChange={(e) => onReportDateChange(e.target.value || null)}
+          />
+          <div className="field-note">The date the service visit was carried out.</div>
+        </div>
         {template.field_schema.fields.map((field, i) => {
           const confidence = fieldConfidences[field.name];
-          const flagged = confidence !== undefined && confidence < fieldConfidenceThreshold;
+          const flagged = isFlagged(field.name);
           return (
             <div className={`field ${flagged ? 'pending' : 'ok'}`} key={field.name}>
               <div className="field-top">

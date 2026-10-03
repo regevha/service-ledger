@@ -148,6 +148,7 @@ this so far" message instead of a one-point chart.
 ```bash
 npm run test:e2e       # headless run
 npm run test:e2e:ui    # Playwright's interactive UI mode
+npm run test:e2e:coverage  # same suite, instrumented; prints a coverage table, writes coverage/index.html
 ```
 
 `playwright.config.ts` boots its own backend (stub-mode — `USE_LIVE_CLAUDE=false`,
@@ -204,3 +205,14 @@ are deliberately loose compared to the stub suite — a live model's exact
 wording/confidence can vary slightly from run to run — so this checks for
 the absence of errors and that the report was routed to a
 report-type-specific field, not byte-for-byte field values.
+
+### Coverage
+
+`npm run test:e2e:coverage` runs the whole suite against a build instrumented
+with Istanbul (`vite-plugin-istanbul`, switched on by `COVERAGE=1` in
+`vite.config.ts`, so normal runs are untouched). `tests/e2e/coverage.ts` — the
+`test` every spec imports — saves each page's `window.__coverage__` after each
+test, and `nyc report` merges them (settings in `.nycrc.json`: every file under
+`src/` counts, generated types and `main.tsx` do not). The run fails below 88%
+lines or 70% branches; raise those numbers in `package.json` when coverage
+improves. This measures what the browser specs reach; there are no unit tests.

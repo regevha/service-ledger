@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import enum
 import uuid
+from typing import Literal
 from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -125,6 +126,13 @@ _LEAF_FIELD_TYPES = {
 }
 _OPTIONS_FIELD_TYPES = {TemplateFieldType.enum, TemplateFieldType.enum_list}
 
+# Every report's service-visit date (Report.report_date) is read by the same
+# extraction call as its template's fields, and its confidence comes back in
+# the same field_confidences dict under this key (see services/extraction.py)
+# — so no template field may use this name, or the two would overwrite each
+# other in the extraction tool's schema and on the review screen.
+REPORT_DATE_KEY = "report_date"
+
 
 class ItemSchemaColumn(BaseModel):
     """One column of an object[] field's row shape. A *list* of these, not a
@@ -167,6 +175,10 @@ class TemplateFieldIn(BaseModel):
         name = self.name.strip()
         if not name:
             raise ValueError("Field name cannot be blank")
+        if name == REPORT_DATE_KEY:
+            raise ValueError(
+                f"'{REPORT_DATE_KEY}' is reserved — every report's service date is already read from the document"
+            )
         self.name = name
 
         wants_options = self.type in _OPTIONS_FIELD_TYPES
@@ -340,6 +352,19 @@ class ClassificationGuess(BaseModel):
 class ClassificationResult(BaseModel):
     instrument: ClassificationGuess
     report_type: ClassificationGuess
+    # The instrument serial number as printed on the document, with Claude's
+    # confidence in the read; None when the document shows none (or "N/A").
+    instrument_serial: ClassificationGuess | None = None
+    # What matching that serial against the fleet found:
+    #   matched         exactly one fleet instrument has this serial
+    #   not_found       a serial was read but no instrument has it
+    #   model_conflict  it matches an instrument whose model is not the model
+    #                   read from the document, so one of the two reads is wrong
+    #   not_read        no serial on the document
+    serial_match: Literal["matched", "not_found", "model_conflict", "not_read"] = "not_read"
+    # The instrument the confirm screen should pre-select: the one the serial
+    # matched, else the only unit of the guessed model, else None.
+    suggested_instrument_id: uuid.UUID | None = None
     # Present only when both guesses cleared the classification threshold and
     # a template could be resolved automatically (§4 step 3).
     resolved_template_id: uuid.UUID | None = None

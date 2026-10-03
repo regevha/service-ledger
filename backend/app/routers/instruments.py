@@ -141,7 +141,7 @@ def instrument_trend(
     reports = (
         db.query(models.Report)
         .filter(models.Report.instrument_id == instrument_id, models.Report.status == models.ReportStatus.finalized)
-        .order_by(models.Report.report_date)
+        .order_by(*models.report_chronological_order())
         .all()
     )
     points: list[schemas.TrendPointOut] = []

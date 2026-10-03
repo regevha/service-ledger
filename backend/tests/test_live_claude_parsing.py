@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import date, timedelta
 from types import SimpleNamespace
 
 import anthropic
@@ -121,7 +122,8 @@ def test_live_classify_parses_a_well_formed_tool_response(tmp_path, monkeypatch,
     )
     monkeypatch.setattr(classification, "_get_client", lambda: fake_client)
 
-    instrument_guess, type_guess = classification._live_classify(None, attachment, instruments)
+    instrument_guess, type_guess, serial_read = classification._live_classify(None, attachment, instruments)
+    assert serial_read is None  # this answer carries no serial fields
 
     assert instrument_guess.value == "LSRFortessa"
     assert instrument_guess.confidence == 0.93
@@ -293,15 +295,18 @@ def test_live_extract_parses_a_well_formed_flat_response(tmp_path, monkeypatch, 
                 "labor_hours__confidence": 0.88,
                 "retest_result": "pass",
                 "retest_result__confidence": 0.95,
+                "report_date": "2021-04-18",
+                "report_date__confidence": 0.9,
             }
         )
     )
     monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
 
-    fields, confidences = extraction._live_extract(attachment, _template())
+    fields, confidences, report_date = extraction._live_extract(attachment, _template())
 
     assert fields == {"fault_description": "No see events", "labor_hours": 11.5, "retest_result": "pass"}
-    assert confidences == {"fault_description": 0.92, "labor_hours": 0.88, "retest_result": 0.95}
+    assert confidences == {"fault_description": 0.92, "labor_hours": 0.88, "retest_result": 0.95, "report_date": 0.9}
+    assert report_date == date(2021, 4, 18)
 
     assert "Claude extract API call" in caplog.text
     assert _DURATION_RE.search(caplog.text)
@@ -327,7 +332,7 @@ def test_live_extract_unwraps_a_single_key_wrapped_response(tmp_path, monkeypatc
     fake_client = _FakeClient(response=_tool_use_response({"value": inner}))
     monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
 
-    fields, confidences = extraction._live_extract(attachment, _template())
+    fields, confidences, _ = extraction._live_extract(attachment, _template())
 
     assert fields["fault_description"] == "No see events"
     assert fields["labor_hours"] == 4.0
@@ -354,7 +359,7 @@ def test_live_extract_rescues_a_per_field_nested_value_confidence_shape(tmp_path
     )
     monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
 
-    fields, confidences = extraction._live_extract(attachment, _template())
+    fields, confidences, _ = extraction._live_extract(attachment, _template())
 
     assert fields["fault_description"] == "No see events"
     assert confidences["fault_description"] == 0.91
@@ -377,7 +382,7 @@ def test_live_extract_defaults_a_missing_field_to_none_value_and_zero_confidence
     )
     monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
 
-    fields, confidences = extraction._live_extract(attachment, _template())
+    fields, confidences, _ = extraction._live_extract(attachment, _template())
 
     assert fields["labor_hours"] is None
     assert confidences["labor_hours"] == 0.0
@@ -405,7 +410,7 @@ def test_live_extract_treats_a_non_numeric_confidence_as_zero_without_dropping_t
     )
     monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
 
-    fields, confidences = extraction._live_extract(attachment, _template())
+    fields, confidences, _ = extraction._live_extract(attachment, _template())
 
     assert fields["fault_description"] == "No see events"
     assert confidences["fault_description"] == 0.0
@@ -455,3 +460,71 @@ def test_live_extract_raises_when_claude_answers_without_a_tool_call(tmp_path, m
 
     assert "no tool_use block" in caplog.text
     assert "'text'" in caplog.text
+
+
+# ---------- report_date (the service-visit date, read in the same call) ----------
+
+
+def _extract_with_report_date(tmp_path, monkeypatch, report_date_answer: dict):
+    pdf = tmp_path / "scan.pdf"
+    pdf.write_bytes(b"%PDF-1.4 x")
+    attachment = SimpleNamespace(file_path=str(pdf))
+    answer = {
+        "fault_description": "x",
+        "fault_description__confidence": 0.9,
+        "labor_hours": 1.0,
+        "labor_hours__confidence": 0.9,
+        "retest_result": "pass",
+        "retest_result__confidence": 0.9,
+        **report_date_answer,
+    }
+    fake_client = _FakeClient(response=_tool_use_response(answer))
+    monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
+    return extraction._live_extract(attachment, _template()), fake_client
+
+
+def test_live_extract_asks_for_report_date_in_the_tool_schema_and_prompt(tmp_path, monkeypatch):
+    _, fake_client = _extract_with_report_date(tmp_path, monkeypatch, {})
+    call = fake_client.messages.calls[0]
+    schema = call["tools"][0]["input_schema"]
+    assert "report_date" in schema["properties"]
+    assert {"report_date", "report_date__confidence"} <= set(schema["required"])
+    prompt = call["messages"][0]["content"][1]["text"]
+    assert "report_date" in prompt
+    # Which date: the labor table, not the contract or calibrated-tool dates
+    # that sit on the same form (a real BD S8 PM report has all three).
+    assert "LABOR" in prompt and "CALIBRATED TOOLS" in prompt
+    # BD forms differ in day/month order (that same S8 report is month-first,
+    # 02/10/2026 = 10 Feb), so the prompt must not assume one order.
+    assert "month-first" in prompt and "day-first" in prompt
+    assert "greater than 12" in prompt
+
+
+def test_live_extract_accepts_an_iso_datetime_for_report_date(tmp_path, monkeypatch):
+    (_, confidences, report_date), _ = _extract_with_report_date(
+        tmp_path, monkeypatch, {"report_date": "2024-03-07T00:00:00", "report_date__confidence": 0.8}
+    )
+    assert report_date == date(2024, 3, 7)
+    assert confidences["report_date"] == 0.8
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "",  # no date on the form
+        "18/04/2021",  # not converted to ISO as asked
+        "next Tuesday",
+        (date.today() + timedelta(days=30)).isoformat(),  # a next-service-due date, most likely
+        "0221-04-18",  # a dropped century digit
+    ],
+)
+def test_live_extract_drops_a_missing_or_implausible_report_date(tmp_path, monkeypatch, caplog, answer):
+    """None rather than a wrong date, and confidence 0 so the review screen
+    flags it — whatever confidence Claude itself claimed."""
+    (_, confidences, report_date), _ = _extract_with_report_date(
+        tmp_path, monkeypatch, {"report_date": answer, "report_date__confidence": 0.95}
+    )
+    assert report_date is None
+    assert confidences["report_date"] == 0.0
+    if answer:
+        assert "report_date" in caplog.text

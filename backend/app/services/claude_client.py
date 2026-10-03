@@ -33,10 +33,28 @@ settings = get_settings()
 
 # The real BD Care EU Work Order Service Report used throughout the spec
 # (Case 03191457 / WO-04587090) — both classify() and extract() special-case
-# any attachment whose file path matches one of these, in stub mode, so a
-# demo run against that one real document reproduces its documented
-# behavior exactly rather than a generic stub guess.
-SAMPLE_MARKERS = ("wo-04587090", "sample", "work_order", "work-order")
+# the attachment, in stub mode, so a demo run against that one document
+# reproduces its documented behavior exactly rather than a generic stub guess.
+#
+# The markers are deliberately narrow: the work-order number, and the
+# dedicated fixture's name. They used to include the generic words "sample",
+# "work_order" and "work-order", which matched any real BD file whose name
+# merely says "Work Order" (every BD service report is titled that, e.g.
+# "BD_EU_Work_Order_Service_Report_Label_v3_S8_10-2-26.pdf") and made the
+# stub answer with the LSRFortessa repair data for a FACSDiscover S8 PM.
+SAMPLE_MARKERS = ("wo-04587090", "sample-work-order")
+
+
+def is_sample_document(file_path: str) -> bool:
+    """True when the uploaded file is the spec's sample work order.
+
+    Matches the uploaded file's own name only — stored paths look like
+    ``storage/attachments/<report-uuid>/<uuid>_<original name>``, and nothing
+    outside the original name should decide this.
+    """
+    name = file_path.replace("\\", "/").rsplit("/", 1)[-1].lower()
+    return any(marker in name for marker in SAMPLE_MARKERS)
+
 
 _client: Anthropic | None = None
 
@@ -55,9 +73,18 @@ def get_client() -> Anthropic:
 def stable_unit(*parts: str) -> float:
     """A float in [0, 1), stable for the same inputs — stands in for "model
     confidence" (or a plausible stub value) without needing an actual model
-    call."""
+    call.
+
+    Divides by 0x100000000 (2**32), not 0xFFFFFFFF (the max value
+    int(digest[:8], 16) can take) — dividing by the max value itself let the
+    result equal exactly 1.0 whenever a digest's first 8 hex characters
+    happened to be "ffffffff", violating the "[0, 1)" this function's own
+    docstring promises. extraction.py's enum stub relies on that upper bound
+    to stay strict (`options[int(_stable_unit(...) * len(options))]`) — a
+    result of exactly 1.0 would index one past the end of `options` and
+    raise IndexError."""
     digest = hashlib.sha256("|".join(parts).encode()).hexdigest()
-    return int(digest[:8], 16) / 0xFFFFFFFF
+    return int(digest[:8], 16) / 0x100000000
 
 
 def call_claude_tool(

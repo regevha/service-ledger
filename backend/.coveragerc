@@ -1,0 +1,28 @@
+# Backend coverage settings. Run with:  python -m pytest --cov   (needs pytest-cov)
+#
+# Only code the test suite could reasonably exercise is measured. Three modules
+# are left out on purpose, not because they were forgotten:
+#   - seed_demo_reports.py, seed_trend_demo.py: dev/demo convenience scripts
+#     that fill a database with sample data for screenshots and the trend chart.
+#   - testing/reset_db.py: the command-line helper the Playwright config runs
+#     to reset the e2e database; the e2e suite exercises it for real.
+# Everything else, including the race-handling branches (tests/
+# test_race_conditions.py), counts.
+[run]
+source = app
+branch = True
+omit =
+    app/seed_demo_reports.py
+    app/seed_trend_demo.py
+    app/testing/reset_db.py
+
+[report]
+show_missing = True
+skip_covered = True
+# Ratchet: raise this when coverage improves, so a change that drops it fails.
+fail_under = 95
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError
+    if TYPE_CHECKING:

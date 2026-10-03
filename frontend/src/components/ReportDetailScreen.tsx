@@ -2,9 +2,9 @@ import { useState } from 'react';
 import {
   ApiError,
   attachmentFileUrl,
-  findTemplate,
   finalizeReport,
   getReport,
+  getReportTemplate,
   reportPdfUrl,
   updateReportFields,
   type Instrument,
@@ -40,6 +40,7 @@ export function ReportDetailScreen({
   const [report, setReport] = useState<Report | null>(null);
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [fields, setFields] = useState<Record<string, unknown>>({});
+  const [reportDate, setReportDate] = useState<string | null>(null);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
 
   // `setError` is reused below by handleSave — a failure saving corrections
@@ -50,12 +51,23 @@ export function ReportDetailScreen({
       if (isCancelled()) return;
       setReport(r);
       setFields(r.extracted_fields ?? {});
-      // GET /reports/{id} only carries instrument_id/template_id (raw
-      // ReportOut, §9) — the list item already resolved those to display
-      // names (§7), which is exactly what findTemplate needs, so reuse it
-      // instead of adding a get-template-by-id endpoint for this one screen.
-      if (item.instrument_model && item.report_type) {
-        const tpl = await findTemplate(item.instrument_model, item.report_type);
+      setReportDate(r.report_date);
+      // Fetch the report's own template_id directly (GET /report-templates/
+      // {id}), not re-resolve "the" template for its instrument model +
+      // report type (findTemplate) the way this used to. resolve_template's
+      // model/report_type match can point at a *different* template than
+      // the one this report was actually confirmed against — a new
+      // model-specific template added after this report was finalized, or
+      // the instrument being renamed to a different model, would both
+      // change what findTemplate(model, reportType) returns without ever
+      // changing this report's own template_id. Rendering that
+      // newly-resolved template's field_schema against this report's
+      // already-saved extracted_fields silently showed the wrong fields —
+      // and since PATCH /reports/{id}/fields is a merge-overlay allowed even
+      // on a finalized report, saving corrections from here could
+      // permanently write the wrong template's field keys into it.
+      if (r.template_id) {
+        const tpl = await getReportTemplate(r.template_id);
         if (!isCancelled()) setTemplate(tpl);
       }
     },
@@ -67,7 +79,7 @@ export function ReportDetailScreen({
     if (!report) return;
     setBusyLabel(finalize ? 'Saving and finalizing…' : 'Saving corrections…');
     try {
-      const updated = await updateReportFields(report.id, { extracted_fields: fields });
+      const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
       const final = finalize ? await finalizeReport(report.id) : updated;
       setReport(final);
     } catch (e) {
@@ -106,6 +118,8 @@ export function ReportDetailScreen({
         <ReviewScreen
           template={template}
           fields={fields}
+          reportDate={reportDate}
+          onReportDateChange={setReportDate}
           fieldConfidences={{}}
           fieldConfidenceThreshold={fieldConfidenceThreshold}
           onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}

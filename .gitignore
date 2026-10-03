@@ -5,3 +5,7 @@ backend/__pycache__/
 backend/.env
 backend/storage/attachments/**
 !backend/storage/attachments/.gitkeep
+
+# Frontend coverage output (npm run test:e2e:coverage)
+frontend/.nyc_output/
+frontend/coverage/

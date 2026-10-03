@@ -131,6 +131,18 @@ def update_report_template(template_id: uuid.UUID, payload: schemas.TemplateUpda
             raise HTTPException(422, "fields cannot be null — omit it to leave the schema unchanged.")
         template.field_schema = {"fields": [_field_to_dict(f) for f in payload.fields]}
 
+    if "report_type" in provided and payload.report_type is None:
+        # Unlike `model` (nullable in the DB — a null there is a real,
+        # meaningful "applies to any model" wildcard, per TemplateUpdate's
+        # own docstring), report_type is a NOT NULL column with no such
+        # wildcard meaning. An explicit null here used to sail straight
+        # through _check_collision (which treats it as "no other row has a
+        # null report_type" and finds nothing), then fail the commit with an
+        # IntegrityError whose handler calls _raise_collision(None, ...) —
+        # `None.value` raised an unhandled AttributeError (a 500) instead of
+        # a clean error.
+        raise HTTPException(422, "report_type cannot be null — omit it to leave it unchanged.")
+
     new_report_type = payload.report_type if "report_type" in provided else template.report_type
     new_model = payload.model if "model" in provided else template.model
     if "report_type" in provided or "model" in provided:
@@ -159,4 +171,15 @@ def delete_report_template(template_id: uuid.UUID, db: Session = Depends(get_db)
         # raise a raw, unhandled IntegrityError instead of a clean 409.
         raise HTTPException(409, f"Cannot delete: {in_use} report(s) reference this template")
     db.delete(template)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Closes the race window between the count-check above and this
+        # commit — a report can be attached to this template (PATCH
+        # /reports/{id}/template, a separate request) in between. With
+        # ReportTemplate.reports now passive_deletes=True (models.py), the
+        # DB's own RESTRICT constraint catches that race atomically here
+        # instead of the ORM silently nulling the newly-attached report's
+        # template_id and letting the delete through.
+        db.rollback()
+        raise HTTPException(409, "Cannot delete: a report was attached to this template just now — try again.") from None

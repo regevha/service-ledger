@@ -67,6 +67,13 @@ def _claim_next_job(db: Session) -> models.ExtractionJob | None:
     return job
 
 
+def _fail_job(db: Session, job: models.ExtractionJob, message: str) -> None:
+    job.status = models.ExtractionJobStatus.failed
+    job.error_message = message
+    job.completed_at = datetime.now(timezone.utc)
+    db.commit()
+
+
 def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
     attachment = db.get(models.Attachment, job.attachment_id)
     if attachment is None:
@@ -90,7 +97,21 @@ def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
 
     job.classification = result.model_dump(mode="json")
 
+    # Re-read the report under a row lock *after* the (slow) classify call,
+    # not before it: a report finalized while Claude was working must still
+    # be caught here, and the lock holds off a concurrent finalize/confirm
+    # until this job's own commit below, so the check can't go stale between
+    # here and the write.
     report = attachment.report
+    db.refresh(report, with_for_update=True)
+    if report.status == models.ReportStatus.finalized:
+        # The router rejects this synchronously before enqueuing (see
+        # app/routers/attachments.py's classify_attachment), but a report can
+        # still be finalized between submit and here. Reject rather than
+        # silently overwriting instrument_id/template_id and reverting
+        # status on an already-finalized report.
+        _fail_job(db, job, "Report was finalized after this job was submitted — classification discarded.")
+        return
     if result.resolved_instrument_id and result.resolved_template_id:
         # Confident on both — resolve automatically and move straight toward
         # extraction (§4: "the system resolves the matching template
@@ -99,6 +120,13 @@ def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
         # once it sees this on the job — the worker doesn't chain straight
         # into extraction itself, since a technician may still want to look
         # at a confident classification before committing to it.
+        if report.template_id != result.resolved_template_id:
+            # Same rule confirm_template (routers/reports.py) applies: values
+            # extracted under a different template aren't corrections to
+            # keep, they're noise to discard. Without this, re-classifying an
+            # already-extracted report onto a new template left the old
+            # template's field keys sitting in extracted_fields.
+            report.extracted_fields = {}
         report.instrument_id = result.resolved_instrument_id
         report.template_id = result.resolved_template_id
         report.status = models.ReportStatus.classified
@@ -134,21 +162,49 @@ def _run_extract_job(db: Session, job: models.ExtractionJob) -> None:
         job.completed_at = datetime.now(timezone.utc)
         db.commit()
         return
-
-    template = db.get(models.ReportTemplate, report.template_id)
-
-    try:
-        extracted_fields, field_confidences = run_extract(attachment, template)
-    except ExtractionError as e:
+    if report.status == models.ReportStatus.finalized:
+        # Cheap early-out so a report finalized between submit and pickup
+        # doesn't spend an API call — the router (extract_attachment) already
+        # rejects this synchronously. Not sufficient on its own: the
+        # authoritative re-check happens under a row lock after run_extract.
         job.status = models.ExtractionJobStatus.failed
-        job.error_message = str(e)
+        job.error_message = "Report was finalized after this job was submitted — extraction discarded."
         job.completed_at = datetime.now(timezone.utc)
         db.commit()
         return
 
-    report.extracted_fields = extracted_fields
+    template = db.get(models.ReportTemplate, report.template_id)
+
+    try:
+        result = run_extract(attachment, template)
+    except ExtractionError as e:
+        _fail_job(db, job, str(e))
+        return
+
+    # The checks above ran *before* the slow extract call — a report can be
+    # finalized, or moved to a different template (PATCH .../template), while
+    # Claude is still working. Re-read it under a row lock and re-check before
+    # writing anything: the lock holds off a concurrent finalize/confirm until
+    # this job's commit, so nothing can change between this check and the
+    # write below.
+    db.refresh(report, with_for_update=True)
+    if report.status == models.ReportStatus.finalized:
+        _fail_job(db, job, "Report was finalized while this extraction was running — extraction discarded.")
+        return
+    if report.template_id != template.id:
+        _fail_job(
+            db, job, "Report's template changed while this extraction was running — extraction discarded; resubmit."
+        )
+        return
+
+    report.extracted_fields = result.extracted_fields
+    if result.report_date is not None:
+        # Only overwrite with a date actually read off the document — when
+        # none could be read, keep whatever the report already has (e.g. a
+        # date the technician entered by hand) rather than blanking it.
+        report.report_date = result.report_date
     report.status = models.ReportStatus.extracted
-    job.field_confidences = field_confidences
+    job.field_confidences = result.field_confidences
     job.status = models.ExtractionJobStatus.succeeded
     job.completed_at = datetime.now(timezone.utc)
     db.commit()

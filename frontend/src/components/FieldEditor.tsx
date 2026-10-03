@@ -70,6 +70,20 @@ export function EnumArrayInput({ value, onChange }: { value: string[]; onChange:
   );
 }
 
+// A new row's starting value per leaf type — matching what each type's own
+// "nothing entered yet" value actually is elsewhere in this file, not just
+// an empty string for every column regardless of type. Untouched, a number
+// column used to sit at '' (a string) rather than null: leafInput's number
+// branch only ever emits null for "no value" (see its onChange above), so a
+// row left with its quantity blank silently wrote a string into a field
+// PATCH /reports/{id}/fields — and any backend/analytics code reading it —
+// expects to be a number or null.
+function blankLeafValue(type: LeafType): unknown {
+  if (type === 'number') return null;
+  if (type === 'boolean') return false;
+  return '';
+}
+
 function ObjectArrayInput({
   value,
   itemSchema,
@@ -93,7 +107,7 @@ function ObjectArrayInput({
     onChange(rows.filter((_, j) => j !== i));
   }
   function addRow() {
-    const blank = Object.fromEntries(columns.map((c) => [c.name, '']));
+    const blank = Object.fromEntries(columns.map((c) => [c.name, blankLeafValue(c.type as LeafType)]));
     onChange([...rows, blank]);
   }
 
