@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "codegen": "npx --yes openapi-typescript@7.13.0 openapi.json -o src/generated/api-schema.ts"
+    "codegen": "npx --yes openapi-typescript@7.13.0 openapi.json -o src/generated/api-schema.ts",
+    "test:e2e:coverage": "rm -rf .nyc_output coverage && COVERAGE=1 playwright test && nyc report --temp-dir .nyc_output --reporter=text --reporter=html --reporter=json-summary --check-coverage --lines 88 --branches 70 --report-dir coverage"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -22,8 +23,10 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "nyc": "^18.0.0",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vite-plugin-istanbul": "^9.0.1"
   }
 }

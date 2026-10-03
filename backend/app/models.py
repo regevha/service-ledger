@@ -127,7 +127,21 @@ class ReportTemplate(Base):
     field_schema: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    reports: Mapped[list["Report"]] = relationship(back_populates="template")
+    # passive_deletes=True: without it, SQLAlchemy's default ORM-side delete
+    # handling proactively SELECTs this collection and nulls each Report's
+    # template_id as part of deleting a ReportTemplate, instead of leaving
+    # the FK constraint (reports.template_id -> report_templates.id, no
+    # ondelete set — see Report.template_id below — defaults to RESTRICT) to
+    # do anything. That silently defeats routers/report_templates.py's own
+    # in-use guard under a race: if a report is attached to this template
+    # (PATCH /reports/{id}/template) between that guard's count-check and
+    # this delete's commit, the ORM's automatic nulling let the delete
+    # succeed anyway — 204, template gone, the newly-attached report's
+    # template_id silently nulled out from under it. passive_deletes=True
+    # leaves Report rows alone and lets the DB's own RESTRICT constraint
+    # reject the delete atomically at commit time instead, which
+    # delete_report_template now also catches and turns into a clean 409.
+    reports: Mapped[list["Report"]] = relationship(back_populates="template", passive_deletes=True)
 
 
 class Report(Base):
@@ -214,3 +228,16 @@ class ExtractionJob(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     attachment: Mapped[Attachment] = relationship(back_populates="extraction_jobs")
+
+
+def report_chronological_order() -> tuple:
+    """ORDER BY terms for "reports in event order" — the trend chart's x-axis
+    (routers/instruments.py) and the CSV export (routers/reports.py).
+
+    report_date is nullable and nothing in the intake/review UI sets it today
+    (only seed scripts and direct API calls do), so ordering by report_date
+    alone left every in-app report's position up to whatever order Postgres
+    happened to return NULLs in. Falling back to the report's creation date
+    keeps undated reports in a stable, roughly chronological place among
+    dated ones; created_at breaks ties."""
+    return (func.coalesce(Report.report_date, func.date(Report.created_at)), Report.created_at)

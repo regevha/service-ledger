@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './coverage';
 import { BACKEND_PORT } from '../../playwright.config';
 
 // The "Download PDF" link on the report detail/review screen (§7/§11's

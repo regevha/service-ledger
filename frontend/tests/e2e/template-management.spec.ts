@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './coverage';
 
 // The Templates tab (TemplateManager.tsx) is the structured field editor
 // that replaces "edit seed_templates.py's Python literals and re-run the
@@ -49,7 +49,11 @@ test('create, edit, and delete a report template through the structured field ed
   await expect(page.locator('.section-title').first()).toContainText('Report templates');
   const listRow = page.locator('.template-row-body', { hasText: uniqueModel });
   await expect(listRow).toBeVisible();
-  await expect(listRow).toContainText('2'); // field count
+  // The "Fields" column is the row's 3rd span (report type, model, field
+  // count, actions) — asserting on the row's full text instead would also
+  // match the digits inside uniqueModel's Date.now() suffix, letting a
+  // broken field count pass unnoticed.
+  await expect(listRow.locator('span').nth(2)).toHaveText('2');
 
   // ---- Edit: add a third, object[]-typed field ----
   await listRow.locator('button:has-text("Edit")').click();
@@ -77,7 +81,7 @@ test('create, edit, and delete a report template through the structured field ed
 
   await expect(page.locator('.section-title').first()).toContainText('Report templates');
   const updatedRow = page.locator('.template-row-body', { hasText: uniqueModel });
-  await expect(updatedRow).toContainText('3');
+  await expect(updatedRow.locator('span').nth(2)).toHaveText('3');
 
   // ---- Reopen and confirm the column order survived the save (the actual
   // regression check for the JSONB-ordering fix) ----
@@ -97,4 +101,29 @@ test('create, edit, and delete a report template through the structured field ed
   await updatedRow.locator('button:has-text("Delete")').click();
   await updatedRow.locator('button:has-text("Confirm delete")').click();
   await expect(page.locator('.template-row-body', { hasText: uniqueModel })).toHaveCount(0);
+});
+
+test('a template the backend rejects shows the validation reason, not a bare status', async ({ page }) => {
+  // FastAPI sends request-validation 422s with `detail` as a list of
+  // {loc, msg} entries; apiFetch used to read only a string `detail`, so
+  // this showed "Unprocessable Content" (or nothing at all over HTTP/2)
+  // instead of telling the user what to fix.
+  await page.goto('/');
+  await page.click('.view-tab:has-text("Templates")');
+  await page.click('button:has-text("+ New template")');
+  await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(`E2E-Invalid-${Date.now()}`);
+
+  // An enum field with no options — the client-side check only looks at
+  // blank names, so this reaches the backend and gets a 422.
+  await page.click('button:has-text("+ Add field")');
+  const row = page.locator('.schema-field-row').nth(0);
+  await row.locator('[aria-label="Field name"]').fill('fault_category');
+  await row.locator('[aria-label="Field type"]').selectOption('enum');
+  await page.click('button:has-text("Create template")');
+
+  const banner = page.locator('.banner-crit');
+  await expect(banner).toContainText('requires a non-empty options list');
+  await expect(banner).not.toContainText('Value error');
+  // Still on the form, nothing saved.
+  await expect(page.locator('.section-title').first()).toContainText('New template');
 });

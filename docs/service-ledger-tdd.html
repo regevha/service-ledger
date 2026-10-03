@@ -143,6 +143,7 @@
       <a href="#resolution">Resolution</a>
       <a href="#pipeline">Pipeline</a>
       <a href="#api">API</a>
+      <a href="#frontend">Frontend</a>
       <a href="#config">Config</a>
       <a href="#testing">Testing</a>
       <a href="#gaps">Gaps</a>
@@ -156,17 +157,17 @@
   <div class="cover">
     <p class="cover-eyebrow">Technical Design Document</p>
     <h1>SL-TDD-001</h1>
-    <p class="cover-sub">How the ServiceLedger backend actually works — modules, data flow, request lifecycles, and the implementation calls SL-ARCH-001 leaves open. Written from the code, not from the plan.</p>
+    <p class="cover-sub">How the ServiceLedger backend and frontend actually work — modules, data flow, request lifecycles, and the implementation calls SL-ARCH-001 leaves open. Written from the code, not from the plan.</p>
 
     <div class="doc-control">
       <div class="doc-control-title">Document control</div>
       <div class="doc-control-grid">
         <div class="dc-cell"><span class="dc-label">Doc ID</span><span class="dc-value">SL-TDD-001</span></div>
-        <div class="dc-cell"><span class="dc-label">Version</span><span class="dc-value">0.1 draft</span></div>
-        <div class="dc-cell"><span class="dc-label">Date</span><span class="dc-value">2026-09-16</span></div>
+        <div class="dc-cell"><span class="dc-label">Version</span><span class="dc-value">0.4</span></div>
+        <div class="dc-cell"><span class="dc-label">Date</span><span class="dc-value">2026-10-02</span></div>
         <div class="dc-cell"><span class="dc-label">Prepared for</span><span class="dc-value">Regev — single-user evaluation</span></div>
-        <div class="dc-cell"><span class="dc-label">Companion to</span><span class="dc-value">SL-ARCH-001 v0.12</span></div>
-        <div class="dc-cell"><span class="dc-label">Status</span><span class="status-pill">Draft — for review</span></div>
+        <div class="dc-cell"><span class="dc-label">Companion to</span><span class="dc-value">SL-ARCH-001 v0.16</span></div>
+        <div class="dc-cell"><span class="dc-label">Status</span><span class="status-pill">Revised — synced to code</span></div>
       </div>
     </div>
   </div>
@@ -175,64 +176,74 @@
     <p class="sec-eyebrow">§0</p>
     <h2>Overview</h2>
     <p class="sec-dek">SL-ARCH-001 decides what the system is and why. This document describes what got built.</p>
-    <p>SL-ARCH-001 is the product spec: it carries the evidence trail — which real BD Care service reports proved which template shape, why <code class="mono">preventive_maintenance</code> collapsed from three per-model rows to one — and the rationale a reviewer needs to trust a design decision. It deliberately doesn't say which file a function lives in or what a request looks like on the wire. This document is the other half: the backend as it exists today (FastAPI + Postgres, at commit-level accuracy as of this writing) — its modules, its data model in implementation terms, its request lifecycles, and the handful of decisions (an enum's exact values, a threshold's actual number) that implementation had to make and the spec left unstated.</p>
+    <p>SL-ARCH-001 is the product spec: it carries the evidence trail — which real BD Care service reports proved which template shape, why <code class="mono">preventive_maintenance</code> collapsed from three per-model rows to one — and the rationale a reviewer needs to trust a design decision. It deliberately doesn't say which file a function lives in or what a request looks like on the wire. This document is the other half: the system as it exists today (FastAPI + Postgres + a background worker on the backend, a React/Vite frontend, at commit-level accuracy as of this writing) — its modules, its data model in implementation terms, its request lifecycles, and the handful of decisions (an enum's exact values, a threshold's actual number) that implementation had to make and the spec left unstated.</p>
     <p>Read SL-ARCH-001 first for <em>why</em>. Read this for <em>where</em> and <em>how</em>. §11 (Appendix) maps every section here back to the spec section it implements, so cross-referencing either direction is one lookup.</p>
     <div class="callout">
       <span class="callout-label">Scope</span>
-      <p>Backend only. The frontend is a paused Vite/React scaffold with no application code yet — out of scope here until that resumes. The three HTML review-screen demos (new-report, repair-review, PM-review, instrument-timeline) are UI mockups, not part of the running system, and aren't covered either.</p>
+      <p>Covers the backend and the frontend that now consumes it (§7). v0.1 of this document scoped the frontend out as "a paused Vite/React scaffold with no application code yet" — that stopped being true within days of v0.1 shipping, and this revision corrects it. The three original HTML review-screen demos (new-report, repair-review, PM-review, instrument-timeline) are superseded by the real frontend and are kept only as historical mockups, not part of the running system.</p>
     </div>
   </section>
 
   <section class="doc-section" id="architecture">
     <p class="sec-eyebrow">§1</p>
     <h2>System architecture</h2>
-    <p class="sec-dek">One FastAPI process, one Postgres database, local disk for scans — nothing else runs yet.</p>
-    <p>The whole backend is a single FastAPI application (<code class="mono">app.main:app</code>) talking to a single Postgres database over SQLAlchemy, plus local disk for the scanned originals themselves. There is no queue, no cache, no separate worker process — SL-ARCH-001 §3 describes extraction as eventually async via a polling worker, but for MVP scale, classification and extraction both run inline inside the request that triggers them. The vision calls that would make classification and extraction real are not wired up at all yet: both are deterministic, in-process stub functions (§6) standing in for the Claude API call the request diagram below shows as not-yet-connected.</p>
+    <p class="sec-dek">One FastAPI process, one Postgres database, local disk for scans, and a separate background worker that does the actual Claude calls.</p>
+    <p>The system is a FastAPI application (<code class="mono">app.main:app</code>) talking to a single Postgres database over SQLAlchemy, plus local disk for the scanned originals themselves, plus a dedicated worker process (<code class="mono">python -m app.worker</code>). SL-ARCH-001 §3's "single background worker process, polling a job table in Postgres" is implemented exactly as described: <code class="mono">POST /attachments/{id}/classify</code> and <code class="mono">.../extract</code> only insert a <code class="mono">pending</code> row into <code class="mono">extraction_jobs</code> and return <code class="mono">202</code> immediately (§5, §9); the worker claims rows with <code class="mono">with_for_update(skip_locked=True)</code> and is what actually runs <code class="mono">classify()</code>/<code class="mono">extract()</code>. Those two functions are deterministic, hash-seeded stubs by default; behind the <code class="mono">use_live_claude</code> setting (§8) they instead send the scanned PDF to the real Claude API via a shared client module (<code class="mono">services/claude_client.py</code>) — the vision call the previous revision of this diagram showed as not-yet-connected now exists and is unit-tested (§9), just off by default.</p>
     <figure class="diagram">
-      <svg viewBox="0 0 860 300" role="img" aria-label="Architecture diagram: a planned React frontend and any HTTP client send JSON requests to the FastAPI application; FastAPI reads and writes Postgres over SQLAlchemy, writes scanned attachments to local disk, and would call the Claude API for classify and extract, but that call is not wired up yet — those two functions are local stubs instead.">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Architecture diagram: the React frontend and any HTTP client send JSON requests to the FastAPI application; FastAPI reads and writes Postgres (including an extraction_jobs queue table) over SQLAlchemy and writes scanned attachments to local disk. A separate worker process claims pending rows from the extraction_jobs queue, writes classification and extraction results back to Postgres, and calls the Claude API to classify and extract — a real vision call, gated behind a use_live_claude flag that defaults to a deterministic stub.">
         <defs>
           <marker id="tdd-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
           </marker>
         </defs>
         <g font-size="12">
-          <rect x="20" y="24" width="180" height="54" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
-          <text x="110" y="46" text-anchor="middle" font-weight="600">Client</text>
-          <text x="110" y="63" text-anchor="middle" font-size="10" opacity="0.65">React SPA (paused) / curl / tests</text>
+          <rect x="20" y="24" width="170" height="54" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="105" y="46" text-anchor="middle" font-weight="600">Client</text>
+          <text x="105" y="63" text-anchor="middle" font-size="10" opacity="0.65">React frontend (§7) / curl / tests</text>
 
-          <rect x="330" y="18" width="200" height="66" rx="4" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
-          <text x="430" y="42" text-anchor="middle" font-weight="600">FastAPI app</text>
-          <text x="430" y="58" text-anchor="middle" font-size="10" opacity="0.65">app.main:app</text>
-          <text x="430" y="72" text-anchor="middle" font-size="10" opacity="0.65">routers → services → models</text>
+          <rect x="300" y="18" width="200" height="66" rx="4" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <text x="400" y="42" text-anchor="middle" font-weight="600">FastAPI app</text>
+          <text x="400" y="58" text-anchor="middle" font-size="10" opacity="0.65">app.main:app</text>
+          <text x="400" y="72" text-anchor="middle" font-size="10" opacity="0.65">routers → services → models</text>
 
-          <line x1="200" y1="51" x2="326" y2="51" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow)"></line>
-          <text x="263" y="43" text-anchor="middle" font-size="10">HTTP / JSON</text>
+          <line x1="190" y1="51" x2="296" y2="51" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow)"></line>
+          <text x="243" y="43" text-anchor="middle" font-size="10">HTTP / JSON</text>
 
-          <rect x="620" y="18" width="200" height="60" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
-          <text x="720" y="42" text-anchor="middle" font-weight="600">Postgres</text>
-          <text x="720" y="58" text-anchor="middle" font-size="10" opacity="0.65">JSONB templates + fields</text>
+          <rect x="620" y="18" width="220" height="72" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="730" y="40" text-anchor="middle" font-weight="600">Postgres</text>
+          <text x="730" y="56" text-anchor="middle" font-size="10" opacity="0.65">JSONB templates + reports</text>
+          <text x="730" y="70" text-anchor="middle" font-size="10" opacity="0.65">extraction_jobs queue</text>
 
-          <line x1="530" y1="45" x2="616" y2="45" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow)"></line>
-          <text x="573" y="37" text-anchor="middle" font-size="10">reads / writes</text>
+          <line x1="500" y1="45" x2="616" y2="45" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow)"></line>
+          <text x="558" y="37" text-anchor="middle" font-size="10">reads / writes</text>
 
-          <rect x="620" y="110" width="200" height="58" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
-          <text x="720" y="133" text-anchor="middle" font-weight="600">Local disk</text>
-          <text x="720" y="149" text-anchor="middle" font-size="10" opacity="0.65">storage/attachments/</text>
+          <rect x="620" y="104" width="220" height="58" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="730" y="127" text-anchor="middle" font-weight="600">Local disk</text>
+          <text x="730" y="143" text-anchor="middle" font-size="10" opacity="0.65">storage/attachments/</text>
 
-          <line x1="530" y1="70" x2="700" y2="106" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow)"></line>
-          <text x="640" y="100" text-anchor="middle" font-size="10">writes scans</text>
+          <line x1="500" y1="70" x2="616" y2="122" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow)"></line>
+          <text x="558" y="105" text-anchor="middle" font-size="10">writes scans</text>
 
-          <rect x="330" y="200" width="200" height="72" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.75"></rect>
-          <text x="430" y="224" text-anchor="middle" font-weight="600" opacity="0.85">Claude API</text>
-          <text x="430" y="240" text-anchor="middle" font-size="10" opacity="0.65">vision: classify + extract</text>
-          <text x="430" y="256" text-anchor="middle" font-size="10" opacity="0.65">not wired up (§6)</text>
+          <rect x="300" y="220" width="200" height="66" rx="4" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <text x="400" y="244" text-anchor="middle" font-weight="600">Worker process</text>
+          <text x="400" y="260" text-anchor="middle" font-size="10" opacity="0.65">python -m app.worker</text>
+          <text x="400" y="274" text-anchor="middle" font-size="10" opacity="0.65">polls extraction_jobs (§9)</text>
 
-          <line x1="430" y1="84" x2="430" y2="196" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.75" marker-end="url(#tdd-arrow)"></line>
-          <text x="452" y="145" font-size="10" opacity="0.75">would call for</text>
-          <text x="452" y="158" font-size="10" opacity="0.75">classify() / extract()</text>
+          <rect x="620" y="220" width="220" height="66" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="730" y="244" text-anchor="middle" font-weight="600">Claude API</text>
+          <text x="730" y="260" text-anchor="middle" font-size="10" opacity="0.65">vision: classify + extract</text>
+          <text x="730" y="274" text-anchor="middle" font-size="10" opacity="0.65">use_live_claude flag (default: stub)</text>
+
+          <line x1="615" y1="70" x2="509" y2="222" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow)"></line>
+          <line x1="509" y1="232" x2="615" y2="84" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow)"></line>
+          <text x="566" y="150" text-anchor="middle" font-size="9.5" opacity="0.8">claims oldest pending job</text>
+          <text x="566" y="163" text-anchor="middle" font-size="9.5" opacity="0.8">writes result + report/job status</text>
+
+          <line x1="504" y1="253" x2="616" y2="253" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow)"></line>
+          <text x="560" y="245" text-anchor="middle" font-size="10">classify() / extract()</text>
         </g>
       </svg>
-      <figcaption>Fig. 1 — One FastAPI process fronts Postgres and local disk; the Claude vision call classify()/extract() would make is stubbed today (§6), shown dashed.</figcaption>
+      <figcaption>Fig. 1 — FastAPI fronts Postgres and local disk; a separate worker process polls the extraction_jobs queue in Postgres and is what actually calls classify()/extract() — live against the real Claude API when use_live_claude is set, a deterministic stub otherwise.</figcaption>
     </figure>
   </section>
 
@@ -244,22 +255,33 @@
       <table>
         <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
         <tbody>
-          <tr><td class="field">app/main.py</td><td>FastAPI app + router wiring; seeds instruments and templates on startup (idempotent)</td></tr>
-          <tr><td class="field">app/config.py</td><td><code class="mono">Settings</code> — DB URL, storage path, both confidence thresholds, live-Claude switch (§8)</td></tr>
+          <tr><td class="field">app/main.py</td><td>FastAPI app + router wiring; seeds instruments and templates on startup (idempotent); <code class="mono">GET /health</code>, <code class="mono">GET /config</code></td></tr>
+          <tr><td class="field">app/config.py</td><td><code class="mono">Settings</code> — DB URL, storage path, both confidence thresholds, upload size limits, worker poll interval, live-Claude switch + model/timeout/retry settings (§8)</td></tr>
           <tr><td class="field">app/db.py</td><td>SQLAlchemy engine, session factory, <code class="mono">Base</code>, the <code class="mono">get_db</code> dependency</td></tr>
-          <tr><td class="field">app/models.py</td><td>Five ORM tables + four enums — direct implementation of spec §5 (§3, below)</td></tr>
+          <tr><td class="field">app/models.py</td><td>Five ORM tables + five enums — direct implementation of spec §5 (§3, below)</td></tr>
           <tr><td class="field">app/schemas.py</td><td>Pydantic request/response shapes, kept separate from the ORM models on purpose</td></tr>
+          <tr><td class="field">app/worker.py</td><td>The background worker (§1) — claims <code class="mono">pending</code> <code class="mono">extraction_jobs</code> rows, runs <code class="mono">classify()</code>/<code class="mono">extract()</code>, recovers orphaned jobs on startup</td></tr>
           <tr><td class="field">app/seed_instruments.py</td><td>The fixed 3-instrument fleet (§1 of the spec)</td></tr>
-          <tr><td class="field">app/seed_templates.py</td><td>The four <code class="mono">report_templates</code> rows, transcribed from spec §5</td></tr>
-          <tr><td class="field">app/routers/instruments.py</td><td><code class="mono">POST/GET /instruments</code>, <code class="mono">GET /instruments/{id}/trend</code></td></tr>
-          <tr><td class="field">app/routers/report_templates.py</td><td><code class="mono">GET /report-templates</code> — thin wrapper over <code class="mono">resolve_template</code> (§4)</td></tr>
-          <tr><td class="field">app/routers/reports.py</td><td>Report CRUD, search, CSV export, template confirm, field corrections, finalize</td></tr>
-          <tr><td class="field">app/routers/attachments.py</td><td>Upload, classify, extract, extraction-job polling — the document-first pipeline (§5)</td></tr>
+          <tr><td class="field">app/seed_templates.py</td><td>The <code class="mono">report_templates</code> rows, transcribed from spec §5</td></tr>
+          <tr><td class="field">app/seed_demo_reports.py</td><td>Dev/demo convenience — seeds a handful of finalized reports so the reports list/analytics screens have something to show</td></tr>
+          <tr><td class="field">app/seed_trend_demo.py</td><td>Dev/demo convenience — seeds a run of finalized reports with numeric fields so the instrument trend chart has a real series</td></tr>
+          <tr><td class="field">app/testing/reset_db.py</td><td>Truncates and reseeds a target database — what the Playwright e2e config runs before booting the stub backend (§9)</td></tr>
+          <tr><td class="field">app/routers/instruments.py</td><td><code class="mono">POST/GET/PATCH /instruments</code>, <code class="mono">GET /instruments/{id}/trend-fields</code>, <code class="mono">GET /instruments/{id}/trend</code></td></tr>
+          <tr><td class="field">app/routers/report_templates.py</td><td>Template CRUD (<code class="mono">POST</code>/<code class="mono">PATCH</code>/<code class="mono">DELETE</code>/<code class="mono">GET .../all</code>/<code class="mono">GET .../{id}</code>) plus <code class="mono">GET /report-templates</code>, a thin wrapper over <code class="mono">resolve_template</code> (§4)</td></tr>
+          <tr><td class="field">app/routers/reports.py</td><td>Report CRUD, search, CSV export, PDF export, template confirm, field corrections, finalize</td></tr>
+          <tr><td class="field">app/routers/attachments.py</td><td>Upload (empty / unsupported-type / oversize checks run before anything is written to disk), file retrieval, classify/extract job submission, extraction-job polling — the document-first pipeline (§5)</td></tr>
+          <tr><td class="field">app/routers/analytics.py</td><td><code class="mono">GET /analytics/fleet</code> — fleet-wide roll-ups over finalized reports</td></tr>
           <tr><td class="field">app/services/templates.py</td><td><code class="mono">resolve_template()</code> — the one place model-vs-NULL-row precedence is decided (§4)</td></tr>
-          <tr><td class="field">app/services/classification.py</td><td><code class="mono">classify()</code> — stubbed; the only function a live Claude vision call replaces (§6)</td></tr>
-          <tr><td class="field">app/services/extraction.py</td><td><code class="mono">extract()</code> — stubbed; the other function a live Claude vision call replaces (§6)</td></tr>
+          <tr><td class="field">app/services/classification.py</td><td><code class="mono">classify()</code> — deterministic stub by default; a real Claude vision call behind <code class="mono">use_live_claude</code> (§8). Reads instrument model, report type and the printed serial number, and runs <code class="mono">match_serial()</code> against the fleet (§5)</td></tr>
+          <tr><td class="field">app/services/documents.py</td><td>Decides what a stored file is from its magic bytes (<code class="mono">detect_media_type</code>: PDF, PNG, JPEG, GIF, WebP) and builds the Claude content block for it — <code class="mono">document</code> for a PDF, <code class="mono">image</code> for a scan. Shared by upload validation, classification and extraction, so all three agree on what a file is</td></tr>
+          <tr><td class="field">app/services/extraction.py</td><td><code class="mono">extract()</code> — same stub/live split as <code class="mono">classify()</code>; returns the template's field values and confidences plus the service-visit date (§5)</td></tr>
+          <tr><td class="field">app/services/claude_client.py</td><td>Shared Anthropic client + the tool-call/error-handling wrapper both live paths use, so they don't each duplicate it</td></tr>
+          <tr><td class="field">app/services/errors.py</td><td><code class="mono">ClassificationError</code>/<code class="mono">ExtractionError</code> — what a failed job's <code class="mono">error_message</code> is built from</td></tr>
+          <tr><td class="field">app/services/pdf_report.py</td><td>Renders one report as a formatted PDF, mirroring the review screen's own field layout</td></tr>
+          <tr><td class="field">app/services/analytics.py</td><td>Computes the fleet roll-ups <code class="mono">GET /analytics/fleet</code> returns, from finalized reports' own extracted fields</td></tr>
           <tr><td class="field">alembic/</td><td>Migrations, autogenerated from <code class="mono">app.models</code> against a real Postgres target</td></tr>
-          <tr><td class="field">tests/</td><td>End-to-end tests of both pipeline branches, against a real Postgres test database (§9)</td></tr>
+          <tr><td class="field">tests/</td><td>205 tests across 18 files covering both pipeline branches, the worker, live-Claude parsing/dispatch/failure handling, upload validation, serial matching, PDF/CSV export, and template/instrument CRUD, against a real Postgres test database (§9)</td></tr>
+          <tr><td class="field">frontend/src/</td><td>The React application (§7) — no longer a scaffold</td></tr>
         </tbody>
       </table>
     </div>
@@ -268,8 +290,8 @@
   <section class="doc-section" id="data-model">
     <p class="sec-eyebrow">§3</p>
     <h2>Data model, as implemented</h2>
-    <p class="sec-dek">Five SQLAlchemy tables, field-for-field against spec §5 — plus the two enums the spec left unstated.</p>
-    <p>Every table in <code class="mono">app/models.py</code> uses a UUID primary key (<code class="mono">uuid.uuid4</code> default) and Mapped/<code class="mono">mapped_column</code> SQLAlchemy 2.0 style. Four Python <code class="mono">str, enum.Enum</code> classes back Postgres native <code class="mono">ENUM</code> columns:</p>
+    <p class="sec-dek">Five SQLAlchemy tables, field-for-field against spec §5 — plus the three enums the spec left unstated.</p>
+    <p>Every table in <code class="mono">app/models.py</code> uses a UUID primary key (<code class="mono">uuid.uuid4</code> default) and Mapped/<code class="mono">mapped_column</code> SQLAlchemy 2.0 style. Five Python <code class="mono">str, enum.Enum</code> classes back Postgres native <code class="mono">ENUM</code> columns:</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Enum</th><th>Values</th><th>Source</th></tr></thead>
@@ -278,10 +300,11 @@
           <tr><td class="field">ReportType</td><td class="mono">calibration, repair, preventive_maintenance</td><td>Named explicitly in spec §5</td></tr>
           <tr><td class="field">InstrumentStatus</td><td class="mono">active, maintenance, retired</td><td>Not specified in §5's table — an implementation default, flagged in the model's own docstring</td></tr>
           <tr><td class="field">ExtractionJobStatus</td><td class="mono">pending, classifying, extracting, succeeded, failed</td><td>Not enumerated in §5 — the obvious job lifecycle, kept minimal on purpose</td></tr>
+          <tr><td class="field">ExtractionJobKind</td><td class="mono">classify, extract</td><td>Not named in §5, which describes "one classify-then-extract attempt" in prose — the real endpoints submit these as two separate jobs with a manual-confirm checkpoint possibly in between (§5/§9), so each stage needs its own job row and its own kind</td></tr>
         </tbody>
       </table>
     </div>
-    <p>The two implementation-only enums are exactly the kind of decision this document exists to record: reasonable, small, and easy to miss if only SL-ARCH-001 is read. Nothing else in the schema improvises — column names, nullability, and the JSONB fields all match §5 directly, including <code class="mono">reports.instrument_id</code>/<code class="mono">template_id</code> starting <code class="mono">NULL</code> under document-first intake, and <code class="mono">extraction_jobs</code> keeping <code class="mono">classification</code> separate from <code class="mono">field_confidences</code> because the former gates which template the latter even runs against.</p>
+    <p>The three implementation-only enums are exactly the kind of decision this document exists to record: reasonable, small, and easy to miss if only SL-ARCH-001 is read. Nothing else in the schema improvises — column names, nullability, and the JSONB fields all match §5 directly, including <code class="mono">reports.instrument_id</code>/<code class="mono">template_id</code> starting <code class="mono">NULL</code> under document-first intake, and <code class="mono">extraction_jobs</code> keeping <code class="mono">classification</code> separate from <code class="mono">field_confidences</code> because the former gates which template the latter even runs against.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Table</th><th>Notable implementation detail</th></tr></thead>
@@ -289,7 +312,7 @@
           <tr><td class="field">instruments</td><td><code class="mono">instrument_type</code> is a plain <code class="mono">String</code>, not a native enum — deliberately, so adding a non-FACS instrument type later is a data change, not a migration</td></tr>
           <tr><td class="field">report_templates</td><td><code class="mono">field_schema JSONB</code> holds a <code class="mono">{"fields": [...]}</code> list; each field dict carries <code class="mono">name/type/unit/notes</code> and, for <code class="mono">object[]</code> fields, an <code class="mono">item_schema</code> — itself a <em>list</em> of <code class="mono">{name, type}</code> columns, not a <code class="mono">{name: type}</code> dict, since Postgres's JSONB storage only preserves a JSON array's element order, not an object's key order</td></tr>
           <tr><td class="field">reports</td><td><code class="mono">extracted_fields</code> defaults to <code class="mono">{}</code>, never <code class="mono">NULL</code> — every downstream read can assume a dict</td></tr>
-          <tr><td class="field">attachments</td><td><code class="mono">page_count</code> is hardcoded to <code class="mono">1</code> — no PDF preprocessing wired in yet (§10)</td></tr>
+          <tr><td class="field">attachments</td><td><code class="mono">file_type</code> is the media type sniffed from the file's bytes at upload, not the client's declared content type. <code class="mono">page_count</code> is hardcoded to <code class="mono">1</code> — nothing counts PDF pages (§10)</td></tr>
           <tr><td class="field">extraction_jobs</td><td>Cascades from <code class="mono">attachments</code>, not from <code class="mono">reports</code> directly — a report's attachment carries its own job history</td></tr>
         </tbody>
       </table>
@@ -306,9 +329,9 @@
   <section class="doc-section" id="pipeline">
     <p class="sec-eyebrow">§5</p>
     <h2>Document-first pipeline — request lifecycle</h2>
-    <p class="sec-dek">Six endpoints, one status column, two branches — confident classification resolves straight through, anything else waits for a manual pick.</p>
+    <p class="sec-dek">Six endpoints, one status column, two branches — confident classification resolves straight through, anything else waits for a manual pick. Classify and extract are now submit-and-poll, not synchronous calls.</p>
     <figure class="diagram">
-      <svg viewBox="0 0 900 460" role="img" aria-label="Sequence diagram across four lanes: Client, API router, Service layer, and Database. The client creates a report, uploads an attachment, then calls classify; the router calls classify() in the service layer, which calls resolve_template(); on both guesses confident the report moves to status classified automatically, otherwise it stays draft and the client must call PATCH template manually before the client calls extract, which the router passes to extract() in the service layer, writing extracted_fields and moving the report to status extracted.">
+      <svg viewBox="0 0 900 670" role="img" aria-label="Sequence diagram across four lanes: Client, API router, Database, and Worker. The client creates a report, uploads an attachment, then submits classify; the router inserts a pending extraction_jobs row and returns 202 Accepted immediately, and separately the worker claims that job, calls classify(), and writes the result back to the database. The client polls the job until it leaves pending or classifying. On both guesses confident the report moves to status classified automatically, otherwise it stays draft and the client must call PATCH template manually before the client submits extract, which follows the identical submit-and-poll shape through the worker calling extract(), writing extracted_fields and moving the report to status extracted.">
         <defs>
           <marker id="tdd-arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
@@ -318,156 +341,241 @@
           <!-- lane headers -->
           <text x="70" y="20" text-anchor="middle" font-weight="600">Client</text>
           <text x="290" y="20" text-anchor="middle" font-weight="600">Router</text>
-          <text x="520" y="20" text-anchor="middle" font-weight="600">Service</text>
-          <text x="760" y="20" text-anchor="middle" font-weight="600">Database</text>
-          <line x1="70" y1="30" x2="70" y2="440" stroke="currentColor" stroke-width="1" opacity="0.35"></line>
-          <line x1="290" y1="30" x2="290" y2="440" stroke="currentColor" stroke-width="1" opacity="0.35"></line>
-          <line x1="520" y1="30" x2="520" y2="440" stroke="currentColor" stroke-width="1" opacity="0.35"></line>
-          <line x1="760" y1="30" x2="760" y2="440" stroke="currentColor" stroke-width="1" opacity="0.35"></line>
+          <text x="520" y="20" text-anchor="middle" font-weight="600">Database</text>
+          <text x="760" y="20" text-anchor="middle" font-weight="600">Worker</text>
+          <line x1="70" y1="30" x2="70" y2="655" stroke="currentColor" stroke-width="1" opacity="0.35"></line>
+          <line x1="290" y1="30" x2="290" y2="655" stroke="currentColor" stroke-width="1" opacity="0.35"></line>
+          <line x1="520" y1="30" x2="520" y2="655" stroke="currentColor" stroke-width="1" opacity="0.35"></line>
+          <line x1="760" y1="30" x2="760" y2="655" stroke="currentColor" stroke-width="1" opacity="0.35"></line>
 
           <!-- step 1: create report -->
           <line x1="70" y1="48" x2="286" y2="48" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
           <text x="180" y="42" text-anchor="middle">POST /reports</text>
-          <line x1="290" y1="60" x2="756" y2="60" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="520" y="54" text-anchor="middle">INSERT report (status=draft)</text>
+          <line x1="290" y1="60" x2="516" y2="60" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="405" y="54" text-anchor="middle">INSERT report (status=draft)</text>
 
           <!-- step 2: upload attachment -->
           <line x1="70" y1="86" x2="286" y2="86" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
           <text x="180" y="80" text-anchor="middle">POST .../attachments</text>
-          <line x1="290" y1="98" x2="756" y2="98" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="520" y="92" text-anchor="middle">INSERT attachment (+ file to disk)</text>
+          <line x1="290" y1="98" x2="516" y2="98" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="405" y="92" text-anchor="middle">INSERT attachment (+ file to disk)</text>
 
-          <!-- step 3: classify -->
+          <!-- step 3: submit classify (async) -->
           <line x1="70" y1="126" x2="286" y2="126" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
           <text x="180" y="120" text-anchor="middle">POST .../classify</text>
-          <line x1="290" y1="140" x2="516" y2="140" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="405" y="134" text-anchor="middle">classify(db, attachment)</text>
-          <line x1="520" y1="152" x2="756" y2="152" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="638" y="146" text-anchor="middle" font-size="10.5">resolve_template() if both ≥ 0.85</text>
+          <line x1="290" y1="138" x2="516" y2="138" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="405" y="132" text-anchor="middle">INSERT extraction_job (kind=classify, status=pending)</text>
+          <text x="405" y="154" text-anchor="middle" font-size="10" opacity="0.7">response: 202 Accepted {job_id, status: pending} — returns immediately, no vision call yet</text>
+
+          <!-- async box 1: worker runs classify -->
+          <rect x="400" y="172" width="450" height="74" rx="4" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"></rect>
+          <text x="410" y="188" font-size="10.5" font-weight="600">asynchronously, in app/worker.py (§1) — not part of the request above:</text>
+          <line x1="520" y1="204" x2="746" y2="204" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="633" y="200" text-anchor="middle" font-size="10">claims oldest pending job (FOR UPDATE SKIP LOCKED)</text>
+          <line x1="746" y1="228" x2="524" y2="228" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="633" y="224" text-anchor="middle" font-size="10">calls classify(); writes job.classification, and if both ≥ 0.85 also report.status/instrument_id/template_id</text>
+
+          <!-- step 4: poll -->
+          <line x1="70" y1="272" x2="286" y2="272" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="180" y="266" text-anchor="middle" font-size="10.5">GET /extraction-jobs/{id} (poll)</text>
+          <line x1="290" y1="284" x2="516" y2="284" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="405" y="278" text-anchor="middle" font-size="10">SELECT job status</text>
+          <text x="180" y="298" text-anchor="middle" font-size="10" opacity="0.65">repeats until status leaves pending/classifying</text>
 
           <!-- branch box -->
-          <rect x="290" y="172" width="466" height="66" rx="4" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"></rect>
-          <text x="300" y="188" font-size="10.5" opacity="0.85">confident on both → report.status = classified, instrument_id + template_id set</text>
-          <text x="300" y="204" font-size="10.5" opacity="0.85">either below threshold → report stays draft, ids stay NULL</text>
-          <text x="300" y="222" font-size="10.5" font-weight="600">only the uncertain case continues below</text>
+          <rect x="290" y="312" width="466" height="66" rx="4" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"></rect>
+          <text x="300" y="328" font-size="10.5" opacity="0.85">confident on both → report.status = classified, instrument_id + template_id set (written by the worker above)</text>
+          <text x="300" y="344" font-size="10.5" opacity="0.85">either below threshold → report stays draft, ids stay NULL</text>
+          <text x="300" y="362" font-size="10.5" font-weight="600">only the uncertain case continues below</text>
 
-          <!-- step 4: manual template (uncertain branch only) -->
-          <line x1="70" y1="260" x2="286" y2="260" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="180" y="250" text-anchor="middle">PATCH .../template</text>
-          <text x="180" y="273" text-anchor="middle" font-size="10" opacity="0.65">(manual pick, uncertain case only)</text>
-          <line x1="290" y1="286" x2="756" y2="286" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="520" y="280" text-anchor="middle">UPDATE report → status=classified</text>
+          <!-- step 5: manual template (uncertain branch only) -->
+          <line x1="70" y1="400" x2="286" y2="400" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="180" y="394" text-anchor="middle">PATCH .../template</text>
+          <text x="180" y="414" text-anchor="middle" font-size="10" opacity="0.65">(manual pick, uncertain case only)</text>
+          <line x1="290" y1="428" x2="516" y2="428" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="405" y="422" text-anchor="middle">UPDATE report → status=classified</text>
 
-          <!-- step 5: extract -->
-          <line x1="70" y1="316" x2="286" y2="316" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="180" y="310" text-anchor="middle">POST .../extract</text>
-          <line x1="290" y1="330" x2="516" y2="330" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="405" y="324" text-anchor="middle">extract(attachment, template)</text>
-          <line x1="520" y1="356" x2="756" y2="356" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="638" y="350" text-anchor="middle" font-size="10.5">UPDATE → extracted_fields, status=extracted</text>
+          <!-- step 6: submit extract (async) -->
+          <line x1="70" y1="458" x2="286" y2="458" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="180" y="452" text-anchor="middle">POST .../extract</text>
+          <line x1="290" y1="470" x2="516" y2="470" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="405" y="464" text-anchor="middle">INSERT extraction_job (kind=extract, status=pending)</text>
+          <text x="405" y="486" text-anchor="middle" font-size="10" opacity="0.7">response: 202 Accepted {job_id, status: pending}</text>
 
-          <!-- step 6: fields + finalize -->
-          <line x1="70" y1="374" x2="286" y2="374" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="180" y="368" text-anchor="middle">PATCH .../fields</text>
-          <line x1="290" y1="386" x2="756" y2="386" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="520" y="380" text-anchor="middle">UPDATE → status=in_review</text>
+          <!-- async box 2: worker runs extract -->
+          <rect x="400" y="502" width="450" height="74" rx="4" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"></rect>
+          <text x="410" y="518" font-size="10.5" font-weight="600">asynchronously, in app/worker.py — re-checks template is still resolved first:</text>
+          <line x1="520" y1="534" x2="746" y2="534" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="633" y="530" text-anchor="middle" font-size="10">claims oldest pending job</text>
+          <line x1="746" y1="558" x2="524" y2="558" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="633" y="554" text-anchor="middle" font-size="10">calls extract(); writes extracted_fields, report_date, status=extracted; job confidences, succeeded</text>
 
-          <line x1="70" y1="414" x2="286" y2="414" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="180" y="408" text-anchor="middle">POST .../finalize</text>
-          <line x1="290" y1="426" x2="756" y2="426" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
-          <text x="520" y="420" text-anchor="middle">UPDATE → status=finalized, finalized_at=now()</text>
+          <!-- step 7: poll again -->
+          <text x="180" y="600" text-anchor="middle" font-size="10.5" opacity="0.75">Client polls the same job endpoint again (identical shape to step 4 above) until it leaves pending/extracting.</text>
+
+          <!-- step 8: fields + finalize -->
+          <line x1="70" y1="620" x2="286" y2="620" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="180" y="614" text-anchor="middle">PATCH .../fields</text>
+          <line x1="290" y1="632" x2="516" y2="632" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="405" y="626" text-anchor="middle" font-size="10.5">UPDATE → status=in_review</text>
+
+          <line x1="70" y1="646" x2="286" y2="646" stroke="currentColor" stroke-width="1.2" marker-end="url(#tdd-arrow2)"></line>
+          <text x="180" y="640" text-anchor="middle" font-size="10.5">POST .../finalize</text>
         </g>
       </svg>
-      <figcaption>Fig. 2 — The document-first pipeline as actually called: every step routes through exactly one service function (or none, for the CRUD-shaped steps), and the confident/uncertain split happens entirely inside <code class="mono">classify()</code>'s return value, not in the router.</figcaption>
+      <figcaption>Fig. 2 — Classify and extract are submit-and-poll, not synchronous calls: the router only ever inserts a job row and returns 202; a separate worker process claims and runs each job (dashed boxes), and the client polls <code class="mono">GET /extraction-jobs/{id}</code> to see the result. Everything else (report/attachment CRUD, template confirm, field corrections, finalize) is still a direct, synchronous router → database round trip.</figcaption>
     </figure>
-    <p>Two things worth naming explicitly because they're easy to get wrong reading the router code in isolation: overriding a template via <code class="mono">PATCH /reports/{id}/template</code> discards <code class="mono">extracted_fields</code> back to <code class="mono">{}</code> whenever the template actually changes (checked by comparing <code class="mono">template_id</code>, not just accepting whatever the caller sends), and <code class="mono">PATCH /reports/{id}/fields</code> is allowed on a <code class="mono">finalized</code> report — corrections after finalizing simply overwrite in place, per §5/§6, since there's no audit log in MVP to preserve a "before" state anyway.</p>
+    <p><strong>Upload validation.</strong> The upload route decides what the file is before it writes anything: <code class="mono">documents.detect_media_type()</code> checks the leading bytes (<code class="mono">%PDF-</code>, the PNG/JPEG/GIF signatures, <code class="mono">RIFF…WEBP</code>) and ignores the client's content type and filename, so an image scan mislabelled as a PDF — which a scanner app can produce — is stored with its true type and sent to Claude as an image block instead of failing at the API. An empty file is a 422; an unrecognised type (HEIC included, which the API doesn't take) is a 415; a file over the limit for its type — <code class="mono">max_pdf_upload_bytes</code> (20 MB) or <code class="mono">max_image_upload_bytes</code> (5 MB) — is a 413 whose message states the file's size and the limit. These mirror the model API's own limits so a rejected file fails at once with advice, not minutes later as a failed job. Nothing is split, rotated or resized; the PDF page count isn't checked.</p>
+    <p><strong>Serial matching.</strong> Only <code class="mono">instruments.serial_number</code> is unique — several instruments can share a model — so classification also asks Claude for the serial printed on the document (<code class="mono">instrument_serial</code> plus <code class="mono">instrument_serial_confidence</code> in the same forced tool call) and <code class="mono">match_serial()</code> compares it with the fleet after normalising both sides (upper case, letters and digits only, so <code class="mono">mp 665158-0000057</code> equals <code class="mono">MP6651580000057</code>). The outcome is reported on <code class="mono">ClassificationResult.serial_match</code>: <code class="mono">matched</code> when it matches one instrument whose model agrees with the model guess, <code class="mono">model_conflict</code> when it matches an instrument of a different model, <code class="mono">not_found</code> when no fleet instrument carries that serial, and <code class="mono">not_read</code> when none was read. Only <code class="mono">matched</code> with a serial confidence at or above <code class="mono">classification_confidence_threshold</code> picks the instrument for auto-resolution (<code class="mono">resolved_instrument_id</code>, which still needs the instrument and report-type guesses to clear the threshold and a template to exist); a conflict is never auto-resolved, and <code class="mono">not_found</code>, <code class="mono">not_read</code> or a low-confidence read falls back to the older rule — exactly one unit of the model auto-selects it, several leave the choice to the technician. <code class="mono">suggested_instrument_id</code> is the separate, softer signal the intake screen preselects: the serial's instrument for <code class="mono">matched</code> or <code class="mono">model_conflict</code>, otherwise the only unit of the model, if there is one. The intake screen shows a warning or info banner (<code class="mono">#serial-notice</code>) saying which happened. The stub "reads" a serial only when the uploaded file's own name contains a fleet instrument's serial (e.g. <code class="mono">scan_A47291.pdf</code>), so every path is testable without an API key by choosing a file name, and every other stub upload behaves as before.</p>
+    <p><strong>The service-visit date.</strong> <code class="mono">reports.report_date</code> is a column on every report, not a template field, but it's read off the document by the same extraction call: the tool schema always asks for <code class="mono">report_date</code> (YYYY-MM-DD) and its confidence alongside the template's own fields, and the prompt tells Claude which date that is — on a BD Care work order, the LABOR table's date, not the service-contract or calibrated-tool dates printed on the same form — and how to tell the day/month order, which varies between BD forms (a February 2026 S8 PM report prints 02/10/2026 for 10 February; an older form prints 18/04/2021), from any date on the form with a part greater than 12. The answer is validated before it's used: anything that isn't an ISO date, or falls before 1990 or after tomorrow, is dropped with a warning and its confidence set to 0. The worker writes a date it got and leaves the existing value alone when it got none. The confidence travels in <code class="mono">field_confidences</code> under the key <code class="mono">report_date</code>, which <code class="mono">TemplateFieldIn</code> reserves so no template field can collide with it, and the review screen shows the date as an editable field with that confidence, saved through <code class="mono">PATCH /reports/{id}/fields</code>. Until this existed nothing in the app set the column, so the Reports date filters, the trend chart's x-axis and the CSV export order only worked for seeded data; the trend chart and export now also fall back to creation date for any report that still has none.</p>
+    <p>Two things worth naming explicitly because they're easy to get wrong reading the router code in isolation: overriding a template via <code class="mono">PATCH /reports/{id}/template</code> discards <code class="mono">extracted_fields</code> back to <code class="mono">{}</code> whenever the template actually changes (checked by comparing <code class="mono">template_id</code>, not just accepting whatever the caller sends), and <code class="mono">PATCH /reports/{id}/fields</code> is allowed on a <code class="mono">finalized</code> report — corrections after finalizing simply overwrite in place, per §5/§6, since there's no audit log in MVP to preserve a "before" state anyway. A third, worth adding in this revision: the worker re-checks <code class="mono">report.template_id</code>/<code class="mono">instrument_id</code> before running an extract job even though the router already checked the same condition synchronously at submit time — a second attachment on the same report can race the first between submit and pickup, so the worker doesn't trust the state it was enqueued under.</p>
   </section>
 
   <section class="doc-section" id="api">
     <p class="sec-eyebrow">§6</p>
     <h2>API surface</h2>
-    <p class="sec-dek">Every route currently registered, grouped by router file.</p>
+    <p class="sec-dek">Every route currently registered, grouped by router file — 26 in total, up from the 16 the previous revision listed.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Route</th><th>Purpose</th></tr></thead>
         <tbody>
           <tr><td class="field mono">POST /instruments</td><td>Register an instrument (409 on duplicate serial number)</td></tr>
           <tr><td class="field mono">GET /instruments</td><td>List the fleet</td></tr>
+          <tr><td class="field mono">PATCH /instruments/{id}</td><td>Edit an instrument's name/model/serial/location/status</td></tr>
+          <tr><td class="field mono">GET /instruments/{id}/trend-fields</td><td>Which fields on this instrument's finalized reports are chartable</td></tr>
           <tr><td class="field mono">GET /instruments/{id}/trend?field=</td><td>Time series for one JSONB field, finalized reports only</td></tr>
           <tr><td class="field mono">GET /report-templates</td><td>Resolve templates by instrument_type/model/report_type — same logic as §4</td></tr>
+          <tr><td class="field mono">GET /report-templates/all</td><td>Every template row, unresolved — the template-management screen's list view</td></tr>
+          <tr><td class="field mono">GET /report-templates/{id}</td><td>Fetch one template by id</td></tr>
+          <tr><td class="field mono">POST /report-templates</td><td>Create a template (409 on a colliding instrument_type/report_type/model)</td></tr>
+          <tr><td class="field mono">PATCH /report-templates/{id}</td><td>Edit a template's fields, report_type, or model</td></tr>
+          <tr><td class="field mono">DELETE /report-templates/{id}</td><td>Delete a template (409 if any report references it)</td></tr>
           <tr><td class="field mono">POST /reports</td><td>Create a bare draft — no instrument or template required</td></tr>
-          <tr><td class="field mono">GET /reports</td><td>Filtered search: instrument_id, date_from, status</td></tr>
-          <tr><td class="field mono">GET /reports/export</td><td>CSV export of a filtered view; JSONB fields flattened to one string column</td></tr>
+          <tr><td class="field mono">GET /reports</td><td>Filtered search: instrument_id, report_type, date_from, date_to, status, technician (ILIKE)</td></tr>
+          <tr><td class="field mono">GET /reports/export</td><td>CSV export of the same filtered view; JSONB fields flattened to one string column</td></tr>
           <tr><td class="field mono">GET /reports/{id}</td><td>Fetch one report</td></tr>
+          <tr><td class="field mono">GET /reports/{id}/pdf</td><td>Formatted single-report PDF, mirroring the review screen's own field layout</td></tr>
           <tr><td class="field mono">PATCH /reports/{id}/template</td><td>Confirm or override instrument/template; discards prior extraction on real change</td></tr>
           <tr><td class="field mono">PATCH /reports/{id}/fields</td><td>Apply corrections in place; moves extracted/in_review reports to in_review</td></tr>
           <tr><td class="field mono">POST /reports/{id}/finalize</td><td>409 unless status is extracted or in_review</td></tr>
-          <tr><td class="field mono">POST /reports/{id}/attachments</td><td>Upload a scan (multipart); the only entry path, no blank-form fallback</td></tr>
-          <tr><td class="field mono">POST /attachments/{id}/classify</td><td>Runs classify(), writes an extraction_jobs row, auto-resolves when confident</td></tr>
-          <tr><td class="field mono">POST /attachments/{id}/extract</td><td>409 if instrument/template unresolved; runs extract() inline</td></tr>
+          <tr><td class="field mono">POST /reports/{id}/attachments</td><td>Upload a scan (multipart): a PDF or a PNG/JPEG/GIF/WebP image, type decided from the file bytes, size-limited (415/413/422 otherwise); the only entry path, no blank-form fallback</td></tr>
+          <tr><td class="field mono">GET /attachments/{id}/file</td><td>Serve the original scanned file back byte-for-byte, for "view original scan"</td></tr>
+          <tr><td class="field mono">POST /attachments/{id}/classify</td><td>Inserts a pending extraction_job (kind=classify) and returns 202 — the worker runs classify() (§1, §5)</td></tr>
+          <tr><td class="field mono">POST /attachments/{id}/extract</td><td>409 if instrument/template unresolved, else inserts a pending job (kind=extract) and returns 202</td></tr>
           <tr><td class="field mono">GET /extraction-jobs/{id}</td><td>Poll one job's status, classification, and field confidences</td></tr>
+          <tr><td class="field mono">GET /analytics/fleet</td><td>Fleet-wide roll-ups (components replaced, labor hours, fault category, retest results) over finalized reports</td></tr>
           <tr><td class="field mono">GET /health</td><td>Liveness check</td></tr>
+          <tr><td class="field mono">GET /config</td><td>Exposes the two confidence thresholds so the frontend reads the real backend-configured values instead of hardcoding its own copy</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <section class="doc-section" id="config">
+  <section class="doc-section" id="frontend">
     <p class="sec-eyebrow">§7</p>
+    <h2>Frontend</h2>
+    <p class="sec-dek">A working React application against the API above — no longer out of scope.</p>
+    <p>The previous revision of this document scoped the frontend out entirely as "a paused Vite/React scaffold with no application code yet." That description didn't survive the week: <code class="mono">frontend/src</code> is now a full application (~2,550 lines of TSX/TS) built against the API surface in §6, and it's the intended way to drive the document-first pipeline in §5 — the three original HTML mockups (new-report, repair-review, PM-review, instrument-timeline demos) are superseded and kept only as historical reference.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td class="field">App.tsx</td><td>Masthead, view tabs, shared instrument list, app config state; delegates to the screens below</td></tr>
+          <tr><td class="field">components/IntakeFlow.tsx</td><td>The upload → classify → review → finalize wizard — drives §5's pipeline end to end, including the job-poll loop. Accepts a PDF or a PNG/JPEG/GIF/WebP image, and shows the serial-match banner and preselected instrument (§5)</td></tr>
+          <tr><td class="field">components/ReviewScreen.tsx</td><td>The field review/correction UI, shared between intake and a saved report's detail view</td></tr>
+          <tr><td class="field">components/ReportsListScreen.tsx / ReportDetailScreen.tsx</td><td>Search/filter list and single-report detail, against §6's <code class="mono">GET /reports</code> family</td></tr>
+          <tr><td class="field">components/InstrumentManager.tsx / InstrumentDetailScreen.tsx / InstrumentTrendChart.tsx</td><td>Fleet CRUD and the trend chart against <code class="mono">GET /instruments/{id}/trend(-fields)</code></td></tr>
+          <tr><td class="field">components/TemplateManager.tsx / FieldEditor.tsx</td><td>Structured template CRUD against <code class="mono">/report-templates</code>, replacing hand-edited seed scripts as the way to change a template</td></tr>
+          <tr><td class="field">components/AnalyticsScreen.tsx</td><td>Fleet roll-ups against <code class="mono">GET /analytics/fleet</code></td></tr>
+          <tr><td class="field">hooks/useAsyncEffect.ts</td><td>Shared loading/error/cancellation-flag data-fetching hook, used by every screen that loads on mount</td></tr>
+          <tr><td class="field">generated/api-schema.ts</td><td>Generated request/response types, kept in sync with the backend's Pydantic schemas</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Covered by a 27-spec Playwright end-to-end suite (<code class="mono">playwright.config.ts</code>) that drives the entire pipeline through the real UI against a stub backend on a dedicated port and database, plus a separate opt-in <code class="mono">playwright.live.config.ts</code> for hand-checking the live-Claude path (§9) with a real API key and a real scanned document.</p>
+  </section>
+
+  <section class="doc-section" id="config">
+    <p class="sec-eyebrow">§8</p>
     <h2>Configuration</h2>
     <p class="sec-dek">Every tunable lives in one Settings object — including one that already answers a question SL-ARCH-001 still lists as open.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Setting</th><th>Default</th><th>Notes</th></tr></thead>
         <tbody>
-          <tr><td class="field mono">database_url</td><td class="mono">postgresql+psycopg2://…/calibration_ledger</td><td>Overridden via <code class="mono">.env</code></td></tr>
+          <tr><td class="field mono">database_url</td><td class="mono">postgresql+psycopg2://…/service_ledger</td><td>Overridden via <code class="mono">.env</code>; renamed from <code class="mono">calibration_ledger</code> since the previous revision of this document</td></tr>
           <tr><td class="field mono">attachment_storage_dir</td><td class="mono">./storage/attachments</td><td>Local disk for MVP — spec §8 flags swapping for S3-compatible storage later</td></tr>
           <tr><td class="field mono">field_confidence_threshold</td><td class="mono">0.7</td><td>Below this, a field is flagged for mandatory review (spec §4)</td></tr>
           <tr><td class="field mono">classification_confidence_threshold</td><td class="mono">0.85</td><td>Deliberately stricter than the field default — see callout below</td></tr>
-          <tr><td class="field mono">use_live_claude</td><td class="mono">false</td><td>Flips classify()/extract() from stub to a real API call once implemented</td></tr>
+          <tr><td class="field mono">max_pdf_upload_bytes</td><td class="mono">20971520 (20 MB)</td><td>Upload limit for a PDF; over it, the route returns 413 before storing anything (§5)</td></tr>
+          <tr><td class="field mono">max_image_upload_bytes</td><td class="mono">5242880 (5 MB)</td><td>Upload limit for a PNG/JPEG/GIF/WebP scan — the model API's per-image limit is about this size, so a bigger image would fail there instead</td></tr>
+          <tr><td class="field mono">worker_poll_interval_seconds</td><td class="mono">0.5</td><td>How often <code class="mono">app.worker</code> checks for a new pending row when it finds none (§1)</td></tr>
+          <tr><td class="field mono">use_live_claude</td><td class="mono">false</td><td>Flips classify()/extract() from stub to a real API call — implemented (§1), off by default</td></tr>
           <tr><td class="field mono">anthropic_api_key</td><td class="mono">""</td><td>Required once <code class="mono">use_live_claude</code> is true</td></tr>
+          <tr><td class="field mono">anthropic_model</td><td class="mono">claude-sonnet-5</td><td>Previously a literal duplicated inside both services' <code class="mono">messages.create()</code> calls; now one setting</td></tr>
+          <tr><td class="field mono">anthropic_timeout_seconds</td><td class="mono">90.0</td><td>Generous — a vision call over a multi-page PDF is slower than a typical text call</td></tr>
+          <tr><td class="field mono">anthropic_max_retries</td><td class="mono">2</td><td>Retries connection errors/408/409/429/5xx internally before classify()/extract() see an exception</td></tr>
         </tbody>
       </table>
     </div>
     <div class="callout">
-      <span class="callout-label">Spec drift, caught while writing this document</span>
-      <p>SL-ARCH-001 §12 still lists "the classification confidence threshold" as an open question — whether it should be stricter than the field-level default rather than inheriting it. The code already answers this: <code class="mono">config.py</code> sets <code class="mono">classification_confidence_threshold = 0.85</code> against <code class="mono">field_confidence_threshold = 0.7</code>, with a comment explaining exactly the reasoning §12 asks for (a wrong report-type guess is costlier than one wrong field). The implementation made the call; the spec's open-questions list just hasn't been told yet. Worth a one-line fix to §12 so the two documents agree.</p>
+      <span class="callout-label">Spec drift — since fixed</span>
+      <p>SL-ARCH-001 §12 once listed "the classification confidence threshold" as an open question — whether it should be stricter than the field-level default rather than inheriting it. The code already answers this: <code class="mono">config.py</code> sets <code class="mono">classification_confidence_threshold = 0.85</code> against <code class="mono">field_confidence_threshold = 0.7</code>, with a comment explaining exactly the reasoning §12 asks for (a wrong report-type guess is costlier than one wrong field). The implementation made the call, and SL-ARCH-001 v0.13 now records it as resolved, so the two documents agree.</p>
     </div>
   </section>
 
   <section class="doc-section" id="testing">
-    <p class="sec-eyebrow">§8</p>
+    <p class="sec-eyebrow">§9</p>
     <h2>Testing strategy</h2>
     <p class="sec-dek">Real Postgres, not SQLite — because the whole point of the design being tested is Postgres-specific.</p>
-    <p><code class="mono">tests/conftest.py</code> points at a separate <code class="mono">calibration_ledger_test</code> database rather than an in-memory substitute, because §5's JSONB design and its native-enum columns are exactly the kind of thing SQLite doesn't faithfully stand in for. Tables are cleaned between tests with <code class="mono">TRUNCATE ... RESTART IDENTITY CASCADE</code> rather than a rollback-per-test transaction — simpler to reason about, and it sidesteps a real gotcha this project hit: pairing a test session with an already-open connection transaction needs SAVEPOINT bookkeeping that a plain <code class="mono">session.commit()</code> breaks, since commit ends the outer transaction the test fixture was counting on.</p>
+    <p><code class="mono">tests/conftest.py</code> points at a separate <code class="mono">service_ledger_test</code> database (the E2E suite below uses its own <code class="mono">service_ledger_e2e</code>, reset before every run) rather than an in-memory substitute, because §5's JSONB design and its native-enum columns are exactly the kind of thing SQLite doesn't faithfully stand in for. Tables are cleaned between tests with <code class="mono">TRUNCATE ... RESTART IDENTITY CASCADE</code> rather than a rollback-per-test transaction — simpler to reason about, and it sidesteps a real gotcha this project hit: pairing a test session with an already-open connection transaction needs SAVEPOINT bookkeeping that a plain <code class="mono">session.commit()</code> breaks, since commit ends the outer transaction the test fixture was counting on.</p>
+    <p>The suite has grown well past the original four happy/uncertain-path tests to 205 tests across 18 files, tracking every module added since (§2):</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Test</th><th>Covers</th></tr></thead>
+        <thead><tr><th>File</th><th>Covers</th></tr></thead>
         <tbody>
-          <tr><td class="field">test_confident_classification_resolves_straight_through</td><td>The auto-resolve branch: both guesses above threshold, straight to extraction</td></tr>
-          <tr><td class="field">test_uncertain_report_type_falls_back_to_manual_pick_then_finalizes</td><td>The full manual-fallback path, reproducing the real sample document's asymmetry — end to end through finalize</td></tr>
-          <tr><td class="field">test_cannot_finalize_a_bare_draft</td><td>The 409 guard on finalizing a report with no extraction yet</td></tr>
-          <tr><td class="field">test_overriding_template_discards_prior_extraction</td><td>Switching templates after extraction wipes extracted_fields, per §5/§6</td></tr>
+          <tr><td class="field">test_document_first_flow.py</td><td>The confident and uncertain classification branches end to end through finalize — the original four tests' successor</td></tr>
+          <tr><td class="field">test_worker.py</td><td><code class="mono">process_one_job</code>, crash recovery (<code class="mono">_recover_orphaned_jobs</code>), and the worker's top-level exception handling</td></tr>
+          <tr><td class="field">test_live_claude_parsing.py / test_live_claude_dispatch.py / test_live_claude_failures.py</td><td>The live-Claude path's request/response parsing, dispatch, and auth/API-error handling, with <code class="mono">_get_client</code> monkeypatched per module</td></tr>
+          <tr><td class="field">test_extraction_schema.py</td><td>Field-type → JSON-schema mapping the live extract tool call is built from</td></tr>
+          <tr><td class="field">test_report_pdf.py</td><td><code class="mono">services/pdf_report.py</code>'s field-by-field rendering against the review screen's own layout rules</td></tr>
+          <tr><td class="field">test_reports_search_export.py</td><td>Search/CSV export filters, including the technician ILIKE partial match</td></tr>
+          <tr><td class="field">test_report_templates.py</td><td>Template CRUD, the collision check, and the 409 on deleting a template still in use</td></tr>
+          <tr><td class="field">test_instruments.py</td><td>Instrument CRUD, trend-fields discovery, and the trend series endpoint</td></tr>
+          <tr><td class="field">test_analytics.py</td><td>Fleet roll-up computation over finalized reports</td></tr>
+          <tr><td class="field">test_attachment_file.py</td><td>Serving the original scanned file back, including the missing-file-on-disk case</td></tr>
+          <tr><td class="field">test_document_types.py</td><td>Magic-byte type detection (including mislabelled files), the empty/unsupported/oversize upload responses and their messages, and the PDF-vs-image content block sent to Claude</td></tr>
+          <tr><td class="field">test_serial_matching.py</td><td>Serial normalisation, every <code class="mono">serial_match</code> outcome, the single-unit fallback, the live tool schema's serial fields, and the stub's serial read</td></tr>
+          <tr><td class="field">test_report_date_extraction.py</td><td>The <code class="mono">report_date</code> read inside extraction — validation, month-first dates, and keeping an existing date when none is read</td></tr>
+          <tr><td class="field">test_race_conditions.py</td><td>The race-handling branches: the <code class="mono">IntegrityError</code> handlers in the instrument, template and confirm-template routes, and the worker's finalized/template re-checks and main loop. A hook commits the competing write on its own connection just before the request's own commit, so the database's real unique index or foreign key does the rejecting</td></tr>
+          <tr><td class="field">test_regressions.py</td><td>One test per bug found after the fact, so each stays fixed (stub vs real work orders, response unwrapping, race handling)</td></tr>
+          <tr><td class="field">test_error_paths.py</td><td>Cross-cutting 404/409/422 guards not specific to one router</td></tr>
         </tbody>
       </table>
     </div>
+    <p>On top of the backend suite, the frontend (§7) has its own 27-spec Playwright end-to-end suite across 14 files driving the real UI against a stub backend — not covered by the previous revision of this document, since the frontend didn't exist yet.</p>
+    <p><strong>Coverage.</strong> <code class="mono">pytest --cov</code> reads <code class="mono">backend/.coveragerc</code>: line and branch coverage over <code class="mono">app/</code>, with the two demo-data seed scripts and <code class="mono">testing/reset_db.py</code> left out on purpose (they are dev conveniences; the e2e suite runs <code class="mono">reset_db</code> for real) and a <code class="mono">fail_under</code> floor of 95% so a change that lowers coverage fails the run. The backend measures about 97% including branches. The race-handling branches that were the largest uncovered block are now tested directly (<code class="mono">test_race_conditions.py</code>); what remains is mostly small defensive guards in analytics and extraction, the real <code class="mono">get_db</code> dependency (tests override it) and the Claude client's error wrapper. The frontend has no unit tests; the Playwright suite is its only automated check, and <code class="mono">npm run test:e2e:coverage</code> measures what it reaches by running the suite against an Istanbul-instrumented build: about 91% of lines and 76% of branches, with a floor of 88% / 70%. The least-covered files are <code class="mono">TemplateManager.tsx</code> (about 75% of lines) and <code class="mono">IntakeFlow.tsx</code> (about 88%), mostly error and edge branches.</p>
   </section>
 
   <section class="doc-section" id="gaps">
-    <p class="sec-eyebrow">§9</p>
+    <p class="sec-eyebrow">§10</p>
     <h2>Known gaps</h2>
-    <p class="sec-dek">What today's implementation defers, and why each one is safe to defer.</p>
+    <p class="sec-dek">What today's implementation still defers, now that two of the previous revision's four gaps are closed.</p>
     <ul>
-      <li><strong>classify()/extract() are stubs.</strong> Deterministic and hash-seeded rather than random, with a special case that reproduces the original sample document's real asymmetry (confident instrument, borderline report type) so both pipeline branches stay exercisable without a live API key. The next real engineering step: swap each function's body for an actual Claude vision call — same signature, same callers, no router or schema change needed.</li>
-      <li><strong>No background worker.</strong> Classification and extraction run inline in the request. Spec §3's async-worker design doesn't change the API contract, so this is a pure implementation swap whenever request latency makes it necessary — not before.</li>
-      <li><strong>No PDF preprocessing.</strong> <code class="mono">page_count</code> is hardcoded to 1; multi-page splitting (spec §4 step 2) has nothing real to run against until live extraction exists.</li>
-      <li><strong>No audit log or template versioning.</strong> A confirmed MVP tradeoff (spec §10), not an oversight — becomes necessary the moment a second technician can edit another's report.</li>
+      <li><strong>classify()/extract() are live-capable, but stub by default.</strong> <em>Resolved from "are stubs" in the previous revision.</em> A real Claude vision call exists behind <code class="mono">use_live_claude</code> (§1, §8) — the stub is now a deliberate default/demo mode, not the only path. What's still open: nothing structural, but the live path has only been smoke-tested by hand (<code class="mono">playwright.live.config.ts</code>), not run against the full evidence set SL-ARCH-001 calls for — in particular a real FACSDiscover S8 PM report (expected report date 2026-02-10, serial matched to the fleet's S8) hasn't been read by live Claude in this build, only transcribed by hand.</li>
+      <li><strong>No PDF preprocessing — and none planned.</strong> SL-ARCH-001 v0.16 drops the "Preprocess" step: Claude reads the PDF or image natively, so the only pre-model step is the validation in §5. <code class="mono">page_count</code> is still hardcoded to <code class="mono">1</code> and a PDF's page count isn't checked, so a very long PDF would be refused by the model API, not by us.</li>
+      <li><strong>HEIC is not accepted.</strong> The model API doesn't take it, so a phone photo has to be exported as JPEG or PNG. Converting on upload would close this if it proves a nuisance.</li>
+      <li><strong>No audit log or template versioning.</strong> Unchanged. A confirmed MVP tradeoff (spec §10), not an oversight — becomes necessary the moment a second technician can edit another's report.</li>
     </ul>
+    <div class="callout">
+      <span class="callout-label">Closed since the previous revision</span>
+      <p><strong>No background worker</strong> — resolved. <code class="mono">app/worker.py</code> implements spec §3's polling-worker design exactly (§1); classify/extract are now submit-and-poll (§5), not inline. <strong>Frontend out of scope</strong> — resolved by simply no longer being true: see §7.</p>
+    </div>
     <p>These, plus the two evidence gaps (a FACSAria III PM document, a real FACSDiscover S8 calibration document — both spec-level, not implementation-level) are tracked with checkable status in the project's build tracker artifact, published separately.</p>
   </section>
 
   <section class="doc-section" id="appendix">
-    <p class="sec-eyebrow">§10</p>
+    <p class="sec-eyebrow">§11</p>
     <h2>Appendix — traceability to SL-ARCH-001</h2>
     <p class="sec-dek">Every section here, mapped to the spec section it implements.</p>
     <div class="table-wrap">
@@ -479,9 +587,10 @@
           <tr><td class="field">§4 Template resolution</td><td class="mono">§2</td></tr>
           <tr><td class="field">§5 Document-first pipeline</td><td class="mono">§4, §6</td></tr>
           <tr><td class="field">§6 API surface</td><td class="mono">§9</td></tr>
-          <tr><td class="field">§7 Configuration</td><td class="mono">§4, §12</td></tr>
-          <tr><td class="field">§8 Testing strategy</td><td class="mono">(implementation-only — not in the spec)</td></tr>
-          <tr><td class="field">§9 Known gaps</td><td class="mono">§10, §11, §12</td></tr>
+          <tr><td class="field">§7 Frontend</td><td class="mono">(implementation-only — not in the spec)</td></tr>
+          <tr><td class="field">§8 Configuration</td><td class="mono">§4, §12</td></tr>
+          <tr><td class="field">§9 Testing strategy</td><td class="mono">(implementation-only — not in the spec)</td></tr>
+          <tr><td class="field">§10 Known gaps</td><td class="mono">§10, §11, §12</td></tr>
         </tbody>
       </table>
     </div>
@@ -489,7 +598,7 @@
 
   <div class="doc-footer">
     <span>SL-TDD-001 — Technical Design Document · companion to SL-ARCH-001</span>
-    <span>v0.1 draft · 2026-09-16</span>
+    <span>v0.4 · 2026-10-02</span>
   </div>
 
 </div>

@@ -143,9 +143,20 @@ export interface ClassificationGuess {
   confidence: number;
 }
 
+// What matching the serial number printed on the document against the fleet
+// found (backend/app/services/classification.py): "matched" = exactly one
+// instrument has it; "not_found" = a serial was read but no instrument has
+// it; "model_conflict" = it belongs to an instrument of a different model
+// than the one read from the document; "not_read" = no serial on the document.
+export type SerialMatch = 'matched' | 'not_found' | 'model_conflict' | 'not_read';
+
 export interface ClassificationResult {
   instrument: ClassificationGuess;
   report_type: ClassificationGuess;
+  // Optional: results stored before serial matching existed don't have these.
+  instrument_serial?: ClassificationGuess | null;
+  serial_match?: SerialMatch;
+  suggested_instrument_id?: string | null;
   resolved_template_id: string | null;
   resolved_instrument_id: string | null;
 }
@@ -234,12 +245,27 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    let detail = response.statusText;
+    // statusText is empty over HTTP/2, so it can't be the only fallback.
+    let detail = response.statusText || `Request failed (${response.status})`;
     try {
       const body = await response.json();
-      if (typeof body?.detail === 'string') detail = body.detail;
+      if (typeof body?.detail === 'string') {
+        detail = body.detail;
+      } else if (Array.isArray(body?.detail) && body.detail.length > 0) {
+        // FastAPI's request-validation 422s send `detail` as a list of
+        // {loc, msg, ...} entries, not a string — e.g. the template editor
+        // saving an enum field with no options, or two fields with the same
+        // name. Ignoring the list left the user with a bare "Unprocessable
+        // Content" instead of the reason. Pydantic prefixes errors raised
+        // from a validator with "Value error, "; drop it so the message
+        // reads as written in schemas.py.
+        detail = body.detail
+          .map((d: { msg?: unknown }) => (typeof d?.msg === 'string' ? d.msg.replace(/^Value error, /, '') : null))
+          .filter(Boolean)
+          .join('; ') || detail;
+      }
     } catch {
-      // non-JSON error body — fall back to statusText
+      // non-JSON error body — keep the fallback above
     }
     throw new ApiError(response.status, detail);
   }
@@ -425,7 +451,9 @@ export function confirmTemplate(reportId: string, instrumentId: string, template
 
 export function updateReportFields(
   reportId: string,
-  payload: { extracted_fields?: Record<string, unknown> }
+  // report_date: the service-visit date. Extraction fills it in from the
+  // document; the review screen sends it back as corrected (null clears it).
+  payload: { extracted_fields?: Record<string, unknown>; report_date?: string | null }
 ): Promise<Report> {
   return apiFetch(`/reports/${reportId}/fields`, { method: 'PATCH', body: JSON.stringify(payload) });
 }

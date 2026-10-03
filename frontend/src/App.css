@@ -247,6 +247,10 @@ textarea {
   background: var(--warn-soft);
   color: var(--warn);
 }
+.banner-info {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
 .banner-crit {
   background: var(--crit-soft);
   color: var(--crit);

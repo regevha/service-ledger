@@ -2,11 +2,19 @@
 
 `extract()` is the second function a real Claude vision call replaces (the
 first is `classify()` in classification.py). Its contract — given an
-attachment and its resolved template, return `(extracted_fields,
-field_confidences)` — is what the rest of the app is built against; the live
+attachment and its resolved template, return an `ExtractionResult`: the
+template's field values, a confidence per field, and the date the service
+visit took place — is what the rest of the app is built against; the live
 path below (behind `settings.use_live_claude`) sends the attachment's PDF
 plus the template's field list to Claude and parses back a value + confidence
 per field via a forced tool call, same as classification.py.
+
+The visit date isn't a template field: it's `Report.report_date`, a column
+every report has whatever its template (the date filters, trend chart x-axis
+and CSV export all key on it). It's read in the same call as the template's
+fields, and its confidence is returned in `field_confidences` under the key
+`report_date` — a name schemas.py reserves so no template field can collide
+with it.
 
 `source_snippet` (spec §4/§10) isn't threaded through to the return value
 here — there's no `extraction_jobs` column to put it in yet (SL-TDD-001 §9
@@ -21,21 +29,21 @@ what's already shown in the repair-review-demo artifact.
 """
 from __future__ import annotations
 
-import base64
 import logging
-from datetime import date
-from pathlib import Path
+from datetime import date, datetime, timedelta
+from typing import NamedTuple
 
 from app.config import get_settings
 from app.models import Attachment, ReportTemplate
-from app.schemas import TemplateFieldType
+from app.schemas import REPORT_DATE_KEY, TemplateFieldType
 from app.services.claude_client import (
-    SAMPLE_MARKERS as _SAMPLE_MARKERS,
+    is_sample_document as _is_sample_document,
     call_claude_tool,
     extract_tool_use,
     get_client as _get_client,
     stable_unit as _stable_unit,
 )
+from app.services.documents import UnsupportedDocumentError, claude_content_block
 from app.services.errors import ExtractionError
 
 logger = logging.getLogger("app.services.extraction")
@@ -65,7 +73,39 @@ actually asks for. For example, a Subject line reading "11 Month Recurring / \
 SMX0457374" contains a contract number after the slash — extract only "11 Month \
 Recurring". Likewise a quote reading "Air bubble in bleach line. By Shachar on \
 18/04/2021" contains a technician sign-off — extract only "Air bubble in bleach \
-line"."""
+line".
+
+Separately from the template's fields, also give `report_date`: the date this \
+service visit was carried out, as YYYY-MM-DD. This is the one date the record \
+itself needs — the privacy rule above is about keeping dates out of *field \
+values*, not about this. On a BD Care Work Order Service Report, take it from the \
+LABOR table's Start/End Date And Time — the day the engineer actually worked on the \
+instrument (if labor spans several days, use the last End date). If there is no \
+labor table, use the date printed beside the signatures. Never use the service \
+contract start/end dates, the PO date, or any date in the CALIBRATED TOOLS table — \
+those describe the contract and the engineer's test equipment, not this visit.
+
+BD forms are not consistent about day/month order: some print dates month-first \
+(02/10/2026 is 10 February 2026), others day-first (18/04/2021 is 18 April 2021). \
+Every date on one form uses the same order, so work it out from this form: any date \
+on the page with a part greater than 12 settles it (03/17/2025 can only be \
+month-first). If nothing on the form settles it, give your best reading and a \
+`report_date__confidence` of 0.5 or lower. If no visit date appears on the form, \
+use an empty string with a low confidence."""
+
+# A parsed visit date outside this window is treated as a misread (a dropped
+# century digit, a next-service-due date picked up instead of the visit date)
+# rather than stored: one bad year would stretch every trend chart for that
+# instrument and drop the report out of any date-filtered view.
+_EARLIEST_PLAUSIBLE_REPORT_DATE = date(1990, 1, 1)
+
+
+class ExtractionResult(NamedTuple):
+    extracted_fields: dict
+    # One entry per template field, plus REPORT_DATE_KEY for report_date.
+    field_confidences: dict
+    # None when the document has no readable visit date.
+    report_date: date | None
 
 
 def _stub_value(field: dict, attachment_key: str):
@@ -159,6 +199,9 @@ def _build_extract_tool(fields: list[dict]) -> dict:
         conf_key = _confidence_key(name)
         properties[conf_key] = {"type": "number", "minimum": 0, "maximum": 1}
         required.extend([name, conf_key])
+    properties[REPORT_DATE_KEY] = {"type": "string", "description": "Service visit date, YYYY-MM-DD"}
+    properties[_confidence_key(REPORT_DATE_KEY)] = {"type": "number", "minimum": 0, "maximum": 1}
+    required.extend([REPORT_DATE_KEY, _confidence_key(REPORT_DATE_KEY)])
     return {
         "name": _EXTRACT_TOOL_NAME,
         "description": "Record the extracted value and confidence for every field of this report template.",
@@ -188,7 +231,7 @@ def _resolve_extraction_data(raw: dict, fields: list[dict]) -> dict:
     isn't strictly validated against the schema, so if none of the expected
     field names appear at the top level and there's exactly one key, try
     unwrapping it once before giving up on the expected shape."""
-    names = {f["name"] for f in fields}
+    names = {f["name"] for f in fields} | {REPORT_DATE_KEY}
     if names.isdisjoint(raw.keys()) and len(raw) == 1:
         inner = next(iter(raw.values()))
         if isinstance(inner, dict):
@@ -196,10 +239,56 @@ def _resolve_extraction_data(raw: dict, fields: list[dict]) -> dict:
     return raw
 
 
-def _live_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dict, dict]:
+def _parse_report_date(value: object, attachment_path: str) -> date | None:
+    """Claude's report_date answer → a date, or None when it's absent,
+    unparseable, or implausible. Accepts a plain ISO date or an ISO
+    datetime (the date part is used); anything else is logged and dropped
+    rather than failing the whole extraction over one value."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    try:
+        parsed = date.fromisoformat(text)
+    except ValueError:
+        try:
+            parsed = datetime.fromisoformat(text).date()
+        except ValueError:
+            logger.warning("Unparseable report_date %r on attachment %s — leaving it unset", value, attachment_path)
+            return None
+    # One day of slack past today: the server's date can be a day behind
+    # the technician's near midnight.
+    if not (_EARLIEST_PLAUSIBLE_REPORT_DATE <= parsed <= date.today() + timedelta(days=1)):
+        logger.warning("Implausible report_date %s on attachment %s — leaving it unset", parsed, attachment_path)
+        return None
+    return parsed
+
+
+def _confidence_value(confidence: object, name: str, attachment_path: str) -> float:
+    try:
+        return float(confidence) if confidence is not None else 0.0
+    except (TypeError, ValueError):
+        # A non-numeric confidence shouldn't sink the whole extraction —
+        # treat it as "couldn't tell," which is what a low confidence
+        # already means to a reviewer, and keep the (possibly still useful)
+        # value. Still worth a log line: this is Claude's tool call not
+        # honoring its own schema, and it was previously invisible — the
+        # field just silently showed up on the review screen flagged as
+        # low-confidence with no trace of why.
+        logger.warning(
+            "Non-numeric confidence for field %r on attachment %s (got %r) — treating as 0.0",
+            name,
+            attachment_path,
+            confidence,
+        )
+        return 0.0
+
+
+def _live_extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
     fields = template.field_schema.get("fields", [])
-    pdf_bytes = Path(attachment.file_path).read_bytes()
-    pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("ascii")
+    try:
+        document_block = claude_content_block(attachment.file_path)
+    except UnsupportedDocumentError as e:
+        raise ExtractionError(str(e)) from e
     tool = _build_extract_tool(fields)
     prompt = _EXTRACT_PROMPT_HEADER + "\n\nFields to extract:\n" + _field_list_for_prompt(fields)
 
@@ -214,7 +303,7 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dic
                 {
                     "role": "user",
                     "content": [
-                        {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64}},
+                        document_block,
                         {"type": "text", "text": prompt},
                     ],
                 }
@@ -256,24 +345,15 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dic
             confidence = value.get("confidence", confidence)
             value = value.get("value")
         extracted_fields[name] = value
-        try:
-            field_confidences[name] = float(confidence) if confidence is not None else 0.0
-        except (TypeError, ValueError):
-            # A non-numeric confidence shouldn't sink the whole extraction —
-            # treat it as "couldn't tell," which is what a low confidence
-            # already means to a reviewer, and keep the (possibly still
-            # useful) value. Still worth a log line: this is Claude's tool
-            # call not honoring its own schema, and it was previously
-            # invisible — the field just silently showed up on the review
-            # screen flagged as low-confidence with no trace of why.
-            logger.warning(
-                "Non-numeric confidence for field %r on attachment %s (got %r) — treating as 0.0",
-                name,
-                attachment.file_path,
-                confidence,
-            )
-            field_confidences[name] = 0.0
-    return extracted_fields, field_confidences
+        field_confidences[name] = _confidence_value(confidence, name, attachment.file_path)
+
+    report_date = _parse_report_date(data.get(REPORT_DATE_KEY), attachment.file_path)
+    field_confidences[REPORT_DATE_KEY] = (
+        _confidence_value(data.get(_confidence_key(REPORT_DATE_KEY)), REPORT_DATE_KEY, attachment.file_path)
+        if report_date is not None
+        else 0.0
+    )
+    return ExtractionResult(extracted_fields, field_confidences, report_date)
 
 
 # Real values from the BD Care EU Work Order Service Report used throughout
@@ -293,10 +373,9 @@ _SAMPLE_REPAIR_VALUES = {
 }
 
 
-def _stub_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dict, dict]:
+def _stub_extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
     fields = template.field_schema.get("fields", [])
-    lower_path = attachment.file_path.lower()
-    is_sample = any(marker in lower_path for marker in _SAMPLE_MARKERS)
+    is_sample = _is_sample_document(attachment.file_path)
 
     extracted_fields: dict = {}
     field_confidences: dict = {}
@@ -312,10 +391,17 @@ def _stub_extract(attachment: Attachment, template: ReportTemplate) -> tuple[dic
             extracted_fields[name] = _stub_value(field, attachment.file_path)
             field_confidences[name] = round(0.55 + _stable_unit(attachment.file_path, name, "conf") * 0.44, 2)
 
-    return extracted_fields, field_confidences
+    # A stable date within the past year — not a value read from any real
+    # document, just so the date filters and trend chart have something to
+    # work with in stub mode.
+    report_date = date.today() - timedelta(days=int(_stable_unit(attachment.file_path, REPORT_DATE_KEY) * 365))
+    field_confidences[REPORT_DATE_KEY] = round(
+        0.55 + _stable_unit(attachment.file_path, REPORT_DATE_KEY, "conf") * 0.44, 2
+    )
+    return ExtractionResult(extracted_fields, field_confidences, report_date)
 
 
-def extract(attachment: Attachment, template: ReportTemplate) -> tuple[dict, dict]:
+def extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
     if settings.use_live_claude:
         return _live_extract(attachment, template)
     return _stub_extract(attachment, template)

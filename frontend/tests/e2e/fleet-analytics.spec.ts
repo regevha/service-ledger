@@ -1,4 +1,5 @@
-import { test, expect, type APIRequestContext } from '@playwright/test';
+import { type APIRequestContext } from '@playwright/test';
+import { test, expect } from './coverage';
 import { BACKEND_PORT } from '../../playwright.config';
 
 // The Analytics tab (GET /analytics/fleet) — a smoke check that the tab
@@ -89,9 +90,14 @@ test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail 
   await expect(partRow).toBeVisible();
   await expect(partRow.locator('.bar-value')).toContainText('3 units');
 
-  // Labor hours by instrument includes this run's FACSAria III report.
+  // Labor hours by instrument includes this run's FACSAria III report. The
+  // row itself is always present (one per seeded instrument, regardless of
+  // data — see AnalyticsScreen.tsx's LaborHoursByInstrumentChart), so
+  // checking visibility alone would pass even if this report's hours never
+  // made it into the rollup; check it doesn't show the zero-reports label.
   const ariaRow = page.locator('.bar-row', { hasText: 'FACSAria III' });
   await expect(ariaRow).toBeVisible();
+  await expect(ariaRow.locator('.bar-value')).not.toHaveText('No repair/PM reports yet');
 
   // Pass/fail section shows both report types this run touched.
   await expect(page.locator('.stack-row', { hasText: 'Malfunction / repair' })).toBeVisible();

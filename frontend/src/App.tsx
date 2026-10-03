@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ApiError, getAppConfig, listInstruments, type AppConfig, type Instrument } from './api';
 import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { InstrumentManagerScreen } from './components/InstrumentManager';
@@ -65,12 +65,6 @@ export default function App() {
       .catch(() => undefined);
   }, []);
 
-  const instrumentByModel = useMemo(() => {
-    const map = new Map<string, Instrument>();
-    for (const inst of instruments) map.set(inst.model, inst);
-    return map;
-  }, [instruments]);
-
   return (
     <div className="wrap">
       <div className="masthead">
@@ -113,7 +107,6 @@ export default function App() {
         ) : (
           <IntakeFlow
             instruments={instruments}
-            instrumentByModel={instrumentByModel}
             instrumentsError={instrumentsError}
             fieldConfidenceThreshold={config.field_confidence_threshold}
             classificationConfidenceThreshold={config.classification_confidence_threshold}

@@ -12,7 +12,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import ReportTemplate, ReportType
+from app.models import Report, ReportTemplate, ReportType
 
 CST_CALIBRATION_FIELDS = [
     {"name": "laser_configuration", "type": "enum[]", "unit": None, "notes": "e.g. 405nm, 488nm, 640nm"},
@@ -178,10 +178,13 @@ def seed(db: Session) -> list[ReportTemplate]:
     """Upserts every row in TEMPLATE_ROWS, then removes any report_templates
     row for a report_type covered here that isn't in the current desired set
     — e.g. the three old per-model preventive_maintenance rows a v0.12
-    redesign left behind. A Report already pointing at a removed row keeps
-    its template_id (the FK isn't touched), it just won't resolve for new
-    reports; this is a dev/eval-scale convenience (§1), not a migration
-    tool."""
+    redesign left behind. reports.template_id -> report_templates.id has no
+    ondelete (models.py), so it defaults to RESTRICT, and
+    ReportTemplate.reports is passive_deletes=True — the DB itself would
+    reject deleting a stale row some existing Report still points at, so
+    such a row is left in place (and its report keeps its template_id
+    exactly as before) rather than crashing the whole seed run over it; this
+    is a dev/eval-scale convenience (§1), not a migration tool."""
     desired = {(rt, model) for rt, model, _ in TEMPLATE_ROWS}
     covered_report_types = {rt for rt, _, _ in TEMPLATE_ROWS}
 
@@ -210,19 +213,32 @@ def seed(db: Session) -> list[ReportTemplate]:
         created.append(row)
     db.flush()
 
-    stale = [
+    stale_candidates = [
         row
         for row in db.query(ReportTemplate)
         .filter(ReportTemplate.instrument_type == "facs", ReportTemplate.report_type.in_(covered_report_types))
         .all()
         if (row.report_type, row.model) not in desired
     ]
+    # A stale row some existing Report still points at can't actually be
+    # deleted (see this function's docstring) — skip it instead of letting
+    # db.commit() below crash the whole seed run with an unhandled
+    # IntegrityError. Previously seen in practice: a leftover per-model row
+    # with a finalized report attached to it.
+    referenced_template_ids = {tid for (tid,) in db.query(Report.template_id).filter(Report.template_id.isnot(None)).all()}
+    stale = [row for row in stale_candidates if row.id not in referenced_template_ids]
+    skipped = [row for row in stale_candidates if row.id in referenced_template_ids]
     for row in stale:
         db.delete(row)
 
     db.commit()
     for row in created:
         db.refresh(row)
+    if skipped:
+        print(
+            f"Left {len(skipped)} stale report_templates row(s) in place — still referenced by an existing report: "
+            + ", ".join(f"{row.report_type.value}/{row.model or '(any)'}" for row in skipped)
+        )
     return created
 
 

@@ -100,6 +100,18 @@ def _format_value(field: dict, value: object) -> str:
     return escape(str(value))
 
 
+def _format_cell(value: object) -> str:
+    """One object[] table cell. Booleans get the same Yes/No a top-level
+    boolean field gets in _format_value — str(False) would print a literal
+    "False" (and a boolean column's new rows now start as False, see
+    FieldEditor.tsx's blankLeafValue)."""
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if value in (None, ""):
+        return _EM_DASH
+    return escape(str(value))
+
+
 def render_report_pdf(report: models.Report) -> bytes:
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -169,7 +181,16 @@ def render_report_pdf(report: models.Report) -> bytes:
             story.append(Paragraph(label, label_style))
 
             if field.get("type") == TemplateFieldType.object_list:
-                rows = value if isinstance(value, list) else []
+                # Tool-use input isn't strictly validated against the schema
+                # (see extraction.py's flat-schema comment), and
+                # PATCH .../fields accepts extracted_fields as a bare dict
+                # with no shape check against field_schema — so a row here
+                # isn't guaranteed to be a dict. services/analytics.py hits
+                # the same gap and guards it the same way; without this, a
+                # non-dict row (e.g. a plain string) raises AttributeError on
+                # row.get(c) below and turns GET /reports/{id}/pdf into an
+                # unhandled 500 — such rows are skipped instead.
+                rows = [r for r in (value if isinstance(value, list) else []) if isinstance(r, dict)]
                 # item_schema is a list of {name, type} columns, not a dict —
                 # see ItemSchemaColumn's docstring (schemas.py): a dict's key
                 # order doesn't survive Postgres's JSONB storage, a JSON
@@ -178,12 +199,7 @@ def render_report_pdf(report: models.Report) -> bytes:
                 if rows and columns:
                     table_data = [[Paragraph(f"<b>{escape(_label(c))}</b>", table_head_style) for c in columns]]
                     for row in rows:
-                        table_data.append(
-                            [
-                                Paragraph(escape(str(row.get(c))) if row.get(c) not in (None, "") else _EM_DASH, table_cell_style)
-                                for c in columns
-                            ]
-                        )
+                        table_data.append([Paragraph(_format_cell(row.get(c)), table_cell_style) for c in columns])
                     col_width = 5.0 * inch / len(columns)
                     obj_table = Table(table_data, colWidths=[col_width] * len(columns))
                     obj_table.setStyle(

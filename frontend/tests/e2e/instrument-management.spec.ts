@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './coverage';
 
 // The Instruments tab (InstrumentManager.tsx) replaces "POST /instruments
 // from a script or curl, then edit the DB by hand for anything else" as the

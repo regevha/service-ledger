@@ -39,6 +39,14 @@ export function ReportsListScreen({
   const [technicianInput, setTechnicianInput] = useState(filters.technician ?? '');
   const [items, setItems] = useState<ReportListItem[]>([]);
   const [screen, setScreen] = useState<ReportsScreen>({ kind: 'list' });
+  // `items` lives here, and this component stays mounted while a report is
+  // open, so the list doesn't refetch on its own when the technician comes
+  // back — and a save/finalize inside ReportDetailScreen only updates that
+  // screen's own state. Bumped on every way out of a report (see
+  // leaveReport) so the list shows the report's new status instead of the
+  // pre-save one. InstrumentDetailScreen needs nothing extra: it's unmounted
+  // while a report is open and fetches fresh when it mounts again.
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -52,17 +60,22 @@ export function ReportsListScreen({
       const list = await listReports(filters);
       if (!isCancelled()) setItems(list);
     },
-    [filters],
+    [filters, refreshNonce],
     'Could not load reports.'
   );
+
+  function leaveReport(next: ReportsScreen) {
+    setRefreshNonce((n) => n + 1);
+    setScreen(next);
+  }
 
   if (screen.kind === 'report') {
     return (
       <ReportDetailScreen
         item={screen.item}
         instruments={instruments}
-        onBack={() => setScreen(screen.returnTo)}
-        onViewInstrument={(instrumentId) => setScreen({ kind: 'instrument', instrumentId })}
+        onBack={() => leaveReport(screen.returnTo)}
+        onViewInstrument={(instrumentId) => leaveReport({ kind: 'instrument', instrumentId })}
         fieldConfidenceThreshold={fieldConfidenceThreshold}
       />
     );

@@ -8,6 +8,7 @@ from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -134,7 +135,7 @@ def export_reports(
         status=status,
         technician=technician,
     )
-    reports = query.order_by(models.Report.report_date).all()
+    reports = query.order_by(*models.report_chronological_order()).all()
 
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -227,6 +228,17 @@ def confirm_template(report_id: uuid.UUID, payload: schemas.TemplateConfirmation
     report = db.get(models.Report, report_id)
     if not report:
         raise HTTPException(404, "Report not found")
+    if report.status == models.ReportStatus.finalized:
+        # Without this, a stray or mistaken re-confirm on an already-
+        # finalized report silently forced status back to "classified"
+        # while leaving finalized_at set — GET /reports/{id} and the PDF
+        # export would then show a non-finalized status next to a
+        # "Finalized: ..." timestamp, an inconsistent state nothing else in
+        # the pipeline produces. Overriding a finalized report's
+        # instrument/template is exactly the "another technician's already-
+        # finalized report" case §10 flags as needing an audit trail this
+        # MVP doesn't have yet, so it's rejected outright instead.
+        raise HTTPException(409, "Cannot change instrument/template on a finalized report.")
     instrument = db.get(models.Instrument, payload.instrument_id)
     template = db.get(models.ReportTemplate, payload.template_id)
     if not instrument or not template:
@@ -240,7 +252,14 @@ def confirm_template(report_id: uuid.UUID, payload: schemas.TemplateConfirmation
         # Discard any prior extraction — it ran (or would run) against the
         # wrong schema.
         report.extracted_fields = {}
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # The other side of delete_report_template's race (routers/
+        # report_templates.py): the template existed at db.get() above but
+        # was deleted before this commit, so the FK rejects the write.
+        db.rollback()
+        raise HTTPException(409, "That template was just deleted — pick another and try again.") from None
     db.refresh(report)
     return report
 

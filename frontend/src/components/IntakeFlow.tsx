@@ -9,6 +9,7 @@ import {
   findTemplate,
   finalizeReport,
   getReport,
+  getReportTemplate,
   pollExtractionJob,
   reportPdfUrl,
   updateReportFields,
@@ -45,12 +46,20 @@ type Phase =
   | { name: 'error'; message: string; retry: () => void };
 
 function StepBar({ phase }: { phase: Phase }) {
+  // Every "working" phase before the review screen (upload, classify,
+  // resolve-template, extract) counts as step 1 ("Classify") below — there's
+  // no separate step for those sub-stages. But handleSaveFields's two
+  // "working" labels ("Saving corrections…"/"Saving and finalizing…") fire
+  // *from* the review screen, not before it, so without checking for them
+  // here they'd fall through to the same step-1 default and the bar would
+  // visibly jump backward from "Review & finalize" to "Classify" while a
+  // save/finalize is in flight.
   const stepIndex =
     phase.name === 'intake'
       ? 0
       : phase.name === 'confirm-classification' || (phase.name === 'working' && phase.label.includes('lassif'))
         ? 1
-        : phase.name === 'review' || phase.name === 'done'
+        : phase.name === 'review' || phase.name === 'done' || (phase.name === 'working' && phase.label.includes('aving'))
           ? 2
           : phase.name === 'working'
             ? 1
@@ -97,8 +106,8 @@ function IntakeScreen({
       <label className="dropzone">
         <div className="icon">📄</div>
         <div className="primary">{file ? file.name : 'Click to choose a scan or PDF'}</div>
-        <div className="secondary">Printed BD service forms and PDF exports — one file per report, any instrument, any report type</div>
-        <input type="file" accept="application/pdf,image/*" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <div className="secondary">Printed BD service forms as a PDF or a PNG, JPEG, GIF or WebP image — one file per report, any instrument, any report type</div>
+        <input type="file" accept="application/pdf,image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       </label>
 
       <div className="cta-row">
@@ -110,11 +119,59 @@ function IntakeScreen({
   );
 }
 
+type SerialNotice = { tone: 'info' | 'warn'; text: string };
+
+/**
+ * What to tell the technician about the serial number read off the document
+ * (ClassificationResult.serial_match). `assigned` is the instrument the report
+ * ended up with automatically, if any. Returns null when there is nothing worth
+ * saying — no serial on the document.
+ */
+function describeSerialMatch(
+  result: ClassificationResult,
+  instruments: Instrument[],
+  assigned: Instrument | undefined,
+  threshold: number
+): SerialNotice | null {
+  const serial = result.instrument_serial?.value;
+  const match = result.serial_match ?? 'not_read';
+  if (!serial || match === 'not_read') return null;
+  const label = (inst: Instrument) => `${inst.model} (${inst.serial_number})`;
+  const suggested = instruments.find((inst) => inst.id === result.suggested_instrument_id);
+
+  if (match === 'matched') {
+    if (assigned) return { tone: 'info', text: `Matched to ${label(assigned)} by the serial number on the document (${serial}).` };
+    // Not assigned automatically, but not necessarily because of the serial:
+    // a low report-type read also sends the report to this screen. Say so
+    // only when the serial itself was a confident read.
+    if (suggested && (result.instrument_serial?.confidence ?? 0) >= threshold) {
+      return { tone: 'info', text: `Matched to ${label(suggested)} by the serial number on the document (${serial}). Confirm the details below.` };
+    }
+    return {
+      tone: 'info',
+      text: `The document shows serial ${serial}${suggested ? `, which is ${label(suggested)}` : ''}. It is pre-selected below, but the read was not confident enough to assign it automatically — check it.`,
+    };
+  }
+  if (match === 'model_conflict') {
+    return {
+      tone: 'warn',
+      text: `The document's serial number ${serial} belongs to ${suggested ? label(suggested) : 'another instrument'}, but the model read from the document is ${result.instrument.value}. One of the two reads is wrong — choose the instrument yourself.`,
+    };
+  }
+  // not_found
+  return {
+    tone: 'warn',
+    text: assigned
+      ? `The document shows serial ${serial}, which is not in your fleet. The report was assigned to ${label(assigned)} because it is the only ${assigned.model}; check that it is the right unit, or add serial ${serial} under Instruments.`
+      : `The document shows serial ${serial}, which is not in your fleet. Choose the unit below, or add serial ${serial} under Instruments.`,
+  };
+}
+
 function ConfirmClassificationScreen({
   classification,
   instruments,
-  pickInstrumentModel,
-  setPickInstrumentModel,
+  pickInstrumentId,
+  setPickInstrumentId,
   pickReportType,
   setPickReportType,
   classificationConfidenceThreshold,
@@ -122,8 +179,8 @@ function ConfirmClassificationScreen({
 }: {
   classification: ClassificationResult;
   instruments: Instrument[];
-  pickInstrumentModel: string;
-  setPickInstrumentModel: (v: string) => void;
+  pickInstrumentId: string;
+  setPickInstrumentId: (v: string) => void;
   pickReportType: ReportType;
   setPickReportType: (v: ReportType) => void;
   classificationConfidenceThreshold: number;
@@ -142,9 +199,24 @@ function ConfirmClassificationScreen({
           <span className="clabel">Instrument</span>
           <ConfidenceBadge confidence={classification.instrument.confidence} threshold={classificationConfidenceThreshold} />
         </div>
-        <select value={pickInstrumentModel} onChange={(e) => setPickInstrumentModel(e.target.value)}>
+        <select value={pickInstrumentId} onChange={(e) => setPickInstrumentId(e.target.value)}>
+          {/* Keyed and valued by instrument id, not model: model isn't unique
+              across the fleet (InstrumentManager.tsx doesn't enforce it, and
+              only serial_number has a backend uniqueness check), so a
+              model-valued <option> would give two different instruments the
+              same <select> value — picking either one would then resolve to
+              whichever instrument the id lookup happened to return, silently
+              attributing the report to the wrong physical unit.
+              The disabled placeholder is what shows when nothing is
+              pre-selected (no guessed-model match, or several): without it,
+              a value of '' matched no option, the browser displayed the
+              first instrument as if selected, and choosing that same option
+              fired no onChange — so Confirm stayed disabled. */}
+          <option value="" disabled>
+            Select instrument…
+          </option>
           {instruments.map((inst) => (
-            <option key={inst.id} value={inst.model}>
+            <option key={inst.id} value={inst.id}>
               {inst.model} ({inst.serial_number})
             </option>
           ))}
@@ -166,7 +238,7 @@ function ConfirmClassificationScreen({
       </div>
 
       <div className="cta-row">
-        <button className="btn primary" disabled={!pickInstrumentModel} onClick={onConfirm}>
+        <button className="btn primary" disabled={!pickInstrumentId} onClick={onConfirm}>
           Confirm &amp; continue to extraction →
         </button>
       </div>
@@ -192,13 +264,11 @@ function DoneScreen({ report, onReset }: { report: Report; onReset: () => void }
 
 export function IntakeFlow({
   instruments,
-  instrumentByModel,
   instrumentsError,
   fieldConfidenceThreshold,
   classificationConfidenceThreshold,
 }: {
   instruments: Instrument[];
-  instrumentByModel: Map<string, Instrument>;
   instrumentsError: string | null;
   fieldConfidenceThreshold: number;
   classificationConfidenceThreshold: number;
@@ -214,8 +284,15 @@ export function IntakeFlow({
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [fieldConfidences, setFieldConfidences] = useState<Record<string, number>>({});
   const [fields, setFields] = useState<Record<string, unknown>>({});
+  const [reportDate, setReportDate] = useState<string | null>(null);
 
-  const [pickInstrumentModel, setPickInstrumentModel] = useState('');
+  // Identifies the manual-confirm pick by instrument id, not model — model
+  // isn't unique across the fleet (see the <select>'s own comment in
+  // ConfirmClassificationScreen), so keying this on model risked resolving
+  // to a different instrument than the one actually selected whenever two
+  // shared a model.
+  const [pickInstrumentId, setPickInstrumentId] = useState('');
+  const [serialNotice, setSerialNotice] = useState<SerialNotice | null>(null);
   const [pickReportType, setPickReportType] = useState<ReportType>('repair');
 
   function resetToIntake() {
@@ -228,6 +305,7 @@ export function IntakeFlow({
     setTemplate(null);
     setFieldConfidences({});
     setFields({});
+    setReportDate(null);
   }
 
   // Every step below (upload, classify, resolve-template, extract, save)
@@ -267,6 +345,7 @@ export function IntakeFlow({
       setReport(refreshed);
       setFieldConfidences(job.field_confidences ?? {});
       setFields(refreshed.extracted_fields ?? {});
+      setReportDate(refreshed.report_date);
       setPhase({ name: 'review' });
     });
   }
@@ -303,45 +382,81 @@ export function IntakeFlow({
       }
       const result = job.classification as unknown as ClassificationResult;
       setClassification(result);
+      setSerialNotice(
+        describeSerialMatch(
+          result,
+          instruments,
+          result.resolved_instrument_id ? instruments.find((inst) => inst.id === result.resolved_instrument_id) : undefined,
+          classificationConfidenceThreshold
+        )
+      );
       if (result.resolved_template_id && result.resolved_instrument_id) {
-        const tpl = await findTemplate(result.instrument.value, result.report_type.value as ReportType);
-        if (!tpl) throw new ApiError(404, 'Classification resolved a template id the frontend could not look up.');
+        // Fetch the exact template the worker attached to the report, by id
+        // — not re-resolve "a" template for this model + report type, which
+        // could pick a different row if templates changed in between (the
+        // same drift ReportDetailScreen.tsx's load had). The review screen
+        // must render the schema extraction actually runs against.
+        const tpl = await getReportTemplate(result.resolved_template_id);
         setTemplate(tpl);
         const refreshed = await getReport(reportId);
         setReport(refreshed);
         await runExtraction(attId, reportId, tpl);
       } else {
-        setPickInstrumentModel(result.instrument.value);
+        // Pre-select the guessed model's instrument by id — pickInstrumentId
+        // (not model) is what the confirm screen's <select> and
+        // handleConfirmClassification below actually use, since model alone
+        // can't tell two same-model instruments apart. Only pre-select when
+        // exactly one instrument has that model: with none, or with several
+        // (which is also why the backend didn't auto-resolve it), leave it
+        // on the "Select instrument…" placeholder so the technician has to
+        // choose the unit themselves rather than confirm an arbitrary one.
+        // The backend's suggested_instrument_id already folds in the serial
+        // number read off the document (and falls back to "the only unit of
+        // that model"); older results without it get the model-only rule.
+        const guessed = instruments.filter((inst) => inst.model === result.instrument.value);
+        setPickInstrumentId(result.suggested_instrument_id ?? (guessed.length === 1 ? guessed[0].id : ''));
         setPickReportType((result.report_type.value as ReportType) ?? 'repair');
         setPhase({ name: 'confirm-classification' });
       }
     });
   }
 
+  // Creating the report and uploading its scan are two steps with separate
+  // retries. They used to share one, so a "Try again" after a failed upload
+  // re-ran createReport too — leaving the first report behind as an empty
+  // draft in the reports list and instrument history, with no way to delete
+  // it (§10). Now a retry after the report exists re-runs only the upload.
   async function handleStart() {
     if (!file) return;
-    setPhase({ name: 'working', label: 'Uploading scan…' });
-    await attempt('Upload failed unexpectedly.', () => void handleStart(), async () => {
+    setPhase({ name: 'working', label: 'Creating report…' });
+    await attempt('Could not create the report.', () => void handleStart(), async () => {
       const newReport = await createReport({ technician_name: technicianName || null });
       setReport(newReport);
-      const attachment = await uploadAttachment(newReport.id, file);
+      await uploadScan(newReport.id, file);
+    });
+  }
+
+  async function uploadScan(reportId: string, scan: File) {
+    setPhase({ name: 'working', label: 'Uploading scan…' });
+    await attempt('Upload failed unexpectedly.', () => void uploadScan(reportId, scan), async () => {
+      const attachment = await uploadAttachment(reportId, scan);
       setAttachmentId(attachment.id);
-      await runClassification(attachment.id, newReport.id);
+      await runClassification(attachment.id, reportId);
     });
   }
 
   async function handleConfirmClassification() {
     if (!report || !attachmentId) return;
-    const instrument = instrumentByModel.get(pickInstrumentModel);
+    const instrument = instruments.find((inst) => inst.id === pickInstrumentId);
     if (!instrument) return;
-    await resolveAndExtract(report.id, attachmentId, pickInstrumentModel, pickReportType, instrument.id);
+    await resolveAndExtract(report.id, attachmentId, instrument.model, pickReportType, instrument.id);
   }
 
   async function handleSaveFields(finalize: boolean) {
     if (!report) return;
     setPhase({ name: 'working', label: finalize ? 'Saving and finalizing…' : 'Saving corrections…' });
     await attempt('Saving failed unexpectedly.', () => void handleSaveFields(finalize), async () => {
-      const updated = await updateReportFields(report.id, { extracted_fields: fields });
+      const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
       let final = updated;
       if (finalize) final = await finalizeReport(report.id);
       setReport(final);
@@ -372,12 +487,18 @@ export function IntakeFlow({
         </div>
       )}
 
+      {serialNotice && (phase.name === 'confirm-classification' || phase.name === 'review') && (
+        <div className={`banner ${serialNotice.tone === 'warn' ? 'banner-warn' : 'banner-info'}`} id="serial-notice">
+          {serialNotice.text}
+        </div>
+      )}
+
       {phase.name === 'confirm-classification' && classification && (
         <ConfirmClassificationScreen
           classification={classification}
           instruments={instruments}
-          pickInstrumentModel={pickInstrumentModel}
-          setPickInstrumentModel={setPickInstrumentModel}
+          pickInstrumentId={pickInstrumentId}
+          setPickInstrumentId={setPickInstrumentId}
           pickReportType={pickReportType}
           setPickReportType={setPickReportType}
           classificationConfidenceThreshold={classificationConfidenceThreshold}
@@ -389,6 +510,8 @@ export function IntakeFlow({
         <ReviewScreen
           template={template}
           fields={fields}
+          reportDate={reportDate}
+          onReportDateChange={setReportDate}
           fieldConfidences={fieldConfidences}
           fieldConfidenceThreshold={fieldConfidenceThreshold}
           onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}

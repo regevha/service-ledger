@@ -261,7 +261,7 @@ def test_update_instrument_rejects_explicit_null_on_a_required_field(client):
 
 
 def test_update_instrument_conflicts_on_duplicate_serial_number(client):
-    first = client.post(
+    client.post(
         "/instruments", json={"name": "First", "model": "TestModel-9000", "serial_number": "PATCH-0005-A"}
     ).json()
     second = client.post(
