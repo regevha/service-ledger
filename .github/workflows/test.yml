@@ -1,0 +1,140 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Both the backend's conftest.py and the frontend's playwright.config.ts
+# hardcode this role/password (not just the dev-env default in
+# backend/.env.example) and connect to it as localhost:5432, so this value
+# has to match them exactly rather than being picked freely here.
+env:
+  PGHOST: localhost
+  PGPORT: 5432
+  PGUSER: service_ledger
+  PGPASSWORD: service_ledger_dev
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: service_ledger
+          POSTGRES_PASSWORD: service_ledger_dev
+          POSTGRES_DB: service_ledger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create service_ledger_test database
+        run: psql -d service_ledger -c "CREATE DATABASE service_ledger_test;"
+
+      - name: Apply migrations (sanity check against the primary database)
+        env:
+          DATABASE_URL: postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger
+        run: alembic upgrade head
+
+      - name: Run pytest
+        # tests/conftest.py defaults DATABASE_URL to service_ledger_test itself
+        # and forces USE_LIVE_CLAUDE=false, so no env/secrets are needed here.
+        run: pytest -q
+
+  frontend:
+    name: Frontend (Playwright e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: service_ledger
+          POSTGRES_PASSWORD: service_ledger_dev
+          POSTGRES_DB: service_ledger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        # playwright.config.ts's webServer entries boot the real FastAPI app
+        # and app.worker directly via `python3`/`uvicorn`, so they need these
+        # importable on PATH — no venv required in this isolated runner.
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Create service_ledger_e2e database
+        # Owned by this role by construction (it's also the role that creates
+        # it) — matches the one-time manual `createdb` step in README.md.
+        run: psql -d service_ledger -c "CREATE DATABASE service_ledger_e2e;"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright's Chromium
+        # playwright.config.ts only pins the sandbox's own pre-installed
+        # Chromium when that exact path exists (see its SANDBOX_CHROMIUM
+        # comment); anywhere else, including here, it falls back to
+        # Playwright's own browser cache, which this installs.
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright e2e suite
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Upload traces/screenshots on failure
+        # playwright.config.ts only configures the 'list' reporter (no HTML
+        # report directory), but still writes retain-on-failure traces and
+        # only-on-failure screenshots to the default test-results/ output dir.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: frontend/test-results/
+          retention-days: 7
