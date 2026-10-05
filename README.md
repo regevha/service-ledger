@@ -1,5 +1,7 @@
 # ServiceLedger
 
+[![Tests](https://github.com/regevha/service-ledger/actions/workflows/test.yml/badge.svg)](https://github.com/regevha/service-ledger/actions/workflows/test.yml)
+
 A document-first service ledger for a small fleet of lab instruments (flow
 cytometers, to start): technicians upload a scanned service report, Claude
 classifies which instrument and report type it is and extracts the
@@ -64,12 +66,16 @@ Claude API" for going from the deterministic stub to a live model.
 ## Testing
 
 ```bash
-# Backend — 117 tests against a real (separate) Postgres test database
+# Backend — 205 tests against a real (separate) Postgres test database
 cd backend && pytest
 
-# Frontend — 12 Playwright specs / 22 tests against a running backend
+# Frontend — 14 Playwright specs / 27 tests against a running backend
 cd frontend && npm run test:e2e
 ```
+
+Both suites also run in CI (`.github/workflows/test.yml`) against a fresh
+`postgres:16` service container on every push to `main` and every pull
+request — see the badge at the top of this file.
 
 An opt-in live-Claude smoke test (`frontend/tests/e2e-live/`) and a
 CLI-driven demo script (`docs/service-ledger-demo-script.md`) are also

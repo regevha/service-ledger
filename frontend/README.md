@@ -81,8 +81,11 @@ flat `number` field's single series, and the single-report/no-data
 fallbacks), the Instruments tab's create → edit cycle (including that a
 save there shows up immediately in the Reports tab's instrument filter, and
 that a duplicate-serial-number conflict surfaces as a real error banner),
-and the app's error states (an unreachable backend, a failed classification
-call).
+serial-number matching when several fleet units share a model (classification
+resolving to the one whose serial the document actually names, see
+`serial-matching.spec.ts`), the extracted service date shown on review and
+correctable before finalize (`service-date.spec.ts`), and the app's error
+states (an unreachable backend, a failed classification call).
 
 ### Instrument detail page
 
