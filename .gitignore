@@ -1,10 +1,20 @@
-backend/.venv/
+# Python virtualenvs — wherever one gets created (backend/.venv/ is the
+# documented location, but a venv made from the repo root instead, as
+# happens by mistake on some setups, must be caught too — see the commit
+# that removes one such accidentally-committed root .venv/ for why this
+# matters).
+.venv/
+venv/
 backend/__pycache__/
 **/__pycache__/
 *.pyc
 backend/.env
 backend/storage/attachments/**
 !backend/storage/attachments/.gitkeep
+
+# Node dependencies, if npm install is ever run from the repo root by mistake
+# instead of inside frontend/ (which has its own .gitignore entry already).
+node_modules/
 
 # Frontend coverage output (npm run test:e2e:coverage)
 frontend/.nyc_output/
