@@ -17,6 +17,8 @@ document is easy.
 from __future__ import annotations
 
 import logging
+import re
+from typing import Literal, NamedTuple
 
 from sqlalchemy.orm import Session
 
@@ -30,6 +32,7 @@ from app.services.claude_client import (
     get_client as _get_client,
     stable_unit as _stable_unit,
 )
+from app.services.duplicates import find_duplicate_report_ids, normalize_work_order
 from app.services.errors import ClassificationError
 from app.services.documents import UnsupportedDocumentError, claude_content_block
 from app.services.templates import resolve_template
@@ -54,7 +57,11 @@ repair; a code starting T111 ("Preventive Maintenance") means preventive_mainten
 anything referencing CS&T/QC calibration with no fault or PM-kit language means \
 calibration. Repair, PM, and calibration visits otherwise share the same generic \
 form layout, so this is a genuinely harder call than #1 — give it a lower confidence \
-when the task code is unclear or missing rather than guessing high.
+when the task code is unclear or missing rather than guessing high. Separately, copy \
+the Work Order Task Code exactly as printed (e.g. "T113") into `task_code` with a \
+`task_code_confidence`; the application maps the code to a report type itself, so \
+accuracy of the characters matters more than your interpretation of them. If there \
+is no task code, return an empty string with confidence 0.
 
 3. The instrument's serial number, exactly as printed in the "Installed Product" block \
 (its "Serial/Lot Number" line, e.g. "MP6651580000057"). Ignore the "Serial/Lot Number: \
@@ -63,15 +70,83 @@ exactly; never guess or complete a character you cannot read — give a lower co
 instead. If the Installed Product has no serial number, or it is printed as N/A, return \
 an empty string with confidence 0.
 
+4. The work-order number, exactly as printed (e.g. "WO-04587090"), in \
+`work_order_number`; an empty string if the document shows none.
+
 Give confidence scores that reflect real uncertainty. A clean, legible, unambiguous \
 read deserves something like 0.9-0.98. Anything you had to infer rather than read \
 directly, or where the document is ambiguous between two categories, deserves \
 meaningfully lower — do not default to a high number out of politeness."""
 
 
+class DocumentRead(NamedTuple):
+    """Everything one classification read of a document produced. The first
+    three positions are the original (instrument, report type, serial) triple;
+    a plain 3-tuple still converts via `DocumentRead(*triple)`."""
+
+    instrument: ClassificationGuess
+    report_type: ClassificationGuess
+    serial: ClassificationGuess | None
+    work_order_number: str | None = None
+    report_type_source: Literal["task_code", "model"] = "model"
+
+
+# What the Work Order Task Code says about the kind of visit. Only codes whose
+# meaning is documented are listed; any other code falls back to the model's
+# own judgment rather than being guessed at.
+_TASK_CODE_REPORT_TYPES = {
+    "T111": ReportType.preventive_maintenance,
+    "T113": ReportType.repair,
+}
+
+
+def report_type_from_task_code(code: object) -> ReportType | None:
+    """The report type a printed task code stands for, or None when the code
+    is missing, unparseable, or not one we know the meaning of."""
+    if not isinstance(code, str):
+        return None
+    match = re.match(r"\s*(T\d{3})", code.upper())
+    return _TASK_CODE_REPORT_TYPES.get(match.group(1)) if match else None
+
+
+def _apply_task_code(
+    type_guess: ClassificationGuess, data: dict, attachment_path: str
+) -> tuple[ClassificationGuess, Literal["task_code", "model"]]:
+    """Prefer the task code over the model's judgment of the visit type.
+
+    Reading a code is a lookup; deciding whether a generic form is a repair or
+    a PM is a judgment, and the one that was scoring 0.58 on the sample
+    document. When a known code was read confidently it decides the type, with
+    the confidence of the *read*. A code read with doubt is ignored — the
+    model's guess stands, so the report still falls through to manual
+    confirmation when that guess is itself unsure."""
+    mapped = report_type_from_task_code(data.get("task_code"))
+    if mapped is None:
+        return type_guess, "model"
+    try:
+        confidence = min(max(float(data.get("task_code_confidence", 0.0)), 0.0), 1.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    if confidence < settings.classification_confidence_threshold:
+        return type_guess, "model"
+    if mapped.value == type_guess.value:
+        # Two independent routes agree: at least as sure as the surer of them.
+        confidence = max(confidence, type_guess.confidence)
+    else:
+        logger.info(
+            "Task code %r says %s but the model said %s (%.2f) for attachment %s — using the task code",
+            data.get("task_code"),
+            mapped.value,
+            type_guess.value,
+            type_guess.confidence,
+            attachment_path,
+        )
+    return ClassificationGuess(value=mapped.value, confidence=confidence), "task_code"
+
+
 def _live_classify(
     db: Session, attachment: Attachment, instruments: list[Instrument]
-) -> tuple[ClassificationGuess, ClassificationGuess, ClassificationGuess | None]:
+) -> DocumentRead:
     """The real Claude vision call. Sends the scanned PDF as a `document`
     content block (native multi-page PDF support — see SL-TDD-001 §1) and
     forces a tool call so the model's answer comes back as validated JSON
@@ -95,6 +170,9 @@ def _live_classify(
                 "report_type_confidence": {"type": "number", "minimum": 0, "maximum": 1},
                 "instrument_serial": {"type": "string", "description": "Serial number as printed, or empty if none"},
                 "instrument_serial_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                "task_code": {"type": "string", "description": "Work Order Task Code as printed (e.g. T113), or empty"},
+                "task_code_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                "work_order_number": {"type": "string", "description": "Work-order number as printed, or empty"},
             },
             "required": [
                 "instrument_model",
@@ -103,6 +181,9 @@ def _live_classify(
                 "report_type_confidence",
                 "instrument_serial",
                 "instrument_serial_confidence",
+                "task_code",
+                "task_code_confidence",
+                "work_order_number",
             ],
         },
     }
@@ -158,7 +239,15 @@ def _live_classify(
         )
         raise ClassificationError(f"Claude's classification response was missing or malformed fields: {e}") from e
 
-    return instrument_guess, type_guess, _parse_serial_read(data, attachment.file_path)
+    type_guess, type_source = _apply_task_code(type_guess, data, attachment.file_path)
+    work_order = data.get("work_order_number")
+    return DocumentRead(
+        instrument_guess,
+        type_guess,
+        _parse_serial_read(data, attachment.file_path),
+        work_order.strip() if isinstance(work_order, str) and work_order.strip() else None,
+        type_source,
+    )
 
 
 # What a document prints when the instrument has no serial number.
@@ -214,9 +303,18 @@ def _stub_serial_read(file_path: str, instruments: list[Instrument]) -> Classifi
     return None
 
 
+def _stub_work_order(file_path: str) -> str | None:
+    """The stub "reads" a work-order number only when the uploaded file's own
+    name contains one (e.g. scan_WO-04587090.pdf), mirroring _stub_serial_read,
+    so duplicate detection can be exercised by choosing a file name."""
+    name = file_path.replace("\\", "/").rsplit("/", 1)[-1]
+    match = re.search(r"WO[-_ ]?\d{5,}", name, re.IGNORECASE)
+    return match.group(0) if match else None
+
+
 def _stub_classify(
     attachment: Attachment, instruments: list[Instrument]
-) -> tuple[ClassificationGuess, ClassificationGuess, ClassificationGuess | None]:
+) -> DocumentRead:
     if _is_sample_document(attachment.file_path):
         # Reproduces the real BD Care EU Work Order Service Report case
         # discussed in spec §4: instrument ID is a confident read, report
@@ -245,7 +343,12 @@ def _stub_classify(
         type_guess = ClassificationGuess(
             value=report_type.value, confidence=round(0.86 + 0.12 * _stable_unit(attachment.file_path, "tc"), 2)
         )
-    return instrument_guess, type_guess, _stub_serial_read(attachment.file_path, instruments)
+    return DocumentRead(
+        instrument_guess,
+        type_guess,
+        _stub_serial_read(attachment.file_path, instruments),
+        _stub_work_order(attachment.file_path),
+    )
 
 
 def classify(db: Session, attachment: Attachment) -> ClassificationResult:
@@ -253,10 +356,13 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
     if not instruments:
         raise RuntimeError("No instruments registered — seed the instrument fleet before classifying (see app/seed_instruments.py).")
 
+    # DocumentRead(*...) so a plain (instrument, type, serial) triple — what
+    # these two functions returned before — is still accepted.
     if settings.use_live_claude:
-        instrument_guess, type_guess, serial_read = _live_classify(db, attachment, instruments)
+        document = DocumentRead(*_live_classify(db, attachment, instruments))
     else:
-        instrument_guess, type_guess, serial_read = _stub_classify(attachment, instruments)
+        document = DocumentRead(*_stub_classify(attachment, instruments))
+    instrument_guess, type_guess, serial_read = document.instrument, document.report_type, document.serial
 
     resolved_template: ReportTemplate | None = None
     resolved_instrument_id = None
@@ -325,4 +431,9 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
         suggested_instrument_id=suggested.id if suggested else None,
         resolved_template_id=resolved_template.id if resolved_template else None,
         resolved_instrument_id=resolved_instrument_id,
+        report_type_source=document.report_type_source,
+        work_order_number=document.work_order_number,
+        duplicate_report_ids=find_duplicate_report_ids(
+            db, attachment, normalize_work_order(document.work_order_number)
+        ),
     )

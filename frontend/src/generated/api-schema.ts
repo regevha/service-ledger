@@ -554,6 +554,11 @@ export interface components {
             file_type: string;
             /** Page Count */
             page_count: number;
+            /**
+             * Duplicate Report Ids
+             * @default []
+             */
+            duplicate_report_ids: string[];
         };
         /** Body_upload_attachment_reports__report_id__attachments_post */
         Body_upload_attachment_reports__report_id__attachments_post: {

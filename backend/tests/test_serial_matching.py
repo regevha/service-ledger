@@ -212,7 +212,7 @@ def test_the_live_call_asks_for_the_serial_and_returns_it(tmp_path, monkeypatch)
     client = SimpleNamespace(messages=_Messages())
     monkeypatch.setattr(classification, "_get_client", lambda: client)
 
-    _, _, serial = classification._live_classify(None, SimpleNamespace(file_path=str(scan)), _fleet(("FACSDiscover S8", "S80019")))
+    serial = classification._live_classify(None, SimpleNamespace(file_path=str(scan)), _fleet(("FACSDiscover S8", "S80019"))).serial
 
     assert (serial.value, serial.confidence) == ("MP6651580000057", 0.93)
     sent = client.messages.calls[0]
