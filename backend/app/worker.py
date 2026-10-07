@@ -33,6 +33,7 @@ from app import models
 from app.config import get_settings
 from app.db import SessionLocal
 from app.services.classification import classify as run_classify
+from app.services.duplicates import normalize_work_order
 from app.services.errors import ClassificationError, ExtractionError
 from app.services.extraction import extract as run_extract
 
@@ -134,6 +135,10 @@ def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
     # technician (or a caller) must PATCH /reports/{id}/template with a
     # manual pick before extraction can run (§4's fallback path) — nothing
     # else for this job to do.
+
+    # Remember the work order read off the document so a later upload of the
+    # same visit (a different file, same work order) is flagged as a duplicate.
+    attachment.work_order_number = normalize_work_order(result.work_order_number)
 
     job.status = models.ExtractionJobStatus.succeeded
     job.completed_at = datetime.now(timezone.utc)

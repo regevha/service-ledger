@@ -190,6 +190,14 @@ class Attachment(Base):
     file_path: Mapped[str] = mapped_column(String, nullable=False)
     file_type: Mapped[str] = mapped_column(String, nullable=False)
     page_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # SHA-256 of the uploaded bytes: the same scan uploaded twice is the same
+    # visit recorded twice. NULL for attachments that predate this column.
+    content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # The work-order number Claude read off the document at classify time, in
+    # the normalized form services/duplicates.py compares ("04587090" for
+    # "WO-04587090"): the same visit scanned twice as two different files has
+    # different bytes but the same work order. NULL until classified.
+    work_order_number: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     report: Mapped[Report] = relationship(back_populates="attachments")

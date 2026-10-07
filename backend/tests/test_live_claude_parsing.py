@@ -122,7 +122,8 @@ def test_live_classify_parses_a_well_formed_tool_response(tmp_path, monkeypatch,
     )
     monkeypatch.setattr(classification, "_get_client", lambda: fake_client)
 
-    instrument_guess, type_guess, serial_read = classification._live_classify(None, attachment, instruments)
+    read = classification._live_classify(None, attachment, instruments)
+    instrument_guess, type_guess, serial_read = read.instrument, read.report_type, read.serial
     assert serial_read is None  # this answer carries no serial fields
 
     assert instrument_guess.value == "LSRFortessa"

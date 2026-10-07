@@ -264,6 +264,9 @@ class AttachmentOut(BaseModel):
     file_path: str
     file_type: str
     page_count: int
+    # Set only on the upload response: other reports that already hold a file
+    # with these exact bytes. A warning, never a rejection.
+    duplicate_report_ids: list[uuid.UUID] = []
 
 
 # ---------- Reports ----------
@@ -369,6 +372,15 @@ class ClassificationResult(BaseModel):
     # a template could be resolved automatically (§4 step 3).
     resolved_template_id: uuid.UUID | None = None
     resolved_instrument_id: uuid.UUID | None = None
+    # Where report_type came from: "task_code" when it was derived from the
+    # printed Work Order Task Code (T113 -> repair, T111 -> PM) by a lookup in
+    # code, "model" when it is Claude's own judgment of the document.
+    report_type_source: Literal["task_code", "model"] = "model"
+    # The work-order number as printed, when one was read.
+    work_order_number: str | None = None
+    # Other reports that already hold this document — same file bytes or same
+    # work-order number. Empty when none; the intake screen should warn, not block.
+    duplicate_report_ids: list[uuid.UUID] = []
 
 
 class ExtractionJobOut(BaseModel):
