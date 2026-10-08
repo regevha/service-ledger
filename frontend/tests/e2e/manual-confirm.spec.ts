@@ -29,6 +29,8 @@ test('uncertain report type routes through manual confirm before extracting', as
   const instrumentRow = page.locator('.class-row').nth(0);
   await expect(instrumentRow).toContainText('Instrument');
   await expect(instrumentRow.locator('.badge-good')).toBeVisible();
+  // The stub is a demo stand-in, so the badge says so instead of a percentage.
+  await expect(instrumentRow.locator('.badge')).toHaveText('demo value');
 
   const typeRow = page.locator('.class-row').nth(1);
   await expect(typeRow).toContainText('Report type');

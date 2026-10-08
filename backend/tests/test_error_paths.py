@@ -37,7 +37,20 @@ def test_config_endpoint_returns_the_real_configured_thresholds(client, monkeypa
 
     resp = client.get("/config")
     assert resp.status_code == 200
-    assert resp.json() == {"field_confidence_threshold": 0.42, "classification_confidence_threshold": 0.99}
+    assert resp.json() == {
+        "field_confidence_threshold": 0.42,
+        "classification_confidence_threshold": 0.99,
+        "live_claude": False,
+    }
+
+
+def test_config_says_whether_extraction_is_live(client, monkeypatch):
+    """Without a key the review screen labels values as placeholders; it reads
+    that from here."""
+    from app.main import get_settings as main_get_settings
+
+    monkeypatch.setattr(main_get_settings(), "use_live_claude", True)
+    assert client.get("/config").json()["live_claude"] is True
 
 
 def test_upload_attachment_404_on_missing_report(client):

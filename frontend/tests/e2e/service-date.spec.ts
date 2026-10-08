@@ -34,8 +34,10 @@ test('the extracted service date is shown on review, can be corrected, and is sa
   await expect(dateInput).toBeVisible({ timeout: 30_000 });
   // Stub extraction always reads some date within the past year.
   await expect(dateInput).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
-  // Its extraction confidence is shown like any field's.
-  await expect(page.locator('.field', { has: dateInput }).locator('.badge')).toContainText('%');
+  // The suite runs without an API key, so the badge says "placeholder" rather
+  // than showing a percentage that nothing measured, and a notice says why.
+  await expect(page.locator('.field', { has: dateInput }).locator('.badge')).toContainText('placeholder');
+  await expect(page.locator('#placeholder-notice')).toBeVisible();
 
   await dateInput.fill('2025-03-14');
   await page.click('button:has-text("Save & finalize report")');
