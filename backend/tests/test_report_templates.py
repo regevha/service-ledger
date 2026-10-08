@@ -240,12 +240,12 @@ def test_database_itself_rejects_duplicate_null_model_rows(seeded):
 
 
 def test_list_all_report_templates_returns_every_row_unresolved(client, seeded):
-    # seed_templates.py seeds 4 rows (§5, v0.12) — unlike GET
+    # seed_templates.py seeds 5 rows (§5, v0.12 + installation_upgrade) — unlike GET
     # /report-templates (resolve_template()'s one-per-report_type pick),
     # /all must return every one of them.
     resp = client.get("/report-templates/all")
     assert resp.status_code == 200
-    assert len(resp.json()) == 4
+    assert len(resp.json()) == 5
 
 
 def test_get_report_template_by_id(client):
