@@ -1,4 +1,5 @@
-"""Seeds the four report_templates rows described in spec §5 (v0.12).
+"""Seeds the five report_templates rows described in spec §5 (v0.12, plus
+installation_upgrade).
 
 Field lists are transcribed field-for-field from the spec's tables — see
 SL-ARCH-001 §5 for the unit notes and the rationale behind each template's
@@ -160,6 +161,48 @@ PM_FIELDS = [
     },
 ]
 
+# Installation / upgrade visits (BD task code T107, "Install: Options,
+# Upgrades, S/W"). Shaped from one real document so far — an S8 software
+# upgrade from 6.2 to 6.3 — which, like the PM and repair forms, carries a
+# Subject + Description, a free-text "Work Performed" narrative, a Parts Used
+# table (empty for a software-only upgrade) and a Labor line, and no discrete
+# checklist fields. Hardware option installs are still unchecked against a
+# real form; if one needs a field this lacks, add it here. One shared row for
+# every model, on the same evidence-over-guess basis as repair and PM.
+INSTALL_UPGRADE_FIELDS = [
+    {
+        "name": "service_description",
+        "type": "text",
+        "unit": None,
+        "notes": "BD's Subject + Description lines (e.g. \"Software upgrade from 6.2 to 6.3\")",
+    },
+    {
+        "name": "work_performed",
+        "type": "text",
+        "unit": None,
+        "notes": "what was installed or upgraded, and the checks run afterwards",
+    },
+    {
+        "name": "parts_used",
+        "type": "object[]",
+        "unit": None,
+        "notes": "one entry per part; mirrors the form's \"Parts Used\" table — often empty for a software upgrade",
+        "item_schema": [
+            {"name": "part_name", "type": "text"},
+            {"name": "part_number", "type": "text"},
+            {"name": "qty", "type": "number"},
+        ],
+    },
+    {"name": "labor_hours", "type": "number", "unit": "hours", "notes": "rounded total from the form's \"Labor\" line"},
+    {
+        "name": "verification_result",
+        "type": "enum",
+        "unit": None,
+        "notes": "technician-assigned, not on the source form — mirrors preventive maintenance",
+        "options": ["pass", "fail", "not verified"],
+    },
+]
+
 # (report_type, model) -> field list. model=None means the NULL-model
 # fallback row (§2, §5): applies to every model of the instrument_type unless
 # a model-specific row exists for the same report_type. As of v0.12, only
@@ -171,6 +214,7 @@ TEMPLATE_ROWS: list[tuple[ReportType, str | None, list[dict]]] = [
     (ReportType.calibration, "FACSDiscover S8", SPECTRAL_CALIBRATION_FIELDS),
     (ReportType.repair, None, REPAIR_FIELDS),
     (ReportType.preventive_maintenance, None, PM_FIELDS),
+    (ReportType.installation_upgrade, None, INSTALL_UPGRADE_FIELDS),
 ]
 
 

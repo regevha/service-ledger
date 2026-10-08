@@ -8,6 +8,7 @@ export const REPORT_TYPE_LABEL: Record<ReportType, string> = {
   calibration: 'Calibration',
   repair: 'Malfunction / repair',
   preventive_maintenance: 'Preventive maintenance',
+  installation_upgrade: 'Installation / upgrade',
 };
 
 // InstrumentStatus (models.py's own doc comment: "not specified in the

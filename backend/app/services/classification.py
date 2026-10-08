@@ -54,8 +54,9 @@ Only choose from the allowed options.
 2. What kind of service visit this is. The most reliable signal is the "Work Order \
 Task Code" field: a code starting T113 ("Repair / Troubleshooting Visit") means \
 repair; a code starting T111 ("Preventive Maintenance") means preventive_maintenance; \
+a code starting T107 ("Install: Options, Upgrades, S/W") means installation_upgrade; \
 anything referencing CS&T/QC calibration with no fault or PM-kit language means \
-calibration. Repair, PM, and calibration visits otherwise share the same generic \
+calibration. Repair, PM, installation and calibration visits otherwise share the same generic \
 form layout, so this is a genuinely harder call than #1 — give it a lower confidence \
 when the task code is unclear or missing rather than guessing high. Separately, copy \
 the Work Order Task Code exactly as printed (e.g. "T113") into `task_code` with a \
@@ -96,6 +97,7 @@ class DocumentRead(NamedTuple):
 # own judgment rather than being guessed at.
 _TASK_CODE_REPORT_TYPES = {
     "T111": ReportType.preventive_maintenance,
+    "T107": ReportType.installation_upgrade,
     "T113": ReportType.repair,
 }
 

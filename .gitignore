@@ -10,6 +10,9 @@ backend/__pycache__/
 *.pyc
 backend/.env
 backend/storage/attachments/**
+# Same folder, if the backend or pytest is run from the repo root instead of
+# backend/ (the upload directory is a relative path): test fixtures land here.
+/storage/
 !backend/storage/attachments/.gitkeep
 
 # Node dependencies, if npm install is ever run from the repo root by mistake

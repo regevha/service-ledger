@@ -904,7 +904,7 @@ export interface components {
          * ReportType
          * @enum {string}
          */
-        ReportType: "calibration" | "repair" | "preventive_maintenance";
+        ReportType: "calibration" | "repair" | "preventive_maintenance" | "installation_upgrade";
         /**
          * TemplateConfirmation
          * @description §9: PATCH /reports/{id}/template — confirm or override what classify

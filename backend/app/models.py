@@ -47,6 +47,10 @@ class ReportType(str, enum.Enum):
     calibration = "calibration"
     repair = "repair"
     preventive_maintenance = "preventive_maintenance"
+    # Installing options or hardware, or upgrading software/firmware (BD task
+    # code T107). Added after a real software-upgrade report fit none of the
+    # first three types.
+    installation_upgrade = "installation_upgrade"
 
 
 class ExtractionJobStatus(str, enum.Enum):
