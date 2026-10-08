@@ -30,7 +30,10 @@ test('uncertain report type routes through manual confirm before extracting', as
   await expect(instrumentRow).toContainText('Instrument');
   await expect(instrumentRow.locator('.badge-good')).toBeVisible();
   // The stub is a demo stand-in, so the badge says so instead of a percentage.
-  await expect(instrumentRow.locator('.badge')).toHaveText('demo value');
+  await expect(page.locator('#read-model .badge')).toHaveText('demo value');
+  // The unit is its own row, apart from the model and serial the document printed.
+  await expect(instrumentRow.locator('.badge')).toHaveText('suggested');
+  await expect(page.locator('#read-serial')).toContainText('No serial number found');
 
   const typeRow = page.locator('.class-row').nth(1);
   await expect(typeRow).toContainText('Report type');

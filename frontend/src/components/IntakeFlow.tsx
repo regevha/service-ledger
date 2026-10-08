@@ -19,6 +19,7 @@ import {
   type Report,
   type ReportTemplate,
   type ReportType,
+  type SerialMatch,
 } from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
@@ -186,6 +187,14 @@ function describeSerialMatch(
   };
 }
 
+// What the serial read means for the instrument choice, in a line under it.
+const SERIAL_MATCH_NOTE: Record<SerialMatch, string> = {
+  matched: 'Matches one unit in your fleet.',
+  not_found: 'Not in your fleet. Choose the unit yourself, or add this serial under Instruments.',
+  model_conflict: 'Belongs to a different model than the one read from the document. One of the two is wrong.',
+  not_read: 'No serial number found on the document.',
+};
+
 function ConfirmClassificationScreen({
   classification,
   instruments,
@@ -205,21 +214,56 @@ function ConfirmClassificationScreen({
   classificationConfidenceThreshold: number;
   onConfirm: () => void;
 }) {
+  const serial = classification.instrument_serial ?? null;
+  const match: SerialMatch = classification.serial_match ?? 'not_read';
   return (
     <div className="section">
       <div className="section-title">Detected from the document</div>
       <p className="hint-text">
-        Instrument ID is usually a confident read. Report type is the harder call — a repair, a PM visit, and a
+        The model and serial number are read separately; the serial picks the unit. Report type is the harder call — a repair, a PM visit, and a
         calibration can share the same generic layout — so it needs your confirmation this time.
       </p>
+
+      <div className="read-row" id="read-model">
+        <div className="crow-top">
+          <span className="clabel">Instrument model</span>
+          <ConfidenceBadge
+            confidence={classification.instrument.confidence}
+            threshold={classificationConfidenceThreshold}
+            label={classificationLabel(classification.reader, classification.instrument.confidence)}
+          />
+        </div>
+        <div className="read-value">{classification.instrument.value || '—'}</div>
+      </div>
+
+      <div className="read-row" id="read-serial">
+        <div className="crow-top">
+          <span className="clabel">Serial number</span>
+          <ConfidenceBadge
+            confidence={serial ? serial.confidence : 0}
+            threshold={classificationConfidenceThreshold}
+            label={serial ? classificationLabel(classification.reader, serial.confidence) : 'not found'}
+          />
+        </div>
+        <div className="read-value">{serial ? serial.value : '—'}</div>
+        <div className="field-note">{SERIAL_MATCH_NOTE[match]}</div>
+      </div>
 
       <div className="class-row">
         <div className="crow-top">
           <span className="clabel">Instrument</span>
           <ConfidenceBadge
-            confidence={classification.instrument.confidence}
+            confidence={pickInstrumentId && match !== 'model_conflict' ? 1 : 0}
             threshold={classificationConfidenceThreshold}
-            label={classificationLabel(classification.reader, classification.instrument.confidence)}
+            label={
+              !pickInstrumentId
+                ? 'choose one'
+                : match === 'model_conflict'
+                  ? 'check this'
+                  : match === 'matched'
+                    ? 'matched by serial'
+                    : 'suggested'
+            }
           />
         </div>
         <select value={pickInstrumentId} onChange={(e) => setPickInstrumentId(e.target.value)}>
