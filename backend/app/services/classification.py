@@ -34,6 +34,7 @@ from app.services.claude_client import (
 )
 from app.services.duplicates import find_duplicate_report_ids, normalize_work_order
 from app.services.errors import ClassificationError
+from app.services.text_reader import extract_text, read_identifiers
 from app.services.documents import UnsupportedDocumentError, claude_content_block
 from app.services.templates import resolve_template
 
@@ -89,7 +90,13 @@ class DocumentRead(NamedTuple):
     report_type: ClassificationGuess
     serial: ClassificationGuess | None
     work_order_number: str | None = None
-    report_type_source: Literal["task_code", "model"] = "model"
+    # "none": no task code was read and nothing else says what kind of visit
+    # this is, so the report type below is a placeholder with zero confidence.
+    report_type_source: Literal["task_code", "model", "none"] = "model"
+    # Who read the document: "model" = Claude, "text_layer" = the PDF's own
+    # text parsed in code (services/text_reader.py, no API key needed),
+    # "stub" = the deterministic demo stand-in for a document with no text.
+    reader: Literal["model", "text_layer", "stub"] = "model"
 
 
 # What the Work Order Task Code says about the kind of visit. Only codes whose
@@ -314,9 +321,54 @@ def _stub_work_order(file_path: str) -> str | None:
     return match.group(0) if match else None
 
 
+def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> DocumentRead | None:
+    """Reads the document's own text layer (services/text_reader.py) instead
+    of asking a model: model, serial, task code and work-order number come
+    straight off the page. None when the file has no readable text or does not
+    look like a BD service document, so the caller can fall back.
+
+    Confidence is high only for what was read cleanly. A model that matched the
+    Installed Product line is 0.95; a report whose task code is unknown or
+    missing gets type confidence 0, which sends it to the manual pick rather
+    than guessing a type."""
+    try:
+        with open(attachment.file_path, "rb") as f:
+            data = f.read()
+    except OSError:
+        return None
+    text = extract_text(data)
+    if not text:
+        return None
+    read = read_identifiers(text, sorted({i.model for i in instruments}))
+    if not read.recognised:
+        return None
+
+    if read.model is not None:
+        instrument_guess = ClassificationGuess(value=read.model, confidence=0.95)
+    else:
+        # A BD document, but not one of the fleet's models: no honest guess
+        # exists, so offer the first model at zero confidence for the manual pick.
+        instrument_guess = ClassificationGuess(value=instruments[0].model, confidence=0.0)
+
+    mapped = report_type_from_task_code(read.task_code)
+    if mapped is not None:
+        type_guess, source = ClassificationGuess(value=mapped.value, confidence=0.95), "task_code"
+    else:
+        type_guess, source = ClassificationGuess(value=ReportType.repair.value, confidence=0.0), "none"
+
+    serial = ClassificationGuess(value=read.serial, confidence=0.9) if read.serial else None
+    return DocumentRead(instrument_guess, type_guess, serial, read.work_order_number, source, "text_layer")
+
+
 def _stub_classify(
     attachment: Attachment, instruments: list[Instrument]
 ) -> DocumentRead:
+    # With no API key a real document is read from its own text layer. Only a
+    # file with nothing to read (a scan, a placeholder) gets the deterministic
+    # demo answer below.
+    text_read = _text_classify(attachment, instruments)
+    if text_read is not None:
+        return text_read
     if _is_sample_document(attachment.file_path):
         # Reproduces the real BD Care EU Work Order Service Report case
         # discussed in spec §4: instrument ID is a confident read, report
@@ -350,6 +402,7 @@ def _stub_classify(
         type_guess,
         _stub_serial_read(attachment.file_path, instruments),
         _stub_work_order(attachment.file_path),
+        reader="stub",
     )
 
 
@@ -434,6 +487,7 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
         resolved_template_id=resolved_template.id if resolved_template else None,
         resolved_instrument_id=resolved_instrument_id,
         report_type_source=document.report_type_source,
+        reader=document.reader,
         work_order_number=document.work_order_number,
         duplicate_report_ids=find_duplicate_report_ids(
             db, attachment, normalize_work_order(document.work_order_number)
