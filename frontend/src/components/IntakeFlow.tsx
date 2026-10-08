@@ -21,7 +21,7 @@ import {
   type ReportType,
 } from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
-import { ConfidenceBadge } from './ConfidenceBadge';
+import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
 import { ReviewScreen } from './ReviewScreen';
 
 /**
@@ -216,7 +216,11 @@ function ConfirmClassificationScreen({
       <div className="class-row">
         <div className="crow-top">
           <span className="clabel">Instrument</span>
-          <ConfidenceBadge confidence={classification.instrument.confidence} threshold={classificationConfidenceThreshold} />
+          <ConfidenceBadge
+            confidence={classification.instrument.confidence}
+            threshold={classificationConfidenceThreshold}
+            label={classificationLabel(classification.reader, classification.instrument.confidence)}
+          />
         </div>
         <select value={pickInstrumentId} onChange={(e) => setPickInstrumentId(e.target.value)}>
           {/* Keyed and valued by instrument id, not model: model isn't unique
@@ -245,7 +249,15 @@ function ConfirmClassificationScreen({
       <div className="class-row">
         <div className="crow-top">
           <span className="clabel">Report type</span>
-          <ConfidenceBadge confidence={classification.report_type.confidence} threshold={classificationConfidenceThreshold} />
+          <ConfidenceBadge
+            confidence={classification.report_type.confidence}
+            threshold={classificationConfidenceThreshold}
+            label={classificationLabel(
+              classification.reader,
+              classification.report_type.confidence,
+              classification.report_type_source === 'task_code',
+            )}
+          />
         </div>
         <select value={pickReportType} onChange={(e) => setPickReportType(e.target.value as ReportType)}>
           {(Object.keys(REPORT_TYPE_LABEL) as ReportType[]).map((rt) => (
@@ -286,11 +298,13 @@ export function IntakeFlow({
   instrumentsError,
   fieldConfidenceThreshold,
   classificationConfidenceThreshold,
+  liveClaude = true,
 }: {
   instruments: Instrument[];
   instrumentsError: string | null;
   fieldConfidenceThreshold: number;
   classificationConfidenceThreshold: number;
+  liveClaude?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>({ name: 'intake' });
 
@@ -562,6 +576,7 @@ export function IntakeFlow({
           onReportDateChange={setReportDate}
           fieldConfidences={fieldConfidences}
           fieldConfidenceThreshold={fieldConfidenceThreshold}
+          placeholderValues={!liveClaude}
           onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
           onSave={() => void handleSaveFields(false)}
           onFinalize={() => void handleSaveFields(true)}

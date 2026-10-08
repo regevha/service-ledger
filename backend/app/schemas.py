@@ -29,6 +29,10 @@ class AppConfigOut(BaseModel):
 
     field_confidence_threshold: float
     classification_confidence_threshold: float
+    # False when running without an API key: extraction values are then
+    # deterministic placeholders and their "confidence" is not a measurement,
+    # so the UI labels them as placeholders instead of showing a percentage.
+    live_claude: bool = False
 
 
 # ---------- Instruments ----------
