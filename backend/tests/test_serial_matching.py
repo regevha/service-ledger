@@ -113,8 +113,8 @@ def test_a_serial_picks_the_right_unit_when_a_model_has_several(client, run_work
     assert report["instrument_id"] == second
     assert report["template_id"] is not None  # resolved straight through
 
-    first = _instrument_id(client, "A47291")
-    report2, result2 = _classify(client, run_worker, monkeypatch, serial="a-47291")
+    first = _instrument_id(client, "P648282B3003")
+    report2, result2 = _classify(client, run_worker, monkeypatch, serial="p-648282b3003")
     assert result2["resolved_instrument_id"] == first
     assert report2["instrument_id"] == first
 
@@ -134,8 +134,8 @@ def test_a_serial_that_is_not_in_the_fleet_falls_back_to_the_model(client, run_w
     report, result = _classify(client, run_worker, monkeypatch, serial="ZZ-0001")
     assert result["serial_match"] == "not_found"
     assert result["instrument_serial"]["value"] == "ZZ-0001"
-    assert result["resolved_instrument_id"] == _instrument_id(client, "A47291")
-    assert report["instrument_id"] == _instrument_id(client, "A47291")
+    assert result["resolved_instrument_id"] == _instrument_id(client, "P648282B3003")
+    assert report["instrument_id"] == _instrument_id(client, "P648282B3003")
 
     # Two Arias: nothing says which, so it is left for the technician.
     _add_second_aria(client)
@@ -147,13 +147,13 @@ def test_a_serial_that_is_not_in_the_fleet_falls_back_to_the_model(client, run_w
 
 def test_a_serial_that_contradicts_the_model_is_not_auto_resolved(client, run_worker, monkeypatch):
     # The document's model line says Fortessa; its serial belongs to the Aria.
-    report, result = _classify(client, run_worker, monkeypatch, model="LSRFortessa", serial="A47291")
+    report, result = _classify(client, run_worker, monkeypatch, model="LSRFortessa", serial="P648282B3003")
 
     assert result["serial_match"] == "model_conflict"
     assert result["resolved_instrument_id"] is None
     assert report["instrument_id"] is None
     # ...but the unit the serial points at is offered as the starting choice.
-    assert result["suggested_instrument_id"] == _instrument_id(client, "A47291")
+    assert result["suggested_instrument_id"] == _instrument_id(client, "P648282B3003")
 
 
 def test_an_unsure_serial_read_is_only_a_suggestion(client, run_worker, monkeypatch):

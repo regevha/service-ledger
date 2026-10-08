@@ -75,7 +75,7 @@ test('instrument detail page: reached from the reports filter, shows history, an
   // name — always the page's first .section-title — needs .first() here.
   await expect(page.locator('.section-title').first()).toContainText('FACSAria III');
   await expect(page.locator('.instrument-meta')).toContainText('FACSAria III');
-  await expect(page.locator('.instrument-meta')).toContainText('A47291');
+  await expect(page.locator('.instrument-meta')).toContainText('P648282B3003');
   await expect(page.locator('.status-pill.instrument-status-active')).toContainText('Active');
 
   const reportsOnFile = page.locator('.stat-tile').first().locator('.stat-value');
@@ -94,7 +94,7 @@ test('instrument detail page: reached from the reports filter, shows history, an
   await expect(page.locator('button:has-text("View instrument: FACSAria III")')).toBeVisible();
 
   await page.click('button:has-text("← Back to reports")');
-  await expect(page.locator('.instrument-meta')).toContainText('A47291');
+  await expect(page.locator('.instrument-meta')).toContainText('P648282B3003');
   await expect(page.locator('.instrument-report-row-body', { hasText: technician })).toBeVisible();
 
   // One more "back" from the instrument page returns to the top-level list.
