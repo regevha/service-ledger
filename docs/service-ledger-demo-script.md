@@ -86,6 +86,21 @@ Two things that keep the pipeline honest *before* a model is ever asked: refusin
 
 **Talking point:** this is why the fleet table only enforces a unique *serial number*, not a unique model — real labs have several units of one model, and a report attributed to the wrong one corrupts that instrument's history and its trend chart.
 
+## Part 3b: Real reports without a key, task codes and duplicates
+
+What the app does with a real BD work order when there is no API key. About five minutes; needs the real PDFs and the seeded real fleet (`python -m app.seed_instruments`: Aria `P648282B3003`, Fortessa `R647794E6092`, S8 `MP6651580000057`).
+
+1. In a terminal, from `backend/`, run `python -m scripts.read_report` on two or three of the real PDFs. It needs no database and no network, and prints model, serial, task code with the report type it implies, and work order for each file, then groups probable duplicates.
+   - *Say:* "This is the reader the app uses when there is no key. It reads the text layer of the PDF, not an image, so scans with no text layer still fall back to the old stub."
+2. Click **New report** and upload the FACSDiscover S8 preventive maintenance PDF. It resolves straight to the S8 with the report type set to preventive maintenance.
+   - *Say:* "The type comes from the task code printed on the form, T111, not from a model guess. T113 is repair and T107 is installation or upgrade. It is a lookup in code, so it is the same every time."
+3. Upload the S8 software upgrade PDF in a new report. Same instrument, but the type is installation / upgrade (T107) and it is not flagged as a duplicate: it has a different work order.
+4. Upload the same S8 preventive maintenance PDF again. A duplicate notice appears, naming the earlier report. Nothing is blocked; the technician decides.
+   - *Say:* "A duplicate is the same file bytes, or the same work-order number. It warns and never refuses, because a re-scan of the same visit is a legitimate thing to upload."
+5. Upload the 2021 Fortessa report after the 2024 one. Same unit, different visits, so no warning.
+
+**Be straight about the limit:** without a key, the confidences on this path are fixed values, and the field values on the review screen are placeholders from the stub, not read from the document. Only model, serial, task code, report type and work order are really read. The visit date and the template fields need the live model.
+
 ## Part 4: Reports tab
 
 1. Click the **Reports** tab.
@@ -115,7 +130,7 @@ Two things that keep the pipeline honest *before* a model is ever asked: refusin
 
 This screen replaces "edit a Python literal and re-run a seed script" as the only way to change what fields a report type asks for.
 
-1. Click the **Templates** tab — "Report templates," with the existing calibration/repair/preventive\_maintenance rows and their field counts.
+1. Click the **Templates** tab — "Report templates," with the existing calibration/repair/preventive\_maintenance/installation\_upgrade rows and their field counts.
 2. Click **+ New template**, fill in a model name.
 3. Click **+ Add field** for a plain text field — name it anything.
 4. Click **+ Add field** again, switch its type to **enum**, and demonstrate the tag-input: type a value, press Enter, repeat — each becomes a removable chip.
@@ -159,8 +174,8 @@ If someone asks what happens with less data: open a freshly-created instrument's
 If someone in the room asks how current the documentation and testing actually are, these are concrete answers rather than a vague "pretty current, probably":
 
 - **The architecture spec, SL-ARCH-001, is at v0.16, and the technical design doc (SL-TDD-001) at v0.4.** The latest round corrected places where the spec had described a plan rather than the build — for example, there is no "preprocess" step (Claude reads the PDF or image directly; the only step before the model is the upload check), and extraction returns flat fields with a confidence each, not per-field snippets — and added serial matching, image scans and upload validation.
-- **Backend: 205 tests against a real Postgres database, about 97% line-and-branch coverage** (`pytest --cov`; the demo seed scripts and the e2e reset helper are deliberately left out, and the run fails below 95%). That includes tests that force the "two requests collide" race branches through the database's own unique indexes and foreign keys, not mocks.
-- **Frontend: 27 Playwright browser specs driving the real UI**, with about 91% of lines and 76% of branches reached (`npm run test:e2e:coverage`). There are no frontend unit tests.
+- **Backend: tests against a real Postgres database, with line-and-branch coverage measured** (`pytest --cov`; the demo seed scripts and the e2e reset helper are deliberately left out, and the run fails below its threshold). That includes tests that force the "two requests collide" race branches through the database's own unique indexes and foreign keys, not mocks.
+- **Frontend: Playwright browser specs driving the real UI**, with coverage measured (`npm run test:e2e:coverage`). There are no frontend unit tests.
 - **A new seeding script**, `python -m app.seed_trend_demo` (used in the prep checklist and Part 8), exists specifically so the trend chart has realistic multi-point data before a live demo.
 
 ## Closing: what's next
