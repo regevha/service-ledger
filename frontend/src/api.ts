@@ -197,6 +197,8 @@ export interface ExtractionJob {
 export interface AppConfig {
   field_confidence_threshold: number;
   classification_confidence_threshold: number;
+  // false without an API key: extracted values are placeholders.
+  live_claude?: boolean;
 }
 
 // GET /analytics/fleet — mirrors backend/app/schemas.py's FleetAnalyticsOut

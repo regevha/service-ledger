@@ -110,6 +110,7 @@ export default function App() {
             instrumentsError={instrumentsError}
             fieldConfidenceThreshold={config.field_confidence_threshold}
             classificationConfidenceThreshold={config.classification_confidence_threshold}
+            liveClaude={config.live_claude !== false}
           />
         )}
       </div>

@@ -36,7 +36,7 @@ This is the report that "just works" — most real uploads land here, and that's
 4. Click **Upload & classify**.
    - *Say while it runs:* "That kicked off two real backend calls — `classify()`, then `extract()` — both run by the background worker, not the browser."
 5. No manual-confirm row appears — both the instrument guess and the report-type guess cleared the 85% classification threshold, so the app resolves the template on its own and jumps straight to the field list.
-6. Point out the **field list**: every field has its own small percentage badge ("X% confident") — a per-field *extraction* confidence, distinct from the whole-document *classification* confidence you'll see in Part 2. The **Report date** field at the top is read from the document by the same call (the date of the visit, not a date the technician types), and carries its own badge.
+6. Point out the **field list**: every field has its own small badge. Running without a key, it reads "placeholder", and a notice above the list says the values are not read from the document; with a live key it is a per-field *extraction* confidence ("X% confident"), distinct from the whole-document *classification* confidence you'll see in Part 2. The **Report date** field at the top is read from the document by the same call (the date of the visit, not a date the technician types), and carries its own badge.
 7. Click **Save & finalize report**.
 8. The success panel confirms the report is finalized.
 9. Click **Start another report** to reset the screen for Part 2.
@@ -49,8 +49,8 @@ This is the case worth slowing down for: a real ambiguity in the source document
 2. Upload **`sample-work-order.pdf`**.
 3. Click **Upload & classify**.
 4. Two rows appear this time, before extraction runs:
-   - **Instrument** — green badge, "96% confident."
-   - **Report type** — amber badge, "58% needs review."
+   - **Instrument** — green badge, "demo value" (a live key shows "96% confident").
+   - **Report type** — amber badge, "demo value" (a live key shows "58% needs review").
    - *Say:* "This filename reproduces a real document from the spec — an actual BD Care EU work order. The serial number is a clean read, so the instrument guess is confident. But repair, preventive maintenance, and calibration reports share almost the same layout on this vendor's forms, so which one this is is a genuinely harder call — and the system says so instead of picking one silently."
 5. Click **Confirm & continue**. (Note in passing: this is the same button that would let you *override* an incorrect confident guess — it's not only for the low-confidence case.)
 6. Extraction runs against the resolved template. On the review screen, point at three fields:
@@ -99,7 +99,7 @@ What the app does with a real BD work order when there is no API key. About five
    - *Say:* "A duplicate is the same file bytes, or the same work-order number. It warns and never refuses, because a re-scan of the same visit is a legitimate thing to upload."
 5. Upload the 2021 Fortessa report after the 2024 one. Same unit, different visits, so no warning.
 
-**Be straight about the limit:** without a key, the confidences on this path are fixed values, and the field values on the review screen are placeholders from the stub, not read from the document. Only model, serial, task code, report type and work order are really read. The visit date and the template fields need the live model.
+**Be straight about the limit:** without a key the badges say what happened ("read from document text", "from task code", "not found", "placeholder") instead of a percentage, and the field values on the review screen are placeholders from the stub, not read from the document. Only model, serial, task code, report type and work order are really read. The visit date and the template fields need the live model.
 
 ## Part 4: Reports tab
 

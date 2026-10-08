@@ -61,4 +61,5 @@ def get_app_config():
     return schemas.AppConfigOut(
         field_confidence_threshold=settings.field_confidence_threshold,
         classification_confidence_threshold=settings.classification_confidence_threshold,
+        live_claude=settings.use_live_claude,
     )
