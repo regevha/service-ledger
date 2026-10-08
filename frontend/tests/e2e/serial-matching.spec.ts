@@ -38,3 +38,24 @@ test('a document naming a serial number is assigned to that unit even when its m
   await expect(page.locator('.report-row-body')).toHaveCount(1);
   await expect(page.locator('.report-row-body')).toContainText(`FACSAria III (${serial})`);
 });
+
+// On the confirm screen the model and the serial are separate reads, each with
+// its own state, and a serial that belongs to another model shows up as two
+// fields that disagree rather than being folded into one dropdown label.
+test('the confirm screen shows the model and the serial as separate fields', async ({ page }) => {
+  await page.goto('/');
+  await page.click('.view-tab:has-text("New report")');
+  // The sample work order reads as an LSRFortessa; this serial is the FACSAria III's.
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'sample-work-order-P648282B3003.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4 x'),
+  });
+  await page.click('button:has-text("Upload & classify")');
+  await page.waitForSelector('.class-row', { timeout: 30_000 });
+
+  await expect(page.locator('#read-model')).toContainText('LSRFortessa');
+  await expect(page.locator('#read-serial')).toContainText('P648282B3003');
+  await expect(page.locator('#read-serial .badge')).toHaveText('demo value');
+  await expect(page.locator('#read-serial')).toContainText('different model');
+});
