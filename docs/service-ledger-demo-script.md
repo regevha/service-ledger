@@ -48,8 +48,8 @@ This is the case worth slowing down for: a real ambiguity in the source document
 1. Click **New report** if you navigated away, and type a name.
 2. Upload **`sample-work-order.pdf`**.
 3. Click **Upload & classify**.
-4. Two rows appear this time, before extraction runs:
-   - **Instrument** — green badge, "demo value" (a live key shows "96% confident").
+4. Four rows appear this time, before extraction runs: the model and the serial number the document shows (read-only, each with its own badge), then the **Instrument** unit it resolves to, then the report type:
+   - **Instrument model** — green badge, "demo value" (a live key shows "96% confident"). The sample has no serial, so the **Serial number** row says "not found" and the unit below is only "suggested".
    - **Report type** — amber badge, "demo value" (a live key shows "58% needs review").
    - *Say:* "This filename reproduces a real document from the spec — an actual BD Care EU work order. The serial number is a clean read, so the instrument guess is confident. But repair, preventive maintenance, and calibration reports share almost the same layout on this vendor's forms, so which one this is is a genuinely harder call — and the system says so instead of picking one silently."
 5. Click **Confirm & continue**. (Note in passing: this is the same button that would let you *override* an incorrect confident guess — it's not only for the low-confidence case.)
@@ -98,6 +98,9 @@ What the app does with a real BD work order when there is no API key. About five
 4. Upload the same S8 preventive maintenance PDF again. A duplicate notice appears, naming the earlier report. Nothing is blocked; the technician decides.
    - *Say:* "A duplicate is the same file bytes, or the same work-order number. It warns and never refuses, because a re-scan of the same visit is a legitimate thing to upload."
 5. Upload the 2021 Fortessa report after the 2024 one. Same unit, different visits, so no warning.
+
+6. Optional, to show the model and serial as two separate reads: rename the sample work order to `sample-work-order-P648282B3003.pdf` and upload it. The model row says LSRFortessa, the serial row says P648282B3003 and notes that it belongs to a different model, and the **Instrument** row turns amber ("check this"). Two fields disagree, and the technician decides.
+   - *Say:* "The model and the serial are separate reads, so when they contradict each other you see it, instead of one dropdown label hiding the problem."
 
 **Be straight about the limit:** without a key the badges say what happened ("read from document text", "from task code", "not found", "placeholder") instead of a percentage, and the field values on the review screen are placeholders from the stub, not read from the document. Only model, serial, task code, report type and work order are really read. The visit date and the template fields need the live model.
 
