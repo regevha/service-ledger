@@ -11,4 +11,4 @@ pytest-cov==7.1.0  # coverage: python -m pytest --cov (settings in .coveragerc)
 httpx==0.27.2
 anthropic==1.6.0
 reportlab==4.4.10
-pypdf==3.17.4  # test-only: tests/test_report_pdf.py extracts text to verify PDF content, not just that bytes exist
+pypdf==3.17.4  # reads the text layer of uploaded PDFs (services/text_reader.py); tests also use it to verify generated PDFs

@@ -165,7 +165,10 @@ export interface ClassificationResult {
   // Optional: results stored before these existed don't have them.
   // "task_code" = the report type came from the printed Work Order Task Code
   // by a lookup in code; "model" = Claude's own judgment of the document.
-  report_type_source?: 'task_code' | 'model';
+  report_type_source?: 'task_code' | 'model' | 'none';
+  // Who read the document: Claude, the PDF's own text parsed in code (no API
+  // key needed), or the demo stand-in for a file with no text.
+  reader?: 'model' | 'text_layer' | 'stub';
   work_order_number?: string | null;
   // Other reports already holding this document: same file bytes or same
   // work-order number.

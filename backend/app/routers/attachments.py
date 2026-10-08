@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
-from app.services.duplicates import find_duplicate_report_ids
+from app.services.duplicates import find_duplicate_report_ids, normalize_work_order
 from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
+from app.services.text_reader import extract_text, read_work_order
 
 router = APIRouter(tags=["attachments"])
 settings = get_settings()
@@ -82,12 +83,17 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session 
         file_type=media_type,
         page_count=1,  # TODO: compute real page count once PDF preprocessing (§4 step 2) is wired in.
         content_sha256=hashlib.sha256(contents).hexdigest(),
+        # Read from the PDF's own text, no model involved, so the same visit
+        # scanned twice is flagged right at upload — before (or without)
+        # classification. None for an image or a PDF with no text layer.
+        work_order_number=normalize_work_order(read_work_order(extract_text(contents))) if media_type == PDF else None,
     )
     db.add(attachment)
     db.commit()
     db.refresh(attachment)
-    # Same bytes already on file under another report? Warn, don't block: the
-    # file is stored either way, and the response tells the intake screen.
+    # Same bytes, or the same work-order number, already on file under another
+    # report? Warn, don't block: the file is stored either way, and the
+    # response tells the intake screen.
     duplicates = find_duplicate_report_ids(db, attachment)
     return schemas.AttachmentOut.model_validate(attachment).model_copy(update={"duplicate_report_ids": duplicates})
 

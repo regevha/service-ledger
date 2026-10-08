@@ -265,7 +265,8 @@ class AttachmentOut(BaseModel):
     file_type: str
     page_count: int
     # Set only on the upload response: other reports that already hold a file
-    # with these exact bytes. A warning, never a rejection.
+    # with these exact bytes, or whose PDF text names the same work order. A
+    # warning, never a rejection.
     duplicate_report_ids: list[uuid.UUID] = []
 
 
@@ -375,7 +376,10 @@ class ClassificationResult(BaseModel):
     # Where report_type came from: "task_code" when it was derived from the
     # printed Work Order Task Code (T113 -> repair, T111 -> PM) by a lookup in
     # code, "model" when it is Claude's own judgment of the document.
-    report_type_source: Literal["task_code", "model"] = "model"
+    report_type_source: Literal["task_code", "model", "none"] = "model"
+    # Who read the document: "model" (Claude), "text_layer" (the PDF's own text
+    # parsed in code, no API key), or "stub" (demo answer for a file with no text).
+    reader: Literal["model", "text_layer", "stub"] = "model"
     # The work-order number as printed, when one was read.
     work_order_number: str | None = None
     # Other reports that already hold this document — same file bytes or same
