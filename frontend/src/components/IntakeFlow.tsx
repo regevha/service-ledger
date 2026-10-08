@@ -135,7 +135,7 @@ function describeDuplicates(duplicates: Record<string, Report | null>): string |
   const describe = (r: Report | null) => {
     if (!r) return 'another report';
     const who = r.technician_name ? ` by ${r.technician_name}` : '';
-    return `a ${r.status} report${who} from ${r.report_date ?? r.created_at.slice(0, 10)}`;
+    return `${/^[aeiou]/i.test(r.status) ? 'an' : 'a'} ${r.status} report${who} from ${r.report_date ?? r.created_at.slice(0, 10)}`;
   };
   return `This document looks like one already on file: ${reports.map(describe).join('; ')}. If it is a re-scan of the same visit, finalizing this report will record the visit twice.`;
 }
