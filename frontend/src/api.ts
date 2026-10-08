@@ -136,6 +136,9 @@ export interface Attachment {
   file_path: string;
   file_type: string;
   page_count: number;
+  // Only on the upload response: other reports already holding a file with
+  // these exact bytes (a warning, never a rejection).
+  duplicate_report_ids?: string[];
 }
 
 export interface ClassificationGuess {
@@ -159,6 +162,14 @@ export interface ClassificationResult {
   suggested_instrument_id?: string | null;
   resolved_template_id: string | null;
   resolved_instrument_id: string | null;
+  // Optional: results stored before these existed don't have them.
+  // "task_code" = the report type came from the printed Work Order Task Code
+  // by a lookup in code; "model" = Claude's own judgment of the document.
+  report_type_source?: 'task_code' | 'model';
+  work_order_number?: string | null;
+  // Other reports already holding this document: same file bytes or same
+  // work-order number.
+  duplicate_report_ids?: string[];
 }
 
 export type ExtractionJobStatus = components['schemas']['ExtractionJobStatus'];

@@ -122,6 +122,25 @@ function IntakeScreen({
 type SerialNotice = { tone: 'info' | 'warn'; text: string };
 
 /**
+ * The warning shown when the document is already on file: the upload found a
+ * report holding the same bytes, or classification found one with the same
+ * work-order number. `duplicates` maps each such report id to the report once
+ * it has loaded (null while loading or if it could not be loaded — the warning
+ * still shows, just less specifically). A warning only: the technician may
+ * legitimately attach the same document to a second report.
+ */
+function describeDuplicates(duplicates: Record<string, Report | null>): string | null {
+  const reports = Object.values(duplicates);
+  if (reports.length === 0) return null;
+  const describe = (r: Report | null) => {
+    if (!r) return 'another report';
+    const who = r.technician_name ? ` by ${r.technician_name}` : '';
+    return `a ${r.status} report${who} from ${r.report_date ?? r.created_at.slice(0, 10)}`;
+  };
+  return `This document looks like one already on file: ${reports.map(describe).join('; ')}. If it is a re-scan of the same visit, finalizing this report will record the visit twice.`;
+}
+
+/**
  * What to tell the technician about the serial number read off the document
  * (ClassificationResult.serial_match). `assigned` is the instrument the report
  * ended up with automatically, if any. Returns null when there is nothing worth
@@ -294,6 +313,26 @@ export function IntakeFlow({
   const [pickInstrumentId, setPickInstrumentId] = useState('');
   const [serialNotice, setSerialNotice] = useState<SerialNotice | null>(null);
   const [pickReportType, setPickReportType] = useState<ReportType>('repair');
+  // Reports that already hold this document, keyed by id (see describeDuplicates).
+  const [duplicates, setDuplicates] = useState<Record<string, Report | null>>({});
+
+  // Merge newly flagged report ids into the warning and load each one's
+  // details in the background. Never awaited and never fails the flow: the
+  // warning is advisory, so a report that cannot be loaded just stays generic.
+  function noteDuplicates(ids: string[] | undefined) {
+    const incoming = ids ?? [];
+    if (incoming.length === 0) return;
+    setDuplicates((prev) => {
+      const next = { ...prev };
+      for (const id of incoming) if (!(id in next)) next[id] = null;
+      return next;
+    });
+    for (const id of incoming) {
+      getReport(id)
+        .then((loaded) => setDuplicates((prev) => (id in prev ? { ...prev, [id]: loaded } : prev)))
+        .catch(() => {});
+    }
+  }
 
   function resetToIntake() {
     setPhase({ name: 'intake' });
@@ -306,6 +345,7 @@ export function IntakeFlow({
     setFieldConfidences({});
     setFields({});
     setReportDate(null);
+    setDuplicates({});
   }
 
   // Every step below (upload, classify, resolve-template, extract, save)
@@ -382,6 +422,7 @@ export function IntakeFlow({
       }
       const result = job.classification as unknown as ClassificationResult;
       setClassification(result);
+      noteDuplicates(result.duplicate_report_ids);
       setSerialNotice(
         describeSerialMatch(
           result,
@@ -441,6 +482,7 @@ export function IntakeFlow({
     await attempt('Upload failed unexpectedly.', () => void uploadScan(reportId, scan), async () => {
       const attachment = await uploadAttachment(reportId, scan);
       setAttachmentId(attachment.id);
+      noteDuplicates(attachment.duplicate_report_ids);
       await runClassification(attachment.id, reportId);
     });
   }
@@ -490,6 +532,12 @@ export function IntakeFlow({
       {serialNotice && (phase.name === 'confirm-classification' || phase.name === 'review') && (
         <div className={`banner ${serialNotice.tone === 'warn' ? 'banner-warn' : 'banner-info'}`} id="serial-notice">
           {serialNotice.text}
+        </div>
+      )}
+
+      {Object.keys(duplicates).length > 0 && (phase.name === 'confirm-classification' || phase.name === 'review') && (
+        <div className="banner banner-warn" id="duplicate-notice">
+          {describeDuplicates(duplicates)}
         </div>
       )}
 

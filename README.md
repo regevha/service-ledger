@@ -66,10 +66,10 @@ Claude API" for going from the deterministic stub to a live model.
 ## Testing
 
 ```bash
-# Backend — 205 tests against a real (separate) Postgres test database
+# Backend — 245 tests against a real (separate) Postgres test database
 cd backend && pytest
 
-# Frontend — 14 Playwright specs / 27 tests against a running backend
+# Frontend — 15 Playwright specs / 30 tests against a running backend
 cd frontend && npm run test:e2e
 ```
 
