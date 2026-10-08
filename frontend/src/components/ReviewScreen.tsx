@@ -20,6 +20,7 @@ export function ReviewScreen({
   onReportDateChange,
   fieldConfidences,
   fieldConfidenceThreshold,
+  placeholderValues = false,
   onChange,
   onSave,
   onFinalize,
@@ -38,6 +39,10 @@ export function ReviewScreen({
   onReportDateChange: (value: string | null) => void;
   fieldConfidences: Record<string, number>;
   fieldConfidenceThreshold: number;
+  // True when extraction ran without an API key: the values and their
+  // confidences are placeholders, not reads of the document, so badges say
+  // "placeholder" and a notice asks the technician to fill everything in.
+  placeholderValues?: boolean;
   onChange: (name: string, value: unknown) => void;
   onSave: () => void;
   // Undefined hides the finalize button entirely — used when browsing an
@@ -89,6 +94,13 @@ export function ReviewScreen({
         )}
       </div>
 
+      {placeholderValues && (
+        <div className="banner banner-warn" id="placeholder-notice">
+          No API key is set, so these values are placeholders, not read from the document. Check every field against the
+          scan.
+        </div>
+      )}
+
       <div className="field-list">
         <div className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}>
           <div className="field-top">
@@ -96,7 +108,11 @@ export function ReviewScreen({
               service date
             </label>
             {reportDateConfidence !== undefined && (
-              <ConfidenceBadge confidence={reportDateConfidence} threshold={fieldConfidenceThreshold} />
+              <ConfidenceBadge
+                confidence={reportDateConfidence}
+                threshold={fieldConfidenceThreshold}
+                label={placeholderValues ? 'placeholder' : undefined}
+              />
             )}
           </div>
           <input
@@ -120,7 +136,13 @@ export function ReviewScreen({
                   {field.name.replace(/_/g, ' ')}
                   {field.unit && <span className="field-unit"> ({field.unit})</span>}
                 </span>
-                {confidence !== undefined && <ConfidenceBadge confidence={confidence} threshold={fieldConfidenceThreshold} />}
+                {confidence !== undefined && (
+                  <ConfidenceBadge
+                    confidence={confidence}
+                    threshold={fieldConfidenceThreshold}
+                    label={placeholderValues ? 'placeholder' : undefined}
+                  />
+                )}
               </div>
               <FieldControl field={field} value={fields[field.name]} onChange={(v) => onChange(field.name, v)} />
               {field.notes && <div className="field-note">{field.notes}</div>}
