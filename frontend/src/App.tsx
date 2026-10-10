@@ -35,6 +35,10 @@ export default function App() {
   // showing. Switching to 'reports' and back leaves an in-progress intake
   // exactly where it was, since IntakeFlow stays mounted underneath.
   const [view, setView] = useState<'new' | 'reports' | 'analytics' | 'templates' | 'instruments'>('new');
+  // A report the Reports tab should open as soon as it shows (set when an
+  // upload is refused because the file is already on file; cleared once the
+  // tab has opened it).
+  const [openReportId, setOpenReportId] = useState<string | null>(null);
 
   // A callback (not just an effect) because the Instruments tab creates and
   // edits rows in place — after a save there, this same list needs to
@@ -103,7 +107,12 @@ export default function App() {
             onRefresh={refreshInstruments}
           />
         ) : view === 'reports' ? (
-          <ReportsListScreen instruments={instruments} fieldConfidenceThreshold={config.field_confidence_threshold} />
+          <ReportsListScreen
+            instruments={instruments}
+            fieldConfidenceThreshold={config.field_confidence_threshold}
+            openReportId={openReportId}
+            onOpenReportHandled={() => setOpenReportId(null)}
+          />
         ) : (
           <IntakeFlow
             instruments={instruments}
@@ -111,6 +120,10 @@ export default function App() {
             fieldConfidenceThreshold={config.field_confidence_threshold}
             classificationConfidenceThreshold={config.classification_confidence_threshold}
             liveClaude={config.live_claude !== false}
+            onOpenReport={(reportId) => {
+              setOpenReportId(reportId);
+              setView('reports');
+            }}
           />
         )}
       </div>

@@ -1,4 +1,5 @@
 import { test, expect } from './coverage';
+import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,7 +16,7 @@ test('the extracted service date is shown on review, can be corrected, and is sa
   await page.goto('/');
   await page.click('.view-tab:has-text("New report")');
   await page.fill('input[placeholder="Your name (optional)"]', technician);
-  await page.locator('input[type="file"]').setInputFiles(FIXTURE);
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
   // The stub classifier picks from the whole fleet, which other specs add
