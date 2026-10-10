@@ -19,7 +19,7 @@ import { useAsyncEffect } from '../hooks/useAsyncEffect';
  * app has no charting dependency and one more chart type doesn't earn one.
  */
 
-const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)'];
+export const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)'];
 
 interface Series {
   key: string;
@@ -56,7 +56,7 @@ function buildSeries(field: TrendField, points: TrendPoint[]): Series[] {
 
 // A "nice" axis ceiling (1/2/5 * 10^n) rather than the raw max, so gridline
 // labels round to clean numbers per the dataviz skill's mark spec.
-function niceCeil(rawMax: number): number {
+export function niceCeil(rawMax: number): number {
   if (rawMax <= 0) return 1;
   const magnitude = Math.pow(10, Math.floor(Math.log10(rawMax)));
   const norm = rawMax / magnitude;
@@ -64,7 +64,7 @@ function niceCeil(rawMax: number): number {
   return niceNorm * magnitude;
 }
 
-function formatValue(value: number, unit: string | null): string {
+export function formatValue(value: number, unit: string | null): string {
   // Always one decimal place, even for a whole number like 5 -> "5.0" - a
   // column mixing "5" with "5.1"/"5.2" reads as inconsistent formatting,
   // not as a meaningfully different value.
@@ -73,7 +73,7 @@ function formatValue(value: number, unit: string | null): string {
   return unit === '%' ? `${rounded}%` : `${rounded} ${unit}`;
 }
 
-function formatDate(iso: string | null): string {
+export function formatDate(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
