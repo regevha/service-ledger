@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from app import models, schemas
 from app.db import get_db
 from app.services.analytics import trend_points, trendable_fields
+from app.services.report_deletion import count_in_flight_jobs, remove_report_files
 
 router = APIRouter(tags=["instruments"])
 
@@ -88,6 +89,40 @@ def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdat
         raise HTTPException(409, _SERIAL_CONFLICT)
     db.refresh(instrument)
     return instrument
+
+
+@router.delete("/instruments/{instrument_id}", status_code=204)
+def delete_instrument(instrument_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Permanently delete an instrument together with every report on it —
+    drafts and finalized alike, whatever the instrument's status — their
+    attachments, extraction jobs and stored scan files. There is no undo and
+    no audit trail (§10); the Instruments tab shows the report count and asks
+    first.
+
+    The one refusal: if any of the instrument's reports still has a scan
+    queued or being read (a pending, classifying or extracting job), the answer
+    is 409 — the worker would be writing to rows that are about to disappear.
+    Try again once the job finishes."""
+    instrument = db.get(models.Instrument, instrument_id)
+    if not instrument:
+        raise HTTPException(404, "Instrument not found")
+    reports = db.query(models.Report).filter(models.Report.instrument_id == instrument_id).all()
+    attachments = [a for r in reports for a in r.attachments]
+    if count_in_flight_jobs(db, [a.id for a in attachments]):
+        raise HTTPException(409, "A scan for one of this instrument's reports is still being read. Try again in a moment.")
+    files = {r.id: [a.file_path for a in r.attachments] for r in reports}
+    for report in reports:
+        db.delete(report)  # takes its attachments and their jobs with it
+    db.delete(instrument)
+    try:
+        db.commit()
+    except IntegrityError:
+        # A report was attached to this instrument after the list above was
+        # read; the FK stopped the delete (see Instrument.reports).
+        db.rollback()
+        raise HTTPException(409, "A report was attached to this instrument just now — try again.") from None
+    for report_id, paths in files.items():
+        remove_report_files(report_id, paths)
 
 
 @router.get("/instruments/{instrument_id}/trend-fields", response_model=list[schemas.TrendFieldOut])
