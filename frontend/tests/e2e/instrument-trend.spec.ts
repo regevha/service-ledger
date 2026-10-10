@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
+import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
 
 // The instrument detail page's trend chart (InstrumentTrendChart.tsx) — the
@@ -35,7 +36,7 @@ async function seedCalibrationReport(
   });
   const attachment = await (
     await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 seed') } },
+      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
     })
   ).json();
   const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();

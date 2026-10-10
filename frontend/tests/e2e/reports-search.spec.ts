@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
+import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
 
 // The reports search/list screen (§7/§9) — filters, the empty state, and the
@@ -33,7 +34,7 @@ async function seedReport(
 
   const attachment = await (
     await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 seed') } },
+      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
     })
   ).json();
   // §3/§9: extract only enqueues a job now — app.worker (booted alongside
