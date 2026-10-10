@@ -1,0 +1,80 @@
+{
+ "label": "fortessa-2024-identical",
+ "tag": "run3",
+ "repeat": 1,
+ "file": "fortessa-service-report.pdf",
+ "sha256": "4d56320954bc36844c8493e6365769657bd1ac732502c6439555cccdaec5ccfe",
+ "started": "2026-10-10T13:38:25.584224Z",
+ "report_id": "1d866949-62e4-4a46-9969-85654e86e86a",
+ "upload": {
+  "status": 201,
+  "body": {
+   "id": "eaa628d7-4b02-4c2e-9c15-539b8ada3600",
+   "report_id": "1d866949-62e4-4a46-9969-85654e86e86a",
+   "file_path": "storage/attachments/1d866949-62e4-4a46-9969-85654e86e86a/d2ff7898-4d52-48c2-8666-a3d6b2cd4dab_fortessa-service-report.pdf",
+   "file_type": "application/pdf",
+   "page_count": 1,
+   "duplicate_report_ids": [
+    "5baae30b-24d4-4561-a236-2b569ff829c0"
+   ]
+  }
+ },
+ "classify_job": {
+  "id": "aa8caae0-df04-4283-b5a5-b66b98547a8a",
+  "attachment_id": "eaa628d7-4b02-4c2e-9c15-539b8ada3600",
+  "kind": "classify",
+  "status": "succeeded",
+  "classification": {
+   "reader": "model",
+   "instrument": {
+    "value": "LSRFortessa",
+    "confidence": 0.97
+   },
+   "report_type": {
+    "value": "repair",
+    "confidence": 0.95
+   },
+   "serial_match": "matched",
+   "instrument_serial": {
+    "value": "R647794E6092",
+    "confidence": 0.9
+   },
+   "work_order_number": "WO-03424229",
+   "report_type_source": "task_code",
+   "duplicate_report_ids": [
+    "5baae30b-24d4-4561-a236-2b569ff829c0"
+   ],
+   "resolved_template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+   "resolved_instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5",
+   "suggested_instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5"
+  },
+  "field_confidences": null,
+  "error_message": null,
+  "started_at": "2026-10-10T13:38:25.637574Z",
+  "completed_at": "2026-10-10T13:38:28.891721Z"
+ },
+ "report_after_classify": {
+  "id": "1d866949-62e4-4a46-9969-85654e86e86a",
+  "instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "classified",
+  "extracted_fields": {},
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": null,
+  "created_at": "2026-10-10T13:38:25.588890Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "eaa628d7-4b02-4c2e-9c15-539b8ada3600",
+    "report_id": "1d866949-62e4-4a46-9969-85654e86e86a",
+    "file_path": "storage/attachments/1d866949-62e4-4a46-9969-85654e86e86a/d2ff7898-4d52-48c2-8666-a3d6b2cd4dab_fortessa-service-report.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ }
+}
