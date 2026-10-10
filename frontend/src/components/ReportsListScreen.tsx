@@ -75,6 +75,7 @@ export function ReportsListScreen({
         item={screen.item}
         instruments={instruments}
         onBack={() => leaveReport(screen.returnTo)}
+        onDeleted={() => leaveReport(screen.returnTo)}
         onViewInstrument={(instrumentId) => leaveReport({ kind: 'instrument', instrumentId })}
         fieldConfidenceThreshold={fieldConfidenceThreshold}
       />

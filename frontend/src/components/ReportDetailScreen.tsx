@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   ApiError,
   attachmentFileUrl,
+  deleteReport,
   finalizeReport,
   getReport,
   getReportTemplate,
@@ -28,12 +29,15 @@ export function ReportDetailScreen({
   item,
   instruments,
   onBack,
+  onDeleted,
   onViewInstrument,
   fieldConfidenceThreshold,
 }: {
   item: ReportListItem;
   instruments: Instrument[];
   onBack: () => void;
+  /** Called after the report has been deleted, instead of onBack, so the caller can refresh its list. */
+  onDeleted: () => void;
   onViewInstrument: (instrumentId: string) => void;
   fieldConfidenceThreshold: number;
 }) {
@@ -42,6 +46,7 @@ export function ReportDetailScreen({
   const [fields, setFields] = useState<Record<string, unknown>>({});
   const [reportDate, setReportDate] = useState<string | null>(null);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   // `setError` is reused below by handleSave — a failure saving corrections
   // lands in this same banner rather than a second, separate error state.
@@ -89,6 +94,21 @@ export function ReportDetailScreen({
     }
   }
 
+  async function handleDelete() {
+    if (!report) return;
+    setBusyLabel('Deleting report…');
+    try {
+      // A finalized report is service history; the confirm text below says so,
+      // and confirming sends force.
+      await deleteReport(report.id, report.status === 'finalized');
+      onDeleted();
+    } catch (e) {
+      setConfirmingDelete(false);
+      setError(e instanceof ApiError ? e.message : 'Could not delete this report.');
+      setBusyLabel(null);
+    }
+  }
+
   // report.instrument_id (raw ReportOut, §9) rather than item's own
   // instrument_model/instrument_serial_number — those are already resolved
   // display strings (§7), not the id this screen needs to navigate with.
@@ -105,7 +125,29 @@ export function ReportDetailScreen({
             View instrument: {instrument.model} ({instrument.serial_number}) →
           </button>
         )}
+        {report && !confirmingDelete && (
+          <button className="btn small" onClick={() => setConfirmingDelete(true)}>
+            Delete report
+          </button>
+        )}
       </div>
+
+      {report && confirmingDelete && (
+        <div className="banner banner-warn" role="alertdialog" aria-label="Confirm delete">
+          <div>
+            {report.status === 'finalized'
+              ? 'This report is finalized. Deleting it permanently removes it and its scan from the service history.'
+              : 'Delete this report and its scan permanently?'}{' '}
+            This cannot be undone.
+          </div>
+          <button className="btn small" onClick={() => void handleDelete()}>
+            Confirm delete
+          </button>{' '}
+          <button className="btn small" onClick={() => setConfirmingDelete(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
 
       {error && <div className="banner banner-warn">{error}</div>}
 
