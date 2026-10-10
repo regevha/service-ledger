@@ -35,7 +35,7 @@ backend/
     seed_demo_reports.py     3 real finalized demo reports for the Reports screen — optional, manual only
     seed_trend_demo.py       5 synthetic calibration reports for the FACSAria III, for the trend chart — optional, manual only
     routers/
-      instruments.py         POST/GET/PATCH /instruments (PATCH backs the Instruments tab's create/edit UI —
+      instruments.py         POST/GET/PATCH/DELETE /instruments (DELETE also deletes the instrument's reports; PATCH backs the Instruments tab's create/edit UI —
                               every field but instrument_type is editable), GET /instruments/{id}/trend-fields
                               (which numeric fields a given instrument's own finalized reports actually have
                               data for), GET .../trend (number and number[detector]/number[laser] both
@@ -182,6 +182,12 @@ now backed by a real API:
    their extraction jobs and the stored scan files (204). A finalized report
    needs `?force=true` (otherwise 409); a report whose scan is still pending
    or being read is also 409. No undo, no audit trail.
+9. `DELETE /instruments/{id}` — permanently removes the instrument **and every
+   report on it** (drafts and finalized, whatever the instrument's status),
+   with their attachments, extraction jobs and scan files (204). The only
+   refusal is 409 while one of those reports has a scan still pending or being
+   read. No undo, no audit trail; the Instruments tab counts the reports and
+   asks first. To keep an instrument's history instead, set it to Retired.
 
 The stub's `classify()` special-cases any filename containing
 `WO-04587090`, `sample`, or `work_order`/`work-order` to reproduce the real

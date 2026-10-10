@@ -340,6 +340,11 @@ export interface InstrumentTrend {
   points: TrendPoint[];
 }
 
+// Refused (409) while the instrument still has reports.
+export function deleteInstrument(instrumentId: string): Promise<void> {
+  return apiFetch(`/instruments/${instrumentId}`, { method: 'DELETE' });
+}
+
 export function getInstrumentTrendFields(instrumentId: string): Promise<TrendField[]> {
   return apiFetch(`/instruments/${instrumentId}/trend-fields`);
 }
