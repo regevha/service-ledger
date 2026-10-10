@@ -8,17 +8,11 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
 from app.db import get_db
+from app.services.analytics import trend_points, trendable_fields
 
 router = APIRouter(tags=["instruments"])
 
 _SERIAL_CONFLICT = "An instrument with this serial number already exists"
-
-# field_schema's three numeric-capable types (schemas.py::TemplateFieldType)
-# — the only ones GET .../trend-fields offers and GET .../trend can chart.
-# A flat "number" contributes one point per report; the other two contribute
-# a {key: value} map per report (one entry per detector/laser).
-_TREND_MAP_TYPES = {schemas.TemplateFieldType.number_detector, schemas.TemplateFieldType.number_laser}
-_TRENDABLE_TYPES = {schemas.TemplateFieldType.number, *_TREND_MAP_TYPES}
 
 
 @router.post("/instruments", response_model=schemas.InstrumentOut, status_code=201)
@@ -119,14 +113,7 @@ def instrument_trend_fields(instrument_id: uuid.UUID, db: Session = Depends(get_
         )
         .all()
     )
-    fields: dict[str, schemas.TrendFieldOut] = {}
-    for report in reports:
-        if not report.template:
-            continue
-        for f in report.template.field_schema.get("fields", []):
-            if f["type"] in _TRENDABLE_TYPES and f["name"] not in fields:
-                fields[f["name"]] = schemas.TrendFieldOut(name=f["name"], type=f["type"], unit=f.get("unit"))
-    return sorted(fields.values(), key=lambda f: f.name)
+    return trendable_fields(reports)
 
 
 @router.get("/instruments/{instrument_id}/trend", response_model=schemas.TrendOut)
@@ -152,19 +139,5 @@ def instrument_trend(
         .order_by(*models.report_chronological_order())
         .all()
     )
-    points: list[schemas.TrendPointOut] = []
-    for report in reports:
-        value = report.extracted_fields.get(field) if report.extracted_fields else None
-        # bool is a subclass of int in Python — services/analytics.py's
-        # _as_number hits the same trap and excludes it the same way, so a
-        # stray True/False extracted for a numeric-typed field doesn't show
-        # up disguised as 0/1.
-        if isinstance(value, bool):
-            continue
-        if isinstance(value, (int, float)):
-            points.append(schemas.TrendPointOut(report_id=report.id, report_date=report.report_date, value=float(value)))
-        elif isinstance(value, dict):
-            numeric = {k: float(v) for k, v in value.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
-            if numeric:
-                points.append(schemas.TrendPointOut(report_id=report.id, report_date=report.report_date, value=numeric))
+    points = trend_points(reports, field)
     return schemas.TrendOut(instrument_id=instrument_id, field=field, points=points)

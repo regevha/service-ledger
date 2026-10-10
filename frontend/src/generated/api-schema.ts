@@ -490,6 +490,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analytics/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Model Comparison
+         * @description Instruments of the same model side by side: per unit (serial), finalized
+         *     report count, labor hours, parts replaced and pass/fail results, plus the
+         *     numeric fields the comparison chart can plot. Finalized reports only.
+         */
+        get: operations["model_comparison_analytics_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/models/trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Model Trend
+         * @description One numeric field's trend for every unit of a model, in the same point
+         *     shape as GET /instruments/{id}/trend, so the units can share one chart.
+         */
+        get: operations["model_trend_analytics_models_trend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -757,6 +800,47 @@ export interface components {
             /** Name */
             name: string;
             type: components["schemas"]["TemplateFieldType"];
+        };
+        /**
+         * ModelComparisonOut
+         * @description All units of one instrument model, side by side. `trend_fields` is the
+         *     union of the numeric fields any unit's finalized reports carry, so the
+         *     comparison chart's field picker only offers fields with data.
+         */
+        ModelComparisonOut: {
+            /** Model */
+            model: string;
+            /** Units */
+            units: components["schemas"]["UnitComparisonOut"][];
+            /** Trend Fields */
+            trend_fields: components["schemas"]["TrendFieldOut"][];
+        };
+        /**
+         * ModelTrendOut
+         * @description GET /analytics/models/trend: one field's series for every unit of a
+         *     model, in the same point shape as GET /instruments/{id}/trend.
+         */
+        ModelTrendOut: {
+            /** Model */
+            model: string;
+            /** Field */
+            field: string;
+            /** Series */
+            series: components["schemas"]["ModelTrendSeriesOut"][];
+        };
+        /** ModelTrendSeriesOut */
+        ModelTrendSeriesOut: {
+            /**
+             * Instrument Id
+             * Format: uuid
+             */
+            instrument_id: string;
+            /** Name */
+            name: string;
+            /** Serial Number */
+            serial_number: string;
+            /** Points */
+            points: components["schemas"]["TrendPointOut"][];
         };
         /**
          * PartUsageOut
@@ -1049,6 +1133,35 @@ export interface components {
             value: number | {
                 [key: string]: number;
             };
+        };
+        /**
+         * UnitComparisonOut
+         * @description One physical unit's row in a same-model comparison (GET /analytics/models).
+         *     Counts come from finalized reports only, like GET /analytics/fleet.
+         */
+        UnitComparisonOut: {
+            /**
+             * Instrument Id
+             * Format: uuid
+             */
+            instrument_id: string;
+            /** Name */
+            name: string;
+            /** Serial Number */
+            serial_number: string;
+            status: components["schemas"]["InstrumentStatus"];
+            /** Finalized Report Count */
+            finalized_report_count: number;
+            /** Last Report Date */
+            last_report_date: string | null;
+            /** Labor Report Count */
+            labor_report_count: number;
+            /** Total Labor Hours */
+            total_labor_hours: number;
+            /** Parts Replaced Qty */
+            parts_replaced_qty: number;
+            repair_results: components["schemas"]["PassFailBreakdownOut"];
+            preventive_maintenance_results: components["schemas"]["PassFailBreakdownOut"];
         };
         /** ValidationError */
         ValidationError: {
@@ -1913,6 +2026,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FleetAnalyticsOut"];
+                };
+            };
+        };
+    };
+    model_comparison_analytics_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelComparisonOut"][];
+                };
+            };
+        };
+    };
+    model_trend_analytics_models_trend_get: {
+        parameters: {
+            query: {
+                /** @description Instrument model, e.g. LSRFortessa */
+                model: string;
+                /** @description Key inside extracted_fields to plot, one series per unit */
+                field: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelTrendOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
