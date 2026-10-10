@@ -1,4 +1,5 @@
 import { test, expect } from './coverage';
+import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,7 +19,7 @@ test('upload → auto-classify → extract → review → finalize', async ({ pa
 
   await page.click('.view-tab:has-text("New report")');
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Happy Path');
-  await page.locator('input[type="file"]').setInputFiles(FIXTURE);
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
   // No manual-confirm detour expected for this fixture.

@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
+import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
 
 // The Analytics tab (GET /analytics/fleet) — a smoke check that the tab
@@ -38,7 +39,7 @@ async function seedFinalizedReport(
   // with this test's exact, deterministic fields.
   const attachment = await (
     await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 seed') } },
+      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
     })
   ).json();
   const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();

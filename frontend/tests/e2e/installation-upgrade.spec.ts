@@ -1,4 +1,5 @@
 import { test, expect } from './coverage';
+import { uniquePdf } from './unique-upload';
 
 // Installation / upgrade is a report type of its own (BD task code T107). The
 // stub treats a file name containing "sample-work-order" as an uncertain report
@@ -12,7 +13,7 @@ test('a technician can confirm a report as an installation / upgrade and review 
   await page.locator('input[type="file"]').setInputFiles({
     name: `sample-work-order-upgrade-${Date.now()}.pdf`,
     mimeType: 'application/pdf',
-    buffer: Buffer.from('%PDF-1.4 software upgrade'),
+    buffer: uniquePdf('%PDF-1.4 software upgrade'),
   });
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.class-row', { timeout: 30_000 });

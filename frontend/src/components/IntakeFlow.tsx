@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  deleteReport,
   ApiError,
   attachmentFileUrl,
   classifyAttachment,
@@ -44,6 +45,7 @@ type Phase =
   | { name: 'confirm-classification' }
   | { name: 'review' }
   | { name: 'done' }
+  | { name: 'already-on-file'; existingReportId: string }
   | { name: 'error'; message: string; retry: () => void };
 
 function StepBar({ phase }: { phase: Phase }) {
@@ -343,12 +345,15 @@ export function IntakeFlow({
   fieldConfidenceThreshold,
   classificationConfidenceThreshold,
   liveClaude = true,
+  onOpenReport,
 }: {
   instruments: Instrument[];
   instrumentsError: string | null;
   fieldConfidenceThreshold: number;
   classificationConfidenceThreshold: number;
   liveClaude?: boolean;
+  /** Open an existing report on the Reports tab (used when an upload is refused as already on file). */
+  onOpenReport?: (reportId: string) => void;
 }) {
   const [phase, setPhase] = useState<Phase>({ name: 'intake' });
 
@@ -538,7 +543,21 @@ export function IntakeFlow({
   async function uploadScan(reportId: string, scan: File) {
     setPhase({ name: 'working', label: 'Uploading scan…' });
     await attempt('Upload failed unexpectedly.', () => void uploadScan(reportId, scan), async () => {
-      const attachment = await uploadAttachment(reportId, scan);
+      let attachment;
+      try {
+        attachment = await uploadAttachment(reportId, scan);
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 409 && e.existingReportId) {
+          // This exact file was already read under another report. The draft
+          // created for this attempt is empty and would only clutter the list,
+          // so remove it (best effort), then point at the existing report.
+          await deleteReport(reportId).catch(() => undefined);
+          setReport(null);
+          setPhase({ name: 'already-on-file', existingReportId: e.existingReportId });
+          return;
+        }
+        throw e;
+      }
       setAttachmentId(attachment.id);
       noteDuplicates(attachment.duplicate_report_ids);
       await runClassification(attachment.id, reportId);
@@ -627,6 +646,31 @@ export function IntakeFlow({
           originalScanUrl={attachmentId ? attachmentFileUrl(attachmentId) : undefined}
           pdfUrl={report ? reportPdfUrl(report.id) : undefined}
         />
+      )}
+
+      {phase.name === 'already-on-file' && (
+        <div className="section">
+          <div className="banner banner-info" id="already-on-file-notice">
+            This exact file is already on file and has been read. Open the existing report instead of loading it again.
+          </div>
+          <div className="cta-row">
+            <button className="btn" onClick={resetToIntake}>
+              Load a different file
+            </button>
+            {onOpenReport && (
+              <button
+                className="btn primary"
+                onClick={() => {
+                  const id = phase.existingReportId;
+                  resetToIntake();
+                  onOpenReport(id);
+                }}
+              >
+                Open existing report
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {phase.name === 'done' && report && <DoneScreen report={report} onReset={resetToIntake} />}
