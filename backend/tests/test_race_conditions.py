@@ -92,6 +92,17 @@ def test_edit_instrument_losing_a_serial_race_is_a_409(client, race):
     assert after["serial_number"] == "MINE-1"
 
 
+def test_delete_instrument_that_gains_a_report_mid_request_is_a_409(client, race):
+    mine = client.post("/instruments", json={"name": "Mine", "model": "TestModel", "serial_number": "MINE-DEL"}).json()
+    race(_in_own_session(lambda s: s.add(models.Report(instrument_id=mine["id"]))))
+
+    resp = client.delete(f"/instruments/{mine['id']}")
+
+    assert resp.status_code == 409
+    assert "attached to this instrument just now" in resp.json()["detail"]
+    assert client.get(f"/instruments/{mine['id']}").status_code == 200  # still there, and still referenced
+
+
 # ---------- report templates ----------
 
 
