@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { getFleetAnalytics, type FleetAnalytics, type InstrumentRollup, type PartUsage } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
+import { ModelComparisonSection } from './ModelComparison';
 
 /**
  * Fleet-wide roll-ups (GET /analytics/fleet) — most-replaced parts, labor
@@ -245,6 +246,8 @@ export function AnalyticsScreen() {
         <div className="chart-title">Pass / fail rate</div>
         <PassFailSection byReportType={data.pass_fail_by_report_type} />
       </div>
+
+      <ModelComparisonSection />
     </div>
   );
 }
