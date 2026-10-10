@@ -1,0 +1,132 @@
+{
+ "label": "s8-upgrade",
+ "tag": "run2",
+ "repeat": 3,
+ "file": "s8-software-upgrade.pdf",
+ "sha256": "acbd45f81966b7d250a16beb7a2c4533d68aeced8e63d379886fc51ef6b4a2f2",
+ "started": "2026-10-10T13:40:56.062533Z",
+ "report_id": "94723d1b-b8d8-41a9-988f-396b9ef1c610",
+ "upload": {
+  "status": 201,
+  "body": {
+   "id": "07486404-e5d3-4ffb-bffd-cde0e75a4447",
+   "report_id": "94723d1b-b8d8-41a9-988f-396b9ef1c610",
+   "file_path": "storage/attachments/94723d1b-b8d8-41a9-988f-396b9ef1c610/3a3a6541-d114-4dcd-b99f-b031d6ff6741_s8-software-upgrade.pdf",
+   "file_type": "application/pdf",
+   "page_count": 1,
+   "duplicate_report_ids": [
+    "5d3b9098-95e5-46b3-a2e0-bf381117cf19",
+    "5e8ec828-b92c-48cc-bc91-0904d853b592",
+    "cea56416-d1c4-4d00-8104-076b3160d002"
+   ]
+  }
+ },
+ "classify_job": {
+  "id": "40764308-6d82-43c3-ab88-5e2fc9e341ac",
+  "attachment_id": "07486404-e5d3-4ffb-bffd-cde0e75a4447",
+  "kind": "classify",
+  "status": "succeeded",
+  "classification": {
+   "reader": "model",
+   "instrument": {
+    "value": "FACSDiscover S8",
+    "confidence": 0.97
+   },
+   "report_type": {
+    "value": "installation_upgrade",
+    "confidence": 0.95
+   },
+   "serial_match": "matched",
+   "instrument_serial": {
+    "value": "MP6651580000057",
+    "confidence": 0.9
+   },
+   "work_order_number": "WO-04482628",
+   "report_type_source": "task_code",
+   "duplicate_report_ids": [
+    "5d3b9098-95e5-46b3-a2e0-bf381117cf19",
+    "5e8ec828-b92c-48cc-bc91-0904d853b592",
+    "cea56416-d1c4-4d00-8104-076b3160d002"
+   ],
+   "resolved_template_id": "caa33ab2-6663-46a1-bd52-17ddda9eb0d2",
+   "resolved_instrument_id": "c34c7b51-e816-40c8-844b-f616281a3241",
+   "suggested_instrument_id": "c34c7b51-e816-40c8-844b-f616281a3241"
+  },
+  "field_confidences": null,
+  "error_message": null,
+  "started_at": "2026-10-10T13:40:56.128976Z",
+  "completed_at": "2026-10-10T13:40:59.263303Z"
+ },
+ "report_after_classify": {
+  "id": "94723d1b-b8d8-41a9-988f-396b9ef1c610",
+  "instrument_id": "c34c7b51-e816-40c8-844b-f616281a3241",
+  "template_id": "caa33ab2-6663-46a1-bd52-17ddda9eb0d2",
+  "status": "classified",
+  "extracted_fields": {},
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": null,
+  "created_at": "2026-10-10T13:40:56.065625Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "07486404-e5d3-4ffb-bffd-cde0e75a4447",
+    "report_id": "94723d1b-b8d8-41a9-988f-396b9ef1c610",
+    "file_path": "storage/attachments/94723d1b-b8d8-41a9-988f-396b9ef1c610/3a3a6541-d114-4dcd-b99f-b031d6ff6741_s8-software-upgrade.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ },
+ "extract_job": {
+  "id": "f8abf029-8c21-419f-aa0c-a76414c7011e",
+  "attachment_id": "07486404-e5d3-4ffb-bffd-cde0e75a4447",
+  "kind": "extract",
+  "status": "succeeded",
+  "classification": null,
+  "field_confidences": {
+   "parts_used": 0.6,
+   "labor_hours": 0.9,
+   "report_date": 0.85,
+   "work_performed": 0.9,
+   "service_description": 0.9,
+   "verification_result": 0.8
+  },
+  "error_message": null,
+  "started_at": "2026-10-10T13:41:00.157355Z",
+  "completed_at": "2026-10-10T13:41:03.729898Z"
+ },
+ "report_after_extract": {
+  "id": "94723d1b-b8d8-41a9-988f-396b9ef1c610",
+  "instrument_id": "c34c7b51-e816-40c8-844b-f616281a3241",
+  "template_id": "caa33ab2-6663-46a1-bd52-17ddda9eb0d2",
+  "status": "extracted",
+  "extracted_fields": {
+   "parts_used": [],
+   "labor_hours": 8,
+   "work_performed": "Software upgrade from 6.2 to 6.3 was done successfully. System was tested and passed all tests with all nozzles. System is working properly under BD specifications and ready for use.",
+   "service_description": "Software upgrade from 6.2 to 6.3 - S8 S/N R6651580000057",
+   "verification_result": "pass"
+  },
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": "2026-06-16",
+  "created_at": "2026-10-10T13:40:56.065625Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "07486404-e5d3-4ffb-bffd-cde0e75a4447",
+    "report_id": "94723d1b-b8d8-41a9-988f-396b9ef1c610",
+    "file_path": "storage/attachments/94723d1b-b8d8-41a9-988f-396b9ef1c610/3a3a6541-d114-4dcd-b99f-b031d6ff6741_s8-software-upgrade.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ }
+}

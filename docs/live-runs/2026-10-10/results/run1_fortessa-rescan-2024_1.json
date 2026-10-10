@@ -1,0 +1,131 @@
+{
+ "label": "fortessa-rescan-2024",
+ "tag": "run1",
+ "repeat": 1,
+ "file": "fortessa-rescan-2024.pdf",
+ "sha256": "cef6fcf76e7caccef1a90907a698e7e2615b6fed71bc011c6b492b03f0d8aabd",
+ "started": "2026-10-10T13:38:29.870113Z",
+ "report_id": "5e21f6fe-4c57-483d-9073-239a3f727eeb",
+ "upload": {
+  "status": 201,
+  "body": {
+   "id": "957a1677-bdee-4a50-be9f-1bfea5acb926",
+   "report_id": "5e21f6fe-4c57-483d-9073-239a3f727eeb",
+   "file_path": "storage/attachments/5e21f6fe-4c57-483d-9073-239a3f727eeb/444b0ddf-bfdf-4f65-9788-e9e92c3b916c_fortessa-rescan-2024.pdf",
+   "file_type": "application/pdf",
+   "page_count": 1,
+   "duplicate_report_ids": []
+  }
+ },
+ "classify_job": {
+  "id": "0e74f6a2-8975-4f49-bc4c-03a52a093672",
+  "attachment_id": "957a1677-bdee-4a50-be9f-1bfea5acb926",
+  "kind": "classify",
+  "status": "succeeded",
+  "classification": {
+   "reader": "model",
+   "instrument": {
+    "value": "LSRFortessa",
+    "confidence": 0.95
+   },
+   "report_type": {
+    "value": "repair",
+    "confidence": 0.95
+   },
+   "serial_match": "matched",
+   "instrument_serial": {
+    "value": "R647794E6092",
+    "confidence": 0.9
+   },
+   "work_order_number": "WO-03424229",
+   "report_type_source": "task_code",
+   "duplicate_report_ids": [
+    "1d866949-62e4-4a46-9969-85654e86e86a",
+    "5baae30b-24d4-4561-a236-2b569ff829c0"
+   ],
+   "resolved_template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+   "resolved_instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5",
+   "suggested_instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5"
+  },
+  "field_confidences": null,
+  "error_message": null,
+  "started_at": "2026-10-10T13:38:29.901897Z",
+  "completed_at": "2026-10-10T13:38:33.109848Z"
+ },
+ "report_after_classify": {
+  "id": "5e21f6fe-4c57-483d-9073-239a3f727eeb",
+  "instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "classified",
+  "extracted_fields": {},
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": null,
+  "created_at": "2026-10-10T13:38:29.874996Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "957a1677-bdee-4a50-be9f-1bfea5acb926",
+    "report_id": "5e21f6fe-4c57-483d-9073-239a3f727eeb",
+    "file_path": "storage/attachments/5e21f6fe-4c57-483d-9073-239a3f727eeb/444b0ddf-bfdf-4f65-9788-e9e92c3b916c_fortessa-rescan-2024.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ },
+ "extract_job": {
+  "id": "c80eee29-7e16-4b22-834a-bb0267c3afc9",
+  "attachment_id": "957a1677-bdee-4a50-be9f-1bfea5acb926",
+  "kind": "extract",
+  "status": "succeeded",
+  "classification": null,
+  "field_confidences": {
+   "root_cause": 0.9,
+   "labor_hours": 0.95,
+   "report_date": 0.9,
+   "retest_result": 0.7,
+   "fault_category": 0.9,
+   "work_performed": 0.9,
+   "fault_description": 0.9,
+   "components_replaced": 0.85
+  },
+  "error_message": null,
+  "started_at": "2026-10-10T13:38:33.933410Z",
+  "completed_at": "2026-10-10T13:38:39.056865Z"
+ },
+ "report_after_extract": {
+  "id": "5e21f6fe-4c57-483d-9073-239a3f727eeb",
+  "instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "extracted",
+  "extracted_fields": {
+   "root_cause": "Traced the problem to the wet cart. The wet cart is not pumping sheath to the tank.",
+   "labor_hours": 3.75,
+   "retest_result": "pass",
+   "fault_category": "fluidics",
+   "work_performed": "Changed places between the pumps inside the wet cart. Checked resistance in the probes of the sheath line under the cup that goes to the tank. Then the problem suddenly disappeared. System is working properly under BD specification and ready to use.",
+   "fault_description": "Facsflow is not reaching to the flowcell. After finishing a previous work order, the unit was tested for a while, then this issue appeared.",
+   "components_replaced": []
+  },
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": "2024-04-11",
+  "created_at": "2026-10-10T13:38:29.874996Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "957a1677-bdee-4a50-be9f-1bfea5acb926",
+    "report_id": "5e21f6fe-4c57-483d-9073-239a3f727eeb",
+    "file_path": "storage/attachments/5e21f6fe-4c57-483d-9073-239a3f727eeb/444b0ddf-bfdf-4f65-9788-e9e92c3b916c_fortessa-rescan-2024.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ }
+}

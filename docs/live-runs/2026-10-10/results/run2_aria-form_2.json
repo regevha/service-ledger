@@ -1,0 +1,134 @@
+{
+ "label": "aria-form",
+ "tag": "run2",
+ "repeat": 2,
+ "file": "aria-intervention-form.pdf",
+ "sha256": "abe601de3dbbb74c289e2348ca7afc5db1188fdd94d9b731e3ca4f1f30a43513",
+ "started": "2026-10-10T13:40:19.247487Z",
+ "report_id": "ce4610d0-80d6-4eeb-84f0-76f8d39113d1",
+ "upload": {
+  "status": 201,
+  "body": {
+   "id": "33ffd1c5-54b7-4222-92d0-83f86149f655",
+   "report_id": "ce4610d0-80d6-4eeb-84f0-76f8d39113d1",
+   "file_path": "storage/attachments/ce4610d0-80d6-4eeb-84f0-76f8d39113d1/32618d8b-890e-4c57-8b81-523d27b46d77_aria-intervention-form.pdf",
+   "file_type": "application/pdf",
+   "page_count": 1,
+   "duplicate_report_ids": [
+    "3b9ce284-528b-426e-af73-0a775379b768",
+    "a36efe67-c301-4812-bb70-a0a950a0a399"
+   ]
+  }
+ },
+ "classify_job": {
+  "id": "12eba749-153e-4a22-b96d-f0662e6a6aef",
+  "attachment_id": "33ffd1c5-54b7-4222-92d0-83f86149f655",
+  "kind": "classify",
+  "status": "succeeded",
+  "classification": {
+   "reader": "model",
+   "instrument": {
+    "value": "FACSAria III",
+    "confidence": 0.97
+   },
+   "report_type": {
+    "value": "repair",
+    "confidence": 0.93
+   },
+   "serial_match": "matched",
+   "instrument_serial": {
+    "value": "P648282B3003",
+    "confidence": 0.85
+   },
+   "work_order_number": null,
+   "report_type_source": "task_code",
+   "duplicate_report_ids": [
+    "3b9ce284-528b-426e-af73-0a775379b768",
+    "a36efe67-c301-4812-bb70-a0a950a0a399"
+   ],
+   "resolved_template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+   "resolved_instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+   "suggested_instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039"
+  },
+  "field_confidences": null,
+  "error_message": null,
+  "started_at": "2026-10-10T13:40:19.312096Z",
+  "completed_at": "2026-10-10T13:40:21.862054Z"
+ },
+ "report_after_classify": {
+  "id": "ce4610d0-80d6-4eeb-84f0-76f8d39113d1",
+  "instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "classified",
+  "extracted_fields": {},
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": null,
+  "created_at": "2026-10-10T13:40:19.251166Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "33ffd1c5-54b7-4222-92d0-83f86149f655",
+    "report_id": "ce4610d0-80d6-4eeb-84f0-76f8d39113d1",
+    "file_path": "storage/attachments/ce4610d0-80d6-4eeb-84f0-76f8d39113d1/32618d8b-890e-4c57-8b81-523d27b46d77_aria-intervention-form.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ },
+ "extract_job": {
+  "id": "622dc280-62c3-41ef-8898-5e74cafa859b",
+  "attachment_id": "33ffd1c5-54b7-4222-92d0-83f86149f655",
+  "kind": "extract",
+  "status": "succeeded",
+  "classification": null,
+  "field_confidences": {
+   "root_cause": 0.9,
+   "labor_hours": 0.8,
+   "report_date": 0.85,
+   "retest_result": 0.85,
+   "fault_category": 0.85,
+   "work_performed": 0.9,
+   "fault_description": 0.9,
+   "components_replaced": 0.85
+  },
+  "error_message": null,
+  "started_at": "2026-10-10T13:40:23.345100Z",
+  "completed_at": "2026-10-10T13:40:27.994699Z"
+ },
+ "report_after_extract": {
+  "id": "ce4610d0-80d6-4eeb-84f0-76f8d39113d1",
+  "instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "extracted",
+  "extracted_fields": {
+   "root_cause": "Flow cell issue, optical alignment",
+   "labor_hours": 5,
+   "retest_result": "pass",
+   "fault_category": "optics",
+   "work_performed": "Cleaned Flow Cell. Optical components cleaned and checked. Optical gel checked. Aligned optics. Performed CST test was successful. The instrument performs to the instruments specifications and is ready for use without restrictions.",
+   "fault_description": "CST didn't pass. ARIA III passes CST test with remarks. The remarks are on the violet and the red lasers. Ran clean flow cell on contrad solution (1:5) few times and it didn't improve.",
+   "components_replaced": []
+  },
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": "2024-03-17",
+  "created_at": "2026-10-10T13:40:19.251166Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "33ffd1c5-54b7-4222-92d0-83f86149f655",
+    "report_id": "ce4610d0-80d6-4eeb-84f0-76f8d39113d1",
+    "file_path": "storage/attachments/ce4610d0-80d6-4eeb-84f0-76f8d39113d1/32618d8b-890e-4c57-8b81-523d27b46d77_aria-intervention-form.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ }
+}

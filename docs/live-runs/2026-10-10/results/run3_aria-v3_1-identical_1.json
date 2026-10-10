@@ -1,0 +1,80 @@
+{
+ "label": "aria-v3_1-identical",
+ "tag": "run3",
+ "repeat": 1,
+ "file": "0668c495-BD_EU_Work_Order_Service_Report_Label_v3_1.pdf",
+ "sha256": "23dca4caa316d58a79625eaccd7acad95b00b6c6405a27a3ad2754e85cbd9533",
+ "started": "2026-10-10T13:30:46.564981Z",
+ "report_id": "6242c5ea-db0c-4fb8-8a1b-acfd3595b26f",
+ "upload": {
+  "status": 201,
+  "body": {
+   "id": "6bb27ec7-d904-4e55-9233-8fa2abebdd15",
+   "report_id": "6242c5ea-db0c-4fb8-8a1b-acfd3595b26f",
+   "file_path": "storage/attachments/6242c5ea-db0c-4fb8-8a1b-acfd3595b26f/253bcb68-9426-4bbd-a28c-90c802f85de2_0668c495-BD_EU_Work_Order_Service_Report_Label_v3_1.pdf",
+   "file_type": "application/pdf",
+   "page_count": 1,
+   "duplicate_report_ids": [
+    "10b70081-2e75-4bfe-884a-bc5a31aca61d"
+   ]
+  }
+ },
+ "classify_job": {
+  "id": "70055775-cbc8-46a1-be44-7dd007da8987",
+  "attachment_id": "6bb27ec7-d904-4e55-9233-8fa2abebdd15",
+  "kind": "classify",
+  "status": "succeeded",
+  "classification": {
+   "reader": "model",
+   "instrument": {
+    "value": "FACSAria III",
+    "confidence": 0.97
+   },
+   "report_type": {
+    "value": "repair",
+    "confidence": 0.95
+   },
+   "serial_match": "matched",
+   "instrument_serial": {
+    "value": "P648282B3003",
+    "confidence": 0.9
+   },
+   "work_order_number": "WO-04215114",
+   "report_type_source": "task_code",
+   "duplicate_report_ids": [
+    "10b70081-2e75-4bfe-884a-bc5a31aca61d"
+   ],
+   "resolved_template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+   "resolved_instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+   "suggested_instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039"
+  },
+  "field_confidences": null,
+  "error_message": null,
+  "started_at": "2026-10-10T13:30:46.619367Z",
+  "completed_at": "2026-10-10T13:30:49.431423Z"
+ },
+ "report_after_classify": {
+  "id": "6242c5ea-db0c-4fb8-8a1b-acfd3595b26f",
+  "instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "classified",
+  "extracted_fields": {},
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": null,
+  "created_at": "2026-10-10T13:30:46.568830Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "6bb27ec7-d904-4e55-9233-8fa2abebdd15",
+    "report_id": "6242c5ea-db0c-4fb8-8a1b-acfd3595b26f",
+    "file_path": "storage/attachments/6242c5ea-db0c-4fb8-8a1b-acfd3595b26f/253bcb68-9426-4bbd-a28c-90c802f85de2_0668c495-BD_EU_Work_Order_Service_Report_Label_v3_1.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ }
+}

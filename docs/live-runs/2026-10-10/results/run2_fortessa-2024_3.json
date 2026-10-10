@@ -1,0 +1,140 @@
+{
+ "label": "fortessa-2024",
+ "tag": "run2",
+ "repeat": 3,
+ "file": "fortessa-service-report.pdf",
+ "sha256": "4d56320954bc36844c8493e6365769657bd1ac732502c6439555cccdaec5ccfe",
+ "started": "2026-10-10T13:39:58.819835Z",
+ "report_id": "9918f678-3e98-453d-9336-cf009e0fd779",
+ "upload": {
+  "status": 201,
+  "body": {
+   "id": "8236f758-f48e-4f3d-be85-f1029136e893",
+   "report_id": "9918f678-3e98-453d-9336-cf009e0fd779",
+   "file_path": "storage/attachments/9918f678-3e98-453d-9336-cf009e0fd779/826aa387-1284-4633-8877-2d7614ed1d92_fortessa-service-report.pdf",
+   "file_type": "application/pdf",
+   "page_count": 1,
+   "duplicate_report_ids": [
+    "1d866949-62e4-4a46-9969-85654e86e86a",
+    "57d33e4b-256b-4350-b76e-9fc320c6770f",
+    "5baae30b-24d4-4561-a236-2b569ff829c0",
+    "5e21f6fe-4c57-483d-9073-239a3f727eeb",
+    "6c266237-d9d3-4ab8-a100-c53d92175459"
+   ]
+  }
+ },
+ "classify_job": {
+  "id": "2cdf6e9d-b887-4fa6-b32f-b86457091fe7",
+  "attachment_id": "8236f758-f48e-4f3d-be85-f1029136e893",
+  "kind": "classify",
+  "status": "succeeded",
+  "classification": {
+   "reader": "model",
+   "instrument": {
+    "value": "LSRFortessa",
+    "confidence": 0.97
+   },
+   "report_type": {
+    "value": "repair",
+    "confidence": 0.97
+   },
+   "serial_match": "matched",
+   "instrument_serial": {
+    "value": "R647794E6092",
+    "confidence": 0.9
+   },
+   "work_order_number": "WO-03424229",
+   "report_type_source": "task_code",
+   "duplicate_report_ids": [
+    "1d866949-62e4-4a46-9969-85654e86e86a",
+    "57d33e4b-256b-4350-b76e-9fc320c6770f",
+    "5baae30b-24d4-4561-a236-2b569ff829c0",
+    "5e21f6fe-4c57-483d-9073-239a3f727eeb",
+    "6c266237-d9d3-4ab8-a100-c53d92175459"
+   ],
+   "resolved_template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+   "resolved_instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5",
+   "suggested_instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5"
+  },
+  "field_confidences": null,
+  "error_message": null,
+  "started_at": "2026-10-10T13:39:58.869851Z",
+  "completed_at": "2026-10-10T13:40:01.553505Z"
+ },
+ "report_after_classify": {
+  "id": "9918f678-3e98-453d-9336-cf009e0fd779",
+  "instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "classified",
+  "extracted_fields": {},
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": null,
+  "created_at": "2026-10-10T13:39:58.823048Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "8236f758-f48e-4f3d-be85-f1029136e893",
+    "report_id": "9918f678-3e98-453d-9336-cf009e0fd779",
+    "file_path": "storage/attachments/9918f678-3e98-453d-9336-cf009e0fd779/826aa387-1284-4633-8877-2d7614ed1d92_fortessa-service-report.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ },
+ "extract_job": {
+  "id": "5839c13e-950b-4d64-bc83-7391149ae011",
+  "attachment_id": "8236f758-f48e-4f3d-be85-f1029136e893",
+  "kind": "extract",
+  "status": "succeeded",
+  "classification": null,
+  "field_confidences": {
+   "root_cause": 0.9,
+   "labor_hours": 0.95,
+   "report_date": 0.85,
+   "retest_result": 0.75,
+   "fault_category": 0.9,
+   "work_performed": 0.9,
+   "fault_description": 0.9,
+   "components_replaced": 0.85
+  },
+  "error_message": null,
+  "started_at": "2026-10-10T13:40:02.894090Z",
+  "completed_at": "2026-10-10T13:40:07.935938Z"
+ },
+ "report_after_extract": {
+  "id": "9918f678-3e98-453d-9336-cf009e0fd779",
+  "instrument_id": "2b3af611-c6ca-4a55-a5f9-bf6ad100eef5",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "extracted",
+  "extracted_fields": {
+   "root_cause": "Traced the problem to the wet cart. The wet cart is not pumping sheet to the tank.",
+   "labor_hours": 3.75,
+   "retest_result": "pass",
+   "fault_category": "fluidics",
+   "work_performed": "Changed places between the pumps inside the wet cart. Checked resistance in the probes of the sheath line under the cup that goes to the tank. The problem then suddenly disappeared. System is working properly under BD specification and ready to use.",
+   "fault_description": "Facsflow is not reaching to the flowcell. After finishing a prior work order, the unit was tested for a while, then suddenly this issue appeared.",
+   "components_replaced": []
+  },
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": "2024-04-11",
+  "created_at": "2026-10-10T13:39:58.823048Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "8236f758-f48e-4f3d-be85-f1029136e893",
+    "report_id": "9918f678-3e98-453d-9336-cf009e0fd779",
+    "file_path": "storage/attachments/9918f678-3e98-453d-9336-cf009e0fd779/826aa387-1284-4633-8877-2d7614ed1d92_fortessa-service-report.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ }
+}

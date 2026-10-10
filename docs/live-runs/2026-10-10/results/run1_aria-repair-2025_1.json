@@ -1,0 +1,134 @@
+{
+ "label": "aria-repair-2025",
+ "tag": "run1",
+ "repeat": 1,
+ "file": "900c1d4a-BD_EU_Work_Order_Service_Report_Label_v3.pdf",
+ "sha256": "23dca4caa316d58a79625eaccd7acad95b00b6c6405a27a3ad2754e85cbd9533",
+ "started": "2026-10-10T13:29:28.204083Z",
+ "report_id": "b0c320d5-c9af-4a95-9eed-a2e0b2b60232",
+ "upload": {
+  "status": 201,
+  "body": {
+   "id": "c93dfd0e-36ef-4e02-8d05-bf440671d769",
+   "report_id": "b0c320d5-c9af-4a95-9eed-a2e0b2b60232",
+   "file_path": "storage/attachments/b0c320d5-c9af-4a95-9eed-a2e0b2b60232/63a81942-6071-4023-a02d-16c2e7cdd061_900c1d4a-BD_EU_Work_Order_Service_Report_Label_v3.pdf",
+   "file_type": "application/pdf",
+   "page_count": 1,
+   "duplicate_report_ids": []
+  }
+ },
+ "classify_job": {
+  "id": "d4ce749c-faeb-4a14-bd17-c421f69b82be",
+  "attachment_id": "c93dfd0e-36ef-4e02-8d05-bf440671d769",
+  "kind": "classify",
+  "status": "succeeded",
+  "classification": {
+   "reader": "model",
+   "instrument": {
+    "value": "FACSAria III",
+    "confidence": 0.97
+   },
+   "report_type": {
+    "value": "repair",
+    "confidence": 0.95
+   },
+   "serial_match": "matched",
+   "instrument_serial": {
+    "value": "P648282B3003",
+    "confidence": 0.93
+   },
+   "work_order_number": "WO-04215114",
+   "report_type_source": "task_code",
+   "duplicate_report_ids": [],
+   "resolved_template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+   "resolved_instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+   "suggested_instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039"
+  },
+  "field_confidences": null,
+  "error_message": null,
+  "started_at": "2026-10-10T13:29:28.319429Z",
+  "completed_at": "2026-10-10T13:29:32.053534Z"
+ },
+ "report_after_classify": {
+  "id": "b0c320d5-c9af-4a95-9eed-a2e0b2b60232",
+  "instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "classified",
+  "extracted_fields": {},
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": null,
+  "created_at": "2026-10-10T13:29:28.211233Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "c93dfd0e-36ef-4e02-8d05-bf440671d769",
+    "report_id": "b0c320d5-c9af-4a95-9eed-a2e0b2b60232",
+    "file_path": "storage/attachments/b0c320d5-c9af-4a95-9eed-a2e0b2b60232/63a81942-6071-4023-a02d-16c2e7cdd061_900c1d4a-BD_EU_Work_Order_Service_Report_Label_v3.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ },
+ "extract_job": {
+  "id": "cbbf90a4-92e8-40ce-be36-4aec37ae5dae",
+  "attachment_id": "c93dfd0e-36ef-4e02-8d05-bf440671d769",
+  "kind": "extract",
+  "status": "succeeded",
+  "classification": null,
+  "field_confidences": {
+   "root_cause": 0.85,
+   "labor_hours": 0.8,
+   "report_date": 0.9,
+   "retest_result": 0.85,
+   "fault_category": 0.75,
+   "work_performed": 0.9,
+   "fault_description": 0.9,
+   "components_replaced": 0.85
+  },
+  "error_message": null,
+  "started_at": "2026-10-10T13:29:32.363253Z",
+  "completed_at": "2026-10-10T13:29:44.462742Z"
+ },
+ "report_after_extract": {
+  "id": "b0c320d5-c9af-4a95-9eed-a2e0b2b60232",
+  "instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "extracted",
+  "extracted_fields": {
+   "root_cause": "Stream is moving down and fsc ssc position shifts",
+   "labor_hours": 31.75,
+   "retest_result": "pass",
+   "fault_category": "fluidics",
+   "work_performed": "November 10, it took a while to identify the issue. The stream position suddenly moved up and down. Replaced the ball seal and checked that there is no air leakage from the sample chamber. Replaced the sheath regulator. After replacing the sheath regulator, no stream instability was noticed. Calibrated the sample and sheath regulators for 3psi and 75psi, then proceeded with the sample flow rate adjustment, but ran out of time.\n\nNovember 11, calibrated the sample flow rate. All optics then had to be recalibrated. Cleaned the flow cell internally and externally, and began aligning the optics. Performed one CST on nozzle 100 and found the violet laser CV was 5.6 (passed, but not satisfactory). Noticed event rate with the 100 \u00b5m nozzle was high (~800 events). Attempted to recalibrate flow rate but it was unstable and fluctuating a lot.\n\nNovember 12, while trying to calibrate sample flow rate, noticed the sample regulator was not operating properly \u2014 event rate spiked to ~2000 when going from nozzle 70 to 100, dropping to 350 when offset lowered by 1. Only one spare regulator was available, so reinstalled the original sheath regulator and replaced the sample regulator instead. Redid sample and sheath regulator calibration for 3psi and 75psi. Event rate fluctuated \u00b1100 but sample rate calibration was completed. Stream sometimes became unstable again, and occasionally uploading a tube gave 0 events, resolved only by stopping and restarting the stream. After the last flow rate calibration, optics had to be recalibrated again \u2014 all lasers but the violet were successfully aligned; violet laser CV could not be calibrated below 6.5-6.8 despite adjusting the fiber manipulator position and rotating the fiber in the kinematic mount. Suspected the fluidics issue was affecting the violet laser.\n\nNovember 18, inflated the sheath tank and checked for pressure loss \u2014 found it losing 2.4psi in 5 minutes. Replaced the rubber O-rings in the tank and rechecked; no air leakage found. Rechecked the fluidics, which resolved both the fluidics issue and the violet laser issue. Performed baseline and performance tests for 100, 85, and 130 nozzles. System confirmed working properly under BD specifications and ready to use.",
+   "fault_description": "Stream is unstable with all nozzles - ARIA III S/N P648282B3003. Stream is unstable with all nozzles.",
+   "components_replaced": [
+    {
+     "qty": 1,
+     "part_name": "Sample/Sheath Regulator Assembly V-Pos",
+     "part_number": "644651"
+    }
+   ]
+  },
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": "2025-11-18",
+  "created_at": "2026-10-10T13:29:28.211233Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "c93dfd0e-36ef-4e02-8d05-bf440671d769",
+    "report_id": "b0c320d5-c9af-4a95-9eed-a2e0b2b60232",
+    "file_path": "storage/attachments/b0c320d5-c9af-4a95-9eed-a2e0b2b60232/63a81942-6071-4023-a02d-16c2e7cdd061_900c1d4a-BD_EU_Work_Order_Service_Report_Label_v3.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ }
+}
