@@ -1,4 +1,5 @@
 import { test, expect } from './coverage';
+import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,7 +19,7 @@ test('uncertain report type routes through manual confirm before extracting', as
 
   await page.click('.view-tab:has-text("New report")');
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Manual Confirm');
-  await page.locator('input[type="file"]').setInputFiles(FIXTURE);
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
   await page.waitForSelector('.class-row', { timeout: 30_000 });

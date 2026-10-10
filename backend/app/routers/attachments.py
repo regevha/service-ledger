@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
-from app.services.duplicates import find_duplicate_report_ids, normalize_work_order
+from app.services.duplicates import find_duplicate_report_ids, find_read_copy, normalize_work_order
 from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
 from app.services.text_reader import extract_text, read_work_order
 
@@ -20,7 +20,17 @@ router = APIRouter(tags=["attachments"])
 settings = get_settings()
 
 
-@router.post("/reports/{report_id}/attachments", response_model=schemas.AttachmentOut, status_code=201)
+@router.post(
+    "/reports/{report_id}/attachments",
+    response_model=schemas.AttachmentOut,
+    status_code=201,
+    responses={
+        409: {
+            "description": "This exact file is already on file under a report that has been read. "
+            "Body: {detail, existing_report_id}. Nothing is stored."
+        }
+    },
+)
 async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session = Depends(get_db)):
     """§4 step 1 / §9: upload a scanned original. The only entry path for
     MVP (§4) — there is no blank-form fallback."""
@@ -46,6 +56,22 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session 
             413,
             f"This {'PDF' if media_type == PDF else 'image'} is {len(contents) / 1048576:.1f} MB; "
             f"the limit is {limit // 1048576} MB. Reduce its size or resolution and upload it again.",
+        )
+
+    # The exact same file already read under another report: don't store it
+    # and don't let it be classified and extracted a second time (two more
+    # model calls, same answer). Point at the existing report instead. A
+    # report that was never read (draft, classified only) doesn't count, so
+    # re-uploading after a failed first attempt still works.
+    content_sha256 = hashlib.sha256(contents).hexdigest()
+    existing = find_read_copy(db, content_sha256, report_id)
+    if existing is not None:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": "This exact file is already on file. Open the existing report instead of loading it again.",
+                "existing_report_id": str(existing.id),
+            },
         )
 
     report_dir = settings.attachment_storage_path / str(report_id)
@@ -82,7 +108,7 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session 
         file_path=str(dest),
         file_type=media_type,
         page_count=1,  # TODO: compute real page count once PDF preprocessing (§4 step 2) is wired in.
-        content_sha256=hashlib.sha256(contents).hexdigest(),
+        content_sha256=content_sha256,
         # Read from the PDF's own text, no model involved, so the same visit
         # scanned twice is flagged right at upload — before (or without)
         # classification. None for an image or a PDF with no text layer.

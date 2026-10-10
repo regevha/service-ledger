@@ -238,9 +238,12 @@ export interface FleetAnalytics {
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** Set when an upload is refused because the exact file is already on file under a read report. */
+  existingReportId?: string;
+  constructor(status: number, message: string, existingReportId?: string) {
     super(message);
     this.status = status;
+    this.existingReportId = existingReportId;
     this.name = 'ApiError';
   }
 }
@@ -263,8 +266,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     // statusText is empty over HTTP/2, so it can't be the only fallback.
     let detail = response.statusText || `Request failed (${response.status})`;
+    let existingReportId: string | undefined;
     try {
       const body = await response.json();
+      if (typeof body?.existing_report_id === 'string') existingReportId = body.existing_report_id;
       if (typeof body?.detail === 'string') {
         detail = body.detail;
       } else if (Array.isArray(body?.detail) && body.detail.length > 0) {
@@ -283,7 +288,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // non-JSON error body — keep the fallback above
     }
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, detail, existingReportId);
   }
 
   if (response.status === 204) return undefined as T;
