@@ -426,6 +426,12 @@ export function getReport(reportId: string): Promise<Report> {
   return apiFetch(`/reports/${reportId}`);
 }
 
+// Permanent: removes the report, its scan and its extraction jobs. A finalized
+// report is refused (409) unless `force` is set.
+export function deleteReport(reportId: string, force = false): Promise<void> {
+  return apiFetch(`/reports/${reportId}${force ? '?force=true' : ''}`, { method: 'DELETE' });
+}
+
 export interface ReportFilters {
   instrument_id?: string;
   report_type?: ReportType;
