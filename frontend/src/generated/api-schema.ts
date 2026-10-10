@@ -29,7 +29,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Instrument */
+        get: operations["get_instrument_instruments__instrument_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -234,7 +235,18 @@ export interface paths {
         get: operations["get_report_reports__report_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Report
+         * @description Permanently delete a report, its attachments, their extraction jobs and
+         *     the stored scan files. There is no undo and no audit trail (§10).
+         *
+         *     - A finalized report is the service history, so it is only deleted with
+         *       `?force=true`; without it the answer is 409.
+         *     - A report whose scan is still queued or being read (pending, classifying
+         *       or extracting job) is also 409: the worker would be writing to rows that
+         *       are about to disappear. Try again once the job finishes.
+         */
+        delete: operations["delete_report_reports__report_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -535,6 +547,11 @@ export interface components {
             field_confidence_threshold: number;
             /** Classification Confidence Threshold */
             classification_confidence_threshold: number;
+            /**
+             * Live Claude
+             * @default false
+             */
+            live_claude: boolean;
         };
         /** AttachmentOut */
         AttachmentOut: {
@@ -1108,6 +1125,37 @@ export interface operations {
             };
         };
     };
+    get_instrument_instruments__instrument_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                instrument_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_instrument_instruments__instrument_id__patch: {
         parameters: {
             query?: never;
@@ -1515,6 +1563,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReportOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_report_reports__report_id__delete: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -43,7 +43,7 @@ backend/
       report_templates.py    GET /report-templates (resolution logic, §2); GET .../all, GET/POST/PATCH/DELETE
                               .../{id} — the structured field editor's CRUD, backed by a DB-level unique
                               index on (instrument_type, report_type, model) (migration 6b5fc4e1c3ca)
-      reports.py              /reports CRUD, search, export, template confirm, finalize, GET .../{id}/pdf
+      reports.py              /reports CRUD (incl. delete), search, export, template confirm, finalize, GET .../{id}/pdf
       attachments.py          upload, GET .../file, classify, extract (both 202 + enqueue), extraction-jobs
       analytics.py             GET /analytics/fleet — fleet-wide roll-ups (parts, labor hours, pass/fail)
     services/
@@ -176,6 +176,10 @@ now backed by a real API:
 6. `PATCH /reports/{id}/fields` — technician corrections; moves to
    `in_review`. Synchronous.
 7. `POST /reports/{id}/finalize` — moves to `finalized`. Synchronous.
+8. `DELETE /reports/{id}` — permanently removes the report, its attachments,
+   their extraction jobs and the stored scan files (204). A finalized report
+   needs `?force=true` (otherwise 409); a report whose scan is still pending
+   or being read is also 409. No undo, no audit trail.
 
 The stub's `classify()` special-cases any filename containing
 `WO-04587090`, `sample`, or `work_order`/`work-order` to reproduce the real

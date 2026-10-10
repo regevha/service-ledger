@@ -205,7 +205,11 @@ class Attachment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     report: Mapped[Report] = relationship(back_populates="attachments")
-    extraction_jobs: Mapped[list["ExtractionJob"]] = relationship(back_populates="attachment")
+    # Deleting an attachment (which deleting its report does) takes its jobs
+    # with it: extraction_jobs.attachment_id is NOT NULL and has no ondelete.
+    extraction_jobs: Mapped[list["ExtractionJob"]] = relationship(
+        back_populates="attachment", cascade="all, delete-orphan"
+    )
 
 
 class ExtractionJob(Base):
