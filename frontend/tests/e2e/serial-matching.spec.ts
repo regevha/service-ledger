@@ -1,4 +1,5 @@
 import { test, expect } from './coverage';
+import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
@@ -21,7 +22,7 @@ test('a document naming a serial number is assigned to that unit even when its m
   await page.locator('input[type="file"]').setInputFiles({
     name: `service_${serial}.pdf`,
     mimeType: 'application/pdf',
-    buffer: Buffer.from('%PDF-1.4 serial test'),
+    buffer: uniquePdf('%PDF-1.4 serial test'),
   });
   await page.click('button:has-text("Upload & classify")');
 
@@ -49,7 +50,7 @@ test('the confirm screen shows the model and the serial as separate fields', asy
   await page.locator('input[type="file"]').setInputFiles({
     name: 'sample-work-order-P648282B3003.pdf',
     mimeType: 'application/pdf',
-    buffer: Buffer.from('%PDF-1.4 x'),
+    buffer: uniquePdf('%PDF-1.4 x'),
   });
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.class-row', { timeout: 30_000 });

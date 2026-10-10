@@ -1762,6 +1762,13 @@ export interface operations {
                     "application/json": components["schemas"]["AttachmentOut"];
                 };
             };
+            /** @description This exact file is already on file under a report that has been read. Body: {detail, existing_report_id}. Nothing is stored. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {

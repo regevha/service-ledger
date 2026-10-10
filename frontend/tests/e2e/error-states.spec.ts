@@ -1,4 +1,5 @@
 import { test, expect } from './coverage';
+import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,7 +20,7 @@ test('an unreachable backend surfaces a clear connection error', async ({ page }
 
   await page.goto('/');
   await page.click('.view-tab:has-text("New report")');
-  await page.locator('input[type="file"]').setInputFiles(FIXTURE);
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
   await expect(page.locator('.banner-crit')).toBeVisible({ timeout: 15_000 });
@@ -37,7 +38,7 @@ test('a failed classification surfaces the backend error and Try again re-attemp
 
   await page.goto('/');
   await page.click('.view-tab:has-text("New report")');
-  await page.locator('input[type="file"]').setInputFiles(FIXTURE);
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
   await expect(page.locator('.banner-crit')).toBeVisible({ timeout: 15_000 });

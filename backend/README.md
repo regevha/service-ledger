@@ -51,7 +51,7 @@ backend/
       classification.py       classify() — live Claude call or stub, by settings.use_live_claude
       extraction.py            extract() — live Claude call or stub, by settings.use_live_claude
       text_reader.py           Reads a PDF's own text layer (model, serial, task code, work order) — no API key
-      duplicates.py            Same file bytes / same work-order number already on file (warn, never block)
+      duplicates.py            Same file bytes / same work-order number already on file (warn; same bytes as an already-read report is refused)
       errors.py                ClassificationError/ExtractionError — what the worker catches per-job
       analytics.py             Pure aggregation for GET /analytics/fleet — computed from already-finalized
                                 reports' extracted_fields, no new columns/tables
@@ -206,8 +206,15 @@ the visit date) still needs Claude, and a scanned image has no text to read.
 
 The same reader runs on every upload to take the work-order number, so a visit
 scanned twice is flagged as a probable duplicate straight away (same file bytes
-or same work order), with or without a key. To see what it makes of your own
-files, with no database or server:
+or same work order), with or without a key. One case is refused rather than
+flagged: the exact same file bytes as a report that was already read
+(extracted, in review or finalized). `POST /reports/{id}/attachments` answers
+409 with `{detail, existing_report_id}`, stores nothing and makes no model
+calls; the intake screen then offers to open that report and removes the empty
+draft it had created. A report that was never read (draft, classified only,
+failed) does not count, and deleting the existing report lets the file be
+loaded again. To see what it makes of your own files, with no database or
+server:
 
     python -m scripts.read_report scan1.pdf scan2.pdf
 
