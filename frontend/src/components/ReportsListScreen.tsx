@@ -27,9 +27,14 @@ type ReportsScreen =
 export function ReportsListScreen({
   instruments,
   fieldConfidenceThreshold,
+  openReportId = null,
+  onOpenReportHandled,
 }: {
   instruments: Instrument[];
   fieldConfidenceThreshold: number;
+  /** A report to open straight away (e.g. the existing copy of a file that was just refused as already on file). */
+  openReportId?: string | null;
+  onOpenReportHandled?: () => void;
 }) {
   const [filters, setFilters] = useState<ReportFilters>({});
   // Technician is free text (§4: typed at intake, not a dropdown), so it gets
@@ -63,6 +68,26 @@ export function ReportsListScreen({
     [filters, refreshNonce],
     'Could not load reports.'
   );
+
+  // Open a report handed down from elsewhere in the app. The list endpoint
+  // gives the full list item the detail screen takes; unfiltered, so the
+  // current filters can't hide it.
+  useEffect(() => {
+    if (!openReportId) return;
+    let cancelled = false;
+    listReports({})
+      .then((all) => {
+        const item = all.find((r) => r.id === openReportId);
+        if (!cancelled && item) setScreen({ kind: 'report', item, returnTo: { kind: 'list' } });
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) onOpenReportHandled?.();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [openReportId, onOpenReportHandled]);
 
   function leaveReport(next: ReportsScreen) {
     setRefreshNonce((n) => n + 1);
