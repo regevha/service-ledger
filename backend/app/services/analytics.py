@@ -23,6 +23,7 @@ import uuid
 from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
+from app.models import report_chronological_order
 
 # Both report types that carry labor_hours/components_replaced/pass-fail
 # fields at all (seed_templates.py) — calibration's template has neither, so
@@ -156,4 +157,154 @@ def compute_fleet_analytics(db: Session) -> schemas.FleetAnalyticsOut:
             )
             for report_type, counts in pass_fail.items()
         },
+    )
+
+
+# ---------- trend helpers (shared by routers/instruments.py and the model comparison) ----------
+
+# field_schema's three numeric-capable types: a flat "number" contributes one
+# value per report; the other two a {key: value} map (one entry per
+# detector/laser).
+TREND_MAP_TYPES = {schemas.TemplateFieldType.number_detector, schemas.TemplateFieldType.number_laser}
+TRENDABLE_TYPES = {schemas.TemplateFieldType.number, *TREND_MAP_TYPES}
+
+
+def trendable_fields(reports: list[models.Report]) -> list[schemas.TrendFieldOut]:
+    """The numeric fields these reports' own templates define, sorted by name."""
+    fields: dict[str, schemas.TrendFieldOut] = {}
+    for report in reports:
+        if not report.template:
+            continue
+        for f in report.template.field_schema.get("fields", []):
+            if f["type"] in TRENDABLE_TYPES and f["name"] not in fields:
+                fields[f["name"]] = schemas.TrendFieldOut(name=f["name"], type=f["type"], unit=f.get("unit"))
+    return sorted(fields.values(), key=lambda f: f.name)
+
+
+def trend_points(reports: list[models.Report], field: str) -> list[schemas.TrendPointOut]:
+    """One point per report that has a real number (or a dict holding at least
+    one) under `field`; `reports` should already be in chronological order."""
+    points: list[schemas.TrendPointOut] = []
+    for report in reports:
+        value = report.extracted_fields.get(field) if report.extracted_fields else None
+        # bool is a subclass of int, so it is excluded explicitly (see _as_number).
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, (int, float)):
+            points.append(schemas.TrendPointOut(report_id=report.id, report_date=report.report_date, value=float(value)))
+        elif isinstance(value, dict):
+            numeric = {k: float(v) for k, v in value.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+            if numeric:
+                points.append(schemas.TrendPointOut(report_id=report.id, report_date=report.report_date, value=numeric))
+    return points
+
+
+# ---------- same-model comparison ----------
+
+
+def _finalized_reports_by_instrument(db: Session) -> dict[uuid.UUID, list[models.Report]]:
+    reports = (
+        db.query(models.Report)
+        .options(joinedload(models.Report.template))
+        .filter(models.Report.status == models.ReportStatus.finalized, models.Report.instrument_id.isnot(None))
+        .order_by(*report_chronological_order())
+        .all()
+    )
+    by_instrument: dict[uuid.UUID, list[models.Report]] = {}
+    for report in reports:
+        by_instrument.setdefault(report.instrument_id, []).append(report)
+    return by_instrument
+
+
+def _breakdown(counts: dict[str, int]) -> schemas.PassFailBreakdownOut:
+    return schemas.PassFailBreakdownOut(
+        pass_count=counts["pass"],
+        fail_count=counts["fail"],
+        other_count=counts["other"],
+        total=counts["pass"] + counts["fail"] + counts["other"],
+    )
+
+
+def _unit_comparison(instrument: models.Instrument, reports: list[models.Report]) -> schemas.UnitComparisonOut:
+    labor_hours = 0.0
+    labor_reports = 0
+    parts_qty = 0.0
+    results = {
+        models.ReportType.repair: {"pass": 0, "fail": 0, "other": 0},
+        models.ReportType.preventive_maintenance: {"pass": 0, "fail": 0, "other": 0},
+    }
+    for report in reports:
+        fields = report.extracted_fields or {}
+        for entry in fields.get("components_replaced") or []:
+            if isinstance(entry, dict):
+                qty = _as_number(entry.get("qty"))
+                if qty is not None:
+                    parts_qty += qty
+        if report.template is None or report.template.report_type not in _LABOR_TRACKING_REPORT_TYPES:
+            continue
+        report_type = report.template.report_type
+        hours = _as_number(fields.get("labor_hours"))
+        if hours is not None:
+            labor_hours += hours
+            labor_reports += 1
+        result_field = _result_field_for(report_type)
+        result = fields.get(result_field) if result_field else None
+        results[report_type]["pass" if result == "pass" else "fail" if result == "fail" else "other"] += 1
+    dated = [r.report_date for r in reports if r.report_date is not None]
+    return schemas.UnitComparisonOut(
+        instrument_id=instrument.id,
+        name=instrument.name,
+        serial_number=instrument.serial_number,
+        status=instrument.status,
+        finalized_report_count=len(reports),
+        last_report_date=max(dated) if dated else None,
+        labor_report_count=labor_reports,
+        total_labor_hours=labor_hours,
+        parts_replaced_qty=parts_qty,
+        repair_results=_breakdown(results[models.ReportType.repair]),
+        preventive_maintenance_results=_breakdown(results[models.ReportType.preventive_maintenance]),
+    )
+
+
+def compute_model_comparison(db: Session) -> list[schemas.ModelComparisonOut]:
+    """Every instrument model with its units side by side. A model with a
+    single unit is included (nothing to compare yet, but it is not hidden);
+    units with no finalized reports show zeros rather than disappearing."""
+    by_instrument = _finalized_reports_by_instrument(db)
+    grouped: dict[str, list[models.Instrument]] = {}
+    for instrument in db.query(models.Instrument).order_by(models.Instrument.serial_number).all():
+        grouped.setdefault(instrument.model, []).append(instrument)
+    out = []
+    for model in sorted(grouped):
+        units = grouped[model]
+        all_reports = [r for u in units for r in by_instrument.get(u.id, [])]
+        out.append(
+            schemas.ModelComparisonOut(
+                model=model,
+                units=[_unit_comparison(u, by_instrument.get(u.id, [])) for u in units],
+                trend_fields=trendable_fields(all_reports),
+            )
+        )
+    return out
+
+
+def compute_model_trend(db: Session, model: str, field: str) -> schemas.ModelTrendOut | None:
+    """One field's series for every unit of `model`; None if no instrument has
+    that model."""
+    units = db.query(models.Instrument).filter(models.Instrument.model == model).order_by(models.Instrument.serial_number).all()
+    if not units:
+        return None
+    by_instrument = _finalized_reports_by_instrument(db)
+    return schemas.ModelTrendOut(
+        model=model,
+        field=field,
+        series=[
+            schemas.ModelTrendSeriesOut(
+                instrument_id=u.id,
+                name=u.name,
+                serial_number=u.serial_number,
+                points=trend_points(by_instrument.get(u.id, []), field),
+            )
+            for u in units
+        ],
     )

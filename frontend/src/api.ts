@@ -350,6 +350,48 @@ export function getInstrumentTrend(instrumentId: string, field: string): Promise
 
 // ---------- Analytics ----------
 
+export interface UnitComparison {
+  instrument_id: string;
+  name: string;
+  serial_number: string;
+  status: InstrumentStatus;
+  finalized_report_count: number;
+  last_report_date: string | null;
+  labor_report_count: number;
+  total_labor_hours: number;
+  parts_replaced_qty: number;
+  repair_results: PassFailBreakdown;
+  preventive_maintenance_results: PassFailBreakdown;
+}
+
+export interface ModelComparison {
+  model: string;
+  units: UnitComparison[];
+  trend_fields: TrendField[];
+}
+
+export interface ModelTrendSeries {
+  instrument_id: string;
+  name: string;
+  serial_number: string;
+  points: TrendPoint[];
+}
+
+export interface ModelTrend {
+  model: string;
+  field: string;
+  series: ModelTrendSeries[];
+}
+
+// Units of the same model side by side (finalized reports only).
+export function getModelComparison(): Promise<ModelComparison[]> {
+  return apiFetch('/analytics/models');
+}
+
+export function getModelTrend(model: string, field: string): Promise<ModelTrend> {
+  return apiFetch(`/analytics/models/trend?${new URLSearchParams({ model, field })}`);
+}
+
 export function getFleetAnalytics(): Promise<FleetAnalytics> {
   return apiFetch('/analytics/fleet');
 }

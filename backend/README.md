@@ -45,7 +45,8 @@ backend/
                               index on (instrument_type, report_type, model) (migration 6b5fc4e1c3ca)
       reports.py              /reports CRUD (incl. delete), search, export, template confirm, finalize, GET .../{id}/pdf
       attachments.py          upload, GET .../file, classify, extract (both 202 + enqueue), extraction-jobs
-      analytics.py             GET /analytics/fleet — fleet-wide roll-ups (parts, labor hours, pass/fail)
+      analytics.py             GET /analytics/fleet — fleet-wide roll-ups (parts, labor hours, pass/fail);
+                              GET /analytics/models and /analytics/models/trend — units of one model side by side
     services/
       templates.py            Model-specific-row-over-NULL-row resolution (§2)
       classification.py       classify() — live Claude call or stub, by settings.use_live_claude
@@ -67,7 +68,8 @@ backend/
 frontend/
   src/App.tsx                 The real app: document-first intake, report search, report review/finalize
   src/api.ts                   Fetch wrappers for every route above
-  src/components/AnalyticsScreen.tsx  The Analytics tab — renders GET /analytics/fleet as stat tiles + bar charts
+  src/components/AnalyticsScreen.tsx  The Analytics tab — renders GET /analytics/fleet as stat tiles + bar charts,
+                              then ModelComparison.tsx (same-model units: table + one-line-per-unit trend chart)
   src/components/TemplateManager.tsx  The Templates tab — structured field-schema editor + template list/CRUD
   src/components/InstrumentManager.tsx  The Instruments tab — create/edit UI for the fleet (POST/PATCH /instruments)
   tests/e2e/                   Playwright specs against a running backend

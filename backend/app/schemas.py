@@ -506,3 +506,49 @@ class TrendOut(BaseModel):
     instrument_id: uuid.UUID
     field: str
     points: list[TrendPointOut]
+
+
+class UnitComparisonOut(BaseModel):
+    """One physical unit's row in a same-model comparison (GET /analytics/models).
+    Counts come from finalized reports only, like GET /analytics/fleet."""
+
+    instrument_id: uuid.UUID
+    name: str
+    serial_number: str
+    status: InstrumentStatus
+    # All finalized reports for the unit, any type (calibrations included).
+    finalized_report_count: int
+    last_report_date: date | None
+    # Finalized repair/preventive_maintenance reports with a numeric labor_hours.
+    labor_report_count: int
+    total_labor_hours: float
+    # Sum of qty over every components_replaced row on the unit's reports.
+    parts_replaced_qty: float
+    repair_results: PassFailBreakdownOut
+    preventive_maintenance_results: PassFailBreakdownOut
+
+
+class ModelComparisonOut(BaseModel):
+    """All units of one instrument model, side by side. `trend_fields` is the
+    union of the numeric fields any unit's finalized reports carry, so the
+    comparison chart's field picker only offers fields with data."""
+
+    model: str
+    units: list[UnitComparisonOut]
+    trend_fields: list[TrendFieldOut]
+
+
+class ModelTrendSeriesOut(BaseModel):
+    instrument_id: uuid.UUID
+    name: str
+    serial_number: str
+    points: list[TrendPointOut]
+
+
+class ModelTrendOut(BaseModel):
+    """GET /analytics/models/trend: one field's series for every unit of a
+    model, in the same point shape as GET /instruments/{id}/trend."""
+
+    model: str
+    field: str
+    series: list[ModelTrendSeriesOut]

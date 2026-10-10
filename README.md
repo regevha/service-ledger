@@ -7,7 +7,7 @@ cytometers, to start): technicians upload a scanned service report, Claude
 classifies which instrument and report type it is and extracts the
 structured fields, and the technician reviews/corrects the result before
 finalizing it. Reports become searchable, exportable, and chartable
-(per-instrument trend lines, fleet-wide analytics) once finalized.
+(per-instrument trend lines, fleet-wide analytics, side-by-side comparison of units of the same model) once finalized.
 
 This repo is a real, running implementation of the design in
 [`docs/service-ledger-spec.html`](docs/service-ledger-spec.html) (SL-ARCH-001,
