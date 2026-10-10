@@ -1,0 +1,140 @@
+{
+ "label": "aria-repair-2025",
+ "tag": "run2",
+ "repeat": 1,
+ "file": "900c1d4a-BD_EU_Work_Order_Service_Report_Label_v3.pdf",
+ "sha256": "23dca4caa316d58a79625eaccd7acad95b00b6c6405a27a3ad2754e85cbd9533",
+ "started": "2026-10-10T13:31:38.632163Z",
+ "report_id": "e1f946c1-77b9-4d83-99a2-fab2d287af92",
+ "upload": {
+  "status": 201,
+  "body": {
+   "id": "a2222365-420d-4327-aa80-da1da896d99b",
+   "report_id": "e1f946c1-77b9-4d83-99a2-fab2d287af92",
+   "file_path": "storage/attachments/e1f946c1-77b9-4d83-99a2-fab2d287af92/ac36db46-2e0e-4c76-a578-e1d039483ad5_900c1d4a-BD_EU_Work_Order_Service_Report_Label_v3.pdf",
+   "file_type": "application/pdf",
+   "page_count": 1,
+   "duplicate_report_ids": [
+    "10b70081-2e75-4bfe-884a-bc5a31aca61d",
+    "6242c5ea-db0c-4fb8-8a1b-acfd3595b26f"
+   ]
+  }
+ },
+ "classify_job": {
+  "id": "a1b6f21e-6bbf-4350-ade6-7b0c4cbb862a",
+  "attachment_id": "a2222365-420d-4327-aa80-da1da896d99b",
+  "kind": "classify",
+  "status": "succeeded",
+  "classification": {
+   "reader": "model",
+   "instrument": {
+    "value": "FACSAria III",
+    "confidence": 0.97
+   },
+   "report_type": {
+    "value": "repair",
+    "confidence": 0.95
+   },
+   "serial_match": "matched",
+   "instrument_serial": {
+    "value": "P648282B3003",
+    "confidence": 0.95
+   },
+   "work_order_number": "WO-04215114",
+   "report_type_source": "task_code",
+   "duplicate_report_ids": [
+    "10b70081-2e75-4bfe-884a-bc5a31aca61d",
+    "6242c5ea-db0c-4fb8-8a1b-acfd3595b26f"
+   ],
+   "resolved_template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+   "resolved_instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+   "suggested_instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039"
+  },
+  "field_confidences": null,
+  "error_message": null,
+  "started_at": "2026-10-10T13:31:38.719701Z",
+  "completed_at": "2026-10-10T13:31:41.804508Z"
+ },
+ "report_after_classify": {
+  "id": "e1f946c1-77b9-4d83-99a2-fab2d287af92",
+  "instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "classified",
+  "extracted_fields": {},
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": null,
+  "created_at": "2026-10-10T13:31:38.637531Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "a2222365-420d-4327-aa80-da1da896d99b",
+    "report_id": "e1f946c1-77b9-4d83-99a2-fab2d287af92",
+    "file_path": "storage/attachments/e1f946c1-77b9-4d83-99a2-fab2d287af92/ac36db46-2e0e-4c76-a578-e1d039483ad5_900c1d4a-BD_EU_Work_Order_Service_Report_Label_v3.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ },
+ "extract_job": {
+  "id": "04dcea30-41cc-4f29-8892-6e0989d7826b",
+  "attachment_id": "a2222365-420d-4327-aa80-da1da896d99b",
+  "kind": "extract",
+  "status": "succeeded",
+  "classification": null,
+  "field_confidences": {
+   "root_cause": 0.85,
+   "labor_hours": 0.8,
+   "report_date": 0.85,
+   "retest_result": 0.85,
+   "fault_category": 0.8,
+   "work_performed": 0.92,
+   "fault_description": 0.9,
+   "components_replaced": 0.85
+  },
+  "error_message": null,
+  "started_at": "2026-10-10T13:31:42.747234Z",
+  "completed_at": "2026-10-10T13:31:53.612794Z"
+ },
+ "report_after_extract": {
+  "id": "e1f946c1-77b9-4d83-99a2-fab2d287af92",
+  "instrument_id": "14c92c32-4060-40c6-889c-e9b1754cc039",
+  "template_id": "6fafbde6-7b9f-404a-924e-138112653159",
+  "status": "extracted",
+  "extracted_fields": {
+   "root_cause": "Stream is moving down and and fsc ssc position shifts",
+   "labor_hours": 31.75,
+   "retest_result": "pass",
+   "fault_category": "fluidics",
+   "work_performed": "November 10: It took a while to identify the issue. The stream position suddenly moved up and down. Replaced the ball seal and checked that there is no air leakage from the sample chamber. Replaced the sheath regulator. After replacing the sheath regulator, no stream instability was noticed. Calibrated the sample and sheath regulators for 3psi and 75psi, then started the sample flow rate adjustment but ran out of time.\n\nNovember 11: Calibrated the sample flow rate, then had to recalibrate all optics. Cleaned the flow cell internally and externally and started aligning the optics. Ran a CST on nozzle 100 - violet laser CV was 5.6 (passed but not ideal). Noticed event rate with the 100 \u00b5m nozzle was high (~800 events), suspected this caused the high violet CV, and began recalibrating flow rate. Flow rate calibration was unstable and kept fluctuating.\n\nNovember 12: Found the sample regulator was not operating properly - event rate jumped to ~2000 switching from nozzle 70 to 100, and dropped to ~350 after lowering the offset by 1. Reinstalled the original sheath regulator and replaced the sample regulator. Redid sample and sheath regulator calibration for 3psi and 75psi. Event rate fluctuated \u00b1100 but sample rate calibration was completed. Stream was intermittently unstable again, and sometimes a loaded tube showed 0 events, requiring stopping and restarting the stream. Recalibrated optics after the flow rate calibration - all lasers aligned successfully except violet, which could not be calibrated below CV 6.5-6.8 despite adjusting the fiber manipulator position and rotating the fiber in the kinematic mount. Suspected the fluidics issue was affecting the violet laser.\n\nNovember 18: Inflated the sheath tank and checked for pressure loss - found it was losing 2.4psi in 5 minutes. Replaced the rubber o-rings in the tank and confirmed no further air leakage. Rechecked the fluidics - this resolved both the fluidics issue and the violet laser issue. Performed baseline and performance tests for 100, 85, and 130 nozzles. System confirmed working properly under BD specifications and ready for use.",
+   "fault_description": "Stream is unstable with all nozzles - ARIA III S/N P648282B3003. Stream is unstable with all nozzles",
+   "components_replaced": [
+    {
+     "qty": 1,
+     "part_name": "Sample/Sheath Regulator Assembly V-Pos",
+     "part_number": "644651"
+    }
+   ]
+  },
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": "2025-11-18",
+  "created_at": "2026-10-10T13:31:38.637531Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "a2222365-420d-4327-aa80-da1da896d99b",
+    "report_id": "e1f946c1-77b9-4d83-99a2-fab2d287af92",
+    "file_path": "storage/attachments/e1f946c1-77b9-4d83-99a2-fab2d287af92/ac36db46-2e0e-4c76-a578-e1d039483ad5_900c1d4a-BD_EU_Work_Order_Service_Report_Label_v3.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ }
+}

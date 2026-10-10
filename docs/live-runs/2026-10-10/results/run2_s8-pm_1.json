@@ -1,0 +1,161 @@
+{
+ "label": "s8-pm",
+ "tag": "run2",
+ "repeat": 1,
+ "file": "483343ea-BD_EU_Work_Order_Service_Report_Label_v3_S8_10-2-26.pdf",
+ "sha256": "4f97a7db6b4a432cbc0a955149b5546a187eb1de45aa38126c9f3cc732ee51fb",
+ "started": "2026-10-10T13:31:01.990892Z",
+ "report_id": "e75cf5e7-28ef-418e-9270-63451de18e61",
+ "upload": {
+  "status": 201,
+  "body": {
+   "id": "fec9b318-67fa-48b0-b58c-0a152741d4bd",
+   "report_id": "e75cf5e7-28ef-418e-9270-63451de18e61",
+   "file_path": "storage/attachments/e75cf5e7-28ef-418e-9270-63451de18e61/e831213e-bdc4-4c6c-a008-95259e23e711_483343ea-BD_EU_Work_Order_Service_Report_Label_v3_S8_10-2-26.pdf",
+   "file_type": "application/pdf",
+   "page_count": 1,
+   "duplicate_report_ids": [
+    "8d48e2b2-994b-4598-97da-0f9982c7c220"
+   ]
+  }
+ },
+ "classify_job": {
+  "id": "e82ceddb-da62-4c44-ac86-335af89ef9ca",
+  "attachment_id": "fec9b318-67fa-48b0-b58c-0a152741d4bd",
+  "kind": "classify",
+  "status": "succeeded",
+  "classification": {
+   "reader": "model",
+   "instrument": {
+    "value": "FACSDiscover S8",
+    "confidence": 0.97
+   },
+   "report_type": {
+    "value": "preventive_maintenance",
+    "confidence": 0.95
+   },
+   "serial_match": "matched",
+   "instrument_serial": {
+    "value": "MP6651580000057",
+    "confidence": 0.95
+   },
+   "work_order_number": "WO-04271950",
+   "report_type_source": "task_code",
+   "duplicate_report_ids": [
+    "8d48e2b2-994b-4598-97da-0f9982c7c220"
+   ],
+   "resolved_template_id": "9e8f622e-854d-454e-9398-8172d4d9a3b2",
+   "resolved_instrument_id": "c34c7b51-e816-40c8-844b-f616281a3241",
+   "suggested_instrument_id": "c34c7b51-e816-40c8-844b-f616281a3241"
+  },
+  "field_confidences": null,
+  "error_message": null,
+  "started_at": "2026-10-10T13:31:02.042445Z",
+  "completed_at": "2026-10-10T13:31:04.669503Z"
+ },
+ "report_after_classify": {
+  "id": "e75cf5e7-28ef-418e-9270-63451de18e61",
+  "instrument_id": "c34c7b51-e816-40c8-844b-f616281a3241",
+  "template_id": "9e8f622e-854d-454e-9398-8172d4d9a3b2",
+  "status": "classified",
+  "extracted_fields": {},
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": null,
+  "created_at": "2026-10-10T13:31:01.995577Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "fec9b318-67fa-48b0-b58c-0a152741d4bd",
+    "report_id": "e75cf5e7-28ef-418e-9270-63451de18e61",
+    "file_path": "storage/attachments/e75cf5e7-28ef-418e-9270-63451de18e61/e831213e-bdc4-4c6c-a008-95259e23e711_483343ea-BD_EU_Work_Order_Service_Report_Label_v3_S8_10-2-26.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ },
+ "extract_job": {
+  "id": "48e8dbb0-17a6-4c4e-84dd-ed294737dc80",
+  "attachment_id": "fec9b318-67fa-48b0-b58c-0a152741d4bd",
+  "kind": "extract",
+  "status": "succeeded",
+  "classification": null,
+  "field_confidences": {
+   "labor_hours": 0.9,
+   "report_date": 0.9,
+   "work_performed": 0.9,
+   "calibrated_tools": 0.9,
+   "components_replaced": 0.85,
+   "service_description": 0.7,
+   "verification_result": 0.8
+  },
+  "error_message": null,
+  "started_at": "2026-10-10T13:31:06.069920Z",
+  "completed_at": "2026-10-10T13:31:12.204156Z"
+ },
+ "report_after_extract": {
+  "id": "e75cf5e7-28ef-418e-9270-63451de18e61",
+  "instrument_id": "c34c7b51-e816-40c8-844b-f616281a3241",
+  "template_id": "9e8f622e-854d-454e-9398-8172d4d9a3b2",
+  "status": "extracted",
+  "extracted_fields": {
+   "labor_hours": 6.25,
+   "work_performed": "Replaced all parts from the kit. FlowCell regel was not done because new FlowCell was installed 3 months ago. Did optical cleaning and alignment. CS&T passed. Image calibration passed. Accudrop test passed. System is working properly under BD specifications and ready for use.",
+   "calibrated_tools": [
+    {
+     "tool_id": "T-000030",
+     "tool_name": "Ophir Laser Power Meter Display - 958864",
+     "last_calibration_date": "2025-11-17",
+     "next_calibration_date": "2026-11-17"
+    },
+    {
+     "tool_id": "T-4240-003-01",
+     "tool_name": "Pressure Meter - 41645/4-24",
+     "last_calibration_date": "2025-03-24",
+     "next_calibration_date": "2026-03-24"
+    },
+    {
+     "tool_id": "T-000024",
+     "tool_name": "Digital Multimeter Generic (Any brand) - 48910623",
+     "last_calibration_date": "2025-02-03",
+     "next_calibration_date": "2027-02-03"
+    },
+    {
+     "tool_id": "T-000031",
+     "tool_name": "Ophir Laser Power Meter Sensor Head - 959757",
+     "last_calibration_date": "2025-11-17",
+     "next_calibration_date": "2026-11-17"
+    }
+   ],
+   "components_replaced": [
+    {
+     "qty": 1,
+     "part_name": "S8 PM kit",
+     "part_number": "667009"
+    }
+   ],
+   "service_description": "11 Month Recurring",
+   "verification_result": "pass"
+  },
+  "technician_name": null,
+  "service_actions": null,
+  "parts_replaced": null,
+  "next_service_due": null,
+  "report_date": "2026-02-10",
+  "created_at": "2026-10-10T13:31:01.995577Z",
+  "finalized_at": null,
+  "attachments": [
+   {
+    "id": "fec9b318-67fa-48b0-b58c-0a152741d4bd",
+    "report_id": "e75cf5e7-28ef-418e-9270-63451de18e61",
+    "file_path": "storage/attachments/e75cf5e7-28ef-418e-9270-63451de18e61/e831213e-bdc4-4c6c-a008-95259e23e711_483343ea-BD_EU_Work_Order_Service_Report_Label_v3_S8_10-2-26.pdf",
+    "file_type": "application/pdf",
+    "page_count": 1,
+    "duplicate_report_ids": []
+   }
+  ]
+ }
+}
