@@ -46,6 +46,14 @@ def list_instruments(db: Session = Depends(get_db)):
     return db.query(models.Instrument).order_by(models.Instrument.name).all()
 
 
+@router.get("/instruments/{instrument_id}", response_model=schemas.InstrumentOut)
+def get_instrument(instrument_id: uuid.UUID, db: Session = Depends(get_db)):
+    instrument = db.get(models.Instrument, instrument_id)
+    if not instrument:
+        raise HTTPException(404, "Instrument not found")
+    return instrument
+
+
 @router.patch("/instruments/{instrument_id}", response_model=schemas.InstrumentOut)
 def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdate, db: Session = Depends(get_db)):
     """Every field but `instrument_type` is editable — the create/edit UI

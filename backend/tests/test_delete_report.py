@@ -93,7 +93,7 @@ def test_deleting_a_report_does_not_touch_its_instrument(client, run_worker, mon
 
     assert client.delete(f"/reports/{report['id']}").status_code == 204
 
-    assert instrument_id in [i["id"] for i in client.get("/instruments").json()]
+    assert client.get(f"/instruments/{instrument_id}").status_code == 200
     assert client.get("/reports", params={"instrument_id": instrument_id}).json() == []
 
 

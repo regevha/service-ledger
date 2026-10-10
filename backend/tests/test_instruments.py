@@ -287,3 +287,22 @@ def test_update_instrument_allows_resubmitting_its_own_current_serial_number(cli
     resp = client.patch(f"/instruments/{created['id']}", json={"serial_number": "PATCH-0006", "location": "Bench 3"})
     assert resp.status_code == 200
     assert resp.json()["location"] == "Bench 3"
+
+
+def test_get_instrument_returns_one_instrument(client):
+    listed = client.get("/instruments").json()[0]
+
+    response = client.get(f"/instruments/{listed['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == listed
+
+
+def test_get_unknown_instrument_returns_404(client):
+    import uuid
+
+    assert client.get(f"/instruments/{uuid.uuid4()}").status_code == 404
+
+
+def test_get_instrument_rejects_a_malformed_id(client):
+    assert client.get("/instruments/not-a-uuid").status_code == 422
