@@ -95,7 +95,12 @@ class Instrument(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    reports: Mapped[list["Report"]] = relationship(back_populates="instrument")
+    # passive_deletes=True for the same reason as ReportTemplate.reports: without
+    # it the ORM would null out each Report's instrument_id as part of deleting
+    # an Instrument, silently defeating routers/instruments.py's in-use check
+    # under a race. Left alone, the FK (no ondelete, so RESTRICT) rejects the
+    # delete at commit time, which delete_instrument turns into a clean 409.
+    reports: Mapped[list["Report"]] = relationship(back_populates="instrument", passive_deletes=True)
 
 
 class ReportTemplate(Base):

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ApiError, createInstrument, updateInstrument, type Instrument, type InstrumentStatus } from '../api';
+import { ApiError, createInstrument, deleteInstrument, listReports, updateInstrument, type Instrument, type InstrumentStatus } from '../api';
 import { INSTRUMENT_STATUS_LABEL } from '../labels';
 
 /**
@@ -166,6 +166,46 @@ export function InstrumentManagerScreen({
   onRefresh: () => void;
 }) {
   const [mode, setMode] = useState<ManagerMode>({ kind: 'list' });
+  // The instrument awaiting a delete confirmation, with how many reports go
+  // with it (looked up when Delete is clicked, so the warning is specific).
+  const [pendingDelete, setPendingDelete] = useState<{ instrument: Instrument; total: number; finalized: number } | null>(
+    null
+  );
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Deleting an instrument deletes every report on it too (drafts and
+  // finalized, whatever the instrument's status), so count them first.
+  async function askToDelete(instrument: Instrument) {
+    setDeleteError(null);
+    try {
+      const reports = await listReports({ instrument_id: instrument.id });
+      setPendingDelete({
+        instrument,
+        total: reports.length,
+        finalized: reports.filter((r) => r.status === 'finalized').length,
+      });
+    } catch (e) {
+      setDeleteError(e instanceof ApiError ? e.message : 'Could not check this instrument’s reports.');
+    }
+  }
+
+  async function handleDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteInstrument(pendingDelete.instrument.id);
+      setPendingDelete(null);
+      onRefresh();
+    } catch (e) {
+      // e.g. 409 while one of its reports has a scan still being read.
+      setDeleteError(e instanceof ApiError ? e.message : 'Could not delete this instrument.');
+      setPendingDelete(null);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   function handleSaved() {
     setMode({ kind: 'list' });
@@ -191,6 +231,26 @@ export function InstrumentManagerScreen({
       </div>
 
       {error && <div className="banner banner-warn">{error}</div>}
+      {deleteError && <div className="banner banner-warn">{deleteError}</div>}
+      {pendingDelete && (
+        <div className="banner banner-warn" role="alertdialog" aria-label="Confirm delete instrument">
+          <div>
+            Delete {pendingDelete.instrument.name} ({pendingDelete.instrument.serial_number})?{' '}
+            {pendingDelete.total === 0
+              ? 'It has no reports.'
+              : `This also permanently deletes its ${pendingDelete.total} report${pendingDelete.total === 1 ? '' : 's'}${
+                  pendingDelete.finalized > 0 ? ` (${pendingDelete.finalized} finalized)` : ''
+                } and their scans.`}{' '}
+            This cannot be undone.
+          </div>
+          <button type="button" className="btn small" onClick={() => void handleDelete()} disabled={deleting}>
+            Confirm delete
+          </button>{' '}
+          <button type="button" className="btn small" onClick={() => setPendingDelete(null)} disabled={deleting}>
+            Cancel
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="working-panel">
@@ -223,6 +283,9 @@ export function InstrumentManagerScreen({
               <span className="template-row-actions">
                 <button type="button" className="btn small" onClick={() => setMode({ kind: 'edit', instrument: inst })}>
                   Edit
+                </button>
+                <button type="button" className="btn small" onClick={() => void askToDelete(inst)}>
+                  Delete
                 </button>
               </span>
             </div>

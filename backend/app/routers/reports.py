@@ -3,11 +3,8 @@ from __future__ import annotations
 import csv
 import io
 import json
-import logging
-import shutil
 import uuid
 from datetime import date, datetime, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -15,13 +12,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.config import get_settings
 from app.db import get_db
 from app.services.pdf_report import render_report_pdf
+from app.services.report_deletion import count_in_flight_jobs, remove_report_files
 
 router = APIRouter(tags=["reports"])
-settings = get_settings()
-logger = logging.getLogger(__name__)
 
 
 def _filtered_reports_query(
@@ -325,31 +320,6 @@ def finalize_report(report_id: uuid.UUID, db: Session = Depends(get_db)):
     return report
 
 
-_IN_FLIGHT_JOB_STATUSES = (
-    models.ExtractionJobStatus.pending,
-    models.ExtractionJobStatus.classifying,
-    models.ExtractionJobStatus.extracting,
-)
-
-
-def _remove_report_files(report_id: uuid.UUID, file_paths: list[str]) -> None:
-    """Best-effort removal of a deleted report's scans from local disk (§8).
-    Runs after the database commit: the row is already gone, so a file that
-    can't be removed is logged and left behind rather than failing the
-    request. Only touches paths inside the attachment storage root."""
-    root = settings.attachment_storage_path.resolve()
-    for raw in file_paths:
-        path = Path(raw).resolve()
-        if root in path.parents:
-            try:
-                path.unlink(missing_ok=True)
-            except OSError:
-                logger.warning("Could not remove %s for deleted report %s", path, report_id)
-    report_dir = (root / str(report_id)).resolve()
-    if report_dir.parent == root and report_dir.is_dir():
-        shutil.rmtree(report_dir, ignore_errors=True)
-
-
 @router.delete("/reports/{report_id}", status_code=204)
 def delete_report(report_id: uuid.UUID, force: bool = False, db: Session = Depends(get_db)):
     """Permanently delete a report, its attachments, their extraction jobs and
@@ -368,18 +338,8 @@ def delete_report(report_id: uuid.UUID, force: bool = False, db: Session = Depen
         raise HTTPException(
             409, "This report is finalized. Deleting it removes it from the service history; confirm to delete it anyway."
         )
-    attachment_ids = [a.id for a in report.attachments]
-    if attachment_ids:
-        in_flight = (
-            db.query(models.ExtractionJob)
-            .filter(
-                models.ExtractionJob.attachment_id.in_(attachment_ids),
-                models.ExtractionJob.status.in_(_IN_FLIGHT_JOB_STATUSES),
-            )
-            .count()
-        )
-        if in_flight:
-            raise HTTPException(409, "This report's scan is still being read. Try again in a moment.")
+    if count_in_flight_jobs(db, [a.id for a in report.attachments]):
+        raise HTTPException(409, "This report's scan is still being read. Try again in a moment.")
     file_paths = [a.file_path for a in report.attachments]
     db.delete(report)
     try:
@@ -387,4 +347,4 @@ def delete_report(report_id: uuid.UUID, force: bool = False, db: Session = Depen
     except IntegrityError:
         db.rollback()
         raise HTTPException(409, "The report changed while it was being deleted — try again.") from None
-    _remove_report_files(report_id, file_paths)
+    remove_report_files(report_id, file_paths)
