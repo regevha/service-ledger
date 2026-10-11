@@ -12,6 +12,10 @@ again costs two model calls for no new information, and the existing report is
 what the technician wants. See `find_read_copy`. A matching work-order number
 never blocks: a re-scan may be a better copy, and a misread number must not be
 able to stop anyone working.
+
+`find_saved_duplicates` is the third consumer: it runs whenever an already-saved
+report is opened, so a clash that exists in the database (not just one being
+created) is flagged on that report's screen.
 """
 from __future__ import annotations
 
@@ -86,3 +90,47 @@ def find_read_copy(db: Session, content_sha256: str, exclude_report_id: uuid.UUI
         .order_by(Report.created_at.desc())
         .first()
     )
+
+
+def find_saved_duplicates(db: Session, report: Report) -> list[tuple[Report, str, str | None]]:
+    """Other saved reports that probably record the same visit as `report`,
+    for the indicator on an already-saved report (unlike
+    `find_duplicate_report_ids`, which runs while a report is being created).
+    Returns (other report, reason, work-order number) oldest first, where
+    reason is "same_file" or "same_work_order":
+
+    * same_file: one of the other report's scans has exactly the same bytes as
+      one of this report's — the same document, whatever instrument it is on;
+    * same_work_order: the same normalized work-order number on the *same
+      instrument* (both reports must have one). One work order can legitimately
+      cover several instruments, so the same number on a different instrument
+      is not flagged here (intake still warns about it).
+
+    Based on the stored scans' hash and work-order number, so it needs no
+    model call and is cheap enough to run every time a report is opened."""
+    shas = {a.content_sha256 for a in report.attachments if a.content_sha256}
+    orders = {a.work_order_number for a in report.attachments if a.work_order_number}
+    conditions = []
+    if shas:
+        conditions.append(Attachment.content_sha256.in_(shas))
+    if orders and report.instrument_id is not None:
+        conditions.append(
+            (Attachment.work_order_number.in_(orders)) & (Report.instrument_id == report.instrument_id)
+        )
+    if not conditions:
+        return []
+    rows = (
+        db.query(Report, Attachment)
+        .join(Attachment, Attachment.report_id == Report.id)
+        .filter(Report.id != report.id, or_(*conditions))
+        .order_by(Report.created_at, Report.id)
+        .all()
+    )
+    found: dict[uuid.UUID, tuple[Report, str, str | None]] = {}
+    for other, attachment in rows:
+        same_file = attachment.content_sha256 in shas
+        reason = "same_file" if same_file else "same_work_order"
+        previous = found.get(other.id)
+        if previous is None or (reason == "same_file" and previous[1] != "same_file"):
+            found[other.id] = (other, reason, attachment.work_order_number)
+    return list(found.values())

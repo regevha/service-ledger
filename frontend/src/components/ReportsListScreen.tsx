@@ -97,10 +97,12 @@ export function ReportsListScreen({
   if (screen.kind === 'report') {
     return (
       <ReportDetailScreen
+        key={screen.item.id}
         item={screen.item}
         instruments={instruments}
         onBack={() => leaveReport(screen.returnTo)}
         onDeleted={() => leaveReport(screen.returnTo)}
+        onOpenReport={(other) => setScreen({ kind: 'report', item: other, returnTo: screen.returnTo })}
         onViewInstrument={(instrumentId) => leaveReport({ kind: 'instrument', instrumentId })}
         fieldConfidenceThreshold={fieldConfidenceThreshold}
       />
