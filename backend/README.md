@@ -52,7 +52,7 @@ backend/
       classification.py       classify() — live Claude call or stub, by settings.use_live_claude
       extraction.py            extract() — live Claude call or stub, by settings.use_live_claude
       text_reader.py           Reads a PDF's own text layer (model, serial, task code, work order) — no API key
-      duplicates.py            Same file bytes / same work-order number already on file (warn; same bytes as an already-read report is refused)
+      duplicates.py            Same file bytes / same work-order number already on file (warn; same bytes as an already-read report is refused); also feeds GET /reports/{id}/duplicates
       errors.py                ClassificationError/ExtractionError — what the worker catches per-job
       analytics.py             Pure aggregation for GET /analytics/fleet — computed from already-finalized
                                 reports' extracted_fields, no new columns/tables
@@ -221,7 +221,19 @@ flagged: the exact same file bytes as a report that was already read
 calls; the intake screen then offers to open that report and removes the empty
 draft it had created. A report that was never read (draft, classified only,
 failed) does not count, and deleting the existing report lets the file be
-loaded again. To see what it makes of your own files, with no database or
+loaded again.
+
+The flag is also kept on the saved report. `GET /reports/{id}/duplicates`
+lists the *other* saved reports that probably record the same visit — the same
+scan file (on any instrument), or the same normalized work-order number on the
+same instrument — each as a report list item plus `reason`
+(`same_file` | `same_work_order`) and `work_order_number`. It is computed on
+every call, so it follows edits and deletions: delete one copy and the other's
+flag disappears. The same work order on a different instrument, or on a draft
+with no instrument yet, is not flagged. The report detail screen shows it as a
+"Possible duplicate" banner with an "Open that report" button.
+
+To see what it makes of your own files, with no database or
 server:
 
     python -m scripts.read_report scan1.pdf scan2.pdf
