@@ -88,6 +88,9 @@ class Instrument(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     instrument_type: Mapped[str] = mapped_column(String, nullable=False, default="facs")
     model: Mapped[str] = mapped_column(String, nullable=False)
+    # Free text ("BD", "Beckman Coulter"); NULL when not recorded. The fleet is
+    # no longer BD-only, but existing rows predate this column.
+    manufacturer: Mapped[str | None] = mapped_column(String, nullable=True)
     serial_number: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     location: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[InstrumentStatus] = mapped_column(

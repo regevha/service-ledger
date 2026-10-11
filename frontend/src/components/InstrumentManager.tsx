@@ -35,6 +35,7 @@ function InstrumentFormScreen({
 }) {
   const [name, setName] = useState(existing?.name ?? '');
   const [model, setModel] = useState(existing?.model ?? '');
+  const [manufacturer, setManufacturer] = useState(existing?.manufacturer ?? '');
   const [serialNumber, setSerialNumber] = useState(existing?.serial_number ?? '');
   const [location, setLocation] = useState(existing?.location ?? '');
   const [status, setStatus] = useState<InstrumentStatus>(existing?.status ?? 'active');
@@ -50,6 +51,7 @@ function InstrumentFormScreen({
         await updateInstrument(existing.id, {
           name: name.trim(),
           model: model.trim(),
+          manufacturer: manufacturer.trim() || null,
           serial_number: serialNumber.trim(),
           location: trimmedLocation,
           status,
@@ -58,6 +60,7 @@ function InstrumentFormScreen({
         await createInstrument({
           name: name.trim(),
           model: model.trim(),
+          manufacturer: manufacturer.trim() || null,
           serial_number: serialNumber.trim(),
           location: trimmedLocation,
         });
@@ -107,9 +110,22 @@ function InstrumentFormScreen({
 
       <div className="schema-form-row">
         <label className="schema-form-label">
+          Manufacturer
+          <input
+            type="text"
+            className="text-input"
+            placeholder="e.g. BD (optional)"
+            value={manufacturer}
+            onChange={(e) => setManufacturer(e.target.value)}
+          />
+        </label>
+        <label className="schema-form-label">
           Serial number
           <input type="text" className="text-input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} />
         </label>
+      </div>
+
+      <div className="schema-form-row">
         <label className="schema-form-label">
           Location
           <input
@@ -263,6 +279,7 @@ export function InstrumentManagerScreen({
         <div className="template-table">
           <div className="instrument-row template-row-head">
             <span>Name</span>
+            <span>Manufacturer</span>
             <span>Model</span>
             <span>Serial number</span>
             <span>Location</span>
@@ -272,6 +289,7 @@ export function InstrumentManagerScreen({
           {instruments.map((inst) => (
             <div className="instrument-row template-row-body" key={inst.id}>
               <span>{inst.name}</span>
+              <span>{inst.manufacturer ?? '—'}</span>
               <span>{inst.model}</span>
               <span>{inst.serial_number}</span>
               <span>{inst.location ?? '—'}</span>
