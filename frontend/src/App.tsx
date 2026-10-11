@@ -98,7 +98,7 @@ export default function App() {
         {view === 'analytics' ? (
           <AnalyticsScreen />
         ) : view === 'templates' ? (
-          <TemplateManagerScreen />
+          <TemplateManagerScreen knownModels={[...new Set(instruments.map((i) => i.model))].sort()} />
         ) : view === 'instruments' ? (
           <InstrumentManagerScreen
             instruments={instruments}
