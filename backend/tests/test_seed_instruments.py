@@ -62,3 +62,23 @@ def test_a_real_unit_already_added_by_hand_is_not_merged_with_the_demo_row(db_se
 
     serials = sorted(s for (s,) in db_session.query(Instrument.serial_number).filter(Instrument.model == "FACSAria III"))
     assert serials == ["A47291", "P648282B3003"]
+
+
+def test_the_seeded_fleet_is_marked_as_bd(db_session):
+    seed_instruments.seed(db_session)
+    assert {i.manufacturer for i in db_session.query(Instrument).all()} == {"BD"}
+
+
+def test_seeding_fills_a_missing_manufacturer_but_keeps_one_a_person_set(db_session):
+    seed_instruments.seed(db_session)
+    rows = {i.model: i for i in db_session.query(Instrument).all()}
+    rows["LSRFortessa"].manufacturer = None
+    rows["FACSAria III"].manufacturer = "Becton Dickinson"
+    db_session.commit()
+
+    seed_instruments.seed(db_session)
+    db_session.expire_all()
+
+    rows = {i.model: i for i in db_session.query(Instrument).all()}
+    assert rows["LSRFortessa"].manufacturer == "BD"
+    assert rows["FACSAria III"].manufacturer == "Becton Dickinson"

@@ -61,7 +61,7 @@ export function InstrumentDetailScreen({
             <div>
               <div className="section-title">{instrument.name}</div>
               <div className="instrument-meta">
-                {instrument.model} · S/N {instrument.serial_number}
+                {instrument.manufacturer ? `${instrument.manufacturer} ` : ''}{instrument.model} · S/N {instrument.serial_number}
                 {instrument.location ? ` · ${instrument.location}` : ''}
               </div>
             </div>
