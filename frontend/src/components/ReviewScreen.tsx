@@ -27,6 +27,7 @@ export function ReviewScreen({
   title,
   originalScanUrl,
   pdfUrl,
+  readOnly = false,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
@@ -63,6 +64,9 @@ export function ReviewScreen({
   // originalScanUrl, this is never undefined-because-still-uploading, since
   // the review screen itself only renders once `template` exists.
   pdfUrl?: string;
+  // A viewer may read a report but not change it: the fields are disabled and
+  // there is nothing to save.
+  readOnly?: boolean;
 }) {
   const isFlagged = (name: string) => {
     const confidence = fieldConfidences[name];
@@ -101,6 +105,7 @@ export function ReviewScreen({
         </div>
       )}
 
+      <fieldset className="plain-fieldset" disabled={readOnly}>
       <div className="field-list">
         <div className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}>
           <div className="field-top">
@@ -150,17 +155,20 @@ export function ReviewScreen({
           );
         })}
       </div>
+      </fieldset>
 
-      <div className="cta-row">
-        <button className="btn" onClick={onSave}>
-          Save corrections
-        </button>
-        {onFinalize && (
-          <button className="btn primary" onClick={onFinalize}>
-            Save &amp; finalize report
+      {!readOnly && (
+        <div className="cta-row">
+          <button className="btn" onClick={onSave}>
+            Save corrections
           </button>
-        )}
-      </div>
+          {onFinalize && (
+            <button className="btn primary" onClick={onFinalize}>
+              Save &amp; finalize report
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

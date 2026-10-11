@@ -13,6 +13,7 @@ import {
   type ReportListItem,
   type ReportTemplate,
 } from '../api';
+import { useCan } from '../auth';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { ReviewScreen } from './ReviewScreen';
@@ -41,6 +42,9 @@ export function ReportDetailScreen({
   onViewInstrument: (instrumentId: string) => void;
   fieldConfidenceThreshold: number;
 }) {
+  // Deleting is admin-only and editing needs a technician; a viewer just reads.
+  const canDelete = useCan('admin');
+  const canEdit = useCan('technician');
   const [report, setReport] = useState<Report | null>(null);
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [fields, setFields] = useState<Record<string, unknown>>({});
@@ -125,14 +129,14 @@ export function ReportDetailScreen({
             View instrument: {instrument.model} ({instrument.serial_number}) →
           </button>
         )}
-        {report && !confirmingDelete && (
+        {report && canDelete && !confirmingDelete && (
           <button className="btn small" onClick={() => setConfirmingDelete(true)}>
             Delete report
           </button>
         )}
       </div>
 
-      {report && confirmingDelete && (
+      {report && canDelete && confirmingDelete && (
         <div className="banner banner-warn" role="alertdialog" aria-label="Confirm delete">
           <div>
             {report.status === 'finalized'
@@ -174,6 +178,7 @@ export function ReportDetailScreen({
           // is the original this report's fields came from.
           originalScanUrl={report.attachments[0] ? attachmentFileUrl(report.attachments[0].id) : undefined}
           pdfUrl={reportPdfUrl(report.id)}
+          readOnly={!canEdit}
         />
       ) : report ? (
         <div className="empty-hint">

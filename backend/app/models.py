@@ -12,7 +12,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Integer, String, func, text
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Index, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -265,3 +265,40 @@ def report_chronological_order() -> tuple:
     keeps undated reports in a stable, roughly chronological place among
     dated ones; created_at breaks ties."""
     return (func.coalesce(Report.report_date, func.date(Report.created_at)), Report.created_at)
+
+
+class UserRole(str, enum.Enum):
+    """Ordered least to most privileged (app/auth.py ranks them):
+    viewer reads, technician also creates/edits reports, admin also deletes
+    and manages the fleet, templates and users."""
+
+    viewer = "viewer"
+    technician = "technician"
+    admin = "admin"
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    # Stored lower-case and trimmed, so "Dana" and "dana" are one account.
+    username: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
+    # Deactivating keeps the row (and who-is-who) but ends every session.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    # SHA-256 of the cookie's token, never the token itself.
+    token_hash: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    user: Mapped[User] = relationship()

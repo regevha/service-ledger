@@ -47,9 +47,11 @@ export default defineConfig({
   // backend/app/config.py's defaults) take far longer than the stub's
   // near-instant response — the stub suite's 60s default would be too tight.
   timeout: 240_000,
+  globalSetup: './tests/e2e/auth-setup.ts',
 
   use: {
     baseURL: `http://localhost:${FRONTEND_PORT}`,
+    storageState: 'tests/e2e/.auth/admin.json',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     launchOptions: {
@@ -62,7 +64,7 @@ export default defineConfig({
 
   webServer: [
     {
-      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false python3 -m app.testing.reset_db && DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=true ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY}' uvicorn app.main:app --host 0.0.0.0 --port ${LIVE_BACKEND_PORT}"`,
+      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false python3 -m app.testing.reset_db && DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=true INITIAL_ADMIN_USERNAME=e2e-admin INITIAL_ADMIN_PASSWORD=e2e-admin-password ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY}' uvicorn app.main:app --host 0.0.0.0 --port ${LIVE_BACKEND_PORT}"`,
       cwd: '../backend',
       url: `http://localhost:${LIVE_BACKEND_PORT}/health`,
       reuseExistingServer: false,

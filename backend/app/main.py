@@ -1,12 +1,25 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import schemas, seed_instruments, seed_templates
+from app import auth, models, schemas, seed_instruments, seed_templates
 from app.config import get_settings
 from app.db import SessionLocal
-from app.routers import analytics, attachments, instruments, report_templates, reports
+from app.routers import analytics, attachments, auth as auth_router, instruments, report_templates, reports, users
+
+
+def _seed_initial_admin(db) -> None:
+    """An empty users table would lock everyone out of a login-required app,
+    so create the admin named in INITIAL_ADMIN_USERNAME/PASSWORD, once."""
+    settings = get_settings()
+    if not (settings.initial_admin_username and settings.initial_admin_password):
+        return
+    if db.query(models.User).first() is not None:
+        return
+    from app.create_user import upsert_user
+
+    upsert_user(db, settings.initial_admin_username, settings.initial_admin_password, models.UserRole.admin)
 
 
 @asynccontextmanager
@@ -17,6 +30,7 @@ async def lifespan(app: FastAPI):
     with SessionLocal() as db:
         seed_instruments.seed(db)
         seed_templates.seed(db)
+        _seed_initial_admin(db)
     yield
 
 
@@ -25,20 +39,25 @@ app = FastAPI(
     description="Implements the API surface in SL-ARCH-001 §9 — see the architecture spec for the full design rationale.",
     version="0.1.0",
     lifespan=lifespan,
+    # Every request is checked against auth.required_role.
+    dependencies=[Depends(auth.enforce_policy)],
 )
 
-# Single-user dev/eval scope (§1) — the frontend build is a standalone static
-# HTML file that may be opened from file:// or served from a different port,
-# so it needs a permissive dev CORS policy to reach this API at all. Tighten
-# this to a real allowlist before this system has more than one evaluator (§1).
+# The browser app calls this API from another port with the session cookie,
+# which needs explicit origins (never "*") and allow_credentials. Any
+# localhost / 127.0.0.1 port is allowed for development; add real hosts with
+# CORS_ALLOWED_ORIGINS.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[o.strip() for o in get_settings().cors_allowed_origins.split(",") if o.strip()],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(auth_router.router)
+app.include_router(users.router)
 app.include_router(instruments.router)
 app.include_router(report_templates.router)
 app.include_router(reports.router)

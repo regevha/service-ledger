@@ -1119,3 +1119,24 @@ textarea {
   padding: 14px 16px;
   background: var(--surface-2);
 }
+
+.plain-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.masthead-user {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.login-form {
+  max-width: 360px;
+  display: grid;
+  gap: 12px;
+}

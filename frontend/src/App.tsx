@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, getAppConfig, listInstruments, type AppConfig, type Instrument } from './api';
+import { AuthProvider, useAuth, useCan, useUser } from './auth';
 import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { InstrumentManagerScreen } from './components/InstrumentManager';
 import { IntakeFlow } from './components/IntakeFlow';
+import { LoginScreen } from './components/LoginScreen';
 import { ReportsListScreen } from './components/ReportsListScreen';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import './App.css';
@@ -24,7 +26,14 @@ const DEFAULT_APP_CONFIG: AppConfig = {
 // shared across all of them: the instrument list (fetched once here and
 // threaded down, so a create/edit anywhere refreshes it everywhere) and the
 // app-wide confidence-threshold config.
-export default function App() {
+function AppShell() {
+  const { signOut } = useAuth();
+  const user = useUser();
+  // What each role sees: viewers read (Reports, Analytics); technicians also
+  // add reports; admins also manage the fleet and the templates. The backend
+  // enforces the same rules — hiding a tab is only so nobody meets a 403.
+  const canCreateReports = useCan('technician');
+  const canManage = useCan('admin');
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [instrumentsLoading, setInstrumentsLoading] = useState(true);
   const [instrumentsError, setInstrumentsError] = useState<string | null>(null);
@@ -34,7 +43,9 @@ export default function App() {
   // → review → done) — `view` just switches which top-level screen is
   // showing. Switching to 'reports' and back leaves an in-progress intake
   // exactly where it was, since IntakeFlow stays mounted underneath.
-  const [view, setView] = useState<'new' | 'reports' | 'analytics' | 'templates' | 'instruments'>('new');
+  const [view, setView] = useState<'new' | 'reports' | 'analytics' | 'templates' | 'instruments'>(
+    canCreateReports ? 'new' : 'reports',
+  );
   // A report the Reports tab should open as soon as it shows (set when an
   // upload is refused because the file is already on file; cleared once the
   // tab has opened it).
@@ -74,24 +85,38 @@ export default function App() {
       <div className="masthead">
         <span className="mark" /> ServiceLedger
         <span className="masthead-sub">core review loop</span>
+        <span className="masthead-user">
+          <span id="current-user">
+            {user?.username} · {user?.role}
+          </span>
+          <button className="btn small" onClick={() => void signOut()}>
+            Sign out
+          </button>
+        </span>
       </div>
 
       <div className="view-tabs">
-        <button className={`view-tab ${view === 'new' ? 'active' : ''}`} onClick={() => setView('new')}>
-          New report
-        </button>
+        {canCreateReports && (
+          <button className={`view-tab ${view === 'new' ? 'active' : ''}`} onClick={() => setView('new')}>
+            New report
+          </button>
+        )}
         <button className={`view-tab ${view === 'reports' ? 'active' : ''}`} onClick={() => setView('reports')}>
           Reports
         </button>
         <button className={`view-tab ${view === 'analytics' ? 'active' : ''}`} onClick={() => setView('analytics')}>
           Analytics
         </button>
-        <button className={`view-tab ${view === 'templates' ? 'active' : ''}`} onClick={() => setView('templates')}>
-          Templates
-        </button>
-        <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} onClick={() => setView('instruments')}>
-          Instruments
-        </button>
+        {canManage && (
+          <button className={`view-tab ${view === 'templates' ? 'active' : ''}`} onClick={() => setView('templates')}>
+            Templates
+          </button>
+        )}
+        {canManage && (
+          <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} onClick={() => setView('instruments')}>
+            Instruments
+          </button>
+        )}
       </div>
 
       <div className="app-shell">
@@ -128,5 +153,31 @@ export default function App() {
         )}
       </div>
     </div>
+  );
+}
+
+// Nothing but the sign-in screen is shown until the backend says who is
+// signed in; everything else (and its data fetching) mounts only after.
+function Gate() {
+  const { state } = useAuth();
+  if (state.status === 'loading') {
+    return (
+      <div className="wrap">
+        <div className="working-panel">
+          <div className="spinner" />
+          <div>Loading…</div>
+        </div>
+      </div>
+    );
+  }
+  if (state.status === 'signedOut') return <LoginScreen notice={state.notice} />;
+  return <AppShell />;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Gate />
+    </AuthProvider>
   );
 }
