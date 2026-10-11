@@ -767,7 +767,9 @@ textarea {
 }
 .template-row {
   display: grid;
-  grid-template-columns: 1.4fr 1.4fr 0.6fr 0.9fr auto;
+  /* A fixed last column: each row is its own grid, so an "auto" column sized
+     itself per row and the header drifted away from the cells under it. */
+  grid-template-columns: 1.4fr 1.4fr 0.6fr 0.9fr 270px;
   gap: 10px;
   align-items: center;
   padding: 10px 14px;
