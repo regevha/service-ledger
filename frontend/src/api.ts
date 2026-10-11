@@ -484,6 +484,17 @@ export function deleteReport(reportId: string, force = false): Promise<void> {
   return apiFetch(`/reports/${reportId}${force ? '?force=true' : ''}`, { method: 'DELETE' });
 }
 
+// Another saved report that probably records the same visit (GET /reports/{id}/duplicates):
+// the same scan file, or the same work-order number on the same instrument.
+export interface ReportDuplicate extends ReportListItem {
+  reason: 'same_file' | 'same_work_order';
+  work_order_number: string | null;
+}
+
+export function getReportDuplicates(reportId: string): Promise<ReportDuplicate[]> {
+  return apiFetch(`/reports/${reportId}/duplicates`);
+}
+
 export interface ReportFilters {
   instrument_id?: string;
   report_type?: ReportType;

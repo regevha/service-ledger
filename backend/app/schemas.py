@@ -330,6 +330,19 @@ class ReportListItemOut(BaseModel):
     finalized_at: datetime | None
 
 
+class DuplicateReportOut(ReportListItemOut):
+    """One entry of GET /reports/{id}/duplicates: another saved report that
+    probably records the same visit as this one, in the list-item shape so a
+    screen can show and open it without another lookup.
+
+    `reason` is `same_file` (the other report holds a scan with exactly these
+    bytes) or `same_work_order` (a scan carrying the same normalized work-order
+    number, on the same instrument). If both apply, `same_file` is reported."""
+
+    reason: Literal["same_file", "same_work_order"]
+    work_order_number: str | None = None
+
+
 class ReportFieldsUpdate(BaseModel):
     """§9: PATCH /reports/{id}/fields — overwrites in place, no audit log in MVP."""
 
