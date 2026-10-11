@@ -37,6 +37,7 @@ export interface Instrument {
   name: string;
   instrument_type: string;
   model: string;
+  manufacturer: string | null;
   serial_number: string;
   location: string | null;
   status: InstrumentStatus;
@@ -49,6 +50,7 @@ export interface Instrument {
 export interface InstrumentCreatePayload {
   name: string;
   model: string;
+  manufacturer?: string | null;
   serial_number: string;
   location?: string | null;
 }
@@ -56,6 +58,7 @@ export interface InstrumentCreatePayload {
 export interface InstrumentUpdatePayload {
   name?: string;
   model?: string;
+  manufacturer?: string | null;
   serial_number?: string;
   location?: string | null;
   status?: InstrumentStatus;

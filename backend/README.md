@@ -36,7 +36,7 @@ backend/
     seed_trend_demo.py       5 synthetic calibration reports for the FACSAria III, for the trend chart — optional, manual only
     routers/
       instruments.py         POST/GET/PATCH/DELETE /instruments (DELETE also deletes the instrument's reports; PATCH backs the Instruments tab's create/edit UI —
-                              every field but instrument_type is editable), GET /instruments/{id}/trend-fields
+                              every field but instrument_type is editable); `manufacturer` is optional free text (blank = not recorded; the seeded fleet is "BD", filled in on existing rows only where empty); added by migration `f6a2c3d9e014`, GET /instruments/{id}/trend-fields
                               (which numeric fields a given instrument's own finalized reports actually have
                               data for), GET .../trend (number and number[detector]/number[laser] both
                               supported — TrendOut/TrendPointOut)

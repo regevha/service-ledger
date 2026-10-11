@@ -12,16 +12,18 @@ from app.db import SessionLocal
 from app.models import Instrument
 
 INSTRUMENTS = [
-    {"name": "FACSAria III", "model": "FACSAria III", "serial_number": "P648282B3003", "location": "Core Lab, Bench 3"},
+    {"name": "FACSAria III", "model": "FACSAria III", "manufacturer": "BD", "serial_number": "P648282B3003", "location": "Core Lab, Bench 3"},
     {
         "name": "LSRFortessa",
         "model": "LSRFortessa",
+        "manufacturer": "BD",
         "serial_number": "R647794E6092",
         "location": "Core Lab, Bench 1",
     },
     {
         "name": "FACSDiscover S8",
         "model": "FACSDiscover S8",
+        "manufacturer": "BD",
         "serial_number": "MP6651580000057",
         "location": "Core Lab, Bench 5",
     },
@@ -54,6 +56,10 @@ def seed(db: Session) -> list[Instrument]:
     for spec in INSTRUMENTS:
         existing = db.query(Instrument).filter(Instrument.serial_number == spec["serial_number"]).one_or_none()
         if existing:
+            # Units seeded before the manufacturer column existed: fill it in,
+            # but never overwrite one a person has set.
+            if existing.manufacturer is None:
+                existing.manufacturer = spec["manufacturer"]
             created.append(existing)
             continue
         row = Instrument(instrument_type="facs", status="active", **spec)

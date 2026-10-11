@@ -125,6 +125,14 @@ instrument is always created active; status only becomes something to
 change once it already exists, so the create form has no Status field at
 all, only the edit form does.
 
+**Manufacturer** is an optional free-text field (the fleet is no longer
+BD-only): a column in the list, a field on the create/edit form (blank
+clears it), and a prefix on the instrument detail page's header line.
+It is deliberately not added to the model pickers (intake, Reports filter) or
+to the Analytics model comparison: those key on the model name, which already
+identifies a unit, and changing their option text would only churn labels.
+Covered by `instrument-manufacturer.spec.ts`.
+
 ### Trend chart
 
 The real, generalized version of `docs/instrument-timeline-demo.html`'s

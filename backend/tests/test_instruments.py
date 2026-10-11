@@ -306,3 +306,44 @@ def test_get_unknown_instrument_returns_404(client):
 
 def test_get_instrument_rejects_a_malformed_id(client):
     assert client.get("/instruments/not-a-uuid").status_code == 422
+
+
+# ---------- manufacturer ----------
+
+
+def test_manufacturer_is_optional_and_returned(client):
+    plain = client.post("/instruments", json={"name": "No Maker", "model": "M1", "serial_number": "MFR-0001"})
+    assert plain.status_code == 201
+    assert plain.json()["manufacturer"] is None
+
+    made = client.post(
+        "/instruments", json={"name": "Maker", "model": "M2", "serial_number": "MFR-0002", "manufacturer": "  Beckman Coulter "}
+    ).json()
+    assert made["manufacturer"] == "Beckman Coulter"  # trimmed
+    assert client.get(f"/instruments/{made['id']}").json()["manufacturer"] == "Beckman Coulter"
+    listed = {i["serial_number"]: i for i in client.get("/instruments").json()}
+    assert listed["MFR-0002"]["manufacturer"] == "Beckman Coulter"
+
+
+def test_blank_manufacturer_means_not_recorded(client):
+    created = client.post(
+        "/instruments", json={"name": "Blank", "model": "M3", "serial_number": "MFR-0003", "manufacturer": "   "}
+    ).json()
+    assert created["manufacturer"] is None
+
+
+def test_update_manufacturer_sets_changes_and_clears_it(client):
+    created = client.post(
+        "/instruments", json={"name": "Edit Maker", "model": "M4", "serial_number": "MFR-0004", "location": "Bench 9"}
+    ).json()
+
+    set_ = client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek"}).json()
+    assert set_["manufacturer"] == "Cytek"
+    assert set_["location"] == "Bench 9"  # other fields untouched
+
+    # A PATCH that does not mention it leaves it alone…
+    assert client.patch(f"/instruments/{created['id']}", json={"location": "Bench 1"}).json()["manufacturer"] == "Cytek"
+    # …and an explicit null (or blank) clears it.
+    assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": None}).json()["manufacturer"] is None
+    client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek"})
+    assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": " "}).json()["manufacturer"] is None
