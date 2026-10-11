@@ -125,7 +125,8 @@ pytest
 ```
 
 Coverage (settings and the reasons for the three omitted dev scripts are in
-`.coveragerc`; the run fails below the `fail_under` floor, currently 95%):
+`.coveragerc`; the run fails below the `fail_under` floor, currently 95%, and
+CI runs `pytest --cov`, so a coverage drop fails the build):
 
 ```bash
 pytest --cov
