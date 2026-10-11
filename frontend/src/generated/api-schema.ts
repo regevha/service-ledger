@@ -265,6 +265,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/{report_id}/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Report Duplicates
+         * @description Other saved reports that probably record the same visit as this one:
+         *     the same scan (identical bytes), or the same work-order number on the same
+         *     instrument — two reports for one instrument with one work order don't
+         *     make sense. Checked every time, so the indicator on a report's screen
+         *     stays right after reports are added, edited or deleted. Empty list when
+         *     there are none.
+         */
+        get: operations["get_report_duplicates_reports__report_id__duplicates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{report_id}/pdf": {
         parameters: {
             query?: never;
@@ -637,6 +662,47 @@ export interface components {
         Body_upload_attachment_reports__report_id__attachments_post: {
             /** File */
             file: string;
+        };
+        /**
+         * DuplicateReportOut
+         * @description One entry of GET /reports/{id}/duplicates: another saved report that
+         *     probably records the same visit as this one, in the list-item shape so a
+         *     screen can show and open it without another lookup.
+         *
+         *     `reason` is `same_file` (the other report holds a scan with exactly these
+         *     bytes) or `same_work_order` (a scan carrying the same normalized work-order
+         *     number, on the same instrument). If both apply, `same_file` is reported.
+         */
+        DuplicateReportOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            status: components["schemas"]["ReportStatus"];
+            /** Instrument Model */
+            instrument_model: string | null;
+            /** Instrument Serial Number */
+            instrument_serial_number: string | null;
+            report_type: components["schemas"]["ReportType"] | null;
+            /** Technician Name */
+            technician_name: string | null;
+            /** Report Date */
+            report_date: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finalized At */
+            finalized_at: string | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "same_file" | "same_work_order";
+            /** Work Order Number */
+            work_order_number?: string | null;
         };
         /**
          * ExtractionJobKind
@@ -1749,6 +1815,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_duplicates_reports__report_id__duplicates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateReportOut"][];
+                };
             };
             /** @description Validation Error */
             422: {

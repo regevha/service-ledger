@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.db import get_db
+from app.services.duplicates import find_saved_duplicates
 from app.services.pdf_report import render_report_pdf
 from app.services.report_deletion import count_in_flight_jobs, remove_report_files
 
@@ -49,6 +50,21 @@ def _filtered_reports_query(
     if technician:
         query = query.filter(models.Report.technician_name.ilike(f"%{technician}%"))
     return query
+
+
+def _list_item(r: models.Report) -> schemas.ReportListItemOut:
+    """The denormalized list row for one report (see ReportListItemOut)."""
+    return schemas.ReportListItemOut(
+        id=r.id,
+        status=r.status,
+        instrument_model=r.instrument.model if r.instrument else None,
+        instrument_serial_number=r.instrument.serial_number if r.instrument else None,
+        report_type=r.template.report_type if r.template else None,
+        technician_name=r.technician_name,
+        report_date=r.report_date,
+        created_at=r.created_at,
+        finalized_at=r.finalized_at,
+    )
 
 
 @router.post("/reports", response_model=schemas.ReportOut, status_code=201)
@@ -94,20 +110,7 @@ def search_reports(
         technician=technician,
     )
     reports = query.order_by(models.Report.created_at.desc()).all()
-    return [
-        schemas.ReportListItemOut(
-            id=r.id,
-            status=r.status,
-            instrument_model=r.instrument.model if r.instrument else None,
-            instrument_serial_number=r.instrument.serial_number if r.instrument else None,
-            report_type=r.template.report_type if r.template else None,
-            technician_name=r.technician_name,
-            report_date=r.report_date,
-            created_at=r.created_at,
-            finalized_at=r.finalized_at,
-        )
-        for r in reports
-    ]
+    return [_list_item(r) for r in reports]
 
 
 @router.get("/reports/export")
@@ -190,6 +193,27 @@ def get_report(report_id: uuid.UUID, db: Session = Depends(get_db)):
     if not report:
         raise HTTPException(404, "Report not found")
     return report
+
+
+@router.get("/reports/{report_id}/duplicates", response_model=list[schemas.DuplicateReportOut])
+def get_report_duplicates(report_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Other saved reports that probably record the same visit as this one:
+    the same scan (identical bytes), or the same work-order number on the same
+    instrument — two reports for one instrument with one work order don't
+    make sense. Checked every time, so the indicator on a report's screen
+    stays right after reports are added, edited or deleted. Empty list when
+    there are none."""
+    report = db.get(models.Report, report_id)
+    if not report:
+        raise HTTPException(404, "Report not found")
+    return [
+        schemas.DuplicateReportOut(
+            **_list_item(other).model_dump(),
+            reason=reason,
+            work_order_number=work_order,
+        )
+        for other, reason, work_order in find_saved_duplicates(db, report)
+    ]
 
 
 @router.get("/reports/{report_id}/pdf")
