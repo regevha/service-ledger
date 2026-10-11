@@ -12,7 +12,7 @@ import uuid
 from typing import Literal
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.models import ExtractionJobKind, ExtractionJobStatus, InstrumentStatus, ReportStatus, ReportType
 
@@ -42,8 +42,15 @@ class InstrumentCreate(BaseModel):
     name: str
     instrument_type: str = "facs"
     model: str
+    manufacturer: str | None = None
     serial_number: str
     location: str | None = None
+
+    @field_validator("manufacturer")
+    @classmethod
+    def _blank_manufacturer_is_none(cls, value: str | None) -> str | None:
+        """Free text, trimmed; a blank value means "not recorded"."""
+        return (value.strip() or None) if isinstance(value, str) else value
 
 
 class InstrumentUpdate(BaseModel):
@@ -57,9 +64,16 @@ class InstrumentUpdate(BaseModel):
 
     name: str | None = None
     model: str | None = None
+    manufacturer: str | None = None
     serial_number: str | None = None
     location: str | None = None
     status: InstrumentStatus | None = None
+
+    @field_validator("manufacturer")
+    @classmethod
+    def _blank_manufacturer_is_none(cls, value: str | None) -> str | None:
+        """Free text, trimmed; a blank value means "not recorded"."""
+        return (value.strip() or None) if isinstance(value, str) else value
 
 
 class InstrumentOut(BaseModel):
@@ -69,6 +83,7 @@ class InstrumentOut(BaseModel):
     name: str
     instrument_type: str
     model: str
+    manufacturer: str | None
     serial_number: str
     location: str | None
     status: InstrumentStatus

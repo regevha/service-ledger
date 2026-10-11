@@ -798,7 +798,7 @@ textarea {
 
 .instrument-row {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr 1fr auto auto;
+  grid-template-columns: 1.3fr 0.8fr 1fr 1fr 1fr auto auto;
   gap: 10px;
   align-items: center;
   padding: 10px 14px;
