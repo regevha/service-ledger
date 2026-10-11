@@ -409,7 +409,11 @@ def _stub_classify(
 def classify(db: Session, attachment: Attachment) -> ClassificationResult:
     instruments = db.query(Instrument).order_by(Instrument.serial_number).all()
     if not instruments:
-        raise RuntimeError("No instruments registered — seed the instrument fleet before classifying (see app/seed_instruments.py).")
+        # A ClassificationError, not a RuntimeError: the worker records it as a
+        # failed job with this message, which the intake screen shows. A bare
+        # RuntimeError surfaced as "Worker crashed processing this job". Easy to
+        # reach now that an instrument (and every report on it) can be deleted.
+        raise ClassificationError("No instruments registered — add one on the Instruments tab, then try again.")
 
     # DocumentRead(*...) so a plain (instrument, type, serial) triple — what
     # these two functions returned before — is still accepted.
