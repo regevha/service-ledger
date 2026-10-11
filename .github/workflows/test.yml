@@ -60,10 +60,14 @@ jobs:
           DATABASE_URL: postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger
         run: alembic upgrade head
 
-      - name: Run pytest
+      - name: Run pytest with coverage
         # tests/conftest.py defaults DATABASE_URL to service_ledger_test itself
         # and forces USE_LIVE_CLAUDE=false, so no env/secrets are needed here.
-        run: pytest -q
+        # --cov reads backend/.coveragerc, whose fail_under floor (95%, branch
+        # coverage included) makes this step fail when coverage drops — raise
+        # the floor there when coverage improves. Missing lines are printed in
+        # the log.
+        run: pytest -q --cov
 
   frontend:
     name: Frontend (Playwright e2e)
@@ -124,9 +128,14 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright e2e suite
+      - name: Run Playwright e2e suite with coverage
+        # test:e2e:coverage runs the same suite against an Istanbul-instrumented
+        # build and ends with `nyc report --check-coverage`, so this step fails
+        # when line coverage drops below 88% or branch coverage below 70% (the
+        # thresholds live in frontend/package.json — raise them as coverage
+        # improves). The table is printed in the log.
         working-directory: frontend
-        run: npm run test:e2e
+        run: npm run test:e2e:coverage
 
       - name: Upload traces/screenshots on failure
         # playwright.config.ts only configures the 'list' reporter (no HTML

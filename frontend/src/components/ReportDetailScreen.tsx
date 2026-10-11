@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ApiError,
   attachmentFileUrl,
   deleteReport,
   finalizeReport,
   getReport,
+  getReportDuplicates,
   getReportTemplate,
   reportPdfUrl,
   updateReportFields,
   type Instrument,
   type Report,
+  type ReportDuplicate,
   type ReportListItem,
   type ReportTemplate,
 } from '../api';
@@ -17,6 +19,13 @@ import { useCan } from '../auth';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { ReviewScreen } from './ReviewScreen';
+
+function describeDuplicate(d: ReportDuplicate): string {
+  const article = /^[aeiou]/i.test(d.status) ? 'an' : 'a';
+  const type = d.report_type ? `${REPORT_TYPE_LABEL[d.report_type].toLowerCase()} ` : '';
+  const who = d.technician_name ? ` by ${d.technician_name}` : '';
+  return `${article} ${d.status} ${type}report${who} from ${d.report_date ?? d.created_at.slice(0, 10)}`;
+}
 
 /**
  * One already-saved report, opened from ReportsListScreen.tsx's table (or
@@ -31,6 +40,7 @@ export function ReportDetailScreen({
   instruments,
   onBack,
   onDeleted,
+  onOpenReport,
   onViewInstrument,
   fieldConfidenceThreshold,
 }: {
@@ -39,6 +49,8 @@ export function ReportDetailScreen({
   onBack: () => void;
   /** Called after the report has been deleted, instead of onBack, so the caller can refresh its list. */
   onDeleted: () => void;
+  /** Open another report (the duplicate banner's "Open" button). */
+  onOpenReport?: (item: ReportListItem) => void;
   onViewInstrument: (instrumentId: string) => void;
   fieldConfidenceThreshold: number;
 }) {
@@ -51,6 +63,24 @@ export function ReportDetailScreen({
   const [reportDate, setReportDate] = useState<string | null>(null);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Other saved reports that probably record the same visit as this one.
+  // Advisory only: if the check fails the screen simply shows no banner.
+  const [duplicates, setDuplicates] = useState<ReportDuplicate[]>([]);
+  const [duplicatesNonce, setDuplicatesNonce] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    getReportDuplicates(item.id)
+      .then((found) => {
+        if (!cancelled) setDuplicates(found);
+      })
+      .catch(() => {
+        if (!cancelled) setDuplicates([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [item.id, duplicatesNonce]);
 
   // `setError` is reused below by handleSave — a failure saving corrections
   // lands in this same banner rather than a second, separate error state.
@@ -91,6 +121,7 @@ export function ReportDetailScreen({
       const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
       const final = finalize ? await finalizeReport(report.id) : updated;
       setReport(final);
+      setDuplicatesNonce((n) => n + 1); // a save can change what matches
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Saving failed unexpectedly.');
     } finally {
@@ -150,6 +181,31 @@ export function ReportDetailScreen({
           <button className="btn small" onClick={() => setConfirmingDelete(false)}>
             Cancel
           </button>
+        </div>
+      )}
+
+      {duplicates.length > 0 && !busyLabel && (
+        <div className="banner banner-warn" id="saved-duplicate-notice">
+          <div>
+            Possible duplicate — {duplicates.length === 1 ? 'another report seems' : `${duplicates.length} other reports seem`} to
+            record the same visit as this one. Two reports for one work order usually mean the visit was loaded twice:
+            compare them, keep the better record and delete the other.
+          </div>
+          <ul className="duplicate-list">
+            {duplicates.map((d) => (
+              <li key={d.id}>
+                {describeDuplicate(d)} — {d.reason === 'same_file' ? 'the same scan file' : `same work order${d.work_order_number ? ` (${d.work_order_number})` : ''} on this instrument`}
+                {onOpenReport && (
+                  <>
+                    {' '}
+                    <button type="button" className="btn small" onClick={() => onOpenReport(d)}>
+                      Open that report
+                    </button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

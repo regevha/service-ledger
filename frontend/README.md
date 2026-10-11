@@ -84,7 +84,9 @@ that a duplicate-serial-number conflict surfaces as a real error banner),
 serial-number matching when several fleet units share a model (classification
 resolving to the one whose serial the document actually names, see
 `serial-matching.spec.ts`), the extracted service date shown on review and
-correctable before finalize (`service-date.spec.ts`), and the app's error
+correctable before finalize (`service-date.spec.ts`), the persistent duplicate banner on a saved report (same work order on
+the same instrument; not on another unit — `saved-duplicates.spec.ts`, whose
+test PDFs come from `text-pdf.ts` so the backend reads a real text layer), and the app's error
 states (an unreachable backend, a failed classification call).
 
 ### Instrument detail page
@@ -245,5 +247,5 @@ with Istanbul (`vite-plugin-istanbul`, switched on by `COVERAGE=1` in
 `test` every spec imports — saves each page's `window.__coverage__` after each
 test, and `nyc report` merges them (settings in `.nycrc.json`: every file under
 `src/` counts, generated types and `main.tsx` do not). The run fails below 88%
-lines or 70% branches; raise those numbers in `package.json` when coverage
-improves. This measures what the browser specs reach; there are no unit tests.
+lines or 70% branches, and CI runs this command, so a coverage drop fails the
+build; raise those numbers in `package.json` when coverage improves. This measures what the browser specs reach; there are no unit tests.

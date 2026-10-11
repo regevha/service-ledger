@@ -82,7 +82,10 @@ cd frontend && npm run test:e2e
 
 Both suites also run in CI (`.github/workflows/test.yml`) against a fresh
 `postgres:16` service container on every push to `main` and every pull
-request — see the badge at the top of this file.
+request — see the badge at the top of this file. CI runs them with coverage
+(`pytest --cov`, `npm run test:e2e:coverage`) and **fails when coverage drops**:
+backend below 95% (`backend/.coveragerc`), frontend below 88% lines or 70%
+branches (`frontend/package.json`). Raise those floors when coverage improves.
 
 An opt-in live-Claude smoke test (`frontend/tests/e2e-live/`) and a
 CLI-driven demo script (`docs/service-ledger-demo-script.md`) are also
