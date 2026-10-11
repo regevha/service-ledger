@@ -78,8 +78,9 @@ def _fail_job(db: Session, job: models.ExtractionJob, message: str) -> None:
 def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
     attachment = db.get(models.Attachment, job.attachment_id)
     if attachment is None:
-        # The attachment/report was deleted out from under a queued job —
-        # not a real code path today (no delete endpoint exists, §10), but
+        # The attachment/report was deleted out from under a queued job
+        # (DELETE /reports/{id} and /instruments/{id} refuse while a job is in
+        # flight, but a delete can still land between claim and here) —
         # cheaper to guard than to let the worker crash on a None.
         job.status = models.ExtractionJobStatus.failed
         job.error_message = "Attachment no longer exists."
