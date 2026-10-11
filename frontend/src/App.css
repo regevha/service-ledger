@@ -767,7 +767,7 @@ textarea {
 }
 .template-row {
   display: grid;
-  grid-template-columns: 1.4fr 1.4fr 0.7fr auto;
+  grid-template-columns: 1.4fr 1.4fr 0.6fr 0.9fr auto;
   gap: 10px;
   align-items: center;
   padding: 10px 14px;
@@ -1125,4 +1125,9 @@ textarea {
   border-radius: 10px;
   padding: 14px 16px;
   background: var(--surface-2);
+}
+
+.template-problems {
+  margin: 12px 0 0;
+  padding-left: 30px;
 }
