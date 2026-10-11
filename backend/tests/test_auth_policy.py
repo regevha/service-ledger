@@ -45,6 +45,7 @@ EXPECTED = {
     ("GET", "/reports/export"): V,
     ("GET", "/reports/{report_id}"): V,
     ("GET", "/reports/{report_id}/pdf"): V,
+    ("GET", "/reports/{report_id}/duplicates"): V,
     ("GET", "/attachments/{attachment_id}/file"): V,
     ("GET", "/extraction-jobs/{job_id}"): V,
     ("POST", "/reports"): T,
