@@ -37,7 +37,7 @@ export function ReportsListScreen({
   onOpenReportHandled?: () => void;
 }) {
   const [filters, setFilters] = useState<ReportFilters>({});
-  // Technician is free text (§4: typed at intake, not a dropdown), so it gets
+  // Lab manager is free text (§4: typed at intake, not a dropdown), so it gets
   // its own local state that updates on every keystroke for a responsive
   // input, debounced into `filters` — the actual fetch trigger below — so
   // "Jane Smith" doesn't fire nine separate /reports requests as it's typed.
@@ -184,8 +184,8 @@ export function ReportsListScreen({
 
         <input
           type="text"
-          aria-label="Technician"
-          placeholder="Technician"
+          aria-label="Lab manager"
+          placeholder="Lab manager"
           value={technicianInput}
           onChange={(e) => setTechnicianInput(e.target.value)}
         />
@@ -235,7 +235,7 @@ export function ReportsListScreen({
             <div className="report-row report-row-head">
               <span>Instrument</span>
               <span>Type</span>
-              <span>Technician</span>
+              <span>Lab manager</span>
               <span>Report date</span>
               <span>Status</span>
             </div>

@@ -54,7 +54,7 @@ def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdat
     """Every field but `instrument_type` is editable — the create/edit UI
     this backs (frontend's new Instruments tab) replaces "edit the DB/seed
     script by hand" as the only way to fix a typo'd serial number, rename an
-    instrument, move it to a new bench, or change its status once §5's fixed
+    instrument, move it to a new room, or change its status once §5's fixed
     3-instrument fleet stops being fixed in practice."""
     instrument = db.get(models.Instrument, instrument_id)
     if not instrument:

@@ -35,7 +35,7 @@ test('a technician can confirm a report as an installation / upgrade and review 
 
   // It is filterable by its type in the reports list.
   await page.click('.view-tab:has-text("Reports")');
-  await page.locator('input[aria-label="Technician"]').fill('E2E Install Upgrade');
+  await page.locator('input[aria-label="Lab manager"]').fill('E2E Install Upgrade');
   await expect(page.locator('.report-row-body')).toHaveCount(1);
   await expect(page.locator('.report-row-body')).toContainText('Installation / upgrade');
 });

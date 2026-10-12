@@ -150,7 +150,7 @@ def render_report_pdf(report: models.Report) -> bytes:
     if instrument:
         meta_rows.append(("Instrument", escape(f"{instrument.model} ({instrument.serial_number})")))
     meta_rows.append(("Status", escape(_STATUS_LABEL.get(report.status, report.status.value))))
-    meta_rows.append(("Technician", escape(report.technician_name) if report.technician_name else _EM_DASH))
+    meta_rows.append(("Lab manager", escape(report.technician_name) if report.technician_name else _EM_DASH))
     meta_rows.append(("Report date", report.report_date.isoformat() if report.report_date else _EM_DASH))
     if report.finalized_at:
         meta_rows.append(("Finalized", report.finalized_at.strftime("%Y-%m-%d %H:%M UTC")))

@@ -94,7 +94,7 @@ function IntakeScreen({
 }) {
   return (
     <div className="section">
-      <div className="section-title">Technician</div>
+      <div className="section-title">Lab manager</div>
       <input
         type="text"
         className="text-input"

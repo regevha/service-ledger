@@ -127,11 +127,11 @@ function InstrumentFormScreen({
 
       <div className="schema-form-row">
         <label className="schema-form-label">
-          Location
+          Room name
           <input
             type="text"
             className="text-input"
-            placeholder="e.g. Core Lab, Bench 3"
+            placeholder="e.g. Core Lab"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
           />
@@ -282,7 +282,7 @@ export function InstrumentManagerScreen({
             <span>Manufacturer</span>
             <span>Model</span>
             <span>Serial number</span>
-            <span>Location</span>
+            <span>Room name</span>
             <span>Status</span>
             <span>Actions</span>
           </div>

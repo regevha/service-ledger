@@ -30,10 +30,10 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   // created active (schemas.py's InstrumentCreate has no status field).
   await expect(page.locator('.schema-form-label', { hasText: 'Status' })).toHaveCount(0);
 
-  await page.locator('.schema-form-label', { hasText: 'Name' }).locator('input').fill(uniqueName);
+  await page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input').fill(uniqueName);
   await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill('E2E-Model');
   await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill(serial);
-  await page.locator('.schema-form-label', { hasText: 'Location' }).locator('input').fill('E2E Bench');
+  await page.locator('.schema-form-label', { hasText: 'Room name' }).locator('input').fill('E2E Room');
   await page.click('button:has-text("Create instrument")');
 
   // ---- Verify it landed in the list, active by default ----
@@ -42,7 +42,7 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   await expect(listRow).toBeVisible();
   await expect(listRow).toContainText('E2E-Model');
   await expect(listRow).toContainText(serial);
-  await expect(listRow).toContainText('E2E Bench');
+  await expect(listRow).toContainText('E2E Room');
   await expect(listRow.locator('.status-pill.instrument-status-active')).toContainText('Active');
 
   // ---- The Reports tab's instrument filter picks up the new instrument
@@ -58,16 +58,16 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   await listRow.locator('button:has-text("Edit")').click();
   await expect(page.locator('.section-title').first()).toContainText('Edit instrument');
 
-  const nameInput = page.locator('.schema-form-label', { hasText: 'Name' }).locator('input');
+  const nameInput = page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input');
   await nameInput.fill(`${uniqueName}-Renamed`);
-  await page.locator('.schema-form-label', { hasText: 'Location' }).locator('input').fill('New Bench');
+  await page.locator('.schema-form-label', { hasText: 'Room name' }).locator('input').fill('New Room');
   await page.locator('.schema-form-label', { hasText: 'Status' }).locator('select').selectOption('maintenance');
   await page.click('button:has-text("Save changes")');
 
   await expect(page.locator('.section-title').first()).toContainText('Instruments');
   const renamedRow = page.locator('.instrument-row.template-row-body', { hasText: `${uniqueName}-Renamed` });
   await expect(renamedRow).toBeVisible();
-  await expect(renamedRow).toContainText('New Bench');
+  await expect(renamedRow).toContainText('New Room');
   await expect(renamedRow.locator('.status-pill.instrument-status-maintenance')).toContainText('In maintenance');
   // The row was updated in place, not superseded by a second new row — an
   // exact-text lookup so the renamed row's own (superstring) name doesn't
@@ -85,7 +85,7 @@ test('editing an instrument to reuse another one\'s serial number shows an error
 
   async function createInstrument(name: string, serial: string) {
     await page.click('button:has-text("+ New instrument")');
-    await page.locator('.schema-form-label', { hasText: 'Name' }).locator('input').fill(name);
+    await page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input').fill(name);
     await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill('E2E-Model');
     await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill(serial);
     await page.click('button:has-text("Create instrument")');

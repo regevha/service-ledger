@@ -3,9 +3,9 @@
 [![Tests](https://github.com/regevha/service-ledger/actions/workflows/test.yml/badge.svg)](https://github.com/regevha/service-ledger/actions/workflows/test.yml)
 
 A document-first service ledger for a small fleet of lab instruments (flow
-cytometers, to start): technicians upload a scanned service report, Claude
+cytometers, to start): lab managers upload a scanned service report, Claude
 classifies which instrument and report type it is and extracts the
-structured fields, and the technician reviews/corrects the result before
+structured fields, and the lab manager reviews/corrects the result before
 finalizing it. Reports become searchable, exportable, and chartable
 (per-instrument trend lines, fleet-wide analytics, side-by-side comparison of units of the same model) once finalized.
 

@@ -87,14 +87,14 @@ REPAIR_FIELDS = [
         "name": "fault_category",
         "type": "enum",
         "unit": None,
-        "notes": "technician-assigned, not on the source form",
+        "notes": "lab-manager-assigned, not on the source form",
         "options": ["fluidics", "optics", "electronics", "software"],
     },
     {
         "name": "retest_result",
         "type": "enum",
         "unit": None,
-        "notes": "technician-assigned, not on the source form",
+        "notes": "lab-manager-assigned, not on the source form",
         "options": ["pass", "fail", "not retested"],
     },
 ]
@@ -156,7 +156,7 @@ PM_FIELDS = [
         "name": "verification_result",
         "type": "enum",
         "unit": None,
-        "notes": "technician-assigned, not on the source form — mirrors repair's retest_result",
+        "notes": "lab-manager-assigned, not on the source form — mirrors repair's retest_result",
         "options": ["pass", "fail", "not verified"],
     },
 ]
@@ -198,7 +198,7 @@ INSTALL_UPGRADE_FIELDS = [
         "name": "verification_result",
         "type": "enum",
         "unit": None,
-        "notes": "technician-assigned, not on the source form — mirrors preventive maintenance",
+        "notes": "lab-manager-assigned, not on the source form — mirrors preventive maintenance",
         "options": ["pass", "fail", "not verified"],
     },
 ]

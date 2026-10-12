@@ -36,7 +36,7 @@ This is the report that "just works" — most real uploads land here, and that's
 4. Click **Upload & classify**.
    - *Say while it runs:* "That kicked off two real backend calls — `classify()`, then `extract()` — both run by the background worker, not the browser."
 5. No manual-confirm row appears — both the instrument guess and the report-type guess cleared the 85% classification threshold, so the app resolves the template on its own and jumps straight to the field list.
-6. Point out the **field list**: every field has its own small badge. Running without a key, it reads "placeholder", and a notice above the list says the values are not read from the document; with a live key it is a per-field *extraction* confidence ("X% confident"), distinct from the whole-document *classification* confidence you'll see in Part 2. The **Report date** field at the top is read from the document by the same call (the date of the visit, not a date the technician types), and carries its own badge.
+6. Point out the **field list**: every field has its own small badge. Running without a key, it reads "placeholder", and a notice above the list says the values are not read from the document; with a live key it is a per-field *extraction* confidence ("X% confident"), distinct from the whole-document *classification* confidence you'll see in Part 2. The **Report date** field at the top is read from the document by the same call (the date of the visit, not a date the lab manager types), and carries its own badge.
 7. Click **Save & finalize report**.
 8. The success panel confirms the report is finalized.
 9. Click **Start another report** to reset the screen for Part 2.
@@ -60,7 +60,7 @@ This is the case worth slowing down for: a real ambiguity in the source document
 7. Type something into **root cause** yourself (e.g. "Sample injector O-ring degraded") to close the loop on the correction workflow.
 8. Click **Save & finalize report**.
 
-**Talking point to land here:** the confidence badges and the pending-field highlight aren't cosmetic — they're the trust boundary of the whole product. A technician reviewing this report only has to double-check the two or three fields the system is telling them it's unsure about, not re-read the entire scan against every field.
+**Talking point to land here:** the confidence badges and the pending-field highlight aren't cosmetic — they're the trust boundary of the whole product. A lab manager reviewing this report only has to double-check the two or three fields the system is telling them it's unsure about, not re-read the entire scan against every field.
 
 ## Part 3: Upload checks and serial matching
 
@@ -95,11 +95,11 @@ What the app does with a real BD work order when there is no API key. About five
 2. Click **New report** and upload the FACSDiscover S8 preventive maintenance PDF. It resolves straight to the S8 with the report type set to preventive maintenance.
    - *Say:* "The type comes from the task code printed on the form, T111, not from a model guess. T113 is repair and T107 is installation or upgrade. It is a lookup in code, so it is the same every time."
 3. Upload the S8 software upgrade PDF in a new report. Same instrument, but the type is installation / upgrade (T107) and it is not flagged as a duplicate: it has a different work order.
-4. Upload the same S8 preventive maintenance PDF again. A duplicate notice appears, naming the earlier report. Nothing is blocked; the technician decides.
+4. Upload the same S8 preventive maintenance PDF again. A duplicate notice appears, naming the earlier report. Nothing is blocked; the lab manager decides.
    - *Say:* "A duplicate is the same file bytes, or the same work-order number. It warns and never refuses, because a re-scan of the same visit is a legitimate thing to upload."
 5. Upload the 2021 Fortessa report after the 2024 one. Same unit, different visits, so no warning.
 
-6. Optional, to show the model and serial as two separate reads: rename the sample work order to `sample-work-order-P648282B3003.pdf` and upload it. The model row says LSRFortessa, the serial row says P648282B3003 and notes that it belongs to a different model, and the **Instrument** row turns amber ("check this"). Two fields disagree, and the technician decides.
+6. Optional, to show the model and serial as two separate reads: rename the sample work order to `sample-work-order-P648282B3003.pdf` and upload it. The model row says LSRFortessa, the serial row says P648282B3003 and notes that it belongs to a different model, and the **Instrument** row turns amber ("check this"). Two fields disagree, and the lab manager decides.
    - *Say:* "The model and the serial are separate reads, so when they contradict each other you see it, instead of one dropdown label hiding the problem."
 
 **Be straight about the limit:** without a key the badges say what happened ("read from document text", "from task code", "not found", "placeholder") instead of a percentage, and the field values on the review screen are placeholders from the stub, not read from the document. Only model, serial, task code, report type and work order are really read. The visit date and the template fields need the live model.
@@ -107,8 +107,8 @@ What the app does with a real BD work order when there is no API key. About five
 ## Part 4: Reports tab
 
 1. Click the **Reports** tab.
-2. Point out the filter row: instrument, report type, status, a from/to date range, and a technician name (a partial, case-insensitive match as you type) — they all combine (every filter narrows the result, not an either/or).
-3. Filter by report type or status to something that matches — the reports finalized in Parts 1–3 (plus any seeded demo reports) show up. Try the technician box with the name you typed in Part 1.
+2. Point out the filter row: instrument, report type, status, a from/to date range, and a lab manager name (a partial, case-insensitive match as you type) — they all combine (every filter narrows the result, not an either/or).
+3. Filter by report type or status to something that matches — the reports finalized in Parts 1–3 (plus any seeded demo reports) show up. Try the lab manager box with the name you typed in Part 1.
 4. Filter to a combination nothing matches — status = "classified" is a safe choice, since no path in this demo ever leaves a report parked there — to show the empty state. Note that **Export CSV** disappears along with it: the export link only exists when there's something to export.
 5. Click **Clear filters** to reset.
 6. Click into one of the reports you just finalized.
@@ -125,7 +125,7 @@ What the app does with a real BD work order when there is no API key. About five
    - **Most replaced parts** — one bar per part, merged by part number across every report that used it.
    - **Labor hours by instrument** — one bar per instrument in the fleet, including a "No repair/PM reports yet" case for one that hasn't needed service.
    - **Labor hours by fault category** (repair reports only).
-   - **Pass / fail rate** — a three-way stacked bar per report type (pass / fail / not recorded), so a report where the technician never filled in a retest result isn't silently miscounted as a failure.
+   - **Pass / fail rate** — a three-way stacked bar per report type (pass / fail / not recorded), so a report where the lab manager never filled in a retest result isn't silently miscounted as a failure.
 
 **Talking point:** this whole tab is one endpoint, `GET /analytics/fleet` — nothing here is precomputed or cached, it's live off whatever's finalized right now, including the reports you just created in Parts 1–3.
 
@@ -142,7 +142,7 @@ This screen replaces "edit a Python literal and re-run a seed script" as the onl
 7. Click **Save changes** — the field count updates in place.
 8. Click **Delete** — it's a two-step confirm (**Delete**, then **Confirm delete**), with a **Cancel** that's a true no-op, before anything is actually removed.
 
-**Talking point:** every enum/object\[\] field a technician saw on the review screen in Parts 1–2 (`fault_category`, `components_replaced`) is defined here, not hardcoded — this is the same structured editor, not a simplified preview of it.
+**Talking point:** every enum/object\[\] field a lab manager saw on the review screen in Parts 1–2 (`fault_category`, `components_replaced`) is defined here, not hardcoded — this is the same structured editor, not a simplified preview of it.
 
 ## Part 7: Instruments tab
 
@@ -150,7 +150,7 @@ Replaces "`POST /instruments` from a script, then edit the row by hand for anyth
 
 1. Click the **Instruments** tab.
 2. Click **+ New instrument** (or point at the one you created in Part 3) — note the create form has **no Status field** at all: a new instrument is always created active, so there's nothing to set yet.
-3. Fill in Name, Model, Serial number, Location → **Create instrument**.
+3. Fill in Name, Model, Serial number, Room name → **Create instrument**.
 4. It lands in the list with an Active pill.
 5. Switch to the **Reports** tab and open the instrument filter dropdown — the new instrument is already there, no reload needed. Call this out explicitly: this tab shares one top-level instrument list with the rest of the app, so a create here shows up in the Reports filter and the instrument detail page immediately.
 6. Back on Instruments, click **Edit** on it — now **Status** appears (only an instrument that already exists has a status worth changing). Rename it, change the location, set status to **In maintenance** → **Save changes** — it updates in place, not as a second row.
