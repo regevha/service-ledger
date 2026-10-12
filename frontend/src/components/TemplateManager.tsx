@@ -3,6 +3,7 @@ import {
   ApiError,
   createReportTemplate,
   deleteReportTemplate,
+  getTemplateUsage,
   listAllReportTemplates,
   updateReportTemplate,
   type FieldType,
@@ -11,6 +12,7 @@ import {
   type ReportType,
   type TemplateField,
   type TemplateFieldPayload,
+  type TemplateUsage,
 } from '../api';
 import { EnumArrayInput } from './FieldEditor';
 import { REPORT_TYPE_LABEL } from '../labels';
@@ -274,22 +276,83 @@ function fieldToPayload(field: TemplateField): TemplateFieldPayload {
   };
 }
 
+/**
+ * What stops a template from being saved, in words. Checked as the user
+ * types so the reason is on screen, instead of a Save button that is just
+ * greyed out (or a round trip to the backend's 422).
+ */
+export function templateProblems(fields: TemplateField[]): string[] {
+  const problems: string[] = [];
+  if (fields.length === 0) problems.push('Add at least one field.');
+  if (fields.some((f) => !f.name.trim())) problems.push('Every field needs a name.');
+  const seen = new Set<string>();
+  const repeated = new Set<string>();
+  for (const f of fields) {
+    const key = f.name.trim().toLowerCase();
+    if (!key) continue;
+    if (seen.has(key)) repeated.add(f.name.trim());
+    seen.add(key);
+  }
+  if (repeated.size > 0) problems.push(`Field names must be unique: ${[...repeated].join(', ')} appears more than once.`);
+  for (const f of fields) {
+    const label = f.name.trim() || 'A choice field';
+    if ((f.type === 'enum' || f.type === 'enum[]') && (f.options ?? []).length === 0) {
+      problems.push(`${label} needs at least one option.`);
+    }
+    if (f.type === 'object[]' && (f.item_schema ?? []).length === 0) {
+      problems.push(`${f.name.trim() || 'A table field'} needs at least one column.`);
+    }
+  }
+  return problems;
+}
+
+/** Names that exist on the saved template but not in the edited one (removed or renamed). */
+function droppedFieldNames(existing: ReportTemplate | undefined, fields: TemplateField[]): string[] {
+  if (!existing) return [];
+  const kept = new Set(fields.map((f) => f.name.trim()));
+  return existing.field_schema.fields.map((f) => f.name).filter((name) => !kept.has(name));
+}
+
 function TemplateFormScreen({
   existing,
+  copyOf,
+  usage,
+  knownModels,
   onCancel,
   onSaved,
 }: {
   existing?: ReportTemplate;
+  /** Start a new template from this one's fields (the Duplicate button). */
+  copyOf?: ReportTemplate;
+  usage?: TemplateUsage;
+  knownModels: string[];
   onCancel: () => void;
   onSaved: () => void;
 }) {
-  const [reportType, setReportType] = useState<ReportType>(existing?.report_type ?? 'repair');
-  const [model, setModel] = useState(existing?.model ?? '');
-  const [fields, setFields] = useState<TemplateField[]>(existing?.field_schema.fields ?? []);
+  const seed = existing ?? copyOf;
+  const [reportType, setReportType] = useState<ReportType>(seed?.report_type ?? 'repair');
+  // A copy starts with a blank model: the same report type + model already
+  // has a template (the one being copied), and only one is allowed.
+  const [model, setModel] = useState(existing ? (existing.model ?? '') : '');
+  const [fields, setFields] = useState<TemplateField[]>(() => structuredClone(seed?.field_schema.fields ?? []));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set when saving would drop fields that reports already use — the user
+  // has to confirm before it goes through.
+  const [confirmDrop, setConfirmDrop] = useState<string[] | null>(null);
+  const inUse = (usage?.report_count ?? 0) > 0;
+
+  function requestSave() {
+    const dropped = inUse ? droppedFieldNames(existing, fields) : [];
+    if (dropped.length > 0 && confirmDrop === null) {
+      setConfirmDrop(dropped);
+      return;
+    }
+    void handleSave();
+  }
 
   async function handleSave() {
+    setConfirmDrop(null);
     setSaving(true);
     setError(null);
     try {
@@ -315,7 +378,8 @@ function TemplateFormScreen({
     }
   }
 
-  const canSave = fields.length > 0 && fields.every((f) => f.name.trim().length > 0) && !saving;
+  const problems = templateProblems(fields);
+  const canSave = problems.length === 0 && !saving;
 
   return (
     <div className="section">
@@ -325,6 +389,19 @@ function TemplateFormScreen({
 
       <div className="section-title">{existing ? 'Edit template' : 'New template'}</div>
 
+      {copyOf && (
+        <div className="banner banner-warn" id="copy-notice">
+          This is a copy of the {REPORT_TYPE_LABEL[copyOf.report_type]} template for {copyOf.model ?? 'any model'}. Each
+          report type and model can have only one template, so choose a different model (or report type) before saving.
+        </div>
+      )}
+      {existing && inUse && (
+        <div className="banner banner-warn" id="template-in-use-notice">
+          {usage!.report_count} report{usage!.report_count === 1 ? '' : 's'} use{usage!.report_count === 1 ? 's' : ''} this
+          template ({usage!.finalized_count} finalized). Their saved values are kept, but a field you remove or rename stops
+          appearing on them.
+        </div>
+      )}
       {error && <div className="banner banner-crit">{error}</div>}
 
       <div className="schema-form-row">
@@ -344,9 +421,15 @@ function TemplateFormScreen({
             type="text"
             className="text-input"
             placeholder="e.g. FACSDiscover S8 — blank applies to every model"
+            list="known-models"
             value={model}
             onChange={(e) => setModel(e.target.value)}
           />
+          <datalist id="known-models">
+            {knownModels.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
         </label>
       </div>
 
@@ -355,11 +438,35 @@ function TemplateFormScreen({
       </div>
       <FieldSchemaEditor fields={fields} onChange={setFields} />
 
+      {problems.length > 0 && (
+        <ul className="banner banner-warn template-problems" id="template-problems">
+          {problems.map((p) => (
+            <li key={p}>{p}</li>
+          ))}
+        </ul>
+      )}
+
+      {confirmDrop && (
+        <div className="banner banner-warn" role="alertdialog" aria-label="Confirm removing fields">
+          <div>
+            {confirmDrop.join(', ')} {confirmDrop.length === 1 ? 'is' : 'are'} no longer in this template, and{' '}
+            {usage!.report_count} report{usage!.report_count === 1 ? ' uses' : 's use'} it. Those fields will stop
+            appearing on them (the stored values are not deleted).
+          </div>
+          <button type="button" className="btn small" onClick={() => void handleSave()}>
+            Save anyway
+          </button>{' '}
+          <button type="button" className="btn small" onClick={() => setConfirmDrop(null)}>
+            Keep editing
+          </button>
+        </div>
+      )}
+
       <div className="cta-row">
         <button type="button" className="btn" onClick={onCancel} disabled={saving}>
           Cancel
         </button>
-        <button type="button" className="btn primary" onClick={() => void handleSave()} disabled={!canSave}>
+        <button type="button" className="btn primary" onClick={requestSave} disabled={!canSave}>
           {saving ? 'Saving…' : existing ? 'Save changes' : 'Create template'}
         </button>
       </div>
@@ -367,10 +474,15 @@ function TemplateFormScreen({
   );
 }
 
-type ManagerMode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; template: ReportTemplate };
+type ManagerMode =
+  | { kind: 'list' }
+  | { kind: 'create' }
+  | { kind: 'copy'; template: ReportTemplate }
+  | { kind: 'edit'; template: ReportTemplate };
 
-export function TemplateManagerScreen() {
+export function TemplateManagerScreen({ knownModels = [] }: { knownModels?: string[] }) {
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
+  const [usage, setUsage] = useState<Record<string, TemplateUsage>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<ManagerMode>({ kind: 'list' });
@@ -379,6 +491,11 @@ export function TemplateManagerScreen() {
   function reload() {
     setLoading(true);
     setError(null);
+    // Usage is advisory (warnings, the Reports column): if it cannot be read
+    // the list still works, without the counts.
+    getTemplateUsage()
+      .then((rows) => setUsage(Object.fromEntries(rows.map((u) => [u.template_id, u]))))
+      .catch(() => setUsage({}));
     listAllReportTemplates()
       .then(setTemplates)
       .catch((e: unknown) => setError(e instanceof ApiError ? e.message : 'Could not load templates.'))
@@ -400,18 +517,25 @@ export function TemplateManagerScreen() {
     }
   }
 
+  const backToList = () => setMode({ kind: 'list' });
+  const savedAndBack = () => {
+    setMode({ kind: 'list' });
+    reload();
+  };
   if (mode.kind === 'create') {
-    return <TemplateFormScreen onCancel={() => setMode({ kind: 'list' })} onSaved={() => { setMode({ kind: 'list' }); reload(); }} />;
+    return <TemplateFormScreen knownModels={knownModels} onCancel={backToList} onSaved={savedAndBack} />;
+  }
+  if (mode.kind === 'copy') {
+    return <TemplateFormScreen copyOf={mode.template} knownModels={knownModels} onCancel={backToList} onSaved={savedAndBack} />;
   }
   if (mode.kind === 'edit') {
     return (
       <TemplateFormScreen
         existing={mode.template}
-        onCancel={() => setMode({ kind: 'list' })}
-        onSaved={() => {
-          setMode({ kind: 'list' });
-          reload();
-        }}
+        usage={usage[mode.template.id]}
+        knownModels={knownModels}
+        onCancel={backToList}
+        onSaved={savedAndBack}
       />
     );
   }
@@ -440,6 +564,7 @@ export function TemplateManagerScreen() {
             <span>Report type</span>
             <span>Model</span>
             <span>Fields</span>
+            <span>Reports</span>
             <span>Actions</span>
           </div>
           {templates.map((tpl) => (
@@ -447,9 +572,15 @@ export function TemplateManagerScreen() {
               <span>{REPORT_TYPE_LABEL[tpl.report_type]}</span>
               <span>{tpl.model ?? '(any model)'}</span>
               <span>{tpl.field_schema.fields.length}</span>
+              <span className="template-usage">
+                {usage[tpl.id] ? `${usage[tpl.id].report_count} (${usage[tpl.id].finalized_count} finalized)` : '0'}
+              </span>
               <span className="template-row-actions">
                 <button type="button" className="btn small" onClick={() => setMode({ kind: 'edit', template: tpl })}>
                   Edit
+                </button>
+                <button type="button" className="btn small" onClick={() => setMode({ kind: 'copy', template: tpl })}>
+                  Duplicate
                 </button>
                 {confirmDeleteId === tpl.id ? (
                   <>
@@ -461,7 +592,13 @@ export function TemplateManagerScreen() {
                     </button>
                   </>
                 ) : (
-                  <button type="button" className="btn small" onClick={() => setConfirmDeleteId(tpl.id)}>
+                  <button
+                    type="button"
+                    className="btn small"
+                    disabled={Boolean(usage[tpl.id])}
+                    title={usage[tpl.id] ? `${usage[tpl.id].report_count} report(s) use this template, so it cannot be deleted.` : undefined}
+                    onClick={() => setConfirmDeleteId(tpl.id)}
+                  >
                     Delete
                   </button>
                 )}
