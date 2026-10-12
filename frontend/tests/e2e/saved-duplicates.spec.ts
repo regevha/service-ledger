@@ -10,10 +10,25 @@ import { BACKEND_PORT } from '../../playwright.config';
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
+// Every unit a test makes is removed afterwards (deleting an instrument deletes
+// its reports). These reports are confirmed to a template but never extracted,
+// i.e. they sit in "classified", a status reports-search.spec.ts relies on
+// nothing else being in; the extra units would also make later uploads of
+// their model need a manual pick.
+const createdUnits: string[] = [];
+
+test.afterEach(async ({ request }) => {
+  while (createdUnits.length) {
+    await request.delete(`${API_BASE}/instruments/${createdUnits.pop()}`);
+  }
+});
+
 async function createUnit(request: APIRequestContext, model: string, serial: string) {
   const res = await request.post(`${API_BASE}/instruments`, { data: { name: serial, model, serial_number: serial } });
   expect(res.status()).toBe(201);
-  return (await res.json()).id as string;
+  const id = (await res.json()).id as string;
+  createdUnits.push(id);
+  return id;
 }
 
 // A report on `instrumentId` whose scan carries `workOrder` (read from the PDF's own text layer).
