@@ -100,6 +100,33 @@ needed, since the fleet is small enough (§1: a fixed 3-instrument list, at
 least until the Instruments tab below lets it grow) to already be fully
 loaded by `App`'s own `useEffect` and looked up by id client-side.
 
+### Templates tab
+
+`TemplateManager.tsx` is the structured editor for report templates. Beyond
+create/edit/delete it:
+
+* **Says what is wrong.** `templateProblems()` lists, as you type, what blocks
+  a save — no fields, a blank or repeated field name (case-insensitive), a
+  choice field with no options, a table field with no columns — instead of a
+  silently greyed-out button. Only rules the client cannot know (a reserved
+  name like `report_date`, a model/type collision) come back from the backend.
+* **Duplicates.** *Duplicate* opens a new template pre-filled with another's
+  fields and a blank model (each type + model can have one template, so the
+  copy needs a different model; saving a clash shows the backend's 409).
+* **Suggests models** from the fleet (`<datalist>` fed by the instruments list).
+* **Shows usage.** A *Reports* column (from `GET /report-templates/usage`:
+  reports using the template, and how many are finalized). A template reports
+  use has its *Delete* disabled with the reason; if a report attaches in the
+  moment between loading the list and confirming, the backend's 409 is shown.
+* **Warns before dropping fields.** Editing a template in use shows how many
+  reports use it; saving after removing or renaming a field asks first,
+  naming the fields (the stored values are kept, the fields just stop
+  appearing on those reports). Adding fields needs no confirmation.
+
+Covered by `template-management.spec.ts` (create → edit → delete) and
+`template-manager-improvements.spec.ts` (the above, plus field reorder/remove/
+retype, table-column rename rules, and the usage/list load failures).
+
 ### Instruments tab
 
 `InstrumentManager.tsx` — create/edit for the fleet, replacing "`POST

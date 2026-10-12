@@ -455,6 +455,18 @@ export function listAllReportTemplates(): Promise<ReportTemplate[]> {
   return apiFetch('/report-templates/all');
 }
 
+export interface TemplateUsage {
+  template_id: string;
+  report_count: number;
+  finalized_count: number;
+}
+
+// GET /report-templates/usage — per template, how many reports use it (and how
+// many of those are finalized). Templates nothing uses are not listed.
+export function getTemplateUsage(): Promise<TemplateUsage[]> {
+  return apiFetch('/report-templates/usage');
+}
+
 export function getReportTemplate(templateId: string): Promise<ReportTemplate> {
   return apiFetch(`/report-templates/${templateId}`);
 }
