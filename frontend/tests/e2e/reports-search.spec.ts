@@ -113,12 +113,12 @@ test.describe('reports search screen', () => {
     // A lowercased substring of just one marker's distinguishing part — the
     // input is debounced (300ms), so wait for the list to actually narrow
     // rather than asserting immediately after typing.
-    await page.fill('input[aria-label="Technician"]', 'tech-match');
+    await page.fill('input[aria-label="Lab manager"]', 'tech-match');
     await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
     await expect(page.locator('.report-row-body', { hasText: otherMarker })).toHaveCount(0);
 
     await page.click('button:has-text("Clear filters")');
-    await expect(page.locator('input[aria-label="Technician"]')).toHaveValue('');
+    await expect(page.locator('input[aria-label="Lab manager"]')).toHaveValue('');
     await expect(page.locator('.report-row-body', { hasText: otherMarker })).toBeVisible();
   });
 

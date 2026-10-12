@@ -9,7 +9,7 @@ test('manufacturer can be set, shown in the list and detail page, edited and cle
   const stamp = Date.now();
   const name = `E2E-Maker-${stamp}`;
   const serial = `E2E-MFR-${stamp}`;
-  const label = (text: string) => page.locator('.schema-form-label', { hasText: text }).locator('input');
+  const label = (text: string) => page.locator('.schema-form-label', { hasText: new RegExp('^\\s*' + text) }).locator('input');
 
   await page.goto('/');
   await page.click('.view-tab:has-text("Instruments")');
