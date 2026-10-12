@@ -239,7 +239,7 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
             <input
               type="text"
               className="text-input"
-              placeholder="Notes for the technician (optional)"
+              placeholder="Notes for the lab manager (optional)"
               aria-label="Notes"
               value={field.notes ?? ''}
               onChange={(e) => updateField(i, { notes: e.target.value || null })}
