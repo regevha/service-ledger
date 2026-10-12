@@ -103,6 +103,17 @@ class ReportTemplateOut(BaseModel):
 
 
 # ---------- Report template management ----------
+
+
+class TemplateUsageOut(BaseModel):
+    """How many reports point at one template — what the template manager
+    needs to warn before an edit and to explain why a delete is refused.
+    Templates no report uses are simply absent from the list."""
+
+    template_id: uuid.UUID
+    report_count: int
+    finalized_count: int
+
 #
 # Structured-editor CRUD for report_templates (routers/report_templates.py),
 # replacing "edit seed_templates.py's Python literals and re-run the script"

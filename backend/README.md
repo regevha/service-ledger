@@ -40,7 +40,7 @@ backend/
                               (which numeric fields a given instrument's own finalized reports actually have
                               data for), GET .../trend (number and number[detector]/number[laser] both
                               supported — TrendOut/TrendPointOut)
-      report_templates.py    GET /report-templates (resolution logic, §2); GET .../all, GET/POST/PATCH/DELETE
+      report_templates.py    GET /report-templates (resolution logic, §2); GET .../usage (reports per template, for the manager's warnings); GET .../all, GET/POST/PATCH/DELETE
                               .../{id} — the structured field editor's CRUD, backed by a DB-level unique
                               index on (instrument_type, report_type, model) (migration 6b5fc4e1c3ca)
       reports.py              /reports CRUD (incl. delete), search, export, template confirm, finalize, GET .../{id}/pdf
