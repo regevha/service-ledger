@@ -87,7 +87,7 @@ test.describe('reports search screen', () => {
     // disappears with it.
     await page.selectOption('.filter-row select >> nth=1', '');
     await page.selectOption('.filter-row select >> nth=2', 'classified');
-    await page.locator('input[aria-label="Technician"]').fill(marker);
+    await page.locator('input[aria-label="Lab manager"]').fill(marker);
     await expect(page.locator('.report-row-body')).toHaveCount(0);
     await expect(page.locator('.empty-hint')).toBeVisible();
     await expect(page.locator('a.btn:has-text("Export CSV")')).toHaveCount(0);
