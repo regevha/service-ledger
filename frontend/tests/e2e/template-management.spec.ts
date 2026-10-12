@@ -113,16 +113,16 @@ test('a template the backend rejects shows the validation reason, not a bare sta
   await page.click('button:has-text("+ New template")');
   await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(`E2E-Invalid-${Date.now()}`);
 
-  // An enum field with no options — the client-side check only looks at
-  // blank names, so this reaches the backend and gets a 422.
+  // The form catches blank names, repeated names and empty option lists
+  // itself (see template-manager-improvements.spec.ts). A reserved name is
+  // only known to the backend, so this reaches it and gets a 422.
   await page.click('button:has-text("+ Add field")');
   const row = page.locator('.schema-field-row').nth(0);
-  await row.locator('[aria-label="Field name"]').fill('fault_category');
-  await row.locator('[aria-label="Field type"]').selectOption('enum');
+  await row.locator('[aria-label="Field name"]').fill('report_date');
   await page.click('button:has-text("Create template")');
 
   const banner = page.locator('.banner-crit');
-  await expect(banner).toContainText('requires a non-empty options list');
+  await expect(banner).toContainText('is reserved');
   await expect(banner).not.toContainText('Value error');
   // Still on the form, nothing saved.
   await expect(page.locator('.section-title').first()).toContainText('New template');

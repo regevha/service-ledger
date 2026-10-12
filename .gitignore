@@ -22,3 +22,6 @@ node_modules/
 # Frontend coverage output (npm run test:e2e:coverage)
 frontend/.nyc_output/
 frontend/coverage/
+
+# e2e sign-in session (tests/e2e/auth-setup.ts)
+frontend/tests/e2e/.auth/

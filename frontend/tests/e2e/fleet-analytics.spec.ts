@@ -81,9 +81,10 @@ test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail 
 
   // This run added at least 4 + 2.5 = 6.5 hours — the fleet-wide total may
   // be higher if other specs already finalized reports in this same run.
-  const totalHoursText = await page.locator('.stat-tile').nth(0).locator('.stat-value').textContent();
-  const totalHours = parseFloat(totalHoursText ?? '0');
-  expect(totalHours).toBeGreaterThanOrEqual(6.5);
+  // Polled: the tile can show its placeholder before the rollup has loaded.
+  await expect
+    .poll(async () => parseFloat((await page.locator('.stat-tile').nth(0).locator('.stat-value').textContent()) ?? '0'))
+    .toBeGreaterThanOrEqual(6.5);
 
   // The uniquely-named part from this run's repair report shows up in the
   // parts chart with the right unit count.
