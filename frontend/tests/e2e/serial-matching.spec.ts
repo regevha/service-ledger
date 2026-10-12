@@ -15,29 +15,38 @@ test('a document naming a serial number is assigned to that unit even when its m
     data: { name: `Aria serial test ${serial}`, model: 'FACSAria III', serial_number: serial },
   });
   expect(created.status()).toBe(201);
+  const instrumentId = (await created.json()).id as string;
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
-  await page.fill('input[placeholder="Your name (optional)"]', `Serial ${serial}`);
-  await page.locator('input[type="file"]').setInputFiles({
-    name: `service_${serial}.pdf`,
-    mimeType: 'application/pdf',
-    buffer: uniquePdf('%PDF-1.4 serial test'),
-  });
-  await page.click('button:has-text("Upload & classify")');
+  // A second FACSAria III left in the fleet would make every later upload of that
+  // model need a manual pick (and shift the first FACSAria III in lists), so the
+  // unit and its report are removed whatever the outcome (deleting an instrument
+  // deletes its reports).
+  try {
+    await page.goto('/');
+    await page.click('.view-tab:has-text("New report")');
+    await page.fill('input[placeholder="Your name (optional)"]', `Serial ${serial}`);
+    await page.locator('input[type="file"]').setInputFiles({
+      name: `service_${serial}.pdf`,
+      mimeType: 'application/pdf',
+      buffer: uniquePdf('%PDF-1.4 serial test'),
+    });
+    await page.click('button:has-text("Upload & classify")');
 
-  // Straight through to review: no manual pick, even though two FACSAria IIIs exist.
-  await expect(page.locator('#review-report-date')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('#serial-notice')).toContainText(`Matched to FACSAria III (${serial})`);
+    // Straight through to review: no manual pick, even though two FACSAria IIIs exist.
+    await expect(page.locator('#review-report-date')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('#serial-notice')).toContainText(`Matched to FACSAria III (${serial})`);
 
-  await page.click('button:has-text("Save & finalize report")');
-  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+    await page.click('button:has-text("Save & finalize report")');
+    await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
 
-  // The report belongs to that unit, not to the other Aria.
-  await page.click('.view-tab:has-text("Reports")');
-  await page.locator('input[aria-label="Technician"]').fill(`Serial ${serial}`);
-  await expect(page.locator('.report-row-body')).toHaveCount(1);
-  await expect(page.locator('.report-row-body')).toContainText(`FACSAria III (${serial})`);
+    // The report belongs to that unit, not to the other Aria.
+    await page.click('.view-tab:has-text("Reports")');
+    await page.locator('input[aria-label="Technician"]').fill(`Serial ${serial}`);
+    await expect(page.locator('.report-row-body')).toHaveCount(1);
+    await expect(page.locator('.report-row-body')).toContainText(`FACSAria III (${serial})`);
+  } finally {
+    await request.delete(`${API_BASE}/instruments/${instrumentId}`);
+  }
 });
 
 // On the confirm screen the model and the serial are separate reads, each with

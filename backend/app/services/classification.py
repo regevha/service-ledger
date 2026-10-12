@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections import Counter
 from typing import Literal, NamedTuple
 
 from sqlalchemy.orm import Session
@@ -382,7 +383,15 @@ def _stub_classify(
         # instrument and report type from a stable hash of the file path
         # rather than randomly, so re-classifying the same attachment always
         # returns the same answer.
-        instrument = instruments[int(_stable_unit(attachment.file_path, "instrument") * len(instruments))]
+        # Only from models with exactly one unit: a pick landing on a model that
+        # has several units can never auto-resolve (a model alone cannot tell
+        # them apart, see the comment in classify_attachment), so which uploads
+        # got a manual pick used to depend on a hash of the random file path
+        # and on whatever extra units had been added to the fleet. The hash
+        # still spreads uploads over the fleet, just not onto ambiguous models.
+        model_counts = Counter(i.model for i in instruments)
+        pickable = [i for i in instruments if model_counts[i.model] == 1] or instruments
+        instrument = pickable[int(_stable_unit(attachment.file_path, "instrument") * len(pickable))]
         # A file named after an instrument's serial number is "read" as that
         # instrument (see _stub_serial_read), as a real read of its serial
         # would be, so the model guess agrees with it.
