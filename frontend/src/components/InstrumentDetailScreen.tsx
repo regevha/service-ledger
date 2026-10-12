@@ -104,7 +104,7 @@ export function InstrumentDetailScreen({
             <div className="instrument-report-table">
               <div className="instrument-report-row instrument-report-row-head">
                 <span>Type</span>
-                <span>Technician</span>
+                <span>Lab manager</span>
                 <span>Report date</span>
                 <span>Status</span>
               </div>

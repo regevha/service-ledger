@@ -41,7 +41,7 @@ test('a document naming a serial number is assigned to that unit even when its m
 
     // The report belongs to that unit, not to the other Aria.
     await page.click('.view-tab:has-text("Reports")');
-    await page.locator('input[aria-label="Technician"]').fill(`Serial ${serial}`);
+    await page.locator('input[aria-label="Lab manager"]').fill(`Serial ${serial}`);
     await expect(page.locator('.report-row-body')).toHaveCount(1);
     await expect(page.locator('.report-row-body')).toContainText(`FACSAria III (${serial})`);
   } finally {

@@ -176,7 +176,7 @@ now backed by a real API:
    returns a pending job immediately; the worker runs `extract()` against
    the resolved template and the report moves to `extracted` once the
    polled job reaches `succeeded`.
-6. `PATCH /reports/{id}/fields` — technician corrections; moves to
+6. `PATCH /reports/{id}/fields` — lab manager corrections; moves to
    `in_review`. Synchronous.
 7. `POST /reports/{id}/finalize` — moves to `finalized`. Synchronous.
 8. `DELETE /reports/{id}` — permanently removes the report, its attachments,

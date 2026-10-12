@@ -16,7 +16,7 @@ from app.models import Instrument, Report, ReportStatus, ReportTemplate, ReportT
 def test_create_instrument(client):
     resp = client.post(
         "/instruments",
-        json={"name": "Test Cytometer", "model": "TestModel-9000", "serial_number": "TC-0001", "location": "Bench 9"},
+        json={"name": "Test Cytometer", "model": "TestModel-9000", "serial_number": "TC-0001", "location": "Room 9"},
     )
     assert resp.status_code == 201
     body = resp.json()
@@ -198,13 +198,13 @@ def test_instrument_trend_fields_ignores_non_finalized_and_templateless_reports(
 def test_update_instrument_partial_update_only_touches_provided_fields(client):
     created = client.post(
         "/instruments",
-        json={"name": "Edit Me", "model": "TestModel-9000", "serial_number": "PATCH-0001", "location": "Bench 1"},
+        json={"name": "Edit Me", "model": "TestModel-9000", "serial_number": "PATCH-0001", "location": "Room 1"},
     ).json()
 
-    resp = client.patch(f"/instruments/{created['id']}", json={"location": "Bench 2"})
+    resp = client.patch(f"/instruments/{created['id']}", json={"location": "Room 2"})
     assert resp.status_code == 200
     body = resp.json()
-    assert body["location"] == "Bench 2"
+    assert body["location"] == "Room 2"
     # Everything not sent stays exactly as it was.
     assert body["name"] == "Edit Me"
     assert body["model"] == "TestModel-9000"
@@ -233,7 +233,7 @@ def test_update_instrument_can_change_every_editable_field_at_once(client):
             "name": "New Name",
             "model": "NewModel",
             "serial_number": "PATCH-0003-NEW",
-            "location": "New Bench",
+            "location": "New Room",
             "status": "maintenance",
         },
     )
@@ -242,7 +242,7 @@ def test_update_instrument_can_change_every_editable_field_at_once(client):
     assert body["name"] == "New Name"
     assert body["model"] == "NewModel"
     assert body["serial_number"] == "PATCH-0003-NEW"
-    assert body["location"] == "New Bench"
+    assert body["location"] == "New Room"
     assert body["status"] == "maintenance"
 
 
@@ -284,9 +284,9 @@ def test_update_instrument_allows_resubmitting_its_own_current_serial_number(cli
     # Re-sending the instrument's own serial number (e.g. a form that always
     # submits every field) must not trip the "already exists" check against
     # itself.
-    resp = client.patch(f"/instruments/{created['id']}", json={"serial_number": "PATCH-0006", "location": "Bench 3"})
+    resp = client.patch(f"/instruments/{created['id']}", json={"serial_number": "PATCH-0006", "location": "Room 3"})
     assert resp.status_code == 200
-    assert resp.json()["location"] == "Bench 3"
+    assert resp.json()["location"] == "Room 3"
 
 
 def test_get_instrument_returns_one_instrument(client):
@@ -334,15 +334,15 @@ def test_blank_manufacturer_means_not_recorded(client):
 
 def test_update_manufacturer_sets_changes_and_clears_it(client):
     created = client.post(
-        "/instruments", json={"name": "Edit Maker", "model": "M4", "serial_number": "MFR-0004", "location": "Bench 9"}
+        "/instruments", json={"name": "Edit Maker", "model": "M4", "serial_number": "MFR-0004", "location": "Room 9"}
     ).json()
 
     set_ = client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek"}).json()
     assert set_["manufacturer"] == "Cytek"
-    assert set_["location"] == "Bench 9"  # other fields untouched
+    assert set_["location"] == "Room 9"  # other fields untouched
 
     # A PATCH that does not mention it leaves it alone…
-    assert client.patch(f"/instruments/{created['id']}", json={"location": "Bench 1"}).json()["manufacturer"] == "Cytek"
+    assert client.patch(f"/instruments/{created['id']}", json={"location": "Room 1"}).json()["manufacturer"] == "Cytek"
     # …and an explicit null (or blank) clears it.
     assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": None}).json()["manufacturer"] is None
     client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek"})
