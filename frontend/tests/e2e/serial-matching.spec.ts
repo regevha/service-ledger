@@ -12,7 +12,7 @@ const API_BASE = `http://localhost:${BACKEND_PORT}`;
 test('a document naming a serial number is assigned to that unit even when its model has several', async ({ page, request }) => {
   const serial = `SM-${Date.now()}`;
   const created = await request.post(`${API_BASE}/instruments`, {
-    data: { name: `Aria serial test ${serial}`, model: 'FACSAria III', serial_number: serial },
+    data: { name: `Aria serial test ${serial}`, model: 'FACSAria III', manufacturer: 'BD', serial_number: serial },
   });
   expect(created.status()).toBe(201);
   const instrumentId = (await created.json()).id as string;

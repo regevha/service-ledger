@@ -11,7 +11,7 @@ from app.models import Instrument, Report, ReportStatus, ReportTemplate, ReportT
 def _second_fortessa(client, serial="R647794E6099"):
     resp = client.post(
         "/instruments",
-        json={"name": "Fortessa B", "model": "LSRFortessa", "serial_number": serial},
+        json={"name": "Fortessa B", "model": "LSRFortessa", "manufacturer": "TestCo", "serial_number": serial},
     )
     assert resp.status_code == 201, resp.text
     return resp.json()["id"]

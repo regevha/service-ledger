@@ -4,6 +4,29 @@
  */
 
 export interface paths {
+    "/instrument-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Instrument Types */
+        get: operations["list_instrument_types_instrument_types_get"];
+        put?: never;
+        /**
+         * Create Instrument Type
+         * @description Adds a type. Admin-only once role-based sign-in exists (PR #13): add it to
+         *     that policy table then. Types cannot be edited or deleted yet; the key is
+         *     derived from the name and is what instruments and templates store.
+         */
+        post: operations["create_instrument_type_instrument_types_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/instruments": {
         parameters: {
             query?: never;
@@ -148,6 +171,29 @@ export interface paths {
          *     template_id path param.
          */
         get: operations["list_all_report_templates_report_templates_all_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/report-templates/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Report Template Usage
+         * @description Per template, how many reports use it and how many of those are
+         *     finalized. One query for the whole list, so the management screen does not
+         *     ask once per row. Registered before /report-templates/{template_id} so
+         *     "usage" is never read as a template id.
+         */
+        get: operations["report_template_usage_report_templates_usage_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -786,6 +832,8 @@ export interface components {
             instrument_type: string;
             /** Model */
             model: string;
+            /** Manufacturer */
+            manufacturer: string;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -804,6 +852,8 @@ export interface components {
             instrument_type: string;
             /** Model */
             model: string;
+            /** Manufacturer */
+            manufacturer: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -841,6 +891,23 @@ export interface components {
          * @enum {string}
          */
         InstrumentStatus: "active" | "maintenance" | "retired";
+        /** InstrumentTypeCreate */
+        InstrumentTypeCreate: {
+            /** Display Name */
+            display_name: string;
+        };
+        /** InstrumentTypeOut */
+        InstrumentTypeOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Key */
+            key: string;
+            /** Display Name */
+            display_name: string;
+        };
         /**
          * InstrumentUpdate
          * @description PATCH /instruments/{id} — every field optional so a caller only sends
@@ -856,6 +923,8 @@ export interface components {
             name?: string | null;
             /** Model */
             model?: string | null;
+            /** Manufacturer */
+            manufacturer?: string | null;
             /** Serial Number */
             serial_number?: string | null;
             /** Location */
@@ -1170,6 +1239,23 @@ export interface components {
             fields?: components["schemas"]["TemplateFieldIn"][] | null;
         };
         /**
+         * TemplateUsageOut
+         * @description How many reports point at one template — what the template manager
+         *     needs to warn before an edit and to explain why a delete is refused.
+         *     Templates no report uses are simply absent from the list.
+         */
+        TemplateUsageOut: {
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /** Report Count */
+            report_count: number;
+            /** Finalized Count */
+            finalized_count: number;
+        };
+        /**
          * TrendFieldOut
          * @description One entry of GET /instruments/{id}/trend-fields: a field this
          *     instrument's own finalized reports actually have data for, restricted to
@@ -1264,6 +1350,59 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_instrument_types_instrument_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentTypeOut"][];
+                };
+            };
+        };
+    };
+    create_instrument_type_instrument_types_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstrumentTypeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentTypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_instruments_instruments_get: {
         parameters: {
             query?: never;
@@ -1561,6 +1700,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportTemplateOut"][];
+                };
+            };
+        };
+    };
+    report_template_usage_report_templates_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateUsageOut"][];
                 };
             };
         };

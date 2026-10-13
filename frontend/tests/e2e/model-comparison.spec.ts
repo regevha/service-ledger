@@ -11,7 +11,7 @@ import { BACKEND_PORT } from '../../playwright.config';
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function createUnit(request: APIRequestContext, model: string, serial: string, name: string) {
-  const res = await request.post(`${API_BASE}/instruments`, { data: { name, model, serial_number: serial } });
+  const res = await request.post(`${API_BASE}/instruments`, { data: { name, model, manufacturer: 'E2E Maker', serial_number: serial } });
   expect(res.status()).toBe(201);
   return (await res.json()).id as string;
 }
