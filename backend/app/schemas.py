@@ -38,19 +38,36 @@ class AppConfigOut(BaseModel):
 # ---------- Instruments ----------
 
 
+class InstrumentTypeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    key: str
+    display_name: str
+
+
+class InstrumentTypeCreate(BaseModel):
+    display_name: str
+
+
 class InstrumentCreate(BaseModel):
     name: str
     instrument_type: str = "facs"
     model: str
-    manufacturer: str | None = None
+    # Required for new instruments (existing rows may still have none). Blank
+    # counts as missing.
+    manufacturer: str
     serial_number: str
     location: str | None = None
 
     @field_validator("manufacturer")
     @classmethod
-    def _blank_manufacturer_is_none(cls, value: str | None) -> str | None:
-        """Free text, trimmed; a blank value means "not recorded"."""
-        return (value.strip() or None) if isinstance(value, str) else value
+    def _manufacturer_required(cls, value: str) -> str:
+        """Free text, trimmed; required when creating an instrument."""
+        value = value.strip()
+        if not value:
+            raise ValueError("Manufacturer is required")
+        return value
 
 
 class InstrumentUpdate(BaseModel):

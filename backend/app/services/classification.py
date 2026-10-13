@@ -44,11 +44,13 @@ settings = get_settings()
 
 _CLASSIFY_TOOL_NAME = "record_classification"
 
-_CLASSIFY_PROMPT = """This is a scanned BD Care service report for one flow cytometer in a fixed \
-fleet of three models. Identify three things and report a confidence (0 to 1) for each \
+_CLASSIFY_INTRO = """This is a scanned service report for one instrument in a fixed fleet. \
+Identify three things and report a confidence (0 to 1) for each \
 independently — they are not the same call.
 
-1. Which instrument model this document is for. Look for the "Installed Product" or \
+"""
+
+_CLASSIFY_BODY = """1. Which instrument model this document is for. Look for the "Installed Product" or \
 "System" field, which prints a code and model name (e.g. "648282B3 - ARIA III ACDU \
 6B/3R/3V" is a FACSAria III; "665158 - FACSDiscover S8 ..." is a FACSDiscover S8). \
 Only choose from the allowed options.
@@ -80,6 +82,24 @@ Give confidence scores that reflect real uncertainty. A clean, legible, unambigu
 read deserves something like 0.9-0.98. Anything you had to infer rather than read \
 directly, or where the document is ambiguous between two categories, deserves \
 meaningfully lower — do not default to a high number out of politeness."""
+
+_CLASSIFY_BRAND_NOTE = """The numbered notes below describe BD Care Work Order Service Reports \
+(their "Installed Product" block and "Work Order Task Code" field). A report from \
+another maker prints the same facts under its own labels: use the equivalent \
+fields, and apply the same rule of lower confidence when you have to infer.
+
+"""
+
+
+def build_classify_prompt(instruments: list[Instrument]) -> str:
+    """The classification prompt for the current fleet: a type-neutral intro
+    that lists the fleet's manufacturers, kinds and models, then the BD Care
+    reading notes (unchanged) for BD documents."""
+    seen: dict[tuple[str, str, str], None] = {}
+    for i in instruments:
+        seen[(i.manufacturer or "unknown maker", i.instrument_type, i.model)] = None
+    fleet = "\n".join(f"- {maker} {model} ({kind})" for maker, kind, model in seen)
+    return f"{_CLASSIFY_INTRO}The fleet:\n{fleet}\n\n{_CLASSIFY_BRAND_NOTE}{_CLASSIFY_BODY}"
 
 
 class DocumentRead(NamedTuple):
@@ -210,7 +230,7 @@ def _live_classify(
                     "role": "user",
                     "content": [
                         document_block,
-                        {"type": "text", "text": _CLASSIFY_PROMPT},
+                        {"type": "text", "text": build_classify_prompt(instruments)},
                     ],
                 }
             ],
@@ -361,6 +381,14 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
     return DocumentRead(instrument_guess, type_guess, serial, read.work_order_number, source, "text_layer")
 
 
+def _has_readable_text(attachment: Attachment) -> bool:
+    try:
+        with open(attachment.file_path, "rb") as f:
+            return bool(extract_text(f.read()))
+    except OSError:
+        return False
+
+
 def _stub_classify(
     attachment: Attachment, instruments: list[Instrument]
 ) -> DocumentRead:
@@ -370,6 +398,14 @@ def _stub_classify(
     text_read = _text_classify(attachment, instruments)
     if text_read is not None:
         return text_read
+    if _has_readable_text(attachment):
+        # The file has text but none of it identifies a document this app can
+        # read without a model (not a BD service report). Showing demo values
+        # for it would be inventing an answer, so say so instead.
+        raise ClassificationError(
+            "This document is not from a manufacturer the app can read without an API key. "
+            "Set ANTHROPIC_API_KEY (USE_LIVE_CLAUDE=true) to read it."
+        )
     if _is_sample_document(attachment.file_path):
         # Reproduces the real BD Care EU Work Order Service Report case
         # discussed in spec §4: instrument ID is a confident read, report
@@ -474,7 +510,10 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
         and type_guess.confidence >= settings.classification_confidence_threshold
     ):
         resolved_template = resolve_template(
-            db, instrument_type="facs", report_type=type_guess.value, model=instrument_guess.value
+            db,
+            instrument_type=matched_instrument.instrument_type,
+            report_type=type_guess.value,
+            model=instrument_guess.value,
         )
         # Only report the instrument as resolved when a template was also
         # found — ClassificationResult's own docstring says these two are

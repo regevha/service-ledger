@@ -51,7 +51,7 @@ async function seedCalibrationReport(
 async function createInstrument(request: APIRequestContext, marker: string): Promise<{ id: string; name: string }> {
   const instrument = await (
     await request.post(`${API_BASE}/instruments`, {
-      data: { name: marker, model: marker, serial_number: `SN-${marker}` },
+      data: { name: marker, model: marker, manufacturer: 'E2E Maker', serial_number: `SN-${marker}` },
     })
   ).json();
   return { id: instrument.id as string, name: instrument.name as string };

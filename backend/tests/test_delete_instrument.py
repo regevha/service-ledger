@@ -27,7 +27,7 @@ def _confident(monkeypatch):
 
 
 def _new_instrument(client, serial="DEL-1", model="LSRFortessa"):
-    return client.post("/instruments", json={"name": serial, "model": model, "serial_number": serial}).json()
+    return client.post("/instruments", json={"name": serial, "model": model, "manufacturer": "TestCo", "serial_number": serial}).json()
 
 
 def _report_on(client, instrument_id, *, upload=True):

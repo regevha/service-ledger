@@ -74,7 +74,7 @@ def _instrument(serial: str, model: str = "TestModel") -> models.Instrument:
 def test_create_instrument_losing_a_serial_race_is_a_409(client, race):
     race(_in_own_session(lambda s: s.add(_instrument("RACE-1"))))
 
-    resp = client.post("/instruments", json={"name": "Mine", "model": "TestModel", "serial_number": "RACE-1"})
+    resp = client.post("/instruments", json={"name": "Mine", "model": "TestModel", "manufacturer": "TestCo", "serial_number": "RACE-1"})
 
     assert resp.status_code == 409
     assert "serial" in resp.json()["detail"].lower()
@@ -82,7 +82,7 @@ def test_create_instrument_losing_a_serial_race_is_a_409(client, race):
 
 
 def test_edit_instrument_losing_a_serial_race_is_a_409(client, race):
-    mine = client.post("/instruments", json={"name": "Mine", "model": "TestModel", "serial_number": "MINE-1"}).json()
+    mine = client.post("/instruments", json={"name": "Mine", "model": "TestModel", "manufacturer": "TestCo", "serial_number": "MINE-1"}).json()
     race(_in_own_session(lambda s: s.add(_instrument("RACE-2"))))
 
     resp = client.patch(f"/instruments/{mine['id']}", json={"serial_number": "RACE-2"})
@@ -93,7 +93,7 @@ def test_edit_instrument_losing_a_serial_race_is_a_409(client, race):
 
 
 def test_delete_instrument_that_gains_a_report_mid_request_is_a_409(client, race):
-    mine = client.post("/instruments", json={"name": "Mine", "model": "TestModel", "serial_number": "MINE-DEL"}).json()
+    mine = client.post("/instruments", json={"name": "Mine", "model": "TestModel", "manufacturer": "TestCo", "serial_number": "MINE-DEL"}).json()
     race(_in_own_session(lambda s: s.add(models.Report(instrument_id=mine["id"]))))
 
     resp = client.delete(f"/instruments/{mine['id']}")
@@ -148,7 +148,7 @@ def test_delete_template_that_gains_a_report_mid_request_is_a_409(client, race):
 
 
 def test_confirming_a_template_that_is_deleted_mid_request_is_a_409(client, race):
-    instrument = client.post("/instruments", json={"name": "I", "model": "TestModel", "serial_number": "CONF-1"}).json()
+    instrument = client.post("/instruments", json={"name": "I", "model": "TestModel", "manufacturer": "TestCo", "serial_number": "CONF-1"}).json()
     template = client.post("/report-templates", json={"report_type": "repair", "model": "Doomed", "fields": FIELDS}).json()
     report = client.post("/reports", json={}).json()
 
