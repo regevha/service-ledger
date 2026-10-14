@@ -1,9 +1,11 @@
 """Instrument types: the managed list behind `instrument_type`.
 
 The key stored on instruments and templates must exist here. "facs" (shown as
-"Flow cytometer") is the first type and is always present: the migration adds
-it, and `ensure_default_types` re-adds it for databases built by
-`create_all` (tests, fresh dev databases)."""
+"Flow cytometer") is the first type; the migration adds it, and
+`ensure_default_types` (run by the seed and at app startup) adds it and the
+other seeded types (Electron microscope, ImageStream, Mass spectrometer, PCR
+machine) wherever they are missing, including databases built by `create_all`
+(tests, fresh dev databases) and ones migrated before they were added."""
 from __future__ import annotations
 
 import re
@@ -15,6 +17,16 @@ from app.models import InstrumentType
 DEFAULT_TYPE_KEY = "facs"
 DEFAULT_TYPE_NAME = "Flow cytometer"
 
+# Seeded types, in this order. "facs" keeps its historical key; the others get
+# the key `make_key` derives from the display name. More can be added in the app.
+DEFAULT_TYPES = [
+    (DEFAULT_TYPE_KEY, DEFAULT_TYPE_NAME),
+    ("electron_microscope", "Electron microscope"),
+    ("imagestream", "ImageStream"),
+    ("mass_spectrometer", "Mass spectrometer"),
+    ("pcr_machine", "PCR machine"),
+]
+
 
 def make_key(display_name: str) -> str:
     """"Electron microscope" -> "electron_microscope"."""
@@ -22,8 +34,12 @@ def make_key(display_name: str) -> str:
 
 
 def ensure_default_types(db: Session) -> None:
-    if not db.query(InstrumentType).filter(InstrumentType.key == DEFAULT_TYPE_KEY).first():
-        db.add(InstrumentType(key=DEFAULT_TYPE_KEY, display_name=DEFAULT_TYPE_NAME))
+    """Adds any seeded type that is missing. Idempotent, and never renames or
+    removes a type someone has added or changed."""
+    present = {key for (key,) in db.query(InstrumentType.key).all()}
+    missing = [(k, n) for k, n in DEFAULT_TYPES if k not in present]
+    if missing:
+        db.add_all(InstrumentType(key=k, display_name=n) for k, n in missing)
         db.commit()
 
 

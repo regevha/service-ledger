@@ -26,6 +26,10 @@ test('a new instrument type can be added, used, and shows a clear message when i
 
   // Flow cytometer is the first type and the default.
   await expect(page.locator('#instrument-type')).toHaveValue('facs');
+  // The seeded types are all offered.
+  for (const seeded of ['Flow cytometer', 'Electron microscope', 'ImageStream', 'Mass spectrometer', 'PCR machine']) {
+    await expect(page.locator('#instrument-type option', { hasText: seeded })).toHaveCount(1);
+  }
   await page.click('button:has-text("+ Add a type")');
   await label('New type name').fill(typeName);
   await page.click('button:has-text("Add")');
@@ -37,6 +41,10 @@ test('a new instrument type can be added, used, and shows a clear message when i
   await label('Serial number').fill(serial);
   await expect(page.locator('button:has-text("Create instrument")')).toBeDisabled();
   await label('Manufacturer').fill('E2E Optics');
+  // Model is required too: blank it and the button goes disabled again.
+  await label('Model').fill('   ');
+  await expect(page.locator('button:has-text("Create instrument")')).toBeDisabled();
+  await label('Model').fill('E2E-Talos');
   await page.click('button:has-text("Create instrument")');
 
   const row = page.locator('.instrument-row.template-row-body', { hasText: name });

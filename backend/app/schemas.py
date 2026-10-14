@@ -50,6 +50,21 @@ class InstrumentTypeCreate(BaseModel):
     display_name: str
 
 
+def _required_text(label: str):
+    """A validator body for a field that must hold real text: trimmed, and a
+    blank or all-whitespace value is refused (422) rather than stored."""
+
+    def check(value: str | None) -> str | None:
+        if value is None:
+            return None  # an omitted/null PATCH field is handled by the router
+        value = value.strip()
+        if not value:
+            raise ValueError(f"{label} cannot be blank")
+        return value
+
+    return check
+
+
 class InstrumentCreate(BaseModel):
     name: str
     instrument_type: str = "facs"
@@ -59,6 +74,21 @@ class InstrumentCreate(BaseModel):
     manufacturer: str
     serial_number: str
     location: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, value: str) -> str:
+        return _required_text("Name")(value)
+
+    @field_validator("model")
+    @classmethod
+    def _model_not_blank(cls, value: str) -> str:
+        return _required_text("Model")(value)
+
+    @field_validator("serial_number")
+    @classmethod
+    def _serial_not_blank(cls, value: str) -> str:
+        return _required_text("Serial number")(value)
 
     @field_validator("manufacturer")
     @classmethod
@@ -72,9 +102,10 @@ class InstrumentCreate(BaseModel):
 
 class InstrumentUpdate(BaseModel):
     """PATCH /instruments/{id} — every field optional so a caller only sends
-    what's changing; `instrument_type` is deliberately not editable here (it's
-    a fixed "facs" for MVP per the Instrument model's own doc comment, with
-    nothing in the UI to pick another value yet). Which fields the caller
+    what's changing; `instrument_type` is deliberately not editable here (it is
+    chosen when the instrument is created, because its templates and reports
+    are tied to it). A name, model or serial number that is sent must not be
+    blank. Which fields the caller
     actually sent is read via `model_fields_set` in the router, the same
     partial-update pattern TemplateUpdate below already uses, so an omitted
     field is left alone rather than overwritten with None."""
@@ -85,6 +116,21 @@ class InstrumentUpdate(BaseModel):
     serial_number: str | None = None
     location: str | None = None
     status: InstrumentStatus | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, value: str | None) -> str | None:
+        return _required_text("Name")(value)
+
+    @field_validator("model")
+    @classmethod
+    def _model_not_blank(cls, value: str | None) -> str | None:
+        return _required_text("Model")(value)
+
+    @field_validator("serial_number")
+    @classmethod
+    def _serial_not_blank(cls, value: str | None) -> str | None:
+        return _required_text("Serial number")(value)
 
     @field_validator("manufacturer")
     @classmethod
