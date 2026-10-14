@@ -911,9 +911,10 @@ export interface components {
         /**
          * InstrumentUpdate
          * @description PATCH /instruments/{id} — every field optional so a caller only sends
-         *     what's changing; `instrument_type` is deliberately not editable here (it's
-         *     a fixed "facs" for MVP per the Instrument model's own doc comment, with
-         *     nothing in the UI to pick another value yet). Which fields the caller
+         *     what's changing; `instrument_type` is deliberately not editable here (it is
+         *     chosen when the instrument is created, because its templates and reports
+         *     are tied to it). A name, model or serial number that is sent must not be
+         *     blank. Which fields the caller
          *     actually sent is read via `model_fields_set` in the router, the same
          *     partial-update pattern TemplateUpdate below already uses, so an omitted
          *     field is left alone rather than overwritten with None.
