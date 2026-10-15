@@ -148,19 +148,29 @@ second copy, and a create/edit here is reflected in the Reports filter and
 instrument detail page immediately, not just after a reload.
 
 Every field but `instrument_type` is editable via the backend's new `PATCH
-/instruments/{id}` (fixed to `"facs"` for MVP — models.py's own doc
-comment — and nothing in the UI offers another value to pick yet). A new
+/instruments/{id}` (the type is picked at creation, see Instrument type
+below). On create the Name, Model, Serial number and Manufacturer must all be filled in
+(the Create button stays disabled otherwise, and the API refuses blanks too);
+Room name is optional. A new
 instrument is always created active; status only becomes something to
 change once it already exists, so the create form has no Status field at
 all, only the edit form does.
 
-**Manufacturer** is an optional free-text field (the fleet is no longer
-BD-only): a column in the list, a field on the create/edit form (blank
-clears it), and a prefix on the instrument detail page's header line.
+**Manufacturer** is free text (the fleet is no longer BD-only), required
+when an instrument is created: a column in the list, a field on the
+create/edit form (an existing instrument's can still be cleared), and a prefix on the instrument detail page's header line.
 It is deliberately not added to the model pickers (intake, Reports filter) or
 to the Analytics model comparison: those key on the model name, which already
 identifies a unit, and changing their option text would only churn labels.
 Covered by `instrument-manufacturer.spec.ts`.
+
+**Instrument type** is a managed list (`GET/POST /instrument-types`) seeded with
+Flow cytometer, Electron microscope, ImageStream, Mass spectrometer and PCR
+machine. It is chosen when an instrument or a
+template is created and cannot be changed afterwards; the create form has an
+"+ Add a type" button. A report is matched to a template of its instrument's
+own type, and when that type has no template for the report the intake screen
+says so and points to the Templates tab. Covered by `instrument-types.spec.ts`.
 
 ### Trend chart
 

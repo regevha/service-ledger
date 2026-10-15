@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
 from app.db import get_db
+from app.services.instrument_types import type_exists
 from app.services.analytics import trend_points, trendable_fields
 from app.services.report_deletion import count_in_flight_jobs, remove_report_files
 
@@ -18,6 +19,8 @@ _SERIAL_CONFLICT = "An instrument with this serial number already exists"
 
 @router.post("/instruments", response_model=schemas.InstrumentOut, status_code=201)
 def create_instrument(payload: schemas.InstrumentCreate, db: Session = Depends(get_db)):
+    if not type_exists(db, payload.instrument_type):
+        raise HTTPException(422, f"Unknown instrument type '{payload.instrument_type}'. Add it first.")
     if db.query(models.Instrument).filter(models.Instrument.serial_number == payload.serial_number).first():
         raise HTTPException(409, _SERIAL_CONFLICT)
     instrument = models.Instrument(**payload.model_dump())
