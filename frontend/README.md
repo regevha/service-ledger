@@ -202,6 +202,8 @@ this so far" message instead of a one-point chart.
 npm run test:e2e       # headless run
 npm run test:e2e:ui    # Playwright's interactive UI mode
 npm run test:e2e:coverage  # same suite, instrumented; prints a coverage table, writes coverage/index.html
+npm run test:e2e:shuffled  # spec files in a random order; prints the seed (CI runs the shuffled coverage variant)
+E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled  # replay a failing order
 ```
 
 `playwright.config.ts` boots its own backend (stub-mode — `USE_LIVE_CLAUDE=false`,

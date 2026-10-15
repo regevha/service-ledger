@@ -67,7 +67,15 @@ jobs:
         # coverage included) makes this step fail when coverage drops — raise
         # the floor there when coverage improves. Missing lines are printed in
         # the log.
-        run: pytest -q --cov
+        #
+        # Test order is shuffled on every run (pytest-randomly) to catch tests
+        # that only pass because of the order they ran in. The seed is chosen
+        # here so it is printed in the log and in the run summary; to replay a
+        # failing order locally: pytest -p randomly --randomly-seed=<seed>
+        run: |
+          SEED=$(( (RANDOM << 15) | RANDOM ))
+          echo "pytest-randomly seed: $SEED" | tee -a "$GITHUB_STEP_SUMMARY"
+          pytest -q --cov -p randomly --randomly-seed=$SEED
 
   frontend:
     name: Frontend (Playwright e2e)
@@ -135,7 +143,13 @@ jobs:
         # thresholds live in frontend/package.json — raise them as coverage
         # improves). The table is printed in the log.
         working-directory: frontend
-        run: npm run test:e2e:coverage
+        #
+        # Spec files run in a random order each time
+        # (scripts/run-e2e-shuffled.mjs), to catch specs that only pass
+        # because of the order they ran in. The seed and the order are printed
+        # at the top of the step; to replay locally:
+        # E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled
+        run: npm run test:e2e:coverage:shuffled
 
       - name: Upload traces/screenshots on failure
         # playwright.config.ts only configures the 'list' reporter (no HTML
