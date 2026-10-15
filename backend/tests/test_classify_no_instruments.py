@@ -51,7 +51,7 @@ def test_the_job_fails_with_the_clear_message_and_the_report_is_left_alone(clien
 
 def test_classifying_works_again_once_an_instrument_is_added(client, run_worker):
     _delete_every_instrument(client)
-    client.post("/instruments", json={"name": "New", "model": "LSRFortessa", "serial_number": "NEW-1"})
+    client.post("/instruments", json={"name": "New", "model": "LSRFortessa", "manufacturer": "TestCo", "serial_number": "NEW-1"})
     report = client.post("/reports", json={}).json()
     attachment = client.post(
         f"/reports/{report['id']}/attachments", files={"file": ("a.pdf", b"%PDF-1.4 z", "application/pdf")}

@@ -10,7 +10,7 @@ const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function createInstrument(request: import('@playwright/test').APIRequestContext, name: string) {
   const res = await request.post(`${API_BASE}/instruments`, {
-    data: { name, model: 'E2E-Delete-Model', serial_number: `SN-${name}` },
+    data: { name, model: 'E2E-Delete-Model', manufacturer: 'E2E Maker', serial_number: `SN-${name}` },
   });
   expect(res.status()).toBe(201);
   return (await res.json()) as { id: string };

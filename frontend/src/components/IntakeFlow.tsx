@@ -8,6 +8,7 @@ import {
   createReport,
   extractAttachment,
   findTemplate,
+  listInstrumentTypes,
   finalizeReport,
   getReport,
   getReportTemplate,
@@ -453,14 +454,31 @@ export function IntakeFlow({
     });
   }
 
-  async function resolveAndExtract(reportId: string, attId: string, model: string, reportType: ReportType, instrumentId: string) {
+  async function resolveAndExtract(
+    reportId: string,
+    attId: string,
+    model: string,
+    reportType: ReportType,
+    instrumentId: string,
+    instrumentType: string
+  ) {
     setPhase({ name: 'working', label: 'Resolving the matching template…' });
     await attempt(
       'Could not resolve a template.',
-      () => void resolveAndExtract(reportId, attId, model, reportType, instrumentId),
+      () => void resolveAndExtract(reportId, attId, model, reportType, instrumentId, instrumentType),
       async () => {
-        const tpl = await findTemplate(model, reportType);
-        if (!tpl) throw new ApiError(404, `No template resolves for ${model} / ${reportType}.`);
+        const tpl = await findTemplate(model, reportType, instrumentType);
+        if (!tpl) {
+          // Common for a new kind of instrument: it has no generic template yet.
+          const kind = await listInstrumentTypes()
+            .then((types) => types.find((t) => t.key === instrumentType)?.display_name ?? instrumentType)
+            .catch(() => instrumentType);
+          throw new ApiError(
+            404,
+            `There is no ${REPORT_TYPE_LABEL[reportType]} template for ${kind} / ${model} yet. ` +
+              'Create one on the Templates tab (choose this instrument type), then upload the report again.'
+          );
+        }
         const updated = await confirmTemplate(reportId, instrumentId, tpl.id);
         setReport(updated);
         setTemplate(tpl);
@@ -568,7 +586,7 @@ export function IntakeFlow({
     if (!report || !attachmentId) return;
     const instrument = instruments.find((inst) => inst.id === pickInstrumentId);
     if (!instrument) return;
-    await resolveAndExtract(report.id, attachmentId, instrument.model, pickReportType, instrument.id);
+    await resolveAndExtract(report.id, attachmentId, instrument.model, pickReportType, instrument.id, instrument.instrument_type);
   }
 
   async function handleSaveFields(finalize: boolean) {

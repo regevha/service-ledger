@@ -77,10 +77,27 @@ class ExtractionJobKind(str, enum.Enum):
     extract = "extract"
 
 
+class InstrumentType(Base):
+    """A kind of instrument ("Flow cytometer", "Electron microscope"). `key` is
+    the stable value stored in `instruments.instrument_type` and
+    `report_templates.instrument_type`; `display_name` is what people see. The
+    columns stay plain strings (not foreign keys) and are validated against this
+    table by the API (services/instrument_types.py), so older rows and seed
+    scripts keep working. Distinct from `Instrument.manufacturer`, which says
+    who makes the instrument, not what kind it is."""
+
+    __tablename__ = "instrument_types"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    key: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Instrument(Base):
-    """§5: the physical asset. `instrument_type` is fixed to "facs" for MVP but
-    stored as a plain string (not a native enum) so the spec's "stays open for
-    other vendors and categories later" (§2) doesn't require a migration to honor."""
+    """§5: the physical asset. `instrument_type` is the `key` of an
+    InstrumentType row (default "facs", shown as "Flow cytometer"), stored as a
+    plain string rather than a native enum so adding a type needs no migration."""
 
     __tablename__ = "instruments"
 

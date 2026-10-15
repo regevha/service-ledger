@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.db import get_db
 from app.models import ReportType
+from app.services.instrument_types import type_exists
 from app.services.templates import resolve_template
 
 router = APIRouter(tags=["report-templates"])
@@ -106,6 +107,8 @@ def _check_collision(db: Session, instrument_type: str, report_type: ReportType,
 
 @router.post("/report-templates", response_model=schemas.ReportTemplateOut, status_code=201)
 def create_report_template(payload: schemas.TemplateCreate, db: Session = Depends(get_db)):
+    if not type_exists(db, payload.instrument_type):
+        raise HTTPException(422, f"Unknown instrument type '{payload.instrument_type}'. Add it first.")
     _check_collision(db, payload.instrument_type, payload.report_type, payload.model)
     template = models.ReportTemplate(
         instrument_type=payload.instrument_type,
