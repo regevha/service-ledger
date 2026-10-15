@@ -131,6 +131,11 @@ Run the tests (against a separate `service_ledger_test` database — see
 pytest
 ```
 
+The order is random on every run (`pytest-randomly`; the seed is on the first
+line of the output, and CI prints it in the log). Replay a failing order with
+`pytest -p randomly --randomly-seed=<seed>`; turn shuffling off with
+`pytest -p no:randomly`.
+
 Coverage (settings and the reasons for the three omitted dev scripts are in
 `.coveragerc`; the run fails below the `fail_under` floor, currently 95%, and
 CI runs `pytest --cov`, so a coverage drop fails the build):

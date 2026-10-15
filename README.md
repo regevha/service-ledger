@@ -80,6 +80,14 @@ request — see the badge at the top of this file. CI runs them with coverage
 backend below 95% (`backend/.coveragerc`), frontend below 88% lines or 70%
 branches (`frontend/package.json`). Raise those floors when coverage improves.
 
+**Test order is shuffled.** `pytest` runs in a random order every time
+(`pytest-randomly`), and CI shuffles the e2e spec files too
+(`npm run test:e2e:coverage:shuffled`), so a test that only passes because of
+what ran before it fails soon after it is written. Both print their seed; CI
+logs it at the top of each step. Replay a failing order with
+`pytest -p randomly --randomly-seed=<seed>` or
+`E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled`.
+
 An opt-in live-Claude smoke test (`frontend/tests/e2e-live/`) and a
 CLI-driven demo script (`docs/service-ledger-demo-script.md`) are also
 available — see `frontend/README.md` and that script for details.
