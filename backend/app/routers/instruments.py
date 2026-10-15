@@ -81,7 +81,7 @@ def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdat
         if conflict:
             raise HTTPException(409, _SERIAL_CONFLICT)
 
-    for field in ("name", "model", "manufacturer", "serial_number", "location", "status"):
+    for field in ("name", "model", "manufacturer", "distributor", "serial_number", "location", "status"):
         if field in provided:
             setattr(instrument, field, getattr(payload, field))
 

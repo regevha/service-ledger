@@ -72,6 +72,8 @@ class InstrumentCreate(BaseModel):
     # Required for new instruments (existing rows may still have none). Blank
     # counts as missing.
     manufacturer: str
+    # Optional: the local seller / service company when it is not the maker.
+    distributor: str | None = None
     serial_number: str
     location: str | None = None
 
@@ -99,6 +101,12 @@ class InstrumentCreate(BaseModel):
             raise ValueError("Manufacturer is required")
         return value
 
+    @field_validator("distributor")
+    @classmethod
+    def _blank_distributor_is_none(cls, value: str | None) -> str | None:
+        """Free text, trimmed; blank means "none / not recorded"."""
+        return (value.strip() or None) if isinstance(value, str) else value
+
 
 class InstrumentUpdate(BaseModel):
     """PATCH /instruments/{id} — every field optional so a caller only sends
@@ -113,6 +121,7 @@ class InstrumentUpdate(BaseModel):
     name: str | None = None
     model: str | None = None
     manufacturer: str | None = None
+    distributor: str | None = None
     serial_number: str | None = None
     location: str | None = None
     status: InstrumentStatus | None = None
@@ -138,6 +147,12 @@ class InstrumentUpdate(BaseModel):
         """Free text, trimmed; a blank value means "not recorded"."""
         return (value.strip() or None) if isinstance(value, str) else value
 
+    @field_validator("distributor")
+    @classmethod
+    def _blank_distributor_is_none(cls, value: str | None) -> str | None:
+        """Free text, trimmed; a blank value means "none / not recorded"."""
+        return (value.strip() or None) if isinstance(value, str) else value
+
 
 class InstrumentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -147,6 +162,7 @@ class InstrumentOut(BaseModel):
     instrument_type: str
     model: str
     manufacturer: str | None
+    distributor: str | None
     serial_number: str
     location: str | None
     status: InstrumentStatus
