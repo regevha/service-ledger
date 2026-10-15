@@ -1134,6 +1134,28 @@ textarea {
   padding-left: 30px;
 }
 
+.saved-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.saved-filters select {
+  width: auto;
+  flex: none;
+}
+.saved-filter-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.saved-filter-error {
+  color: var(--crit);
+  font-size: 0.85rem;
+}
+
 .muted {
   color: var(--text-muted);
   font-size: 0.85em;

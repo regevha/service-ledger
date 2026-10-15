@@ -432,6 +432,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/saved-report-filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Saved Filters */
+        get: operations["list_saved_filters_saved_report_filters_get"];
+        put?: never;
+        /** Create Saved Filter */
+        post: operations["create_saved_filter_saved_report_filters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/saved-report-filters/{filter_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Saved Filter */
+        delete: operations["delete_saved_filter_saved_report_filters__filter_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{report_id}/attachments": {
         parameters: {
             query?: never;
@@ -1155,6 +1190,58 @@ export interface components {
          * @enum {string}
          */
         ReportType: "calibration" | "repair" | "preventive_maintenance" | "installation_upgrade";
+        /** SavedFilterCreate */
+        SavedFilterCreate: {
+            /** Name */
+            name: string;
+            filters: components["schemas"]["SavedFilterCriteria"];
+        };
+        /**
+         * SavedFilterCriteria
+         * @description What a saved filter stores. Extra keys are rejected (a seventh
+         *     criterion needs a deliberate change here), and only set criteria are kept.
+         */
+        SavedFilterCriteria: {
+            /** Instrument Id */
+            instrument_id?: string | null;
+            report_type?: components["schemas"]["ReportType"] | null;
+            status?: components["schemas"]["ReportStatus"] | null;
+            /** Date From */
+            date_from?: string | null;
+            /** Date To */
+            date_to?: string | null;
+            /** Technician */
+            technician?: string | null;
+        };
+        /** SavedFilterListOut */
+        SavedFilterListOut: {
+            /** Items */
+            items: components["schemas"]["SavedFilterOut"][];
+            /** Cap */
+            cap: number;
+        };
+        /** SavedFilterOut */
+        SavedFilterOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Filters */
+            filters: Record<string, never>;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+        };
         /**
          * TemplateConfirmation
          * @description §9: PATCH /reports/{id}/template — confirm or override what classify
@@ -2138,6 +2225,88 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReportOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_saved_filters_saved_report_filters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedFilterListOut"];
+                };
+            };
+        };
+    };
+    create_saved_filter_saved_report_filters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedFilterCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedFilterOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_saved_filter_saved_report_filters__filter_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                filter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

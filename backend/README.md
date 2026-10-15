@@ -45,6 +45,9 @@ backend/
                               .../{id} — the structured field editor's CRUD, backed by a DB-level unique
                               index on (instrument_type, report_type, model) (migration 6b5fc4e1c3ca)
       reports.py              /reports CRUD (incl. delete), search, export, template confirm, finalize, GET .../{id}/pdf
+      saved_filters.py        GET/POST/DELETE /saved-report-filters — a global list of at most five named
+                              combinations of the Reports list's six filters (migration a1b2c3d4e5f6); the
+                              client applies one through the ordinary GET /reports
       attachments.py          upload, GET .../file, classify, extract (both 202 + enqueue), extraction-jobs
       analytics.py             GET /analytics/fleet — fleet-wide roll-ups (parts, labor hours, pass/fail);
                               GET /analytics/models and /analytics/models/trend — units of one model side by side

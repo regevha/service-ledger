@@ -12,6 +12,7 @@ import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { InstrumentDetailScreen } from './InstrumentDetailScreen';
 import { ReportDetailScreen } from './ReportDetailScreen';
+import { SavedFilters } from './SavedFilters';
 
 const STATUS_OPTIONS: ReportStatus[] = ['draft', 'classified', 'extracted', 'in_review', 'finalized'];
 
@@ -128,6 +129,14 @@ export function ReportsListScreen({
   return (
     <div className="section">
       <div className="section-title">Reports</div>
+
+      <SavedFilters
+        filters={filters}
+        onApply={(applied) => {
+          setFilters(applied);
+          setTechnicianInput(applied.technician ?? '');
+        }}
+      />
 
       <div className="filter-row">
         <select

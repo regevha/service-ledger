@@ -645,3 +645,33 @@ export async function pollExtractionJob(
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
 }
+
+// ---------- Saved report filters ----------
+
+// A named combination of the Reports list's six filters, shared by everyone
+// (at most `cap` exist). `filters` holds only the criteria that were set.
+export interface SavedFilter {
+  id: string;
+  name: string;
+  filters: ReportFilters;
+  created_at: string;
+  /** The saved instrument no longer exists. */
+  stale: boolean;
+}
+
+export interface SavedFilterList {
+  items: SavedFilter[];
+  cap: number;
+}
+
+export function listSavedFilters(): Promise<SavedFilterList> {
+  return apiFetch('/saved-report-filters');
+}
+
+export function createSavedFilter(name: string, filters: ReportFilters): Promise<SavedFilter> {
+  return apiFetch('/saved-report-filters', { method: 'POST', body: JSON.stringify({ name, filters }) });
+}
+
+export function deleteSavedFilter(id: string): Promise<void> {
+  return apiFetch(`/saved-report-filters/${id}`, { method: 'DELETE' });
+}
