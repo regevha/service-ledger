@@ -242,6 +242,12 @@ export interface paths {
          *     come from a fixed dropdown, `technician_name` is free text a technician
          *     typed on intake (§4), so "smith" should find "Jane Smith" without the
          *     caller needing the exact stored casing/spelling.
+         *
+         *     `q` is free-text search (services/report_search.py): word-based, all words
+         *     required, "quoted phrases" and -excluded words understood. It covers
+         *     finalized reports only, so with a status filter other than finalized the
+         *     answer is empty. Results are ranked best match first, and each row carries
+         *     a short excerpt around the match.
          */
         get: operations["search_reports_reports_get"];
         put?: never;
@@ -777,6 +783,10 @@ export interface components {
             created_at: string;
             /** Finalized At */
             finalized_at: string | null;
+            /** Snippet */
+            snippet?: components["schemas"]["SnippetPiece"][] | null;
+            /** Matched Field */
+            matched_field?: string | null;
             /**
              * Reason
              * @enum {string}
@@ -1125,6 +1135,10 @@ export interface components {
             created_at: string;
             /** Finalized At */
             finalized_at: string | null;
+            /** Snippet */
+            snippet?: components["schemas"]["SnippetPiece"][] | null;
+            /** Matched Field */
+            matched_field?: string | null;
         };
         /** ReportOut */
         ReportOut: {
@@ -1241,6 +1255,17 @@ export interface components {
              * @default false
              */
             stale: boolean;
+        };
+        /**
+         * SnippetPiece
+         * @description One run of an excerpt: plain text, and whether it is a matched word.
+         *     The server never sends HTML; the screen wraps matched pieces itself.
+         */
+        SnippetPiece: {
+            /** Text */
+            text: string;
+            /** Matched */
+            matched: boolean;
         };
         /**
          * TemplateConfirmation
@@ -1916,6 +1941,7 @@ export interface operations {
                 date_to?: string | null;
                 status?: components["schemas"]["ReportStatus"] | null;
                 technician?: string | null;
+                q?: string | null;
             };
             header?: never;
             path?: never;
@@ -1985,6 +2011,7 @@ export interface operations {
                 date_to?: string | null;
                 status?: components["schemas"]["ReportStatus"] | null;
                 technician?: string | null;
+                q?: string | null;
             };
             header?: never;
             path?: never;

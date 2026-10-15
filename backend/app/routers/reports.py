@@ -14,10 +14,20 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.db import get_db
 from app.services.duplicates import find_saved_duplicates
+from app.services import report_search
 from app.services.pdf_report import render_report_pdf
 from app.services.report_deletion import count_in_flight_jobs, remove_report_files
 
 router = APIRouter(tags=["reports"])
+
+
+def _search_text_param(q: str | None) -> str | None:
+    """The free-text query, trimmed; None when blank. Too short or too long is
+    a 422 with a message the screen can show."""
+    try:
+        return report_search.normalize_query(q)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
 
 
 def _filtered_reports_query(
@@ -29,6 +39,7 @@ def _filtered_reports_query(
     date_to: date | None,
     status: models.ReportStatus | None,
     technician: str | None,
+    q: str | None = None,
 ):
     """The filter chain search_reports and export_reports both apply —
     pulled out so export_reports' own docstring promise ("exporting always
@@ -49,6 +60,12 @@ def _filtered_reports_query(
         query = query.filter(models.Report.status == status)
     if technician:
         query = query.filter(models.Report.technician_name.ilike(f"%{technician}%"))
+    if q:
+        # Free-text search covers finalized reports only (services/
+        # report_search.py). Combined with a status filter other than
+        # "finalized" this is simply empty — the caller says why.
+        match, _rank = report_search.match_expressions(q)
+        query = query.filter(report_search.finalized_only(), match)
     return query
 
 
@@ -86,6 +103,7 @@ def search_reports(
     date_to: date | None = None,
     status: models.ReportStatus | None = None,
     technician: str | None = None,
+    q: str | None = None,
     db: Session = Depends(get_db),
 ):
     """§7/§9: filtered search — the browse/list view, not a single report's
@@ -99,7 +117,14 @@ def search_reports(
     like the other filters — unlike instrument/report type/status, which
     come from a fixed dropdown, `technician_name` is free text a technician
     typed on intake (§4), so "smith" should find "Jane Smith" without the
-    caller needing the exact stored casing/spelling."""
+    caller needing the exact stored casing/spelling.
+
+    `q` is free-text search (services/report_search.py): word-based, all words
+    required, "quoted phrases" and -excluded words understood. It covers
+    finalized reports only, so with a status filter other than finalized the
+    answer is empty. Results are ranked best match first, and each row carries
+    a short excerpt around the match."""
+    q = _search_text_param(q)
     query = _filtered_reports_query(
         db,
         instrument_id=instrument_id,
@@ -108,7 +133,20 @@ def search_reports(
         date_to=date_to,
         status=status,
         technician=technician,
+        q=q,
     )
+    if q:
+        _match, rank = report_search.match_expressions(q)
+        reports = query.order_by(rank.desc(), models.Report.created_at.desc()).all()
+        items = []
+        for r in reports:
+            item = _list_item(r)
+            found = report_search.build_excerpt(report_search.report_segments(r), q)
+            if found:
+                item.snippet = [schemas.SnippetPiece(**piece) for piece in found[0]]
+                item.matched_field = found[1]
+            items.append(item)
+        return items
     reports = query.order_by(models.Report.created_at.desc()).all()
     return [_list_item(r) for r in reports]
 
@@ -121,6 +159,7 @@ def export_reports(
     date_to: date | None = None,
     status: models.ReportStatus | None = None,
     technician: str | None = None,
+    q: str | None = None,
     db: Session = Depends(get_db),
 ):
     """§7/§9: bulk CSV export of a filtered view — the same filter set as
@@ -138,6 +177,7 @@ def export_reports(
         date_to=date_to,
         status=status,
         technician=technician,
+        q=_search_text_param(q),
     )
     reports = query.order_by(*models.report_chronological_order()).all()
 
