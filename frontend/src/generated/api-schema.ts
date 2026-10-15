@@ -879,6 +879,8 @@ export interface components {
             model: string;
             /** Manufacturer */
             manufacturer: string;
+            /** Distributor */
+            distributor?: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -899,6 +901,8 @@ export interface components {
             model: string;
             /** Manufacturer */
             manufacturer: string | null;
+            /** Distributor */
+            distributor: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -971,6 +975,8 @@ export interface components {
             model?: string | null;
             /** Manufacturer */
             manufacturer?: string | null;
+            /** Distributor */
+            distributor?: string | null;
             /** Serial Number */
             serial_number?: string | null;
             /** Location */

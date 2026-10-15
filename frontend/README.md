@@ -165,6 +165,13 @@ to the Analytics model comparison: those key on the model name, which already
 identifies a unit, and changing their option text would only churn labels.
 Covered by `instrument-manufacturer.spec.ts`.
 
+**Distributor** is optional free text: the local seller / service company when it
+is not the maker (for example Rhenium or almog diagnostic). A column in the
+list, a field on the create/edit form (blank or cleared means none), and
+"Distributor: …" at the end of the detail page's header line. Like the
+manufacturer, it is not in the model pickers or Analytics. Covered by
+`instrument-distributor.spec.ts`.
+
 **Instrument type** is a managed list (`GET/POST /instrument-types`) seeded with
 Flow cytometer, Electron microscope, ImageStream, Mass spectrometer and PCR
 machine. It is chosen when an instrument or a
