@@ -80,13 +80,15 @@ request — see the badge at the top of this file. CI runs them with coverage
 backend below 95% (`backend/.coveragerc`), frontend below 88% lines or 70%
 branches (`frontend/package.json`). Raise those floors when coverage improves.
 
-**Test order is shuffled.** `pytest` runs in a random order every time
-(`pytest-randomly`), and CI shuffles the e2e spec files too
-(`npm run test:e2e:coverage:shuffled`), so a test that only passes because of
-what ran before it fails soon after it is written. Both print their seed; CI
-logs it at the top of each step. Replay a failing order with
-`pytest -p randomly --randomly-seed=<seed>` or
-`E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled`.
+**Test order is shuffled once a day, not on every push.** Pushes and pull
+requests run the tests in the fixed order. A scheduled CI run once a day
+(03:17 UTC; also "Run workflow" in the Actions tab) shuffles the backend tests
+(`pytest-randomly`) and the e2e spec files (`npm run test:e2e:coverage:shuffled`),
+so a test that only passes because of what ran before it is found within a day.
+The run prints its seed (at the top of each step, and in the run summary). Replay
+a failing order with `pytest -p randomly --randomly-seed=<seed>` or
+`E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled`. On your own machine
+`pytest` shuffles every run unless you pass `-p no:randomly`.
 
 An opt-in live-Claude smoke test (`frontend/tests/e2e-live/`) and a
 CLI-driven demo script (`docs/service-ledger-demo-script.md`) are also
