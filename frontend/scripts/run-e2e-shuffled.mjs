@@ -11,7 +11,7 @@
 //   E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled
 // Extra arguments go to `playwright test`, e.g. a spec name or --grep.
 import { spawn } from 'node:child_process';
-import { cpSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { appendFileSync, cpSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -52,6 +52,14 @@ specs.forEach((name, i) => {
 
 console.log(`e2e shuffle seed: ${seed}   (replay: E2E_SHUFFLE_SEED=${seed} npm run test:e2e:shuffled)`);
 console.log(`spec order: ${specs.join(', ')}`);
+
+// On GitHub Actions, also put the seed on the run's summary page.
+if (process.env.GITHUB_STEP_SUMMARY) {
+  appendFileSync(
+    process.env.GITHUB_STEP_SUMMARY,
+    `e2e shuffle seed: ${seed} (replay: \`E2E_SHUFFLE_SEED=${seed} npm run test:e2e:shuffled\`)\n`,
+  );
+}
 
 const cleanup = () => rmSync(shuffled, { recursive: true, force: true });
 const child = spawn(
