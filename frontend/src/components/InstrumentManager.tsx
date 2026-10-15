@@ -47,6 +47,7 @@ function InstrumentFormScreen({
   const [name, setName] = useState(existing?.name ?? '');
   const [model, setModel] = useState(existing?.model ?? '');
   const [manufacturer, setManufacturer] = useState(existing?.manufacturer ?? '');
+  const [distributor, setDistributor] = useState(existing?.distributor ?? '');
   const [serialNumber, setSerialNumber] = useState(existing?.serial_number ?? '');
   const [location, setLocation] = useState(existing?.location ?? '');
   const [status, setStatus] = useState<InstrumentStatus>(existing?.status ?? 'active');
@@ -85,6 +86,7 @@ function InstrumentFormScreen({
           name: name.trim(),
           model: model.trim(),
           manufacturer: manufacturer.trim() || null,
+          distributor: distributor.trim() || null,
           serial_number: serialNumber.trim(),
           location: trimmedLocation,
           status,
@@ -95,6 +97,7 @@ function InstrumentFormScreen({
           model: model.trim(),
           instrument_type: typeKey,
           manufacturer: manufacturer.trim(),
+          distributor: distributor.trim() || null,
           serial_number: serialNumber.trim(),
           location: trimmedLocation,
         });
@@ -215,6 +218,16 @@ function InstrumentFormScreen({
             placeholder="e.g. Core Lab"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
+          />
+        </label>
+        <label className="schema-form-label">
+          Distributor
+          <input
+            type="text"
+            className="text-input"
+            placeholder="e.g. Rhenium (optional)"
+            value={distributor}
+            onChange={(e) => setDistributor(e.target.value)}
           />
         </label>
       </div>
@@ -369,6 +382,7 @@ export function InstrumentManagerScreen({
           <div className="instrument-row template-row-head">
             <span>Name</span>
             <span>Manufacturer</span>
+            <span>Distributor</span>
             <span>Model</span>
             <span>Serial number</span>
             <span>Room name</span>
@@ -379,6 +393,7 @@ export function InstrumentManagerScreen({
             <div className="instrument-row template-row-body" key={inst.id}>
               <span>{inst.name}</span>
               <span>{inst.manufacturer ?? '—'}</span>
+              <span>{inst.distributor ?? '—'}</span>
               <span>
                 {inst.model}
                 <small className="muted"> · {typeNames[inst.instrument_type] ?? inst.instrument_type}</small>
