@@ -12,7 +12,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Integer, String, func, text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -179,6 +179,18 @@ class Report(Base):
     than required at creation."""
 
     __tablename__ = "reports"
+    __table_args__ = (
+        # Free-text search covers finalized reports only, so the full-text index
+        # does too. The expression must stay identical to
+        # services/report_search.TSVECTOR_SQL (and the migration's), or the
+        # search query silently stops using it.
+        Index(
+            "ix_reports_search_tsv",
+            text("to_tsvector('simple', coalesce(search_text, ''))"),
+            postgresql_using="gin",
+            postgresql_where=text("status = 'finalized'"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     instrument_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -191,6 +203,10 @@ class Report(Base):
         Enum(ReportStatus, name="report_status"), nullable=False, default=ReportStatus.draft
     )
     extracted_fields: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # The searchable text of this report (text fields, table text cells, the
+    # instrument's model and serial), kept current by
+    # services/report_search.py; never returned by the API.
+    search_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Real columns regardless of report type or template variant (§5): the
     # reporting layer (§7) filters/sorts on these across every report.
@@ -301,3 +317,9 @@ def report_chronological_order() -> tuple:
     keeps undated reports in a stable, roughly chronological place among
     dated ones; created_at breaks ties."""
     return (func.coalesce(Report.report_date, func.date(Report.created_at)), Report.created_at)
+
+
+# Importing the search module registers the before_flush listener that keeps
+# Report.search_text current (see services/report_search.py). It lives at the
+# bottom because that module imports this one.
+from app.services import report_search  # noqa: E402,F401
