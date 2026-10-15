@@ -8,6 +8,7 @@ pydantic-settings==2.5.2
 python-multipart==0.0.31
 pytest==9.0.3
 pytest-cov==7.1.0  # coverage: python -m pytest --cov (settings in .coveragerc)
+pytest-randomly==5.0.0  # shuffles test order every run and prints the seed; reproduce a failure with: pytest -p randomly --randomly-seed=<seed>; turn off with: pytest -p no:randomly
 httpx==0.27.2
 anthropic==1.6.0
 reportlab==4.4.10
