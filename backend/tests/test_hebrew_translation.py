@@ -517,3 +517,22 @@ def test_a_fleet_model_still_resolves_and_leaves_issuer_empty(client, run_worker
     assert result["resolved_template_id"] is not None
     report = client.get(f"/reports/{ids['report']['id']}").json()
     assert report["issuer"] is None and report["report_type_note"] is None
+
+
+def test_invisible_characters_in_a_read_are_dropped(client, run_worker, live):
+    # A live read returned a lone zero-width space for "no work-order number".
+    ids, job, _ = _classify_live(
+        client,
+        run_worker,
+        live,
+        {
+            "instrument_model": "LSRFortessa",
+            "instrument_confidence": 0.95,
+            "report_type": "repair",
+            "report_type_confidence": 0.92,
+            "work_order_number": "​",
+            "issuer": "​ ",
+        },
+    )
+    assert job["classification"]["work_order_number"] is None
+    assert job["classification"]["issuer"] is None

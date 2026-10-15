@@ -110,6 +110,19 @@ fields, and apply the same rule of lower confidence when you have to infer.
 """
 
 
+_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u200e\u200f\u2060\ufeff"))
+
+
+def _clean(value: object) -> str | None:
+    """A text the model returned, with invisible characters and surrounding
+    space removed; None when nothing is left. (A live read once returned a lone
+    zero-width space for "no work-order number".)"""
+    if not isinstance(value, str):
+        return None
+    cleaned = value.translate(_INVISIBLE).strip()
+    return cleaned or None
+
+
 def build_classify_prompt(instruments: list[Instrument]) -> str:
     """The classification prompt for the current fleet: a type-neutral intro
     that lists the fleet's manufacturers, kinds and models, then the BD Care
@@ -310,14 +323,13 @@ def _live_classify(
         instrument_guess = ClassificationGuess(value=instruments[0].model, confidence=0.0)
 
     def _text(key: str) -> str | None:
-        value = data.get(key)
-        return value.strip() if isinstance(value, str) and value.strip() else None
+        return _clean(data.get(key))
 
     return DocumentRead(
         instrument_guess,
         type_guess,
         _parse_serial_read(data, attachment.file_path),
-        work_order.strip() if isinstance(work_order, str) and work_order.strip() else None,
+        _clean(work_order),
         type_source,
         "model",
         _text("issuer"),
