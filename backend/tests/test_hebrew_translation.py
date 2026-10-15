@@ -536,3 +536,25 @@ def test_invisible_characters_in_a_read_are_dropped(client, run_worker, live):
     )
     assert job["classification"]["work_order_number"] is None
     assert job["classification"]["issuer"] is None
+
+
+def test_the_prompt_does_not_call_a_device_number_the_serial(client, run_worker, live):
+    # On the Rhenium form the "device number" BE50173 is the model code and the
+    # "serial number" 102579 is the serial (confirmed by the project owner).
+    _, _, fake = _classify_live(
+        client,
+        run_worker,
+        live,
+        {
+            "instrument_model": "(not in the fleet)",
+            "instrument_confidence": 0.9,
+            "report_type": "repair",
+            "report_type_confidence": 0.9,
+            "instrument_serial": "102579",
+            "instrument_serial_confidence": 0.9,
+        },
+    )
+    prompt = fake.messages.calls[0]["messages"][0]["content"][1]["text"]
+    assert 'labelled "serial number"' in prompt
+    assert "can be the model code" in prompt
+    assert "serial, which may be labelled" not in prompt
