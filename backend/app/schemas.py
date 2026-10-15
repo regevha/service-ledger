@@ -14,7 +14,14 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from app.models import ExtractionJobKind, ExtractionJobStatus, InstrumentStatus, ReportStatus, ReportType
+from app.models import (
+    ExtractionJobKind,
+    ExtractionJobStatus,
+    InstrumentStatus,
+    ReportStatus,
+    ReportType,
+    TranslationStatus,
+)
 
 
 # ---------- App config ----------
@@ -373,6 +380,9 @@ class AttachmentOut(BaseModel):
     file_path: str
     file_type: str
     page_count: int
+    # Status of the current translation (pending_review, accepted, discarded,
+    # not_needed), or None when the document never went through the translate step.
+    translation_status: str | None = None
     # Set only on the upload response: other reports that already hold a file
     # with these exact bytes, or whose PDF text names the same work order. A
     # warning, never a rejection.
@@ -398,6 +408,10 @@ class ReportOut(BaseModel):
     status: ReportStatus
     extracted_fields: dict
     technician_name: str | None
+    # Who issued the form and a second report type, when classification read
+    # them off the document (see ClassificationResult).
+    issuer: str | None = None
+    report_type_note: str | None = None
     service_actions: str | None
     parts_replaced: str | None
     next_service_due: date | None
@@ -516,9 +530,71 @@ class ClassificationResult(BaseModel):
     reader: Literal["model", "text_layer", "stub"] = "model"
     # The work-order number as printed, when one was read.
     work_order_number: str | None = None
+    # Read off a document from another company's form: who issued it (often a
+    # distributor), the instrument's maker as far as the model could tell, False
+    # when that instrument is not any model in the fleet (the instrument guess is
+    # then a zero-confidence placeholder for the manual pick), and a note when the
+    # visit fits a second report type.
+    issuer: str | None = None
+    detected_manufacturer: str | None = None
+    maker_in_fleet: bool = True
+    report_type_note: str | None = None
     # Other reports that already hold this document — same file bytes or same
     # work-order number. Empty when none; the intake screen should warn, not block.
     duplicate_report_ids: list[uuid.UUID] = []
+
+
+class TranslateRequest(BaseModel):
+    """POST /attachments/{id}/translate. `include_pages` asks for pages the model
+    would otherwise skip as instrument QC printouts to be translated too."""
+
+    include_pages: list[int] = []
+
+    @field_validator("include_pages")
+    @classmethod
+    def _pages_positive(cls, v: list[int]) -> list[int]:
+        if any(p < 1 for p in v):
+            raise ValueError("Page numbers start at 1")
+        return sorted(set(v))
+
+
+class TranslationAccept(BaseModel):
+    """POST /translations/{id}/accept. Omit `accepted_text` to accept the model's
+    text as it is; send it to accept an edited version."""
+
+    accepted_text: str | None = None
+
+    @field_validator("accepted_text")
+    @classmethod
+    def _not_blank(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not v.strip():
+            raise ValueError("The accepted translation cannot be empty")
+        if len(v) > 200_000:
+            raise ValueError("The accepted translation is too long")
+        return v
+
+
+class TranslationOut(BaseModel):
+    # `model_text` and `model` start with pydantic's protected "model_" prefix.
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+
+    id: uuid.UUID
+    attachment_id: uuid.UUID
+    status: TranslationStatus
+    source_language: str
+    hebrew_share: float | None
+    model_text: str | None
+    accepted_text: str | None
+    ignored_pages: list[dict]
+    included_pages: list[int]
+    identifier_check: dict
+    notes: list[str]
+    reader: str
+    model: str | None
+    created_at: datetime
+    accepted_at: datetime | None
 
 
 class ExtractionJobOut(BaseModel):

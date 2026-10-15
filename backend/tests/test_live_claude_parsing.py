@@ -132,13 +132,15 @@ def test_live_classify_parses_a_well_formed_tool_response(tmp_path, monkeypatch,
     assert type_guess.confidence == 0.6
 
     # The model options offered to Claude should be exactly the fleet passed
-    # in (sorted), and the tool_choice should force this exact tool — both
+    # in (sorted) plus the "(not in the fleet)" answer for another company's
+    # instrument, and the tool_choice should force this exact tool — both
     # load-bearing for getting a validated answer back rather than free text.
     call = fake_client.messages.calls[0]
     assert call["tool_choice"] == {"type": "tool", "name": classification._CLASSIFY_TOOL_NAME}
     assert call["tools"][0]["input_schema"]["properties"]["instrument_model"]["enum"] == [
         "FACSAria III",
         "LSRFortessa",
+        classification.NOT_IN_FLEET,
     ]
 
     # Every live Claude call gets one completion log line with how long it
