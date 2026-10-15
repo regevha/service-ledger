@@ -135,17 +135,36 @@ def identifiers_in(text: str) -> list[str]:
     return list(seen)
 
 
+_RUN = re.compile(r"[A-Za-z]+|[0-9]+")
+
+
+def _groups(token: str) -> tuple[str, ...]:
+    """The letter and digit runs of an identifier, in sorted order. A Hebrew
+    text layer is stored in visual order, so a Latin identifier next to Hebrew
+    comes out with its runs reordered (BE50173 as 50173BE, BC-B96621 as
+    96621B-BC, C767 as 767C); comparing the runs ignoring order sees through
+    that without accepting a different identifier."""
+    return tuple(sorted(_RUN.findall(token)))
+
+
 def identifier_check(listed: list[str], translated_text: str, original_text: str = "") -> dict:
     """Which identifiers do not appear verbatim in the translation. `listed` are
-    the identifiers the model says it kept; `original_text` (the text layer, when
-    there is one) adds the identifiers found there too."""
-    candidates: dict[str, None] = {}
+    the identifiers the model says it kept and must appear exactly. `original_text`
+    (the text layer, when there is one) adds the identifiers found there too;
+    those may appear with their letter and digit runs in another order, because
+    the text layer of a Hebrew document is in visual order (see `_groups`)."""
+    candidates: dict[str, bool] = {}  # identifier -> may be matched ignoring run order
     for item in listed:
         if isinstance(item, str) and item.strip():
-            candidates[item.strip()] = None
+            candidates[item.strip()] = False
     for item in identifiers_in(original_text):
-        candidates[item] = None
-    missing = [c for c in candidates if c not in translated_text]
+        candidates.setdefault(item, True)
+    translated_groups = {_groups(t) for t in identifiers_in(translated_text)}
+    missing = [
+        c
+        for c, loose in candidates.items()
+        if c not in translated_text and not (loose and _groups(c) in translated_groups)
+    ]
     return {"checked": len(candidates), "missing": missing}
 
 
