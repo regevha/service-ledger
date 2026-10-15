@@ -539,6 +539,9 @@ class ClassificationResult(BaseModel):
     detected_manufacturer: str | None = None
     maker_in_fleet: bool = True
     report_type_note: str | None = None
+    # The instrument's model name as printed (for example "Cytek Aurora"), so
+    # the intake screen can offer to add it to the fleet.
+    detected_model: str | None = None
     # Other reports that already hold this document — same file bytes or same
     # work-order number. Empty when none; the intake screen should warn, not block.
     duplicate_report_ids: list[uuid.UUID] = []
