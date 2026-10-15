@@ -156,6 +156,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/report-templates/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Report Template Usage
+         * @description Per template, how many reports use it and how many of those are
+         *     finalized. One query for the whole list, so the management screen does not
+         *     ask once per row. Registered before /report-templates/{template_id} so
+         *     "usage" is never read as a template id.
+         */
+        get: operations["report_template_usage_report_templates_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/report-templates/{template_id}": {
         parameters: {
             query?: never;
@@ -381,6 +404,41 @@ export interface paths {
          */
         post: operations["finalize_report_reports__report_id__finalize_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/saved-report-filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Saved Filters */
+        get: operations["list_saved_filters_saved_report_filters_get"];
+        put?: never;
+        /** Create Saved Filter */
+        post: operations["create_saved_filter_saved_report_filters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/saved-report-filters/{filter_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Saved Filter */
+        delete: operations["delete_saved_filter_saved_report_filters__filter_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -786,6 +844,8 @@ export interface components {
             instrument_type: string;
             /** Model */
             model: string;
+            /** Manufacturer */
+            manufacturer?: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -804,6 +864,8 @@ export interface components {
             instrument_type: string;
             /** Model */
             model: string;
+            /** Manufacturer */
+            manufacturer: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -856,6 +918,8 @@ export interface components {
             name?: string | null;
             /** Model */
             model?: string | null;
+            /** Manufacturer */
+            manufacturer?: string | null;
             /** Serial Number */
             serial_number?: string | null;
             /** Location */
@@ -1085,6 +1149,58 @@ export interface components {
          * @enum {string}
          */
         ReportType: "calibration" | "repair" | "preventive_maintenance" | "installation_upgrade";
+        /** SavedFilterCreate */
+        SavedFilterCreate: {
+            /** Name */
+            name: string;
+            filters: components["schemas"]["SavedFilterCriteria"];
+        };
+        /**
+         * SavedFilterCriteria
+         * @description What a saved filter stores. Extra keys are rejected (a seventh
+         *     criterion needs a deliberate change here), and only set criteria are kept.
+         */
+        SavedFilterCriteria: {
+            /** Instrument Id */
+            instrument_id?: string | null;
+            report_type?: components["schemas"]["ReportType"] | null;
+            status?: components["schemas"]["ReportStatus"] | null;
+            /** Date From */
+            date_from?: string | null;
+            /** Date To */
+            date_to?: string | null;
+            /** Technician */
+            technician?: string | null;
+        };
+        /** SavedFilterListOut */
+        SavedFilterListOut: {
+            /** Items */
+            items: components["schemas"]["SavedFilterOut"][];
+            /** Cap */
+            cap: number;
+        };
+        /** SavedFilterOut */
+        SavedFilterOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Filters */
+            filters: Record<string, never>;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+        };
         /**
          * TemplateConfirmation
          * @description §9: PATCH /reports/{id}/template — confirm or override what classify
@@ -1168,6 +1284,23 @@ export interface components {
             model?: string | null;
             /** Fields */
             fields?: components["schemas"]["TemplateFieldIn"][] | null;
+        };
+        /**
+         * TemplateUsageOut
+         * @description How many reports point at one template — what the template manager
+         *     needs to warn before an edit and to explain why a delete is refused.
+         *     Templates no report uses are simply absent from the list.
+         */
+        TemplateUsageOut: {
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /** Report Count */
+            report_count: number;
+            /** Finalized Count */
+            finalized_count: number;
         };
         /**
          * TrendFieldOut
@@ -1561,6 +1694,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportTemplateOut"][];
+                };
+            };
+        };
+    };
+    report_template_usage_report_templates_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateUsageOut"][];
                 };
             };
         };
@@ -1978,6 +2131,88 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReportOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_saved_filters_saved_report_filters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedFilterListOut"];
+                };
+            };
+        };
+    };
+    create_saved_filter_saved_report_filters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedFilterCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedFilterOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_saved_filter_saved_report_filters__filter_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                filter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
