@@ -334,6 +334,14 @@ class ReportOut(BaseModel):
     attachments: list[AttachmentOut] = []
 
 
+class SnippetPiece(BaseModel):
+    """One run of an excerpt: plain text, and whether it is a matched word.
+    The server never sends HTML; the screen wraps matched pieces itself."""
+
+    text: str
+    matched: bool
+
+
 class ReportListItemOut(BaseModel):
     """§7/§9: the denormalized shape GET /reports (filtered search) returns —
     distinct from ReportOut, which stays the raw single-report detail shape
@@ -354,6 +362,10 @@ class ReportListItemOut(BaseModel):
     report_date: date | None
     created_at: datetime
     finalized_at: datetime | None
+    # Only when the list was searched (`q`): a short excerpt around the first
+    # match, and the label of the field it came from.
+    snippet: list[SnippetPiece] | None = None
+    matched_field: str | None = None
 
 
 class DuplicateReportOut(ReportListItemOut):

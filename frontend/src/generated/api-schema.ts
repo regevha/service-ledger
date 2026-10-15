@@ -156,6 +156,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/report-templates/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Report Template Usage
+         * @description Per template, how many reports use it and how many of those are
+         *     finalized. One query for the whole list, so the management screen does not
+         *     ask once per row. Registered before /report-templates/{template_id} so
+         *     "usage" is never read as a template id.
+         */
+        get: operations["report_template_usage_report_templates_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/report-templates/{template_id}": {
         parameters: {
             query?: never;
@@ -196,6 +219,12 @@ export interface paths {
          *     come from a fixed dropdown, `technician_name` is free text a technician
          *     typed on intake (§4), so "smith" should find "Jane Smith" without the
          *     caller needing the exact stored casing/spelling.
+         *
+         *     `q` is free-text search (services/report_search.py): word-based, all words
+         *     required, "quoted phrases" and -excluded words understood. It covers
+         *     finalized reports only, so with a status filter other than finalized the
+         *     answer is empty. Results are ranked best match first, and each row carries
+         *     a short excerpt around the match.
          */
         get: operations["search_reports_reports_get"];
         put?: never;
@@ -696,6 +725,10 @@ export interface components {
             created_at: string;
             /** Finalized At */
             finalized_at: string | null;
+            /** Snippet */
+            snippet?: components["schemas"]["SnippetPiece"][] | null;
+            /** Matched Field */
+            matched_field?: string | null;
             /**
              * Reason
              * @enum {string}
@@ -786,6 +819,8 @@ export interface components {
             instrument_type: string;
             /** Model */
             model: string;
+            /** Manufacturer */
+            manufacturer?: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -804,6 +839,8 @@ export interface components {
             instrument_type: string;
             /** Model */
             model: string;
+            /** Manufacturer */
+            manufacturer: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -856,6 +893,8 @@ export interface components {
             name?: string | null;
             /** Model */
             model?: string | null;
+            /** Manufacturer */
+            manufacturer?: string | null;
             /** Serial Number */
             serial_number?: string | null;
             /** Location */
@@ -1020,6 +1059,10 @@ export interface components {
             created_at: string;
             /** Finalized At */
             finalized_at: string | null;
+            /** Snippet */
+            snippet?: components["schemas"]["SnippetPiece"][] | null;
+            /** Matched Field */
+            matched_field?: string | null;
         };
         /** ReportOut */
         ReportOut: {
@@ -1085,6 +1128,17 @@ export interface components {
          * @enum {string}
          */
         ReportType: "calibration" | "repair" | "preventive_maintenance" | "installation_upgrade";
+        /**
+         * SnippetPiece
+         * @description One run of an excerpt: plain text, and whether it is a matched word.
+         *     The server never sends HTML; the screen wraps matched pieces itself.
+         */
+        SnippetPiece: {
+            /** Text */
+            text: string;
+            /** Matched */
+            matched: boolean;
+        };
         /**
          * TemplateConfirmation
          * @description §9: PATCH /reports/{id}/template — confirm or override what classify
@@ -1168,6 +1222,23 @@ export interface components {
             model?: string | null;
             /** Fields */
             fields?: components["schemas"]["TemplateFieldIn"][] | null;
+        };
+        /**
+         * TemplateUsageOut
+         * @description How many reports point at one template — what the template manager
+         *     needs to warn before an edit and to explain why a delete is refused.
+         *     Templates no report uses are simply absent from the list.
+         */
+        TemplateUsageOut: {
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /** Report Count */
+            report_count: number;
+            /** Finalized Count */
+            finalized_count: number;
         };
         /**
          * TrendFieldOut
@@ -1565,6 +1636,26 @@ export interface operations {
             };
         };
     };
+    report_template_usage_report_templates_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateUsageOut"][];
+                };
+            };
+        };
+    };
     get_report_template_report_templates__template_id__get: {
         parameters: {
             query?: never;
@@ -1669,6 +1760,7 @@ export interface operations {
                 date_to?: string | null;
                 status?: components["schemas"]["ReportStatus"] | null;
                 technician?: string | null;
+                q?: string | null;
             };
             header?: never;
             path?: never;
@@ -1738,6 +1830,7 @@ export interface operations {
                 date_to?: string | null;
                 status?: components["schemas"]["ReportStatus"] | null;
                 technician?: string | null;
+                q?: string | null;
             };
             header?: never;
             path?: never;

@@ -131,6 +131,9 @@ export interface ReportListItem {
   report_date: string | null;
   created_at: string;
   finalized_at: string | null;
+  /** Only when the list was searched: an excerpt around the first match (matched runs are the found words), and the field it came from. */
+  snippet?: { text: string; matched: boolean }[] | null;
+  matched_field?: string | null;
 }
 
 export interface Attachment {
@@ -517,6 +520,8 @@ export interface ReportFilters {
   date_from?: string;
   date_to?: string;
   technician?: string;
+  /** Free-text search over finalized reports (two or more characters). */
+  q?: string;
 }
 
 export function listReports(filters: ReportFilters = {}): Promise<ReportListItem[]> {
