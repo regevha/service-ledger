@@ -91,8 +91,10 @@ unclear) and put the instrument's maker, as you can tell it from the model name,
 software or the part numbers, in `detected_manufacturer`. If the instrument is not any \
 model in the fleet, answer "(not in the fleet)" for `instrument_model` with a low \
 confidence; never pick the nearest model in the fleet just to give an answer. On such a \
-form the serial number is the instrument's serial, which may be labelled "device number" \
-or "S.N"; a separate asset, embedded or inventory number is not the serial. If one visit \
+form the serial is the number labelled "serial number" (or "S.N"), copied exactly. A number \
+labelled "device number" or "instrument number" can be the model code (for example BE50173 \
+on a CytoFLEX form), not the serial, and an asset or inventory number is not the serial \
+either. If one visit \
 fits two report types (an upgrade done together with a preventive maintenance visit), give \
 the main one in `report_type` and name the other in `report_type_note`. Numbers without a \
 unit are not given one.
