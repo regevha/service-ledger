@@ -123,6 +123,10 @@ export interface Report {
   status: ReportStatus;
   extracted_fields: Record<string, unknown>;
   technician_name: string | null;
+  /** Who issued the form (often a distributor), when classification read one. */
+  issuer?: string | null;
+  /** A second report type the visit also fits, when classification read one. */
+  report_type_note?: string | null;
   service_actions: string | null;
   parts_replaced: string | null;
   next_service_due: string | null;
@@ -156,6 +160,8 @@ export interface Attachment {
   file_path: string;
   file_type: string;
   page_count: number;
+  /** Status of the current translation, or null when it never went through the translate step. */
+  translation_status?: TranslationStatus | null;
   // Only on the upload response: other reports already holding a file with
   // these exact bytes (a warning, never a rejection).
   duplicate_report_ids?: string[];
@@ -190,6 +196,15 @@ export interface ClassificationResult {
   // key needed), or the demo stand-in for a file with no text.
   reader?: 'model' | 'text_layer' | 'stub';
   work_order_number?: string | null;
+  // Read off another company's form: who issued it (often a distributor), the
+  // instrument's maker and model name as far as the model could tell, false when
+  // the instrument is not any model in the fleet (the instrument guess is then
+  // a zero-confidence placeholder), and a second report type if the visit fits two.
+  issuer?: string | null;
+  detected_manufacturer?: string | null;
+  detected_model?: string | null;
+  maker_in_fleet?: boolean;
+  report_type_note?: string | null;
   // Other reports already holding this document: same file bytes or same
   // work-order number.
   duplicate_report_ids?: string[];
@@ -654,6 +669,59 @@ export async function pollExtractionJob(
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
+}
+
+// ---------- Hebrew translation ----------
+
+export type TranslationStatus = 'pending_review' | 'accepted' | 'discarded' | 'superseded' | 'not_needed';
+
+export interface Translation {
+  id: string;
+  attachment_id: string;
+  status: TranslationStatus;
+  source_language: string;
+  hebrew_share: number | null;
+  /** The model's English text. */
+  model_text: string | null;
+  /** The text a person accepted (possibly edited). */
+  accepted_text: string | null;
+  /** Pages left out as instrument QC printouts: [{page, reason}]. */
+  ignored_pages: { page: number; reason: string }[];
+  included_pages: number[];
+  /** Identifiers listed for the document and the ones missing from the English. */
+  identifier_check: { checked?: number; missing?: string[] };
+  notes: string[];
+  reader: string;
+  model: string | null;
+  created_at: string;
+  accepted_at: string | null;
+}
+
+// Enqueues a translate job (202); poll it with pollExtractionJob. `includePages`
+// asks for pages that would be skipped as QC printouts to be translated too.
+export function translateAttachment(attachmentId: string, includePages: number[] = []): Promise<ExtractionJob> {
+  return apiFetch(`/attachments/${attachmentId}/translate`, {
+    method: 'POST',
+    body: JSON.stringify({ include_pages: includePages }),
+  });
+}
+
+/** The attachment's current translation; rejects with a 404 ApiError when it has none. */
+export function getTranslation(attachmentId: string): Promise<Translation> {
+  return apiFetch(`/attachments/${attachmentId}/translation`);
+}
+
+/** Accept the translation; send `acceptedText` to accept an edited version. */
+export function acceptTranslation(translationId: string, acceptedText?: string): Promise<Translation> {
+  return apiFetch(`/translations/${translationId}/accept`, {
+    method: 'POST',
+    body: JSON.stringify(acceptedText === undefined ? {} : { accepted_text: acceptedText }),
+  });
+}
+
+/** Drop the translation and go on with the original document. */
+export function discardTranslation(translationId: string): Promise<Translation> {
+  return apiFetch(`/translations/${translationId}/discard`, { method: 'POST' });
 }
 
 // ---------- Saved report filters ----------

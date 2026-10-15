@@ -480,6 +480,7 @@ def test_an_instrument_not_in_the_fleet_is_not_forced_into_the_nearest_model(cli
             "work_order_number": "2046",
             "issuer": "almog diagnostic",
             "detected_manufacturer": "Cytek Biosciences",
+            "detected_model": "Cytek Aurora",
             "report_type_note": "also an annual preventive maintenance visit",
         },
     )
@@ -487,6 +488,7 @@ def test_an_instrument_not_in_the_fleet_is_not_forced_into_the_nearest_model(cli
     result = job["classification"]
     assert result["maker_in_fleet"] is False
     assert result["detected_manufacturer"] == "Cytek Biosciences"
+    assert result["detected_model"] == "Cytek Aurora"
     assert result["instrument"]["confidence"] == 0.0  # a placeholder, so the technician picks
     assert result["resolved_template_id"] is None and result["resolved_instrument_id"] is None
     assert result["issuer"] == "almog diagnostic"
@@ -558,3 +560,48 @@ def test_the_prompt_does_not_call_a_device_number_the_serial(client, run_worker,
     assert 'labelled "serial number"' in prompt
     assert "can be the model code" in prompt
     assert "serial, which may be labelled" not in prompt
+
+
+def test_stub_other_maker_file_is_not_in_the_fleet_until_it_is_added(client, run_worker):
+    ids = _upload(client, "othermaker.pdf")
+    att = ids["attachment"]["id"]
+    job = client.post(f"/attachments/{att}/classify").json()
+    run_worker()
+    first = client.get(f"/extraction-jobs/{job['id']}").json()["classification"]
+    assert first["maker_in_fleet"] is False and first["instrument"]["confidence"] == 0.0
+    assert first["detected_model"] == "Cytek Aurora" and first["issuer"] == "almog diagnostic"
+    assert first["resolved_instrument_id"] is None
+
+    added = client.post(
+        "/instruments",
+        json={
+            "name": "Aurora",
+            "instrument_type": "facs",
+            "model": "Cytek Aurora",
+            "manufacturer": "Cytek Biosciences",
+            "distributor": "almog diagnostic",
+            "serial_number": "Y1033",
+        },
+    )
+    assert added.status_code == 201
+
+    job = client.post(f"/attachments/{att}/classify").json()
+    run_worker()
+    second = client.get(f"/extraction-jobs/{job['id']}").json()["classification"]
+    assert second["maker_in_fleet"] is True
+    assert second["serial_match"] == "matched"
+    assert second["resolved_instrument_id"] == added.json()["id"]
+    assert second["report_type_note"] == "preventive_maintenance"
+
+
+def test_stub_other_maker_serial_can_come_from_the_file_name(client, run_worker):
+    att = _upload(client, "hebrew_othermaker-ab12cd-scan.pdf")["attachment"]["id"]
+    job = client.post(f"/attachments/{att}/translate").json()
+    run_worker()  # the translate job; the file name also says "hebrew"
+    assert client.get(f"/extraction-jobs/{job['id']}").json()["status"] == "succeeded"
+    client.post(f"/translations/{client.get(f'/attachments/{att}/translation').json()['id']}/accept")
+    job = client.post(f"/attachments/{att}/classify").json()
+    run_worker()
+    result = client.get(f"/extraction-jobs/{job['id']}").json()["classification"]
+    assert result["instrument_serial"]["value"] == "AB12CD"
+    assert result["maker_in_fleet"] is False

@@ -1217,3 +1217,53 @@ textarea {
   color: var(--text-muted);
   font-size: 0.85em;
 }
+
+/* Hebrew translation review (TranslationReview.tsx) */
+.translation-panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0;
+}
+.translation-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.translation-original,
+.translation-text {
+  width: 100%;
+  height: 420px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.translation-text {
+  padding: 8px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  resize: vertical;
+}
+@media (max-width: 900px) {
+  .translation-panes {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Adding an instrument that is not in the fleet (AddInstrumentPanel.tsx) */
+.add-instrument-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px 12px;
+  margin: 10px 0;
+}
+.add-instrument-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
