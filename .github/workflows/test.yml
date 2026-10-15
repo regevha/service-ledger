@@ -110,7 +110,7 @@ jobs:
         # it) — matches the one-time manual `createdb` step in README.md.
         run: psql -d service_ledger -c "CREATE DATABASE service_ledger_e2e;"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: "npm"
