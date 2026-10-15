@@ -108,6 +108,10 @@ class Instrument(Base):
     # Free text ("BD", "Beckman Coulter"); NULL when not recorded. The fleet is
     # no longer BD-only, but existing rows predate this column.
     manufacturer: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Free text: the company that sells and services this unit locally when that
+    # is not the maker ("Rhenium", "almog diagnostic"); NULL when there is none or
+    # it is not recorded. Optional, unlike the manufacturer.
+    distributor: Mapped[str | None] = mapped_column(String, nullable=True)
     serial_number: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     location: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[InstrumentStatus] = mapped_column(

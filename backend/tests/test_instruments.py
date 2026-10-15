@@ -349,3 +349,47 @@ def test_update_manufacturer_sets_changes_and_clears_it(client):
     assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": None}).json()["manufacturer"] is None
     client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek"})
     assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": " "}).json()["manufacturer"] is None
+
+
+# ---------- distributor ----------
+
+
+def test_distributor_is_optional_trimmed_and_returned(client):
+    plain = client.post(
+        "/instruments", json={"name": "No Dist", "model": "D1", "manufacturer": "Cytek", "serial_number": "DIST-0001"}
+    )
+    assert plain.status_code == 201
+    assert plain.json()["distributor"] is None
+
+    made = client.post(
+        "/instruments",
+        json={"name": "With Dist", "model": "D2", "manufacturer": "Beckman Coulter", "serial_number": "DIST-0002", "distributor": "  Rhenium "},
+    ).json()
+    assert made["distributor"] == "Rhenium"  # trimmed
+    assert client.get(f"/instruments/{made['id']}").json()["distributor"] == "Rhenium"
+    listed = {i["serial_number"]: i for i in client.get("/instruments").json()}
+    assert listed["DIST-0002"]["distributor"] == "Rhenium"
+    assert listed["DIST-0001"]["distributor"] is None
+
+
+def test_a_blank_distributor_on_create_means_none(client):
+    made = client.post(
+        "/instruments",
+        json={"name": "Blank Dist", "model": "D3", "manufacturer": "Cytek", "serial_number": "DIST-0003", "distributor": "   "},
+    ).json()
+    assert made["distributor"] is None
+
+
+def test_update_distributor_sets_changes_and_clears_it(client):
+    created = client.post(
+        "/instruments", json={"name": "Edit Dist", "model": "D4", "manufacturer": "Cytek", "serial_number": "DIST-0004", "location": "Room 2"}
+    ).json()
+
+    assert client.patch(f"/instruments/{created['id']}", json={"distributor": "almog diagnostic"}).json()["distributor"] == "almog diagnostic"
+    # Other edits leave it alone, and so does a distributor edit leave the maker alone.
+    after = client.patch(f"/instruments/{created['id']}", json={"location": "Room 3"}).json()
+    assert after["distributor"] == "almog diagnostic" and after["manufacturer"] == "Cytek"
+    assert client.patch(f"/instruments/{created['id']}", json={"distributor": "Rhenium"}).json()["distributor"] == "Rhenium"
+    assert client.patch(f"/instruments/{created['id']}", json={"distributor": None}).json()["distributor"] is None
+    client.patch(f"/instruments/{created['id']}", json={"distributor": "Rhenium"})
+    assert client.patch(f"/instruments/{created['id']}", json={"distributor": " "}).json()["distributor"] is None

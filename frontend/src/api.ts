@@ -38,6 +38,8 @@ export interface Instrument {
   instrument_type: string;
   model: string;
   manufacturer: string | null;
+  /** The local seller / service company when it is not the maker (e.g. "Rhenium"). */
+  distributor: string | null;
   serial_number: string;
   location: string | null;
   status: InstrumentStatus;
@@ -52,6 +54,8 @@ export interface InstrumentCreatePayload {
   model: string;
   /** Required for a new instrument. */
   manufacturer: string;
+  /** Optional: the local seller / service company, if it is not the maker. */
+  distributor?: string | null;
   serial_number: string;
   location?: string | null;
 }
@@ -68,6 +72,7 @@ export interface InstrumentUpdatePayload {
   name?: string;
   model?: string;
   manufacturer?: string | null;
+  distributor?: string | null;
   serial_number?: string;
   location?: string | null;
   status?: InstrumentStatus;
