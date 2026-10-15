@@ -36,13 +36,20 @@ from app.services.claude_client import (
 from app.services.duplicates import find_duplicate_report_ids, normalize_work_order
 from app.services.errors import ClassificationError
 from app.services.text_reader import extract_text, read_identifiers
-from app.services.documents import UnsupportedDocumentError, claude_content_block
+from app.services.documents import UnsupportedDocumentError
+from app.services.translation import accepted_text, source_block
 from app.services.templates import resolve_template
 
 logger = logging.getLogger("app.services.classification")
 settings = get_settings()
 
 _CLASSIFY_TOOL_NAME = "record_classification"
+
+# What the model answers for `instrument_model` when the document's instrument
+# is not any model in the fleet (for example a Cytek analyzer when the fleet is
+# all BD). It is never stored as a model: the read becomes a zero-confidence
+# placeholder for the manual pick and the maker is kept for the screen.
+NOT_IN_FLEET = "(not in the fleet)"
 
 _CLASSIFY_INTRO = """This is a scanned service report for one instrument in a fixed fleet. \
 Identify three things and report a confidence (0 to 1) for each \
@@ -78,6 +85,20 @@ an empty string with confidence 0.
 4. The work-order number, exactly as printed (e.g. "WO-04587090"), in \
 `work_order_number`; an empty string if the document shows none.
 
+5. Documents from another company, including translated ones. The company that issued \
+the form is often a distributor, not the instrument's maker: put it in `issuer` (empty if \
+unclear) and put the instrument's maker, as you can tell it from the model name, the \
+software or the part numbers, in `detected_manufacturer`. If the instrument is not any \
+model in the fleet, answer "(not in the fleet)" for `instrument_model` with a low \
+confidence; never pick the nearest model in the fleet just to give an answer. On such a \
+form the serial is the number labelled "serial number" (or "S.N"), copied exactly. A number \
+labelled "device number" or "instrument number" can be the model code (for example BE50173 \
+on a CytoFLEX form), not the serial, and an asset or inventory number is not the serial \
+either. If one visit \
+fits two report types (an upgrade done together with a preventive maintenance visit), give \
+the main one in `report_type` and name the other in `report_type_note`. Numbers without a \
+unit are not given one.
+
 Give confidence scores that reflect real uncertainty. A clean, legible, unambiguous \
 read deserves something like 0.9-0.98. Anything you had to infer rather than read \
 directly, or where the document is ambiguous between two categories, deserves \
@@ -89,6 +110,19 @@ another maker prints the same facts under its own labels: use the equivalent \
 fields, and apply the same rule of lower confidence when you have to infer.
 
 """
+
+
+_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u200e\u200f\u2060\ufeff"))
+
+
+def _clean(value: object) -> str | None:
+    """A text the model returned, with invisible characters and surrounding
+    space removed; None when nothing is left. (A live read once returned a lone
+    zero-width space for "no work-order number".)"""
+    if not isinstance(value, str):
+        return None
+    cleaned = value.translate(_INVISIBLE).strip()
+    return cleaned or None
 
 
 def build_classify_prompt(instruments: list[Instrument]) -> str:
@@ -118,6 +152,14 @@ class DocumentRead(NamedTuple):
     # text parsed in code (services/text_reader.py, no API key needed),
     # "stub" = the deterministic demo stand-in for a document with no text.
     reader: Literal["model", "text_layer", "stub"] = "model"
+    # Read off a document from another company's form (a translated Hebrew
+    # service report, say): who issued the form, the instrument's maker as the
+    # model could tell it, whether that instrument is in the fleet at all, and
+    # a note when the visit fits a second report type.
+    issuer: str | None = None
+    detected_manufacturer: str | None = None
+    maker_in_fleet: bool = True
+    report_type_note: str | None = None
 
 
 # What the Work Order Task Code says about the kind of visit. Only codes whose
@@ -183,10 +225,10 @@ def _live_classify(
     rather than free text to parse (§4: "returns ... a confidence for
     each")."""
     try:
-        document_block = claude_content_block(attachment.file_path)
+        document_block = source_block(attachment)
     except UnsupportedDocumentError as e:
         raise ClassificationError(str(e)) from e
-    model_options = sorted({i.model for i in instruments})
+    model_options = sorted({i.model for i in instruments}) + [NOT_IN_FLEET]
 
     tool = {
         "name": _CLASSIFY_TOOL_NAME,
@@ -203,6 +245,9 @@ def _live_classify(
                 "task_code": {"type": "string", "description": "Work Order Task Code as printed (e.g. T113), or empty"},
                 "task_code_confidence": {"type": "number", "minimum": 0, "maximum": 1},
                 "work_order_number": {"type": "string", "description": "Work-order number as printed, or empty"},
+                "issuer": {"type": "string", "description": "Company that issued the form, or empty"},
+                "detected_manufacturer": {"type": "string", "description": "The instrument's maker, or empty"},
+                "report_type_note": {"type": "string", "description": "The second report type, if any, or empty"},
             },
             "required": [
                 "instrument_model",
@@ -271,12 +316,28 @@ def _live_classify(
 
     type_guess, type_source = _apply_task_code(type_guess, data, attachment.file_path)
     work_order = data.get("work_order_number")
+
+    maker_in_fleet = True
+    if instrument_guess.value not in {i.model for i in instruments}:
+        # "(not in the fleet)", or a model the fleet does not have: keep the
+        # first model only as a zero-confidence placeholder for the manual pick.
+        maker_in_fleet = False
+        instrument_guess = ClassificationGuess(value=instruments[0].model, confidence=0.0)
+
+    def _text(key: str) -> str | None:
+        return _clean(data.get(key))
+
     return DocumentRead(
         instrument_guess,
         type_guess,
         _parse_serial_read(data, attachment.file_path),
-        work_order.strip() if isinstance(work_order, str) and work_order.strip() else None,
+        _clean(work_order),
         type_source,
+        "model",
+        _text("issuer"),
+        _text("detected_manufacturer"),
+        maker_in_fleet,
+        _text("report_type_note"),
     )
 
 
@@ -352,12 +413,14 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
     Installed Product line is 0.95; a report whose task code is unknown or
     missing gets type confidence 0, which sends it to the manual pick rather
     than guessing a type."""
-    try:
-        with open(attachment.file_path, "rb") as f:
-            data = f.read()
-    except OSError:
-        return None
-    text = extract_text(data)
+    text = accepted_text(attachment)
+    if text is None:
+        try:
+            with open(attachment.file_path, "rb") as f:
+                data = f.read()
+        except OSError:
+            return None
+        text = extract_text(data)
     if not text:
         return None
     read = read_identifiers(text, sorted({i.model for i in instruments}))
@@ -541,6 +604,10 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
         report_type_source=document.report_type_source,
         reader=document.reader,
         work_order_number=document.work_order_number,
+        issuer=document.issuer,
+        detected_manufacturer=document.detected_manufacturer,
+        maker_in_fleet=document.maker_in_fleet,
+        report_type_note=document.report_type_note,
         duplicate_report_ids=find_duplicate_report_ids(
             db, attachment, normalize_work_order(document.work_order_number)
         ),

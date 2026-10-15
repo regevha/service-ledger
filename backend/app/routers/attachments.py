@@ -15,6 +15,7 @@ from app.db import get_db
 from app.services.duplicates import find_duplicate_report_ids, find_read_copy, normalize_work_order
 from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
 from app.services.text_reader import extract_text, read_work_order
+from app.services.translation import translation_gate
 
 router = APIRouter(tags=["attachments"])
 settings = get_settings()
@@ -176,6 +177,9 @@ def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db))
         # reports.py's confirm_template rejects with a 409, reachable here
         # through an unguarded path instead.
         raise HTTPException(409, "Cannot classify an attachment on a finalized report.")
+    blocked = translation_gate(attachment)
+    if blocked:
+        raise HTTPException(409, blocked)
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,
@@ -216,6 +220,9 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
         # silently overwrite extracted_fields and revert status back to
         # "extracted" while finalized_at stays set.
         raise HTTPException(409, "Cannot extract an attachment on a finalized report.")
+    blocked = translation_gate(attachment)
+    if blocked:
+        raise HTTPException(409, blocked)
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,

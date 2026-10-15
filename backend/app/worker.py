@@ -34,8 +34,10 @@ from app.config import get_settings
 from app.db import SessionLocal
 from app.services.classification import classify as run_classify
 from app.services.duplicates import normalize_work_order
-from app.services.errors import ClassificationError, ExtractionError
+from app.services.errors import ClassificationError, ExtractionError, TranslationError
 from app.services.extraction import extract as run_extract
+from app.services.text_reader import extract_text
+from app.services.translation import identifier_check, translate as run_translate
 
 logger = logging.getLogger("app.worker")
 settings = get_settings()
@@ -58,11 +60,11 @@ def _claim_next_job(db: Session) -> models.ExtractionJob | None:
     if job is None:
         return None
 
-    job.status = (
-        models.ExtractionJobStatus.classifying
-        if job.kind == models.ExtractionJobKind.classify
-        else models.ExtractionJobStatus.extracting
-    )
+    job.status = {
+        models.ExtractionJobKind.classify: models.ExtractionJobStatus.classifying,
+        models.ExtractionJobKind.extract: models.ExtractionJobStatus.extracting,
+        models.ExtractionJobKind.translate: models.ExtractionJobStatus.translating,
+    }[job.kind]
     db.commit()
     db.refresh(job)
     return job
@@ -140,7 +142,81 @@ def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
     # Remember the work order read off the document so a later upload of the
     # same visit (a different file, same work order) is flagged as a duplicate.
     attachment.work_order_number = normalize_work_order(result.work_order_number)
+    # Who issued the form and a second report type, when the model read them.
+    # Only overwritten with a value actually read, so a re-classify never blanks
+    # what a person already has.
+    if result.issuer:
+        report.issuer = result.issuer
+    if result.report_type_note:
+        report.report_type_note = result.report_type_note
 
+    job.status = models.ExtractionJobStatus.succeeded
+    job.completed_at = datetime.now(timezone.utc)
+    db.commit()
+
+
+def _run_translate_job(db: Session, job: models.ExtractionJob) -> None:
+    """Translate one attachment and store the result for review. A document that
+    is not Hebrew gets a `not_needed` record and nothing to review. A new
+    translation replaces any earlier one, which is kept as history (superseded)."""
+    attachment = db.get(models.Attachment, job.attachment_id)
+    if attachment is None:
+        _fail_job(db, job, "Attachment no longer exists.")
+        return
+    if attachment.report.status == models.ReportStatus.finalized:
+        _fail_job(db, job, "Report was finalized after this job was submitted — translation discarded.")
+        return
+
+    include_pages = list((job.params or {}).get("include_pages") or [])
+    try:
+        result = run_translate(attachment, include_pages)
+    except TranslationError as e:
+        _fail_job(db, job, str(e))
+        return
+
+    # Re-read under a row lock after the slow call, like the other job kinds.
+    report = attachment.report
+    db.refresh(report, with_for_update=True)
+    if report.status == models.ReportStatus.finalized:
+        _fail_job(db, job, "Report was finalized while this translation was running — translation discarded.")
+        return
+
+    for earlier in attachment.translations:
+        if earlier.status != models.TranslationStatus.superseded:
+            earlier.status = models.TranslationStatus.superseded
+
+    if result is None:
+        row = models.Translation(
+            attachment_id=attachment.id,
+            status=models.TranslationStatus.not_needed,
+            source_language="other",
+            ignored_pages=[],
+            included_pages=[],
+            identifier_check={},
+            notes=[],
+            reader="model" if settings.use_live_claude else "stub",
+        )
+    else:
+        original_text = ""
+        try:
+            with open(attachment.file_path, "rb") as f:
+                original_text = extract_text(f.read())
+        except OSError:
+            pass
+        row = models.Translation(
+            attachment_id=attachment.id,
+            status=models.TranslationStatus.pending_review,
+            source_language=result.source_language,
+            hebrew_share=result.hebrew_share,
+            model_text=result.translated_text,
+            ignored_pages=result.ignored_pages,
+            included_pages=include_pages,
+            identifier_check=identifier_check(result.identifiers, result.translated_text, original_text),
+            notes=result.notes,
+            reader=result.reader,
+            model=settings.anthropic_model if result.reader == "model" else None,
+        )
+    db.add(row)
     job.status = models.ExtractionJobStatus.succeeded
     job.completed_at = datetime.now(timezone.utc)
     db.commit()
@@ -228,6 +304,8 @@ def process_one_job(db: Session) -> bool:
     try:
         if job.kind == models.ExtractionJobKind.classify:
             _run_classify_job(db, job)
+        elif job.kind == models.ExtractionJobKind.translate:
+            _run_translate_job(db, job)
         else:
             _run_extract_job(db, job)
     except Exception:  # noqa: BLE001 — a bug in this file must not wedge the queue
@@ -278,7 +356,11 @@ def _recover_orphaned_jobs(db: Session) -> int:
         db.query(models.ExtractionJob)
         .filter(
             models.ExtractionJob.status.in_(
-                [models.ExtractionJobStatus.classifying, models.ExtractionJobStatus.extracting]
+                [
+                    models.ExtractionJobStatus.classifying,
+                    models.ExtractionJobStatus.extracting,
+                    models.ExtractionJobStatus.translating,
+                ]
             )
         )
         .all()

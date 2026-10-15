@@ -591,6 +591,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/attachments/{attachment_id}/translate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Translate Attachment
+         * @description Enqueue a translate job. Also the way to translate again, or to ask for
+         *     pages that were skipped as QC printouts to be included (`include_pages`).
+         */
+        post: operations["translate_attachment_attachments__attachment_id__translate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachment_id}/translation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current Translation
+         * @description The attachment's current translation: the newest one that is not superseded.
+         */
+        get: operations["get_current_translation_attachments__attachment_id__translation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachment_id}/translations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Translations
+         * @description Every translation of the attachment, newest first (history included).
+         */
+        get: operations["list_translations_attachments__attachment_id__translations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/translations/{translation_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Translation
+         * @description Accept the translation as the document's English text, with the reviewer's
+         *     edits if `accepted_text` is sent. Both texts are kept. Classification and
+         *     extraction read the accepted text from now on.
+         */
+        post: operations["accept_translation_translations__translation_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/translations/{translation_id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discard Translation
+         * @description Drop the translation and go on with the original document as before.
+         */
+        post: operations["discard_translation_translations__translation_id__discard_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/analytics/fleet": {
         parameters: {
             query?: never;
@@ -739,6 +842,8 @@ export interface components {
             file_type: string;
             /** Page Count */
             page_count: number;
+            /** Translation Status */
+            translation_status?: string | null;
             /**
              * Duplicate Report Ids
              * @default []
@@ -806,7 +911,7 @@ export interface components {
          *     service function to run for a `pending` row.
          * @enum {string}
          */
-        ExtractionJobKind: "classify" | "extract";
+        ExtractionJobKind: "classify" | "extract" | "translate";
         /** ExtractionJobOut */
         ExtractionJobOut: {
             /**
@@ -838,7 +943,7 @@ export interface components {
          *     background job, kept minimal on purpose.
          * @enum {string}
          */
-        ExtractionJobStatus: "pending" | "classifying" | "extracting" | "succeeded" | "failed";
+        ExtractionJobStatus: "pending" | "classifying" | "extracting" | "translating" | "succeeded" | "failed";
         /**
          * FleetAnalyticsOut
          * @description GET /analytics/fleet (new): fleet-wide roll-ups computed entirely from
@@ -1162,6 +1267,10 @@ export interface components {
             extracted_fields: Record<string, never>;
             /** Technician Name */
             technician_name: string | null;
+            /** Issuer */
+            issuer?: string | null;
+            /** Report Type Note */
+            report_type_note?: string | null;
             /** Service Actions */
             service_actions: string | null;
             /** Parts Replaced */
@@ -1374,6 +1483,77 @@ export interface components {
             /** Finalized Count */
             finalized_count: number;
         };
+        /**
+         * TranslateRequest
+         * @description POST /attachments/{id}/translate. `include_pages` asks for pages the model
+         *     would otherwise skip as instrument QC printouts to be translated too.
+         */
+        TranslateRequest: {
+            /**
+             * Include Pages
+             * @default []
+             */
+            include_pages: number[];
+        };
+        /**
+         * TranslationAccept
+         * @description POST /translations/{id}/accept. Omit `accepted_text` to accept the model's
+         *     text as it is; send it to accept an edited version.
+         */
+        TranslationAccept: {
+            /** Accepted Text */
+            accepted_text?: string | null;
+        };
+        /** TranslationOut */
+        TranslationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Attachment Id
+             * Format: uuid
+             */
+            attachment_id: string;
+            status: components["schemas"]["TranslationStatus"];
+            /** Source Language */
+            source_language: string;
+            /** Hebrew Share */
+            hebrew_share: number | null;
+            /** Model Text */
+            model_text: string | null;
+            /** Accepted Text */
+            accepted_text: string | null;
+            /** Ignored Pages */
+            ignored_pages: Record<string, never>[];
+            /** Included Pages */
+            included_pages: number[];
+            /** Identifier Check */
+            identifier_check: Record<string, never>;
+            /** Notes */
+            notes: string[];
+            /** Reader */
+            reader: string;
+            /** Model */
+            model: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Accepted At */
+            accepted_at: string | null;
+        };
+        /**
+         * TranslationStatus
+         * @description Life of one translation record. A person always reviews a translation
+         *     (`pending_review` -> `accepted`); `discarded` means the original is used as
+         *     it is today; `superseded` is a replaced translation kept as history;
+         *     `not_needed` records that the document was checked and is not Hebrew.
+         * @enum {string}
+         */
+        TranslationStatus: "pending_review" | "accepted" | "discarded" | "superseded" | "not_needed";
         /**
          * TrendFieldOut
          * @description One entry of GET /instruments/{id}/trend-fields: a field this
@@ -2505,6 +2685,169 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExtractionJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    translate_attachment_attachments__attachment_id__translate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TranslateRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_current_translation_attachments__attachment_id__translation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_translations_attachments__attachment_id__translations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_translation_translations__translation_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                translation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TranslationAccept"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discard_translation_translations__translation_id__discard_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                translation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationOut"];
                 };
             };
             /** @description Validation Error */
