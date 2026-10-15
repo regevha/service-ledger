@@ -51,7 +51,7 @@ settings = get_settings()
 
 _EXTRACT_TOOL_NAME = "record_extraction"
 
-_EXTRACT_PROMPT_HEADER = """This is a scanned BD Care service report. Extract exactly the fields listed \
+_EXTRACT_PROMPT_HEADER = """This is a scanned service report (the notes below about dates and sign-offs are written for BD Care Work Order Service Reports; on another maker's report use the equivalent fields). Extract exactly the fields listed \
 in the tool schema below, and only those fields — nothing else on the page.
 
 For each field, give:
@@ -85,7 +85,7 @@ labor table, use the date printed beside the signatures. Never use the service \
 contract start/end dates, the PO date, or any date in the CALIBRATED TOOLS table — \
 those describe the contract and the engineer's test equipment, not this visit.
 
-BD forms are not consistent about day/month order: some print dates month-first \
+Forms are not consistent about day/month order (BD ones, for example): some print dates month-first \
 (02/10/2026 is 10 February 2026), others day-first (18/04/2021 is 18 April 2021). \
 Every date on one form uses the same order, so work it out from this form: any date \
 on the page with a part greater than 12 settles it (03/17/2025 can only be \

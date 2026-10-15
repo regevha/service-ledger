@@ -35,8 +35,9 @@ backend/
     seed_demo_reports.py     3 real finalized demo reports for the Reports screen — optional, manual only
     seed_trend_demo.py       5 synthetic calibration reports for the FACSAria III, for the trend chart — optional, manual only
     routers/
+      instrument_types.py    GET/POST /instrument-types — the managed list of kinds of instrument (migration `a7c4e1f2b836`). Seeded: Flow cytometer (`facs`), Electron microscope, ImageStream, Mass spectrometer, PCR machine (`ensure_default_types`, run by the seeds and at startup; never renames or removes a type); more are added in the app
       instruments.py         POST/GET/PATCH/DELETE /instruments (DELETE also deletes the instrument's reports; PATCH backs the Instruments tab's create/edit UI —
-                              every field but instrument_type is editable); `manufacturer` is optional free text (blank = not recorded; the seeded fleet is "BD", filled in on existing rows only where empty); added by migration `f6a2c3d9e014`, GET /instruments/{id}/trend-fields
+                              every field but instrument_type is editable); `name`, `model`, `serial_number` and `manufacturer` are required text on create and may not be blank or all whitespace on create or PATCH (422 "<Field> cannot be blank"; values are trimmed); on PATCH a manufacturer can still be cleared (the seeded fleet is "BD", filled in on existing rows only where empty; migration `f6a2c3d9e014`); `instrument_type` must be a key from /instrument-types, GET /instruments/{id}/trend-fields
                               (which numeric fields a given instrument's own finalized reports actually have
                               data for), GET .../trend (number and number[detector]/number[laser] both
                               supported — TrendOut/TrendPointOut)
