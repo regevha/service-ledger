@@ -61,7 +61,7 @@ def test_the_live_call_types_a_t107_report_from_its_task_code(tmp_path, monkeypa
     client = SimpleNamespace(messages=_Messages())
     monkeypatch.setattr(classification, "_get_client", lambda: client)
 
-    read = classification._live_classify(None, SimpleNamespace(file_path=str(scan)), [SimpleNamespace(model="FACSDiscover S8")])
+    read = classification._live_classify(None, SimpleNamespace(file_path=str(scan)), [SimpleNamespace(model="FACSDiscover S8", manufacturer="BD", instrument_type="facs")])
 
     assert (read.report_type.value, read.report_type.confidence) == ("installation_upgrade", 0.96)
     assert read.report_type_source == "task_code"

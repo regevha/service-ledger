@@ -178,7 +178,7 @@ def test_confident_guess_is_not_auto_resolved_when_two_instruments_share_the_mod
     assert classify(db, attachment).resolved_instrument_id is not None  # one LSRFortessa: resolves
 
     resp = client.post(
-        "/instruments", json={"name": "Second Fortessa", "model": "LSRFortessa", "serial_number": "DUP-0002"}
+        "/instruments", json={"name": "Second Fortessa", "model": "LSRFortessa", "manufacturer": "TestCo", "serial_number": "DUP-0002"}
     )
     assert resp.status_code == 201
     db.expire_all()

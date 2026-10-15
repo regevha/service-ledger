@@ -32,6 +32,7 @@ def test_create_report_template(client):
 
 
 def test_create_report_template_defaults_model_to_any(client):
+    client.post("/instrument-types", json={"display_name": "other"})
     # No `model` key at all — distinct from the empty-string/whitespace case
     # below, which is normalized to the same None. A non-"facs" instrument
     # type sidesteps seed_templates.py's own None-model calibration row,
@@ -44,6 +45,7 @@ def test_create_report_template_defaults_model_to_any(client):
 
 
 def test_create_report_template_blank_model_normalizes_to_any(client):
+    client.post("/instrument-types", json={"display_name": "other"})
     resp = client.post(
         "/report-templates",
         json={"instrument_type": "other", "report_type": "calibration", "model": "   ", "fields": MIN_FIELDS},
@@ -281,6 +283,7 @@ def test_update_report_template_null_fields_rejected(client):
 
 
 def test_update_report_template_can_null_out_model(client):
+    client.post("/instrument-types", json={"display_name": "other"})
     # instrument_type="other" so nulling the model doesn't collide with
     # seed_templates.py's own None-model "facs"/repair row.
     created = client.post(

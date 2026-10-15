@@ -4,6 +4,29 @@
  */
 
 export interface paths {
+    "/instrument-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Instrument Types */
+        get: operations["list_instrument_types_instrument_types_get"];
+        put?: never;
+        /**
+         * Create Instrument Type
+         * @description Adds a type. Admin-only once role-based sign-in exists (PR #13): add it to
+         *     that policy table then. Types cannot be edited or deleted yet; the key is
+         *     derived from the name and is what instruments and templates store.
+         */
+        post: operations["create_instrument_type_instrument_types_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/instruments": {
         parameters: {
             query?: never;
@@ -415,6 +438,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/saved-report-filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Saved Filters */
+        get: operations["list_saved_filters_saved_report_filters_get"];
+        put?: never;
+        /** Create Saved Filter */
+        post: operations["create_saved_filter_saved_report_filters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/saved-report-filters/{filter_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Saved Filter */
+        delete: operations["delete_saved_filter_saved_report_filters__filter_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{report_id}/attachments": {
         parameters: {
             query?: never;
@@ -820,7 +878,7 @@ export interface components {
             /** Model */
             model: string;
             /** Manufacturer */
-            manufacturer?: string | null;
+            manufacturer: string;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -878,12 +936,30 @@ export interface components {
          * @enum {string}
          */
         InstrumentStatus: "active" | "maintenance" | "retired";
+        /** InstrumentTypeCreate */
+        InstrumentTypeCreate: {
+            /** Display Name */
+            display_name: string;
+        };
+        /** InstrumentTypeOut */
+        InstrumentTypeOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Key */
+            key: string;
+            /** Display Name */
+            display_name: string;
+        };
         /**
          * InstrumentUpdate
          * @description PATCH /instruments/{id} — every field optional so a caller only sends
-         *     what's changing; `instrument_type` is deliberately not editable here (it's
-         *     a fixed "facs" for MVP per the Instrument model's own doc comment, with
-         *     nothing in the UI to pick another value yet). Which fields the caller
+         *     what's changing; `instrument_type` is deliberately not editable here (it is
+         *     chosen when the instrument is created, because its templates and reports
+         *     are tied to it). A name, model or serial number that is sent must not be
+         *     blank. Which fields the caller
          *     actually sent is read via `model_fields_set` in the router, the same
          *     partial-update pattern TemplateUpdate below already uses, so an omitted
          *     field is left alone rather than overwritten with None.
@@ -1128,6 +1204,58 @@ export interface components {
          * @enum {string}
          */
         ReportType: "calibration" | "repair" | "preventive_maintenance" | "installation_upgrade";
+        /** SavedFilterCreate */
+        SavedFilterCreate: {
+            /** Name */
+            name: string;
+            filters: components["schemas"]["SavedFilterCriteria"];
+        };
+        /**
+         * SavedFilterCriteria
+         * @description What a saved filter stores. Extra keys are rejected (a seventh
+         *     criterion needs a deliberate change here), and only set criteria are kept.
+         */
+        SavedFilterCriteria: {
+            /** Instrument Id */
+            instrument_id?: string | null;
+            report_type?: components["schemas"]["ReportType"] | null;
+            status?: components["schemas"]["ReportStatus"] | null;
+            /** Date From */
+            date_from?: string | null;
+            /** Date To */
+            date_to?: string | null;
+            /** Technician */
+            technician?: string | null;
+        };
+        /** SavedFilterListOut */
+        SavedFilterListOut: {
+            /** Items */
+            items: components["schemas"]["SavedFilterOut"][];
+            /** Cap */
+            cap: number;
+        };
+        /** SavedFilterOut */
+        SavedFilterOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Filters */
+            filters: Record<string, never>;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+        };
         /**
          * SnippetPiece
          * @description One run of an excerpt: plain text, and whether it is a matched word.
@@ -1335,6 +1463,59 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_instrument_types_instrument_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentTypeOut"][];
+                };
+            };
+        };
+    };
+    create_instrument_type_instrument_types_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstrumentTypeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentTypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_instruments_instruments_get: {
         parameters: {
             query?: never;
@@ -2071,6 +2252,88 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReportOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_saved_filters_saved_report_filters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedFilterListOut"];
+                };
+            };
+        };
+    };
+    create_saved_filter_saved_report_filters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedFilterCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedFilterOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_saved_filter_saved_report_filters__filter_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                filter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

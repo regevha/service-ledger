@@ -21,7 +21,7 @@ PDF = ("scan.pdf", b"%PDF-1.4 x", "application/pdf")
 
 
 def _fleet(*pairs):
-    return [SimpleNamespace(model=m, serial_number=s) for m, s in pairs]
+    return [SimpleNamespace(model=m, serial_number=s, manufacturer="BD", instrument_type="facs") for m, s in pairs]
 
 
 def _guess(value, confidence=0.97):
@@ -74,7 +74,7 @@ def test_the_stub_reads_a_serial_only_from_the_file_name():
 
 
 def _add_second_aria(client, serial="A50002"):
-    resp = client.post("/instruments", json={"name": "Aria Annex", "model": "FACSAria III", "serial_number": serial})
+    resp = client.post("/instruments", json={"name": "Aria Annex", "model": "FACSAria III", "manufacturer": "TestCo", "serial_number": serial})
     assert resp.status_code == 201
     return resp.json()
 
