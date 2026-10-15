@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The shuffled-order run (random test order, to catch tests that only pass
+  # because of what ran before them) happens once a day, not on every push or
+  # pull request: it costs a full extra run and a failure is about test
+  # isolation, not about the change that happens to be under review. Scheduled
+  # workflows run on the default branch. "Run workflow" in the Actions tab
+  # starts the same shuffled run on demand.
+  schedule:
+    - cron: "17 3 * * *" # 03:17 UTC, about 06:17 in Israel
+  workflow_dispatch:
 
 # Both the backend's conftest.py and the frontend's playwright.config.ts
 # hardcode this role/password (not just the dev-env default in
@@ -67,7 +76,21 @@ jobs:
         # coverage included) makes this step fail when coverage drops — raise
         # the floor there when coverage improves. Missing lines are printed in
         # the log.
-        run: pytest -q --cov
+        #
+        # Pushes and pull requests run in the fixed file order (-p no:randomly,
+        # pytest-randomly is installed with the other requirements). The daily
+        # scheduled run (and a manual "Run workflow") shuffles the order with
+        # pytest-randomly; the seed is chosen here so it is printed in the log
+        # and in the run summary. To replay a failing order locally:
+        # pytest -p randomly --randomly-seed=<seed>
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SEED=$(( (RANDOM << 15) | RANDOM ))
+            echo "pytest-randomly seed: $SEED" | tee -a "$GITHUB_STEP_SUMMARY"
+            pytest -q --cov -p randomly --randomly-seed=$SEED
+          else
+            pytest -q --cov -p no:randomly
+          fi
 
   frontend:
     name: Frontend (Playwright e2e)
@@ -135,7 +158,19 @@ jobs:
         # thresholds live in frontend/package.json — raise them as coverage
         # improves). The table is printed in the log.
         working-directory: frontend
-        run: npm run test:e2e:coverage
+        #
+        # Pushes and pull requests run the specs in the fixed order. The daily
+        # scheduled run (and a manual "Run workflow") runs the spec files in a
+        # random order (scripts/run-e2e-shuffled.mjs), to catch specs that only
+        # pass because of the order they ran in. The seed and the order are
+        # printed at the top of the step; to replay locally:
+        # E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            npm run test:e2e:coverage:shuffled
+          else
+            npm run test:e2e:coverage
+          fi
 
       - name: Upload traces/screenshots on failure
         # playwright.config.ts only configures the 'list' reporter (no HTML
