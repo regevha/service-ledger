@@ -282,7 +282,8 @@ def test_a_report_made_through_the_worker_pipeline_becomes_searchable_once_final
     client.post(f"/attachments/{up['id']}/extract")
     run_worker()
     fields = client.get(f"/reports/{report['id']}").json()["extracted_fields"]
-    template = client.get(f"/report-templates/{client.get(f'/reports/{report['id']}').json()['template_id']}").json()
+    template_id = client.get(f"/reports/{report['id']}").json()["template_id"]
+    template = client.get(f"/report-templates/{template_id}").json()
     text_names = [f["name"] for f in template["field_schema"]["fields"] if f["type"] == "text"]
     value = next(fields[n] for n in text_names if isinstance(fields.get(n), str) and fields[n].strip())
     word = re.findall(r"[A-Za-z]{4,}", value)[0]
