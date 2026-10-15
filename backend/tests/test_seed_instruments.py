@@ -10,6 +10,8 @@ REAL = {
     "FACSAria III": "P648282B3003",
     "LSRFortessa": "R647794E6092",
     "FACSDiscover S8": "MP6651580000057",
+    "Cytek Aurora": "Y1033",
+    "CytoFLEX S": "102579",
 }
 
 
@@ -64,9 +66,38 @@ def test_a_real_unit_already_added_by_hand_is_not_merged_with_the_demo_row(db_se
     assert serials == ["A47291", "P648282B3003"]
 
 
-def test_the_seeded_fleet_is_marked_as_bd(db_session):
+def test_the_seeded_fleet_carries_its_makers(db_session):
     seed_instruments.seed(db_session)
-    assert {i.manufacturer for i in db_session.query(Instrument).all()} == {"BD"}
+    makers = {i.model: i.manufacturer for i in db_session.query(Instrument).all()}
+    assert makers == {
+        "FACSAria III": "BD",
+        "LSRFortessa": "BD",
+        "FACSDiscover S8": "BD",
+        "Cytek Aurora": "Cytek Biosciences",
+        "CytoFLEX S": "Beckman Coulter",
+    }
+
+
+def test_the_hebrew_form_instruments_are_seeded_with_their_distributors(db_session):
+    seed_instruments.seed(db_session)
+    rows = {i.serial_number: i for i in db_session.query(Instrument).all()}
+    assert rows["Y1033"].distributor == "almog diagnostic" and rows["Y1033"].instrument_type == "facs"
+    assert rows["102579"].distributor == "Rhenium" and rows["102579"].instrument_type == "facs"
+    assert rows["P648282B3003"].distributor is None
+
+
+def test_seeding_fills_a_missing_distributor_but_keeps_one_a_person_set(db_session):
+    seed_instruments.seed(db_session)
+    rows = {i.serial_number: i for i in db_session.query(Instrument).all()}
+    rows["Y1033"].distributor = None
+    rows["102579"].distributor = "Someone else"
+    db_session.commit()
+
+    seed_instruments.seed(db_session)
+    db_session.expire_all()
+    rows = {i.serial_number: i for i in db_session.query(Instrument).all()}
+    assert rows["Y1033"].distributor == "almog diagnostic"
+    assert rows["102579"].distributor == "Someone else"
 
 
 def test_seeding_fills_a_missing_manufacturer_but_keeps_one_a_person_set(db_session):

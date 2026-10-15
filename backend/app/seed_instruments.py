@@ -1,4 +1,5 @@
-"""Seeds the fixed three-instrument fleet in scope for MVP (spec §1).
+"""Seeds the fixed fleet in scope for MVP (spec §1): three BD instruments, plus
+the Cytek Aurora and CytoFLEX S from the Hebrew service reports.
 
 Serial numbers match the ones already used across the architecture spec's
 demos (new-report-demo.html, repair-review-demo.html) so a technician poking
@@ -27,6 +28,26 @@ INSTRUMENTS = [
         "manufacturer": "BD",
         "serial_number": "MP6651580000057",
         "location": "Core Lab",
+    },
+    # The two instruments from the Hebrew service reports (docs: claude/
+    # proposal-hebrew-translation.md). Neither maker is BD, and both were
+    # serviced by an Israeli distributor whose form carries the report.
+    # `location` is the room printed on each form.
+    {
+        "name": "Cytek Aurora",
+        "model": "Cytek Aurora",
+        "manufacturer": "Cytek Biosciences",
+        "distributor": "almog diagnostic",
+        "serial_number": "Y1033",
+        "location": "Bar-Ilan University, room 205",
+    },
+    {
+        "name": "CytoFLEX S",
+        "model": "CytoFLEX S",
+        "manufacturer": "Beckman Coulter",
+        "distributor": "Rhenium",
+        "serial_number": "102579",
+        "location": "Bar-Ilan University, room C767",
     },
 ]
 
@@ -62,6 +83,8 @@ def seed(db: Session) -> list[Instrument]:
             # but never overwrite one a person has set.
             if existing.manufacturer is None:
                 existing.manufacturer = spec["manufacturer"]
+            if existing.distributor is None and spec.get("distributor"):
+                existing.distributor = spec["distributor"]
             created.append(existing)
             continue
         row = Instrument(instrument_type="facs", status="active", **spec)
