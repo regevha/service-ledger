@@ -43,12 +43,15 @@ backend/
       report_templates.py    GET /report-templates (resolution logic, §2); GET .../usage (reports per template, for the manager's warnings); GET .../all, GET/POST/PATCH/DELETE
                               .../{id} — the structured field editor's CRUD, backed by a DB-level unique
                               index on (instrument_type, report_type, model) (migration 6b5fc4e1c3ca)
-      reports.py              /reports CRUD (incl. delete), search, export, template confirm, finalize, GET .../{id}/pdf
+      reports.py              /reports CRUD (incl. delete), filtered list with free-text search (`q`), export, template confirm, finalize, GET .../{id}/pdf
       attachments.py          upload, GET .../file, classify, extract (both 202 + enqueue), extraction-jobs
       analytics.py             GET /analytics/fleet — fleet-wide roll-ups (parts, labor hours, pass/fail);
                               GET /analytics/models and /analytics/models/trend — units of one model side by side
     services/
       templates.py            Model-specific-row-over-NULL-row resolution (§2)
+      report_search.py        Free-text search: what is indexed (text fields, table text cells, instrument model and serial),
+                              the websearch query, excerpts; a before_flush listener keeps reports.search_text current
+                              (migration b2c3d4e5f6a7, partial GIN index on finalized reports)
       classification.py       classify() — live Claude call or stub, by settings.use_live_claude
       extraction.py            extract() — live Claude call or stub, by settings.use_live_claude
       text_reader.py           Reads a PDF's own text layer (model, serial, task code, work order) — no API key
