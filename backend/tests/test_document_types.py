@@ -105,7 +105,7 @@ def test_live_classify_sends_a_png_scan_as_an_image_block(tmp_path, monkeypatch)
     )
     monkeypatch.setattr(classification, "_get_client", lambda: client)
 
-    classification._live_classify(None, SimpleNamespace(file_path=str(scan)), [SimpleNamespace(model="LSRFortessa")])
+    classification._live_classify(None, SimpleNamespace(file_path=str(scan)), [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="facs")])
 
     first = _sent_blocks(client)[0]
     assert first["type"] == "image"
@@ -134,7 +134,7 @@ def test_live_calls_report_an_unreadable_stored_file_as_their_own_error(tmp_path
     attachment = SimpleNamespace(file_path=str(odd))
 
     with pytest.raises(ClassificationError, match="cannot read it"):
-        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa")])
+        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="facs")])
     with pytest.raises(ExtractionError, match="cannot read it"):
         extraction._live_extract(attachment, SimpleNamespace(field_schema={"fields": []}))
 

@@ -24,7 +24,7 @@ test.afterEach(async ({ request }) => {
 });
 
 async function createUnit(request: APIRequestContext, model: string, serial: string) {
-  const res = await request.post(`${API_BASE}/instruments`, { data: { name: serial, model, serial_number: serial } });
+  const res = await request.post(`${API_BASE}/instruments`, { data: { name: serial, model, manufacturer: 'E2E Maker', serial_number: serial } });
   expect(res.status()).toBe(201);
   const id = (await res.json()).id as string;
   createdUnits.push(id);
