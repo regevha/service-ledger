@@ -591,3 +591,69 @@ class ModelTrendOut(BaseModel):
     model: str
     field: str
     series: list[ModelTrendSeriesOut]
+
+
+# ---------- Saved report filters ----------
+
+# The only criteria a saved filter may hold: exactly the Reports list's six
+# filters, under the keys GET /reports already takes. Free-text search is
+# deliberately not saveable.
+SAVED_FILTER_KEYS = ("instrument_id", "report_type", "status", "date_from", "date_to", "technician")
+
+
+class SavedFilterCriteria(BaseModel):
+    """What a saved filter stores. Extra keys are rejected (a seventh
+    criterion needs a deliberate change here), and only set criteria are kept."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    instrument_id: uuid.UUID | None = None
+    report_type: ReportType | None = None
+    status: ReportStatus | None = None
+    date_from: date | None = None
+    date_to: date | None = None
+    technician: str | None = None
+
+    @field_validator("technician")
+    @classmethod
+    def _trim_technician(cls, v: str | None) -> str | None:
+        v = v.strip() if v else None
+        return v or None
+
+    @model_validator(mode="after")
+    def _at_least_one_and_ordered(self):
+        if all(getattr(self, k) is None for k in SAVED_FILTER_KEYS):
+            raise ValueError("Set at least one filter before saving")
+        if self.date_from and self.date_to and self.date_from > self.date_to:
+            raise ValueError("date_from must not be after date_to")
+        return self
+
+
+class SavedFilterCreate(BaseModel):
+    name: str
+    filters: SavedFilterCriteria
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name must not be blank")
+        if len(v) > 60:
+            raise ValueError("Name must be at most 60 characters")
+        return v
+
+
+class SavedFilterOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    # Only the criteria that were set; dates are YYYY-MM-DD exactly as saved.
+    filters: dict
+    created_at: datetime
+    # True when the saved instrument no longer exists.
+    stale: bool = False
+
+
+class SavedFilterListOut(BaseModel):
+    items: list[SavedFilterOut]
+    cap: int
