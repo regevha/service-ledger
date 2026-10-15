@@ -463,14 +463,18 @@ def _has_readable_text(attachment: Attachment) -> bool:
 # instrument is not in the fleet; once one does, it is a confident match. This
 # lets the add-the-instrument-and-retry path run end to end without a model.
 STUB_OTHER_MAKER_MARKER = "othermaker"
-_STUB_OTHER_MAKER_SERIAL = "Y1033"
+_STUB_OTHER_MAKER_SERIAL = "Y1033"  # the serial when the file name gives none
 
 
 def _stub_other_maker(attachment: Attachment, instruments: list[Instrument]) -> DocumentRead | None:
     name = attachment.file_path.replace("\\", "/").rsplit("/", 1)[-1].lower()
     if STUB_OTHER_MAKER_MARKER not in name:
         return None
-    known = next((i for i in instruments if i.serial_number == _STUB_OTHER_MAKER_SERIAL), None)
+    # "othermaker-ABC123-scan.pdf" is read as serial ABC123, so repeated runs
+    # against one database can use a fresh serial each time.
+    named = re.search(r"othermaker[-_]([a-z0-9]+)", name)
+    stub_serial = named.group(1).upper() if named else _STUB_OTHER_MAKER_SERIAL
+    known = next((i for i in instruments if i.serial_number == stub_serial), None)
     common = dict(
         issuer="almog diagnostic",
         detected_manufacturer="Cytek Biosciences",
@@ -478,7 +482,7 @@ def _stub_other_maker(attachment: Attachment, instruments: list[Instrument]) -> 
     )
     upgrade = ReportType.installation_upgrade.value
     serial_confidence = 0.95 if known else 0.9
-    serial = ClassificationGuess(value=_STUB_OTHER_MAKER_SERIAL, confidence=serial_confidence)
+    serial = ClassificationGuess(value=stub_serial, confidence=serial_confidence)
     if known is not None:
         return DocumentRead(
             ClassificationGuess(value=known.model, confidence=0.95),
