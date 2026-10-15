@@ -7,7 +7,16 @@ from app import schemas, seed_instruments, seed_templates
 from app.config import get_settings
 from app.db import SessionLocal
 from app.services.instrument_types import ensure_default_types
-from app.routers import analytics, attachments, instrument_types, instruments, report_templates, reports, saved_filters
+from app.routers import (
+    analytics,
+    attachments,
+    instrument_types,
+    instruments,
+    report_templates,
+    reports,
+    saved_filters,
+    translations,
+)
 
 
 @asynccontextmanager
@@ -47,6 +56,7 @@ app.include_router(report_templates.router)
 app.include_router(reports.router)
 app.include_router(saved_filters.router)
 app.include_router(attachments.router)
+app.include_router(translations.router)
 app.include_router(analytics.router)
 
 

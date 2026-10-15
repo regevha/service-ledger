@@ -27,3 +27,7 @@ class ClassificationError(LiveClaudeError):
 
 class ExtractionError(LiveClaudeError):
     """Raised by extract()'s live path. See extraction.py::_live_extract."""
+
+
+class TranslationError(LiveClaudeError):
+    """Raised by the translate step (services/translation.py)."""

@@ -58,6 +58,14 @@ class Settings(BaseSettings):
     anthropic_timeout_seconds: float = 90.0
     anthropic_max_retries: int = 2
 
+    # Hebrew translation (docs: claude/proposal-hebrew-translation.md). A
+    # document counts as Hebrew when more than this share of its letters are
+    # Hebrew. A full three-page form needs a lot of output, and a vision call
+    # over it runs about a minute, hence the larger limits than classify/extract.
+    hebrew_letter_threshold: float = 0.2
+    translate_max_tokens: int = 16000
+    translate_timeout_seconds: float = 240.0
+
     @property
     def attachment_storage_path(self) -> Path:
         path = Path(self.attachment_storage_dir)
