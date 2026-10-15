@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import schemas, seed_instruments, seed_templates
 from app.config import get_settings
 from app.db import SessionLocal
-from app.routers import analytics, attachments, instruments, report_templates, reports
+from app.services.instrument_types import ensure_default_types
+from app.routers import analytics, attachments, instrument_types, instruments, report_templates, reports, saved_filters
 
 
 @asynccontextmanager
@@ -15,6 +16,7 @@ async def lifespan(app: FastAPI):
     # (§1) and the six report_templates rows (§5) if they're not there yet.
     # Idempotent — safe to run on every startup.
     with SessionLocal() as db:
+        ensure_default_types(db)
         seed_instruments.seed(db)
         seed_templates.seed(db)
     yield
@@ -39,9 +41,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(instrument_types.router)
 app.include_router(instruments.router)
 app.include_router(report_templates.router)
 app.include_router(reports.router)
+app.include_router(saved_filters.router)
 app.include_router(attachments.router)
 app.include_router(analytics.router)
 

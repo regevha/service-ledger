@@ -43,16 +43,25 @@ export interface Instrument {
   status: InstrumentStatus;
 }
 
-// instrument_type is deliberately left out here too — schemas.py's
-// InstrumentCreate/InstrumentUpdate don't expose it either (see
-// InstrumentManager.tsx's comment: nothing in the UI picks a value other
-// than the fixed "facs" default yet).
+// instrument_type is chosen when an instrument is created and cannot be
+// changed afterwards (InstrumentUpdate has no such field).
 export interface InstrumentCreatePayload {
   name: string;
+  /** The `key` of an instrument type (GET /instrument-types). */
+  instrument_type: string;
   model: string;
-  manufacturer?: string | null;
+  /** Required for a new instrument. */
+  manufacturer: string;
   serial_number: string;
   location?: string | null;
+}
+
+export interface InstrumentType {
+  id: string;
+  /** What instruments and templates store (e.g. "facs"). */
+  key: string;
+  /** What people see (e.g. "Flow cytometer"). */
+  display_name: string;
 }
 
 export interface InstrumentUpdatePayload {
@@ -313,6 +322,14 @@ export function listInstruments(): Promise<Instrument[]> {
   return apiFetch('/instruments');
 }
 
+export function listInstrumentTypes(): Promise<InstrumentType[]> {
+  return apiFetch('/instrument-types');
+}
+
+export function createInstrumentType(displayName: string): Promise<InstrumentType> {
+  return apiFetch('/instrument-types', { method: 'POST', body: JSON.stringify({ display_name: displayName }) });
+}
+
 export function createInstrument(payload: InstrumentCreatePayload): Promise<Instrument> {
   return apiFetch('/instruments', { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -409,9 +426,13 @@ export function getFleetAnalytics(): Promise<FleetAnalytics> {
 
 // ---------- Report templates ----------
 
-export function findTemplate(model: string, reportType: ReportType): Promise<ReportTemplate | null> {
+export function findTemplate(
+  model: string,
+  reportType: ReportType,
+  instrumentType: string
+): Promise<ReportTemplate | null> {
   return apiFetch<ReportTemplate[]>(
-    `/report-templates?${new URLSearchParams({ model, report_type: reportType })}`
+    `/report-templates?${new URLSearchParams({ model, report_type: reportType, instrument_type: instrumentType })}`
   ).then((list) => list[0] ?? null);
 }
 
@@ -628,4 +649,34 @@ export async function pollExtractionJob(
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
+}
+
+// ---------- Saved report filters ----------
+
+// A named combination of the Reports list's six filters, shared by everyone
+// (at most `cap` exist). `filters` holds only the criteria that were set.
+export interface SavedFilter {
+  id: string;
+  name: string;
+  filters: ReportFilters;
+  created_at: string;
+  /** The saved instrument no longer exists. */
+  stale: boolean;
+}
+
+export interface SavedFilterList {
+  items: SavedFilter[];
+  cap: number;
+}
+
+export function listSavedFilters(): Promise<SavedFilterList> {
+  return apiFetch('/saved-report-filters');
+}
+
+export function createSavedFilter(name: string, filters: ReportFilters): Promise<SavedFilter> {
+  return apiFetch('/saved-report-filters', { method: 'POST', body: JSON.stringify({ name, filters }) });
+}
+
+export function deleteSavedFilter(id: string): Promise<void> {
+  return apiFetch(`/saved-report-filters/${id}`, { method: 'DELETE' });
 }

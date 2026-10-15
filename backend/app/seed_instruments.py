@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
 from app.models import Instrument
+from app.services.instrument_types import ensure_default_types
 
 INSTRUMENTS = [
     {"name": "FACSAria III", "model": "FACSAria III", "manufacturer": "BD", "serial_number": "P648282B3003", "location": "Core Lab"},
@@ -51,6 +52,7 @@ def _migrate_legacy_serials(db: Session) -> None:
 
 
 def seed(db: Session) -> list[Instrument]:
+    ensure_default_types(db)
     _migrate_legacy_serials(db)
     created = []
     for spec in INSTRUMENTS:

@@ -77,10 +77,27 @@ class ExtractionJobKind(str, enum.Enum):
     extract = "extract"
 
 
+class InstrumentType(Base):
+    """A kind of instrument ("Flow cytometer", "Electron microscope"). `key` is
+    the stable value stored in `instruments.instrument_type` and
+    `report_templates.instrument_type`; `display_name` is what people see. The
+    columns stay plain strings (not foreign keys) and are validated against this
+    table by the API (services/instrument_types.py), so older rows and seed
+    scripts keep working. Distinct from `Instrument.manufacturer`, which says
+    who makes the instrument, not what kind it is."""
+
+    __tablename__ = "instrument_types"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    key: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Instrument(Base):
-    """§5: the physical asset. `instrument_type` is fixed to "facs" for MVP but
-    stored as a plain string (not a native enum) so the spec's "stays open for
-    other vendors and categories later" (§2) doesn't require a migration to honor."""
+    """§5: the physical asset. `instrument_type` is the `key` of an
+    InstrumentType row (default "facs", shown as "Flow cytometer"), stored as a
+    plain string rather than a native enum so adding a type needs no migration."""
 
     __tablename__ = "instruments"
 
@@ -268,6 +285,25 @@ class ExtractionJob(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     attachment: Mapped[Attachment] = relationship(back_populates="extraction_jobs")
+
+
+class SavedReportFilter(Base):
+    """A named combination of the Reports list's six filters, shared by
+    everyone (proposal-saved-filters.md). `filters` holds only the criteria
+    that were set, under the same keys GET /reports already takes. Names are
+    unique ignoring case and surrounding spaces (a unique index on
+    lower(btrim(name)), declared here as well as in the migration so the
+    test database, built from metadata, enforces it too). `created_by` stays
+    NULL until sign-in exists."""
+
+    __tablename__ = "saved_report_filters"
+    __table_args__ = (Index("uq_saved_report_filters_name", text("lower(btrim(name))"), unique=True),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    filters: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 def report_chronological_order() -> tuple:

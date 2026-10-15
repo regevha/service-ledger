@@ -88,7 +88,7 @@ def _live(tmp_path, monkeypatch, **overrides):
     }
     client = SimpleNamespace(messages=_Messages(answer))
     monkeypatch.setattr(classification, "_get_client", lambda: client)
-    read = classification._live_classify(None, SimpleNamespace(file_path=str(scan)), [SimpleNamespace(model="LSRFortessa")])
+    read = classification._live_classify(None, SimpleNamespace(file_path=str(scan)), [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="facs")])
     return read, client
 
 

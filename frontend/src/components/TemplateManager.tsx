@@ -5,8 +5,10 @@ import {
   deleteReportTemplate,
   getTemplateUsage,
   listAllReportTemplates,
+  listInstrumentTypes,
   updateReportTemplate,
   type FieldType,
+  type InstrumentType,
   type ItemSchemaColumn,
   type ReportTemplate,
   type ReportType,
@@ -330,6 +332,13 @@ function TemplateFormScreen({
   onSaved: () => void;
 }) {
   const seed = existing ?? copyOf;
+  const [types, setTypes] = useState<InstrumentType[]>([]);
+  const [instrumentType, setInstrumentType] = useState(seed?.instrument_type ?? 'facs');
+  useEffect(() => {
+    listInstrumentTypes()
+      .then(setTypes)
+      .catch(() => setTypes([]));
+  }, []);
   const [reportType, setReportType] = useState<ReportType>(seed?.report_type ?? 'repair');
   // A copy starts with a blank model: the same report type + model already
   // has a template (the one being copied), and only one is allowed.
@@ -365,6 +374,7 @@ function TemplateFormScreen({
         });
       } else {
         await createReportTemplate({
+          instrument_type: instrumentType,
           report_type: reportType,
           model: model.trim() ? model.trim() : null,
           fields: payloadFields,
@@ -405,6 +415,22 @@ function TemplateFormScreen({
       {error && <div className="banner banner-crit">{error}</div>}
 
       <div className="schema-form-row">
+        <label className="schema-form-label">
+          Instrument type
+          <select
+            id="template-instrument-type"
+            value={instrumentType}
+            disabled={existing !== undefined}
+            onChange={(e) => setInstrumentType(e.target.value)}
+          >
+            {types.length === 0 && <option value={instrumentType}>{instrumentType}</option>}
+            {types.map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.display_name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="schema-form-label">
           Report type
           <select value={reportType} onChange={(e) => setReportType(e.target.value as ReportType)}>
@@ -487,6 +513,13 @@ export function TemplateManagerScreen({ knownModels = [] }: { knownModels?: stri
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<ManagerMode>({ kind: 'list' });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [typeNames, setTypeNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    listInstrumentTypes()
+      .then((rows) => setTypeNames(Object.fromEntries(rows.map((t) => [t.key, t.display_name]))))
+      .catch(() => setTypeNames({}));
+  }, []);
 
   function reload() {
     setLoading(true);
@@ -570,7 +603,10 @@ export function TemplateManagerScreen({ knownModels = [] }: { knownModels?: stri
           {templates.map((tpl) => (
             <div className="template-row template-row-body" key={tpl.id}>
               <span>{REPORT_TYPE_LABEL[tpl.report_type]}</span>
-              <span>{tpl.model ?? '(any model)'}</span>
+              <span>
+                {tpl.model ?? '(any model)'}
+                <small className="muted"> · {typeNames[tpl.instrument_type] ?? tpl.instrument_type}</small>
+              </span>
               <span>{tpl.field_schema.fields.length}</span>
               <span className="template-usage">
                 {usage[tpl.id] ? `${usage[tpl.id].report_count} (${usage[tpl.id].finalized_count} finalized)` : '0'}
