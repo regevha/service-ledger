@@ -84,3 +84,24 @@ test('sorting by another column replaces the first, and survives a change of fil
   await expect.poll(() => order(page, prefix)).toEqual(['a', 'b', 'c']);
   await expect(lab).toHaveAttribute('data-sort', 'asc');
 });
+
+test('the sort is still there after opening a report and coming back', async ({ page, request }) => {
+  const stamp = Date.now();
+  const prefix = `E2E-Sort3-${stamp}-`;
+  for (const letter of ['b', 'c', 'a']) await reportFor(request, `${prefix}${letter}`);
+
+  await page.goto('/');
+  await page.click('.view-tab:has-text("Reports")');
+  await page.fill('input[aria-label="Lab manager"]', prefix);
+  await expect.poll(() => order(page, prefix)).toEqual(['a', 'c', 'b']);
+  const head = page.locator('[data-testid="sort-lab_manager"]');
+  await head.click();
+  await head.click();
+  await expect.poll(() => order(page, prefix)).toEqual(['c', 'b', 'a']);
+
+  await page.locator('.report-row-body', { hasText: `${prefix}b` }).click();
+  await page.click('button:has-text("Back to reports")');
+  await expect(page.locator('.report-row-body').first()).toBeVisible();
+  await expect(head).toHaveAttribute('data-sort', 'desc');
+  await expect.poll(() => order(page, prefix)).toEqual(['c', 'b', 'a']);
+});
