@@ -100,7 +100,10 @@ confidence; never pick the nearest model in the fleet just to give an answer. On
 form the serial is the number labelled "serial number" (or "S.N"), copied exactly. A number \
 labelled "device number" or "instrument number" can be the model code (for example BE50173 \
 on a CytoFLEX form), not the serial, and an asset or inventory number is not the serial \
-either. If one visit \
+either. The work-order number on such a form is the number that identifies this visit \
+(labelled "service call", "call number", "service report" or "report number"); a \
+customer order or purchase-order number is not the work order, and neither is a part \
+number or an asset number. If one visit \
 fits two report types (an upgrade done together with a preventive maintenance visit), give \
 the main one in `report_type` and name the other in `report_type_note`. Numbers without a \
 unit are not given one.
@@ -253,7 +256,7 @@ def _live_classify(
                 "instrument_serial_confidence": {"type": "number", "minimum": 0, "maximum": 1},
                 "task_code": {"type": "string", "description": "Work Order Task Code as printed (e.g. T113), or empty"},
                 "task_code_confidence": {"type": "number", "minimum": 0, "maximum": 1},
-                "work_order_number": {"type": "string", "description": "Work-order number as printed, or empty"},
+                "work_order_number": {"type": "string", "description": "Work-order number as printed (on another maker's form, the service call or report number, never the customer order number), or empty"},
                 "issuer": {"type": "string", "description": "Company that issued the form, or empty"},
                 "detected_manufacturer": {"type": "string", "description": "The instrument's maker, or empty"},
                 "detected_model": {"type": "string", "description": "The instrument's model name as printed, or empty"},
