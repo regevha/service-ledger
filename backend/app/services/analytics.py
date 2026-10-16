@@ -19,8 +19,11 @@ still be edited out from under an in-flight aggregate otherwise.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
+from datetime import date
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func, select
+from sqlalchemy.orm import Query, Session, joinedload
 
 from app import models, schemas
 from app.models import report_chronological_order
@@ -49,12 +52,64 @@ def _result_field_for(report_type: models.ReportType) -> str | None:
     return None
 
 
-def compute_fleet_analytics(db: Session) -> schemas.FleetAnalyticsOut:
+@dataclass(frozen=True)
+class AnalyticsFilters:
+    """Which finalized reports the analytics are computed from. Every field is
+    optional and they combine (all must hold). They mean the same as on the
+    Reports list: `report_type` is the report's template type, and the dates
+    are the report date, so a report with no date drops out as soon as a date
+    bound is set. `instrument_id` also narrows which instruments are listed
+    (fleet roll-up rows, comparison units), not only whose reports count; so
+    does `manufacturer` (matched ignoring case and surrounding spaces), which
+    selects the whole group of instruments from that maker."""
+
+    instrument_id: uuid.UUID | None = None
+    manufacturer: str | None = None
+    report_type: models.ReportType | None = None
+    date_from: date | None = None
+    date_to: date | None = None
+
+
+def _apply_unit_filters(query: Query, filters: AnalyticsFilters) -> Query:
+    """The filters that choose which instruments are listed (query on Instrument)."""
+    if filters.instrument_id:
+        query = query.filter(models.Instrument.id == filters.instrument_id)
+    if filters.manufacturer:
+        query = query.filter(_same_manufacturer(filters.manufacturer))
+    return query
+
+
+def _same_manufacturer(name: str):
+    return func.lower(func.trim(models.Instrument.manufacturer)) == name.strip().lower()
+
+
+def _apply_filters(query: Query, filters: AnalyticsFilters) -> Query:
+    if filters.instrument_id:
+        query = query.filter(models.Report.instrument_id == filters.instrument_id)
+    if filters.manufacturer:
+        query = query.filter(
+            models.Report.instrument_id.in_(select(models.Instrument.id).where(_same_manufacturer(filters.manufacturer)))
+        )
+    if filters.report_type:
+        query = query.join(models.ReportTemplate, models.Report.template_id == models.ReportTemplate.id).filter(
+            models.ReportTemplate.report_type == filters.report_type
+        )
+    if filters.date_from:
+        query = query.filter(models.Report.report_date >= filters.date_from)
+    if filters.date_to:
+        query = query.filter(models.Report.report_date <= filters.date_to)
+    return query
+
+
+def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None) -> schemas.FleetAnalyticsOut:
+    filters = filters or AnalyticsFilters()
     reports = (
-        db.query(models.Report)
-        .options(joinedload(models.Report.instrument), joinedload(models.Report.template))
-        .filter(models.Report.status == models.ReportStatus.finalized)
-        .all()
+        _apply_filters(
+            db.query(models.Report)
+            .options(joinedload(models.Report.instrument), joinedload(models.Report.template))
+            .filter(models.Report.status == models.ReportStatus.finalized),
+            filters,
+        ).all()
     )
 
     parts: dict[tuple[str, str | None], dict[str, float]] = {}
@@ -116,7 +171,8 @@ def compute_fleet_analytics(db: Session) -> schemas.FleetAnalyticsOut:
             bucket_key = "pass" if result == "pass" else "fail" if result == "fail" else "other"
             pass_fail[report_type.value][bucket_key] += 1
 
-    instruments = db.query(models.Instrument).order_by(models.Instrument.name).all()
+    instrument_query = db.query(models.Instrument).order_by(models.Instrument.name)
+    instruments = _apply_unit_filters(instrument_query, filters).all()
     labor_hours_by_instrument = [
         schemas.InstrumentRollupOut(
             instrument_id=instrument.id,
@@ -144,6 +200,7 @@ def compute_fleet_analytics(db: Session) -> schemas.FleetAnalyticsOut:
     )
 
     return schemas.FleetAnalyticsOut(
+        finalized_report_count=len(reports),
         parts_replaced=parts_replaced,
         total_labor_hours=sum(labor_by_instrument.values()),
         labor_hours_by_instrument=labor_hours_by_instrument,
@@ -202,11 +259,16 @@ def trend_points(reports: list[models.Report], field: str) -> list[schemas.Trend
 # ---------- same-model comparison ----------
 
 
-def _finalized_reports_by_instrument(db: Session) -> dict[uuid.UUID, list[models.Report]]:
+def _finalized_reports_by_instrument(
+    db: Session, filters: AnalyticsFilters | None = None
+) -> dict[uuid.UUID, list[models.Report]]:
     reports = (
-        db.query(models.Report)
-        .options(joinedload(models.Report.template))
-        .filter(models.Report.status == models.ReportStatus.finalized, models.Report.instrument_id.isnot(None))
+        _apply_filters(
+            db.query(models.Report)
+            .options(joinedload(models.Report.template))
+            .filter(models.Report.status == models.ReportStatus.finalized, models.Report.instrument_id.isnot(None)),
+            filters or AnalyticsFilters(),
+        )
         .order_by(*report_chronological_order())
         .all()
     )
@@ -266,13 +328,16 @@ def _unit_comparison(instrument: models.Instrument, reports: list[models.Report]
     )
 
 
-def compute_model_comparison(db: Session) -> list[schemas.ModelComparisonOut]:
+def compute_model_comparison(db: Session, filters: AnalyticsFilters | None = None) -> list[schemas.ModelComparisonOut]:
     """Every instrument model with its units side by side. A model with a
     single unit is included (nothing to compare yet, but it is not hidden);
-    units with no finalized reports show zeros rather than disappearing."""
-    by_instrument = _finalized_reports_by_instrument(db)
+    units with no matching finalized reports show zeros rather than
+    disappearing. With an instrument filter only that unit is listed."""
+    filters = filters or AnalyticsFilters()
+    by_instrument = _finalized_reports_by_instrument(db, filters)
     grouped: dict[str, list[models.Instrument]] = {}
-    for instrument in db.query(models.Instrument).order_by(models.Instrument.serial_number).all():
+    unit_query = db.query(models.Instrument).order_by(models.Instrument.serial_number)
+    for instrument in _apply_unit_filters(unit_query, filters).all():
         grouped.setdefault(instrument.model, []).append(instrument)
     out = []
     for model in sorted(grouped):
@@ -288,13 +353,18 @@ def compute_model_comparison(db: Session) -> list[schemas.ModelComparisonOut]:
     return out
 
 
-def compute_model_trend(db: Session, model: str, field: str) -> schemas.ModelTrendOut | None:
+def compute_model_trend(
+    db: Session, model: str, field: str, filters: AnalyticsFilters | None = None
+) -> schemas.ModelTrendOut | None:
     """One field's series for every unit of `model`; None if no instrument has
-    that model."""
-    units = db.query(models.Instrument).filter(models.Instrument.model == model).order_by(models.Instrument.serial_number).all()
+    that model. With an instrument filter only that unit's series is returned
+    (None when the filtered instrument is not of this model)."""
+    filters = filters or AnalyticsFilters()
+    unit_query = db.query(models.Instrument).filter(models.Instrument.model == model).order_by(models.Instrument.serial_number)
+    units = _apply_unit_filters(unit_query, filters).all()
     if not units:
         return None
-    by_instrument = _finalized_reports_by_instrument(db)
+    by_instrument = _finalized_reports_by_instrument(db, filters)
     return schemas.ModelTrendOut(
         model=model,
         field=field,

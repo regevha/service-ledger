@@ -262,6 +262,7 @@ export interface PassFailBreakdown {
 }
 
 export interface FleetAnalytics {
+  finalized_report_count: number;
   parts_replaced: PartUsage[];
   total_labor_hours: number;
   labor_hours_by_instrument: InstrumentRollup[];
@@ -431,17 +432,41 @@ export interface ModelTrend {
   series: ModelTrendSeries[];
 }
 
+/**
+ * What the analytics are computed from; every field is optional and they
+ * combine. The same meaning as on the Reports list: the type is the report's
+ * template type, the dates are the report date (a report with no date drops out
+ * once a date is set), and the instrument is one unit and the manufacturer is
+ * every unit from that maker (both also limit the units listed).
+ */
+export interface AnalyticsFilters {
+  instrument_id?: string;
+  manufacturer?: string;
+  report_type?: ReportType;
+  date_from?: string;
+  date_to?: string;
+}
+
+function analyticsParams(filters: AnalyticsFilters, extra: Record<string, string> = {}): string {
+  const params = new URLSearchParams(extra);
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
 // Units of the same model side by side (finalized reports only).
-export function getModelComparison(): Promise<ModelComparison[]> {
-  return apiFetch('/analytics/models');
+export function getModelComparison(filters: AnalyticsFilters = {}): Promise<ModelComparison[]> {
+  return apiFetch(`/analytics/models${analyticsParams(filters)}`);
 }
 
-export function getModelTrend(model: string, field: string): Promise<ModelTrend> {
-  return apiFetch(`/analytics/models/trend?${new URLSearchParams({ model, field })}`);
+export function getModelTrend(model: string, field: string, filters: AnalyticsFilters = {}): Promise<ModelTrend> {
+  return apiFetch(`/analytics/models/trend${analyticsParams(filters, { model, field })}`);
 }
 
-export function getFleetAnalytics(): Promise<FleetAnalytics> {
-  return apiFetch('/analytics/fleet');
+export function getFleetAnalytics(filters: AnalyticsFilters = {}): Promise<FleetAnalytics> {
+  return apiFetch(`/analytics/fleet${analyticsParams(filters)}`);
 }
 
 // ---------- Report templates ----------

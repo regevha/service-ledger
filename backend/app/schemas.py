@@ -670,6 +670,9 @@ class FleetAnalyticsOut(BaseModel):
     fields every finalized report already carries — no new columns, no new
     tables. See services/analytics.py for exactly how each number is derived."""
 
+    # Finalized reports of any type that matched the filters, i.e. what the
+    # numbers below were computed from.
+    finalized_report_count: int = 0
     parts_replaced: list[PartUsageOut]
     total_labor_hours: float
     labor_hours_by_instrument: list[InstrumentRollupOut]

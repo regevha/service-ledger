@@ -1,5 +1,14 @@
-import { useState } from 'react';
-import { getFleetAnalytics, type FleetAnalytics, type InstrumentRollup, type PartUsage } from '../api';
+import { useEffect, useState } from 'react';
+import {
+  getFleetAnalytics,
+  listInstruments,
+  type AnalyticsFilters,
+  type FleetAnalytics,
+  type Instrument,
+  type InstrumentRollup,
+  type PartUsage,
+  type ReportType,
+} from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { ModelComparisonSection } from './ModelComparison';
@@ -171,18 +180,133 @@ function PassFailSection({ byReportType }: { byReportType: FleetAnalytics['pass_
   );
 }
 
+function FilterBar({ filters, instruments, onChange }: {
+  filters: AnalyticsFilters;
+  instruments: Instrument[];
+  onChange: (next: AnalyticsFilters) => void;
+}) {
+  const active = Object.values(filters).some(Boolean);
+  const manufacturers = Array.from(
+    new Set(instruments.map((i) => i.manufacturer?.trim()).filter((m): m is string => Boolean(m)))
+  ).sort((a, b) => a.localeCompare(b));
+  return (
+    <div className="filter-row" data-testid="analytics-filters">
+      <select
+        aria-label="Manufacturer"
+        value={filters.manufacturer ?? ''}
+        onChange={(e) => {
+          const manufacturer = e.target.value || undefined;
+          // Drop a chosen instrument that is not from this maker, so the two never contradict.
+          const kept = instruments.find((i) => i.id === filters.instrument_id);
+          const clash = manufacturer && kept && (kept.manufacturer?.trim() ?? '') !== manufacturer;
+          onChange({ ...filters, manufacturer, instrument_id: clash ? undefined : filters.instrument_id });
+        }}
+      >
+        <option value="">All manufacturers</option>
+        {manufacturers.map((m) => (
+          <option key={m} value={m}>
+            {m}
+          </option>
+        ))}
+      </select>
+
+      <select
+        aria-label="Instrument"
+        value={filters.instrument_id ?? ''}
+        onChange={(e) => onChange({ ...filters, instrument_id: e.target.value || undefined })}
+      >
+        <option value="">All instruments</option>
+        {instruments
+          .filter((inst) => !filters.manufacturer || (inst.manufacturer?.trim() ?? '') === filters.manufacturer)
+          .map((inst) => (
+          <option key={inst.id} value={inst.id}>
+            {inst.model} ({inst.serial_number})
+          </option>
+        ))}
+      </select>
+
+      <select
+        aria-label="Report type"
+        value={filters.report_type ?? ''}
+        onChange={(e) => onChange({ ...filters, report_type: (e.target.value || undefined) as ReportType | undefined })}
+      >
+        <option value="">All report types</option>
+        {(Object.keys(REPORT_TYPE_LABEL) as ReportType[]).map((rt) => (
+          <option key={rt} value={rt}>
+            {REPORT_TYPE_LABEL[rt]}
+          </option>
+        ))}
+      </select>
+
+      <input
+        type="date"
+        aria-label="From date"
+        value={filters.date_from ?? ''}
+        onChange={(e) => onChange({ ...filters, date_from: e.target.value || undefined })}
+      />
+      <span className="filter-sep">to</span>
+      <input
+        type="date"
+        aria-label="To date"
+        value={filters.date_to ?? ''}
+        onChange={(e) => onChange({ ...filters, date_to: e.target.value || undefined })}
+      />
+
+      {active && (
+        <button type="button" className="btn small" onClick={() => onChange({})}>
+          Clear filters
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function AnalyticsScreen() {
   const [data, setData] = useState<FleetAnalytics | null>(null);
+  const [filters, setFilters] = useState<AnalyticsFilters>({});
+  const [instruments, setInstruments] = useState<Instrument[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listInstruments()
+      .then((list) => {
+        if (!cancelled) setInstruments(list);
+      })
+      .catch(() => {
+        // The instrument filter just stays empty; the analytics themselves still load.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const backwards = Boolean(filters.date_from && filters.date_to && filters.date_from > filters.date_to);
+  const filterKey = JSON.stringify(filters);
+
   const { loading, error } = useAsyncEffect(
     async (isCancelled) => {
-      const result = await getFleetAnalytics();
+      if (backwards) return; // the server refuses it; the page says so instead
+      const result = await getFleetAnalytics(filters);
       if (!isCancelled()) setData(result);
     },
-    [],
+    [filterKey],
     'Could not load fleet analytics.'
   );
 
-  if (loading) {
+  const filterBar = <FilterBar filters={filters} instruments={instruments} onChange={setFilters} />;
+
+  if (backwards) {
+    return (
+      <div className="section">
+        <div className="section-title">Fleet analytics</div>
+        {filterBar}
+        <div className="banner banner-warn">The "from" date is after the "to" date.</div>
+      </div>
+    );
+  }
+
+  // Only the first load replaces the page; after that the controls stay put and the figures refresh.
+  if (!data && loading) {
     return (
       <div className="section">
         <div className="working-panel">
@@ -193,7 +317,7 @@ export function AnalyticsScreen() {
     );
   }
 
-  if (error || !data) {
+  if (!data) {
     return (
       <div className="section">
         <div className="banner banner-warn">{error ?? 'Could not load fleet analytics.'}</div>
@@ -203,14 +327,26 @@ export function AnalyticsScreen() {
 
   const totalUnitsReplaced = data.parts_replaced.reduce((sum, p) => sum + p.total_qty, 0);
   const totalReports = data.labor_hours_by_instrument.reduce((sum, r) => sum + r.report_count, 0);
+  const filtered = Object.values(filters).some(Boolean);
 
   return (
     <div className="section">
       <div className="section-title">Fleet analytics</div>
       <p className="hint-text">
-        Computed from every finalized repair and preventive-maintenance report — draft/in-review reports aren't
-        counted yet since their data isn't final.
+        Computed from finalized reports — draft/in-review reports aren't counted yet since their data isn't final.
+        The filters below apply to everything on this page. A date range leaves out reports that have no report date.
       </p>
+
+      {filterBar}
+      {error && <div className="banner banner-warn">{error}</div>}
+
+      <p className="hint-text" data-testid="analytics-basis" aria-live="polite">
+        {loading ? 'Updating…' : `Based on ${data.finalized_report_count} finalized report${data.finalized_report_count === 1 ? '' : 's'}${filtered ? ' matching the filters' : ''}.`}
+      </p>
+
+      {!loading && data.finalized_report_count === 0 && filtered && (
+        <div className="empty-hint">No finalized reports match these filters.</div>
+      )}
 
       <div className="stat-row">
         <div className="stat-tile">
@@ -247,7 +383,7 @@ export function AnalyticsScreen() {
         <PassFailSection byReportType={data.pass_fail_by_report_type} />
       </div>
 
-      <ModelComparisonSection />
+      <ModelComparisonSection filters={filters} />
     </div>
   );
 }
