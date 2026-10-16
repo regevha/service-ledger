@@ -120,11 +120,27 @@ def test_a_different_identifier_is_still_reported_missing_from_a_visual_order_la
     assert check["missing"] == ["50173BE"]
 
 
-def test_identifiers_the_model_listed_must_match_exactly():
-    # The tolerance is only for the text layer; a listed identifier reordered
-    # in the English is a real difference.
-    check = identifier_check(["BE50173"], "Device 50173BE")
-    assert check["missing"] == ["BE50173"]
+def test_identifiers_the_model_listed_in_reversed_order_are_not_reported_missing():
+    # Live run of 2026-10-16: the model copied these into its own list from the
+    # visual-order text layer, while its English has them as printed.
+    listed = ["50173BE", "96621B-BC", "000030R23SR"]
+    english = "Device BE50173, product BC-B96621, contract SR23R000030"
+    check = identifier_check(listed, english)
+    assert check == {"checked": 3, "missing": []}
+
+
+def test_a_listed_identifier_that_differs_is_still_reported_missing():
+    # Same letters, different digits: a real difference, not a reordering.
+    check = identifier_check(["50173BE", "Y1033"], "Device BE50174, S.N Y1033")
+    assert check["missing"] == ["50173BE"]
+
+
+def test_the_translation_prompt_asks_for_identifiers_as_printed_and_for_signature_state():
+    from app.services.translation import _PROMPT
+
+    assert "not 50173BE" in _PROMPT
+    assert 'write each one as "signed" or "blank"' in _PROMPT
+    assert "does not make it signed" in _PROMPT
 
 
 # ---------- stub mode: the review flow ----------
@@ -605,6 +621,30 @@ def test_the_prompt_does_not_call_a_customer_order_number_the_work_order(client,
     prompt = fake.messages.calls[0]["messages"][0]["content"][1]["text"]
     assert "service call or service report itself" in prompt
     assert "customer's order number, purchase-order number and customer number are not" in prompt
+
+
+def test_the_prompt_reads_the_service_call_as_the_work_order_not_the_order_number(client, run_worker, live):
+    # On the Cytek form the service call (2046) identifies the visit; the
+    # customer order number (4010348) must not be taken for the work order.
+    _, _, fake = _classify_live(
+        client,
+        run_worker,
+        live,
+        {
+            "instrument_model": "(not in the fleet)",
+            "instrument_confidence": 0.9,
+            "report_type": "installation_upgrade",
+            "report_type_confidence": 0.8,
+            "instrument_serial": "Y1033",
+            "instrument_serial_confidence": 0.9,
+            "work_order_number": "2046",
+        },
+    )
+    call = fake.messages.calls[0]
+    prompt = call["messages"][0]["content"][1]["text"]
+    assert '"service call"' in prompt and "customer order or purchase-order number is not the work order" in prompt
+    schema = call["tools"][0]["input_schema"]["properties"]["work_order_number"]["description"]
+    assert "never the customer order number" in schema
 
 
 def test_stub_other_maker_file_is_not_in_the_fleet_until_it_is_added(client, run_worker):

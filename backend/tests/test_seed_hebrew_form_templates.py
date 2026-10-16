@@ -74,3 +74,21 @@ def test_every_new_template_is_valid_for_the_extraction_schema(seeded):
     assert len(rows) == 3
     for row in rows:
         assert _build_extract_tool(row.field_schema["fields"])["input_schema"]["properties"]
+
+
+def test_the_customer_signature_rule_needs_an_actual_signature_not_a_printed_name(seeded):
+    # Live runs of 2026-10-15 and 2026-10-16: the Cytek form prints the customer's
+    # name above an empty signature box and the extraction read that as signed.
+    for serial, report_type in [("Y1033", ReportType.installation_upgrade), ("102579", ReportType.repair)]:
+        template = _resolve(seeded, _unit(seeded, serial), report_type)
+        notes = _field(template, "customer_signature_present")["notes"]
+        assert "actually drawn or written" in notes
+        assert "printed name" in notes
+
+
+def test_the_classify_prompt_says_the_work_order_is_the_service_call_never_the_customers_order():
+    from app.services.classification import _CLASSIFY_BODY  # noqa: PLC0415
+
+    assert "service call or service report itself" in _CLASSIFY_BODY
+    assert "customer's order number, purchase-order number and customer number are not" in _CLASSIFY_BODY
+    assert "return an empty string" in _CLASSIFY_BODY.split("5. Documents from another company")[0]
