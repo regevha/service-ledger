@@ -13,6 +13,7 @@ import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { InstrumentDetailScreen } from './InstrumentDetailScreen';
 import { ReportDetailScreen } from './ReportDetailScreen';
 import { SavedFilters } from './SavedFilters';
+import { nextSort, SORT_LABEL, sortReports, type SortKey, type SortState } from '../reportSort';
 
 const STATUS_OPTIONS: ReportStatus[] = ['draft', 'classified', 'extracted', 'in_review', 'finalized'];
 
@@ -55,6 +56,8 @@ export function ReportsListScreen({
   // Free-text search: same debounce idea, and only sent once it is long enough.
   const [searchInput, setSearchInput] = useState(filters.q ?? '');
   const [items, setItems] = useState<ReportListItem[]>([]);
+  // Column the table is sorted by (null: the server's order). Sorting is done here, on the rows already loaded.
+  const [sort, setSort] = useState<SortState | null>(null);
   const [screen, setScreen] = useState<ReportsScreen>({ kind: 'list' });
   // `items` lives here, and this component stays mounted while a report is
   // open, so the list doesn't refetch on its own when the technician comes
@@ -152,6 +155,7 @@ export function ReportsListScreen({
       filters.q
   );
   const searching = Boolean(filters.q);
+  const shown = sortReports(items, sort);
   const searchTooShort = searchInput.trim().length > 0 && searchInput.trim().length < MIN_SEARCH_LENGTH;
   // Search covers finalized reports only, so another status filter can only be empty.
   const statusBlocksSearch = searching && Boolean(filters.status) && filters.status !== 'finalized';
@@ -289,8 +293,12 @@ export function ReportsListScreen({
           <div className="table-toolbar">
             <span className="table-toolbar-count" data-testid="result-count">
               {searching
-                ? `${items.length} finalized report${items.length === 1 ? '' : 's'} match “${filters.q}” · best match first`
-                : `${items.length} report${items.length === 1 ? '' : 's'}`}
+                ? `${items.length} finalized report${items.length === 1 ? '' : 's'} match “${filters.q}” · ${
+                    sort ? `sorted by ${SORT_LABEL[sort.key].toLowerCase()}` : 'best match first'
+                  }`
+                : `${items.length} report${items.length === 1 ? '' : 's'}${
+                    sort ? ` · sorted by ${SORT_LABEL[sort.key].toLowerCase()}` : ''
+                  }`}
             </span>
             <a className="btn small" href={reportsExportUrl(filters)}>
               ⬇ Export CSV
@@ -298,13 +306,30 @@ export function ReportsListScreen({
           </div>
           <div className="report-table">
             <div className="report-row report-row-head">
-              <span>Instrument</span>
-              <span>Type</span>
-              <span>Lab manager</span>
-              <span>Report date</span>
-              <span>Status</span>
+              {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => {
+                const active = sort?.key === key ? sort.direction : null;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`sort-head${active ? ' sort-head-active' : ''}`}
+                    data-sort={active ?? 'none'}
+                    data-testid={`sort-${key}`}
+                    title={`Sort by ${SORT_LABEL[key].toLowerCase()}`}
+                    aria-label={`Sort by ${SORT_LABEL[key].toLowerCase()}${
+                      active ? `, currently ${active === 'asc' ? 'ascending' : 'descending'}` : ''
+                    }`}
+                    onClick={() => setSort((cur) => nextSort(cur, key))}
+                  >
+                    {SORT_LABEL[key]}
+                    <span className="sort-arrow" aria-hidden="true">
+                      {active === 'asc' ? '▲' : active === 'desc' ? '▼' : ''}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            {items.map((r) => (
+            {shown.map((r) => (
               <button
                 className="report-row report-row-body"
                 key={r.id}
