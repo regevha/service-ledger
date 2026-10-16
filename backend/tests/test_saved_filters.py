@@ -1,5 +1,6 @@
 """Saved report filters (proposal-saved-filters.md): a global list of at most
-five named combinations of the six Reports-list filters."""
+five named combinations of the Reports-list filters (the six criteria and, since
+2026-10-16, the free-text search)."""
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
@@ -54,11 +55,40 @@ def test_needs_at_least_one_criterion(client):
     assert _save(client, "Blank tech", technician="   ").status_code == 422
 
 
-def test_only_the_six_known_criteria_are_accepted(client):
-    # Free-text search is deliberately not saveable, and no other key is.
-    for key in ("q", "search", "whatever"):
+def test_only_the_known_criteria_are_accepted(client):
+    # The six criteria and the search text `q`; any other key is refused.
+    for key in ("search", "whatever"):
         res = client.post("/saved-report-filters", json={"name": "Bad", "filters": {"report_type": "repair", key: "x"}})
         assert res.status_code == 422, key
+
+
+def test_a_search_word_alone_can_be_saved(client):
+    # Found on 2026-10-16: "Save this filter" did nothing with only "valve" typed.
+    res = _save(client, "Valves", q="valve")
+    assert res.status_code == 201
+    assert res.json()["filters"] == {"q": "valve"}
+    assert client.get("/saved-report-filters").json()["items"][0]["filters"] == {"q": "valve"}
+
+
+def test_a_search_can_be_saved_together_with_other_criteria(client):
+    res = _save(client, "Repair valves", report_type="repair", q='  "waste line"  ')
+    assert res.status_code == 201
+    # Trimmed, and the quotes the person typed are kept as typed.
+    assert res.json()["filters"] == {"report_type": "repair", "q": '"waste line"'}
+
+
+def test_the_saved_search_follows_the_same_length_rules_as_a_live_search(client):
+    assert _save(client, "Short", report_type="repair", q="v").status_code == 422
+    assert _save(client, "Long", report_type="repair", q="x" * 201).status_code == 422
+    assert _save(client, "Edge", q="x" * 200).status_code == 201
+    assert _save(client, "Two", q="ab").status_code == 201
+
+
+def test_a_blank_search_counts_as_not_set(client):
+    assert _save(client, "Spaces", q="   ").status_code == 422
+    res = _save(client, "Spaces too", report_type="repair", q="   ")
+    assert res.status_code == 201
+    assert res.json()["filters"] == {"report_type": "repair"}
 
 
 def test_values_are_validated(client):
