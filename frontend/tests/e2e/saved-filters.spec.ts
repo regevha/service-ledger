@@ -125,3 +125,46 @@ test('a filter whose instrument was deleted is marked stale and still applies it
   await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
   await expect(page.locator('[data-testid="saved-filter-active"]')).not.toContainText('(changed)');
 });
+
+// Found on 2026-10-16: with only a search word typed (for example "valve") the
+// Save button was greyed out and did nothing. The search text is now part of a
+// saved filter.
+test('a search word alone can be saved, and applying it fills the search box again', async ({ page, request }) => {
+  const stamp = Date.now();
+  const word = `valve${stamp}`;
+  const search = page.locator('input[aria-label="Search reports"]');
+  const picker = page.locator('select[aria-label="Saved filters"]');
+  const save = page.locator('button:has-text("Save this filter")');
+
+  // A second saved filter without any search, to check that applying it clears the box.
+  const res = await request.post(`${API_BASE}/saved-report-filters`, {
+    data: { name: `Lab ${stamp}`, filters: { technician: `lab-${stamp}` } },
+  });
+  expect(res.status()).toBe(201);
+
+  await openReports(page);
+  await expect(save).toBeDisabled();
+  await search.fill(word);
+  await expect(save).toBeEnabled();
+  await saveCurrent(page, `Search ${stamp}`);
+  await expect(page.locator('[data-testid="saved-filter-active"]')).toContainText(`Search ${stamp}`);
+
+  const { items } = await (await request.get(`${API_BASE}/saved-report-filters`)).json();
+  expect(items.find((i: { name: string }) => i.name === `Search ${stamp}`).filters).toEqual({ q: word });
+
+  // After a reload the box is empty; picking the saved filter fills it again.
+  await openReports(page);
+  await expect(search).toHaveValue('');
+  await picker.selectOption({ label: `Search ${stamp}` });
+  await expect(search).toHaveValue(word);
+  await expect(page.locator('[data-testid="saved-filter-active"]')).not.toContainText('(changed)');
+
+  // Typing something else marks it as changed.
+  await search.fill(`${word}x`);
+  await expect(page.locator('[data-testid="saved-filter-active"]')).toContainText('(changed)');
+
+  // Applying a filter that has no search clears the search box.
+  await picker.selectOption({ label: `Lab ${stamp}` });
+  await expect(search).toHaveValue('');
+  await expect(page.locator('input[aria-label="Lab manager"]')).toHaveValue(`lab-${stamp}`);
+});
