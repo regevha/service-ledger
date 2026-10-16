@@ -31,6 +31,32 @@ def test_downloaded_file_matches_the_uploaded_bytes_and_content_type(client):
     assert "aria_repair_2026.pdf" in download.headers["content-disposition"]
 
 
+def test_the_file_is_an_attachment_by_default_and_inline_when_asked_for_display(client):
+    # An <iframe> stays blank for an attachment response, so the translation
+    # review asks for ?inline=1 (found 2026-10-16 with the Cytek PDF).
+    report = client.post("/reports", json={"technician_name": "R. Tester"}).json()
+    original_bytes = b"%PDF-1.4 fake scan bytes for inline test"
+    attachment = client.post(
+        f"/reports/{report['id']}/attachments",
+        files={"file": ("cytek_scan.pdf", original_bytes, "application/pdf")},
+    ).json()
+    url = f"/attachments/{attachment['id']}/file"
+
+    default = client.get(url)
+    assert default.headers["content-disposition"].startswith("attachment")
+    assert "x-content-type-options" not in default.headers
+
+    shown = client.get(url, params={"inline": "1"})
+    assert shown.status_code == 200
+    assert shown.content == original_bytes  # the same bytes either way
+    assert shown.headers["content-type"] == "application/pdf"
+    assert shown.headers["content-disposition"].startswith("inline")
+    assert "cytek_scan.pdf" in shown.headers["content-disposition"]
+    assert shown.headers["x-content-type-options"] == "nosniff"
+
+    assert client.get(url, params={"inline": "0"}).headers["content-disposition"].startswith("attachment")
+
+
 def test_downloading_a_nonexistent_attachment_returns_404(client):
     response = client.get(f"/attachments/{uuid.uuid4()}/file")
     assert response.status_code == 404
