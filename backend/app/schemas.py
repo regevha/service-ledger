@@ -765,10 +765,11 @@ class ModelTrendOut(BaseModel):
 
 # ---------- Saved report filters ----------
 
-# The only criteria a saved filter may hold: exactly the Reports list's six
-# filters, under the keys GET /reports already takes. Free-text search is
-# deliberately not saveable.
-SAVED_FILTER_KEYS = ("instrument_id", "report_type", "status", "date_from", "date_to", "technician")
+# The only criteria a saved filter may hold: exactly the Reports list's filters,
+# under the keys GET /reports already takes. The free-text search `q` became
+# saveable on 2026-10-16 (it was left out at first; the project owner reversed
+# that after finding that "Save this filter" did nothing with only a search word).
+SAVED_FILTER_KEYS = ("instrument_id", "report_type", "status", "date_from", "date_to", "technician", "q")
 
 
 class SavedFilterCriteria(BaseModel):
@@ -783,12 +784,21 @@ class SavedFilterCriteria(BaseModel):
     date_from: date | None = None
     date_to: date | None = None
     technician: str | None = None
+    # Free-text search, kept as typed (trimmed). Same rules as GET /reports?q=.
+    q: str | None = None
 
     @field_validator("technician")
     @classmethod
     def _trim_technician(cls, v: str | None) -> str | None:
         v = v.strip() if v else None
         return v or None
+
+    @field_validator("q")
+    @classmethod
+    def _valid_search(cls, v: str | None) -> str | None:
+        from app.services.report_search import normalize_query  # noqa: PLC0415 (avoids a circular import)
+
+        return normalize_query(v)
 
     @model_validator(mode="after")
     def _at_least_one_and_ordered(self):

@@ -165,6 +165,8 @@ export function ReportsListScreen({
         onApply={(applied) => {
           setFilters(applied);
           setTechnicianInput(applied.technician ?? '');
+          // A saved search refills the search box too (and an empty one clears it).
+          setSearchInput(applied.q ?? '');
         }}
       />
 
