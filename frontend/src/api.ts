@@ -628,8 +628,11 @@ export function uploadAttachment(reportId: string, file: File): Promise<Attachme
 // this is a direct link href (opened in a new tab, or downloaded), not a
 // fetch, so the browser handles the PDF/image response and its
 // Content-Disposition filename itself rather than any JS/blob plumbing here.
-export function attachmentFileUrl(attachmentId: string): string {
-  return `${API_BASE}/attachments/${attachmentId}/file`;
+//
+// `inline` asks for the file to be displayed rather than downloaded: needed for
+// an <iframe>, which stays blank when the response is an attachment.
+export function attachmentFileUrl(attachmentId: string, opts: { inline?: boolean } = {}): string {
+  return `${API_BASE}/attachments/${attachmentId}/file${opts.inline ? '?inline=1' : ''}`;
 }
 
 // Both of these now only enqueue a job and return immediately (202) — the
