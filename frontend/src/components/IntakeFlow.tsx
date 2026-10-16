@@ -752,7 +752,7 @@ export function IntakeFlow({
         <TranslationReview
           key={translation.id}
           translation={translation}
-          originalUrl={attachmentFileUrl(attachmentId)}
+          originalUrl={attachmentFileUrl(attachmentId, { inline: true })}
           busy={translationBusy}
           onAccept={(text) => void handleAcceptTranslation(text)}
           onDiscard={() => void handleDiscardTranslation()}

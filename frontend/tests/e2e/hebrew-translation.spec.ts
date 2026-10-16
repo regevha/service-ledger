@@ -39,6 +39,24 @@ test('a Hebrew document waits for review; QC pages are listed and can be include
   await expect(page.locator('textarea[aria-label="English translation"]')).toContainText('Page 2 included');
 });
 
+test('the original beside the English is served for display, not as a download', async ({ page, request }) => {
+  // Found on 2026-10-16 with the Cytek PDF (pages are images): the original
+  // pane stayed blank because the file came back as an attachment, which a
+  // browser refuses to show in an iframe.
+  const downloads: string[] = [];
+  page.on('download', (d) => downloads.push(d.suggestedFilename()));
+  await upload(page, `hebrew-inline-${Date.now()}.pdf`);
+  await expect(page.locator('#translation-review')).toBeVisible({ timeout: 30_000 });
+
+  const src = await page.locator('iframe.translation-original').getAttribute('src');
+  expect(src).toContain('/file?inline=1');
+  const res = await request.get(src!);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-disposition']).toMatch(/^inline/);
+  await page.waitForTimeout(1000);
+  expect(downloads).toEqual([]);
+});
+
 test('editing the English shows durations in decimal hours and accepting continues to the report', async ({ page }) => {
   await upload(page, `hebrew-edit-${Date.now()}.pdf`);
   const box = page.locator('textarea[aria-label="English translation"]');
