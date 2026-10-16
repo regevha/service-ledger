@@ -83,11 +83,12 @@ instead. If the Installed Product has no serial number, or it is printed as N/A,
 an empty string with confidence 0.
 
 4. The work-order number, exactly as printed (e.g. "WO-04587090"), in \
-`work_order_number`; an empty string if the document shows none. On a form from another \
-company the work-order number is the service call or service report number of that \
-visit (for example the "service call" or "report number" box); it is never the customer's \
-order, purchase-order or customer number, even when that number is printed more \
-prominently. If you cannot tell which number is the service call, return an empty string.
+`work_order_number`; an empty string if the document shows none. On a form from \
+another company this is the number of the service call or service report itself \
+(labelled for example "service call", "call number" or "report number"). The \
+customer's order number, purchase-order number and customer number are not the \
+work-order number, even when they are printed near the top of the form; if the \
+form shows only those, return an empty string.
 
 5. Documents from another company, including translated ones. The company that issued \
 the form is often a distributor, not the instrument's maker: put it in `issuer` (empty if \
