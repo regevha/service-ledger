@@ -14,7 +14,15 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from app.models import ExtractionJobKind, ExtractionJobStatus, InstrumentStatus, ReportStatus, ReportType, UserRole
+from app.models import (
+    ExtractionJobKind,
+    ExtractionJobStatus,
+    InstrumentStatus,
+    ReportStatus,
+    ReportType,
+    TranslationStatus,
+    UserRole,
+)
 
 
 # ---------- App config ----------
@@ -38,26 +46,82 @@ class AppConfigOut(BaseModel):
 # ---------- Instruments ----------
 
 
+class InstrumentTypeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    key: str
+    display_name: str
+
+
+class InstrumentTypeCreate(BaseModel):
+    display_name: str
+
+
+def _required_text(label: str):
+    """A validator body for a field that must hold real text: trimmed, and a
+    blank or all-whitespace value is refused (422) rather than stored."""
+
+    def check(value: str | None) -> str | None:
+        if value is None:
+            return None  # an omitted/null PATCH field is handled by the router
+        value = value.strip()
+        if not value:
+            raise ValueError(f"{label} cannot be blank")
+        return value
+
+    return check
+
+
 class InstrumentCreate(BaseModel):
     name: str
     instrument_type: str = "facs"
     model: str
-    manufacturer: str | None = None
+    # Required for new instruments (existing rows may still have none). Blank
+    # counts as missing.
+    manufacturer: str
+    # Optional: the local seller / service company when it is not the maker.
+    distributor: str | None = None
     serial_number: str
     location: str | None = None
 
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, value: str) -> str:
+        return _required_text("Name")(value)
+
+    @field_validator("model")
+    @classmethod
+    def _model_not_blank(cls, value: str) -> str:
+        return _required_text("Model")(value)
+
+    @field_validator("serial_number")
+    @classmethod
+    def _serial_not_blank(cls, value: str) -> str:
+        return _required_text("Serial number")(value)
+
     @field_validator("manufacturer")
     @classmethod
-    def _blank_manufacturer_is_none(cls, value: str | None) -> str | None:
-        """Free text, trimmed; a blank value means "not recorded"."""
+    def _manufacturer_required(cls, value: str) -> str:
+        """Free text, trimmed; required when creating an instrument."""
+        value = value.strip()
+        if not value:
+            raise ValueError("Manufacturer is required")
+        return value
+
+    @field_validator("distributor")
+    @classmethod
+    def _blank_distributor_is_none(cls, value: str | None) -> str | None:
+        """Free text, trimmed; blank means "none / not recorded"."""
         return (value.strip() or None) if isinstance(value, str) else value
 
 
 class InstrumentUpdate(BaseModel):
     """PATCH /instruments/{id} — every field optional so a caller only sends
-    what's changing; `instrument_type` is deliberately not editable here (it's
-    a fixed "facs" for MVP per the Instrument model's own doc comment, with
-    nothing in the UI to pick another value yet). Which fields the caller
+    what's changing; `instrument_type` is deliberately not editable here (it is
+    chosen when the instrument is created, because its templates and reports
+    are tied to it). A name, model or serial number that is sent must not be
+    blank. Which fields the caller
     actually sent is read via `model_fields_set` in the router, the same
     partial-update pattern TemplateUpdate below already uses, so an omitted
     field is left alone rather than overwritten with None."""
@@ -65,14 +129,36 @@ class InstrumentUpdate(BaseModel):
     name: str | None = None
     model: str | None = None
     manufacturer: str | None = None
+    distributor: str | None = None
     serial_number: str | None = None
     location: str | None = None
     status: InstrumentStatus | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, value: str | None) -> str | None:
+        return _required_text("Name")(value)
+
+    @field_validator("model")
+    @classmethod
+    def _model_not_blank(cls, value: str | None) -> str | None:
+        return _required_text("Model")(value)
+
+    @field_validator("serial_number")
+    @classmethod
+    def _serial_not_blank(cls, value: str | None) -> str | None:
+        return _required_text("Serial number")(value)
 
     @field_validator("manufacturer")
     @classmethod
     def _blank_manufacturer_is_none(cls, value: str | None) -> str | None:
         """Free text, trimmed; a blank value means "not recorded"."""
+        return (value.strip() or None) if isinstance(value, str) else value
+
+    @field_validator("distributor")
+    @classmethod
+    def _blank_distributor_is_none(cls, value: str | None) -> str | None:
+        """Free text, trimmed; a blank value means "none / not recorded"."""
         return (value.strip() or None) if isinstance(value, str) else value
 
 
@@ -84,6 +170,7 @@ class InstrumentOut(BaseModel):
     instrument_type: str
     model: str
     manufacturer: str | None
+    distributor: str | None
     serial_number: str
     location: str | None
     status: InstrumentStatus
@@ -103,6 +190,17 @@ class ReportTemplateOut(BaseModel):
 
 
 # ---------- Report template management ----------
+
+
+class TemplateUsageOut(BaseModel):
+    """How many reports point at one template — what the template manager
+    needs to warn before an edit and to explain why a delete is refused.
+    Templates no report uses are simply absent from the list."""
+
+    template_id: uuid.UUID
+    report_count: int
+    finalized_count: int
+
 #
 # Structured-editor CRUD for report_templates (routers/report_templates.py),
 # replacing "edit seed_templates.py's Python literals and re-run the script"
@@ -283,6 +381,9 @@ class AttachmentOut(BaseModel):
     file_path: str
     file_type: str
     page_count: int
+    # Status of the current translation (pending_review, accepted, discarded,
+    # not_needed), or None when the document never went through the translate step.
+    translation_status: str | None = None
     # Set only on the upload response: other reports that already hold a file
     # with these exact bytes, or whose PDF text names the same work order. A
     # warning, never a rejection.
@@ -308,6 +409,10 @@ class ReportOut(BaseModel):
     status: ReportStatus
     extracted_fields: dict
     technician_name: str | None
+    # Who issued the form and a second report type, when classification read
+    # them off the document (see ClassificationResult).
+    issuer: str | None = None
+    report_type_note: str | None = None
     service_actions: str | None
     parts_replaced: str | None
     next_service_due: date | None
@@ -321,6 +426,14 @@ class ReportOut(BaseModel):
     # ReportOut already loads the ORM row this hangs off of for free via the
     # existing Report.attachments relationship.
     attachments: list[AttachmentOut] = []
+
+
+class SnippetPiece(BaseModel):
+    """One run of an excerpt: plain text, and whether it is a matched word.
+    The server never sends HTML; the screen wraps matched pieces itself."""
+
+    text: str
+    matched: bool
 
 
 class ReportListItemOut(BaseModel):
@@ -343,6 +456,10 @@ class ReportListItemOut(BaseModel):
     report_date: date | None
     created_at: datetime
     finalized_at: datetime | None
+    # Only when the list was searched (`q`): a short excerpt around the first
+    # match, and the label of the field it came from.
+    snippet: list[SnippetPiece] | None = None
+    matched_field: str | None = None
 
 
 class DuplicateReportOut(ReportListItemOut):
@@ -414,9 +531,74 @@ class ClassificationResult(BaseModel):
     reader: Literal["model", "text_layer", "stub"] = "model"
     # The work-order number as printed, when one was read.
     work_order_number: str | None = None
+    # Read off a document from another company's form: who issued it (often a
+    # distributor), the instrument's maker as far as the model could tell, False
+    # when that instrument is not any model in the fleet (the instrument guess is
+    # then a zero-confidence placeholder for the manual pick), and a note when the
+    # visit fits a second report type.
+    issuer: str | None = None
+    detected_manufacturer: str | None = None
+    maker_in_fleet: bool = True
+    report_type_note: str | None = None
+    # The instrument's model name as printed (for example "Cytek Aurora"), so
+    # the intake screen can offer to add it to the fleet.
+    detected_model: str | None = None
     # Other reports that already hold this document — same file bytes or same
     # work-order number. Empty when none; the intake screen should warn, not block.
     duplicate_report_ids: list[uuid.UUID] = []
+
+
+class TranslateRequest(BaseModel):
+    """POST /attachments/{id}/translate. `include_pages` asks for pages the model
+    would otherwise skip as instrument QC printouts to be translated too."""
+
+    include_pages: list[int] = []
+
+    @field_validator("include_pages")
+    @classmethod
+    def _pages_positive(cls, v: list[int]) -> list[int]:
+        if any(p < 1 for p in v):
+            raise ValueError("Page numbers start at 1")
+        return sorted(set(v))
+
+
+class TranslationAccept(BaseModel):
+    """POST /translations/{id}/accept. Omit `accepted_text` to accept the model's
+    text as it is; send it to accept an edited version."""
+
+    accepted_text: str | None = None
+
+    @field_validator("accepted_text")
+    @classmethod
+    def _not_blank(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not v.strip():
+            raise ValueError("The accepted translation cannot be empty")
+        if len(v) > 200_000:
+            raise ValueError("The accepted translation is too long")
+        return v
+
+
+class TranslationOut(BaseModel):
+    # `model_text` and `model` start with pydantic's protected "model_" prefix.
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+
+    id: uuid.UUID
+    attachment_id: uuid.UUID
+    status: TranslationStatus
+    source_language: str
+    hebrew_share: float | None
+    model_text: str | None
+    accepted_text: str | None
+    ignored_pages: list[dict]
+    included_pages: list[int]
+    identifier_check: dict
+    notes: list[str]
+    reader: str
+    model: str | None
+    created_at: datetime
+    accepted_at: datetime | None
 
 
 class ExtractionJobOut(BaseModel):
@@ -489,6 +671,9 @@ class FleetAnalyticsOut(BaseModel):
     fields every finalized report already carries — no new columns, no new
     tables. See services/analytics.py for exactly how each number is derived."""
 
+    # Finalized reports of any type that matched the filters, i.e. what the
+    # numbers below were computed from.
+    finalized_report_count: int = 0
     parts_replaced: list[PartUsageOut]
     total_labor_hours: float
     labor_hours_by_instrument: list[InstrumentRollupOut]
@@ -624,3 +809,79 @@ class UserUpdate(BaseModel):
     role: UserRole | None = None
     is_active: bool | None = None
     password: str | None = None
+
+
+# ---------- Saved report filters ----------
+
+# The only criteria a saved filter may hold: exactly the Reports list's filters,
+# under the keys GET /reports already takes. The free-text search `q` became
+# saveable on 2026-10-16 (it was left out at first; the project owner reversed
+# that after finding that "Save this filter" did nothing with only a search word).
+SAVED_FILTER_KEYS = ("instrument_id", "report_type", "status", "date_from", "date_to", "technician", "q")
+
+
+class SavedFilterCriteria(BaseModel):
+    """What a saved filter stores. Extra keys are rejected (a seventh
+    criterion needs a deliberate change here), and only set criteria are kept."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    instrument_id: uuid.UUID | None = None
+    report_type: ReportType | None = None
+    status: ReportStatus | None = None
+    date_from: date | None = None
+    date_to: date | None = None
+    technician: str | None = None
+    # Free-text search, kept as typed (trimmed). Same rules as GET /reports?q=.
+    q: str | None = None
+
+    @field_validator("technician")
+    @classmethod
+    def _trim_technician(cls, v: str | None) -> str | None:
+        v = v.strip() if v else None
+        return v or None
+
+    @field_validator("q")
+    @classmethod
+    def _valid_search(cls, v: str | None) -> str | None:
+        from app.services.report_search import normalize_query  # noqa: PLC0415 (avoids a circular import)
+
+        return normalize_query(v)
+
+    @model_validator(mode="after")
+    def _at_least_one_and_ordered(self):
+        if all(getattr(self, k) is None for k in SAVED_FILTER_KEYS):
+            raise ValueError("Set at least one filter before saving")
+        if self.date_from and self.date_to and self.date_from > self.date_to:
+            raise ValueError("date_from must not be after date_to")
+        return self
+
+
+class SavedFilterCreate(BaseModel):
+    name: str
+    filters: SavedFilterCriteria
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name must not be blank")
+        if len(v) > 60:
+            raise ValueError("Name must be at most 60 characters")
+        return v
+
+
+class SavedFilterOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    # Only the criteria that were set; dates are YYYY-MM-DD exactly as saved.
+    filters: dict
+    created_at: datetime
+    # True when the saved instrument no longer exists.
+    stale: bool = False
+
+
+class SavedFilterListOut(BaseModel):
+    items: list[SavedFilterOut]
+    cap: int

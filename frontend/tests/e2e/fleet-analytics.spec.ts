@@ -17,6 +17,7 @@ import { BACKEND_PORT } from '../../playwright.config';
 // totals, which would be flaky depending on run order.
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
+const UNIQUE_PART_QTY = 5000;
 
 async function seedFinalizedReport(
   request: APIRequestContext,
@@ -64,7 +65,7 @@ test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail 
       labor_hours: 4,
       fault_category: 'fluidics',
       retest_result: 'pass',
-      components_replaced: [{ part_name: uniquePart, part_number: 'E2E-1', qty: 3 }],
+      components_replaced: [{ part_name: uniquePart, part_number: 'E2E-1', qty: UNIQUE_PART_QTY }],
     },
   });
   await seedFinalizedReport(request, {
@@ -81,15 +82,20 @@ test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail 
 
   // This run added at least 4 + 2.5 = 6.5 hours — the fleet-wide total may
   // be higher if other specs already finalized reports in this same run.
-  const totalHoursText = await page.locator('.stat-tile').nth(0).locator('.stat-value').textContent();
-  const totalHours = parseFloat(totalHoursText ?? '0');
-  expect(totalHours).toBeGreaterThanOrEqual(6.5);
+  // Polled: the tile can show its placeholder before the rollup has loaded.
+  await expect
+    .poll(async () => parseFloat((await page.locator('.stat-tile').nth(0).locator('.stat-value').textContent()) ?? '0'))
+    .toBeGreaterThanOrEqual(6.5);
 
   // The uniquely-named part from this run's repair report shows up in the
-  // parts chart with the right unit count.
+  // parts chart with the right unit count. The chart lists only the top 8
+  // parts by units, so this part's quantity (UNIQUE_PART_QTY) is far above
+  // anything another spec seeds: with a small quantity it was pushed out of
+  // the chart whenever enough other specs had already finalized reports with
+  // parts (found by running the specs in a shuffled order).
   const partRow = page.locator('.bar-row', { hasText: uniquePart });
   await expect(partRow).toBeVisible();
-  await expect(partRow.locator('.bar-value')).toContainText('3 units');
+  await expect(partRow.locator('.bar-value')).toContainText(`${UNIQUE_PART_QTY} units`);
 
   // Labor hours by instrument includes this run's FACSAria III report. The
   // row itself is always present (one per seeded instrument, regardless of

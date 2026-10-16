@@ -139,10 +139,13 @@ def test_roles_limit_what_each_user_can_do(client_as):
 
     report = technician.post("/reports", json={"technician_name": "t"}).json()
     assert technician.delete(f"/reports/{report['id']}").status_code == 403
-    assert technician.post("/instruments", json={"name": "x", "model": "m", "serial_number": "s-1"}).status_code == 403
+    created = technician.post("/instruments", json={"name": "x", "model": "m", "manufacturer": "Acme", "serial_number": "s-1"})
+    assert created.status_code == 201  # adding an instrument at intake is a technician's job
+    assert technician.patch(f"/instruments/{created.json()['id']}", json={"name": "y"}).status_code == 403
+    assert viewer.post("/instruments", json={"name": "z", "model": "m", "manufacturer": "Acme", "serial_number": "s-2"}).status_code == 403
 
     assert admin.delete(f"/reports/{report['id']}").status_code == 204
-    assert admin.post("/instruments", json={"name": "x", "model": "m", "serial_number": "s-1"}).status_code == 201
+    assert admin.patch(f"/instruments/{created.json()['id']}", json={"name": "y"}).status_code == 200
 
 
 def test_a_user_deactivated_directly_in_the_database_loses_access_at_once(anon_client):

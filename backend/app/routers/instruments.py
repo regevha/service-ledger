@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
 from app.db import get_db
+from app.services.instrument_types import type_exists
 from app.services.analytics import trend_points, trendable_fields
 from app.services.report_deletion import count_in_flight_jobs, remove_report_files
 
@@ -18,6 +19,8 @@ _SERIAL_CONFLICT = "An instrument with this serial number already exists"
 
 @router.post("/instruments", response_model=schemas.InstrumentOut, status_code=201)
 def create_instrument(payload: schemas.InstrumentCreate, db: Session = Depends(get_db)):
+    if not type_exists(db, payload.instrument_type):
+        raise HTTPException(422, f"Unknown instrument type '{payload.instrument_type}'. Add it first.")
     if db.query(models.Instrument).filter(models.Instrument.serial_number == payload.serial_number).first():
         raise HTTPException(409, _SERIAL_CONFLICT)
     instrument = models.Instrument(**payload.model_dump())
@@ -54,7 +57,7 @@ def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdat
     """Every field but `instrument_type` is editable — the create/edit UI
     this backs (frontend's new Instruments tab) replaces "edit the DB/seed
     script by hand" as the only way to fix a typo'd serial number, rename an
-    instrument, move it to a new bench, or change its status once §5's fixed
+    instrument, move it to a new room, or change its status once §5's fixed
     3-instrument fleet stops being fixed in practice."""
     instrument = db.get(models.Instrument, instrument_id)
     if not instrument:
@@ -78,7 +81,7 @@ def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdat
         if conflict:
             raise HTTPException(409, _SERIAL_CONFLICT)
 
-    for field in ("name", "model", "manufacturer", "serial_number", "location", "status"):
+    for field in ("name", "model", "manufacturer", "distributor", "serial_number", "location", "status"):
         if field in provided:
             setattr(instrument, field, getattr(payload, field))
 

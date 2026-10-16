@@ -4,6 +4,29 @@
  */
 
 export interface paths {
+    "/instrument-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Instrument Types */
+        get: operations["list_instrument_types_instrument_types_get"];
+        put?: never;
+        /**
+         * Create Instrument Type
+         * @description Adds a type. Admin-only once role-based sign-in exists (PR #13): add it to
+         *     that policy table then. Types cannot be edited or deleted yet; the key is
+         *     derived from the name and is what instruments and templates store.
+         */
+        post: operations["create_instrument_type_instrument_types_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/instruments": {
         parameters: {
             query?: never;
@@ -54,7 +77,7 @@ export interface paths {
          * @description Every field but `instrument_type` is editable — the create/edit UI
          *     this backs (frontend's new Instruments tab) replaces "edit the DB/seed
          *     script by hand" as the only way to fix a typo'd serial number, rename an
-         *     instrument, move it to a new bench, or change its status once §5's fixed
+         *     instrument, move it to a new room, or change its status once §5's fixed
          *     3-instrument fleet stops being fixed in practice.
          */
         patch: operations["update_instrument_instruments__instrument_id__patch"];
@@ -156,6 +179,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/report-templates/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Report Template Usage
+         * @description Per template, how many reports use it and how many of those are
+         *     finalized. One query for the whole list, so the management screen does not
+         *     ask once per row. Registered before /report-templates/{template_id} so
+         *     "usage" is never read as a template id.
+         */
+        get: operations["report_template_usage_report_templates_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/report-templates/{template_id}": {
         parameters: {
             query?: never;
@@ -196,6 +242,12 @@ export interface paths {
          *     come from a fixed dropdown, `technician_name` is free text a technician
          *     typed on intake (§4), so "smith" should find "Jane Smith" without the
          *     caller needing the exact stored casing/spelling.
+         *
+         *     `q` is free-text search (services/report_search.py): word-based, all words
+         *     required, "quoted phrases" and -excluded words understood. It covers
+         *     finalized reports only, so with a status filter other than finalized the
+         *     answer is empty. Results are ranked best match first, and each row carries
+         *     a short excerpt around the match.
          */
         get: operations["search_reports_reports_get"];
         put?: never;
@@ -386,6 +438,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/saved-report-filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Saved Filters */
+        get: operations["list_saved_filters_saved_report_filters_get"];
+        put?: never;
+        /** Create Saved Filter */
+        post: operations["create_saved_filter_saved_report_filters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/saved-report-filters/{filter_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Saved Filter */
+        delete: operations["delete_saved_filter_saved_report_filters__filter_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{report_id}/attachments": {
         parameters: {
             query?: never;
@@ -504,6 +591,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/attachments/{attachment_id}/translate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Translate Attachment
+         * @description Enqueue a translate job. Also the way to translate again, or to ask for
+         *     pages that were skipped as QC printouts to be included (`include_pages`).
+         */
+        post: operations["translate_attachment_attachments__attachment_id__translate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachment_id}/translation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current Translation
+         * @description The attachment's current translation: the newest one that is not superseded.
+         */
+        get: operations["get_current_translation_attachments__attachment_id__translation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachment_id}/translations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Translations
+         * @description Every translation of the attachment, newest first (history included).
+         */
+        get: operations["list_translations_attachments__attachment_id__translations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/translations/{translation_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Translation
+         * @description Accept the translation as the document's English text, with the reviewer's
+         *     edits if `accepted_text` is sent. Both texts are kept. Classification and
+         *     extraction read the accepted text from now on.
+         */
+        post: operations["accept_translation_translations__translation_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/translations/{translation_id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discard Translation
+         * @description Drop the translation and go on with the original document as before.
+         */
+        post: operations["discard_translation_translations__translation_id__discard_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/analytics/fleet": {
         parameters: {
             query?: never;
@@ -539,7 +729,8 @@ export interface paths {
          * Model Comparison
          * @description Instruments of the same model side by side: per unit (serial), finalized
          *     report count, labor hours, parts replaced and pass/fail results, plus the
-         *     numeric fields the comparison chart can plot. Finalized reports only.
+         *     numeric fields the comparison chart can plot. Finalized reports only,
+         *     narrowed by the optional filters.
          */
         get: operations["model_comparison_analytics_models_get"];
         put?: never;
@@ -652,6 +843,8 @@ export interface components {
             file_type: string;
             /** Page Count */
             page_count: number;
+            /** Translation Status */
+            translation_status?: string | null;
             /**
              * Duplicate Report Ids
              * @default []
@@ -696,6 +889,10 @@ export interface components {
             created_at: string;
             /** Finalized At */
             finalized_at: string | null;
+            /** Snippet */
+            snippet?: components["schemas"]["SnippetPiece"][] | null;
+            /** Matched Field */
+            matched_field?: string | null;
             /**
              * Reason
              * @enum {string}
@@ -715,7 +912,7 @@ export interface components {
          *     service function to run for a `pending` row.
          * @enum {string}
          */
-        ExtractionJobKind: "classify" | "extract";
+        ExtractionJobKind: "classify" | "extract" | "translate";
         /** ExtractionJobOut */
         ExtractionJobOut: {
             /**
@@ -747,7 +944,7 @@ export interface components {
          *     background job, kept minimal on purpose.
          * @enum {string}
          */
-        ExtractionJobStatus: "pending" | "classifying" | "extracting" | "succeeded" | "failed";
+        ExtractionJobStatus: "pending" | "classifying" | "extracting" | "translating" | "succeeded" | "failed";
         /**
          * FleetAnalyticsOut
          * @description GET /analytics/fleet (new): fleet-wide roll-ups computed entirely from
@@ -755,6 +952,11 @@ export interface components {
          *     tables. See services/analytics.py for exactly how each number is derived.
          */
         FleetAnalyticsOut: {
+            /**
+             * Finalized Report Count
+             * @default 0
+             */
+            finalized_report_count: number;
             /** Parts Replaced */
             parts_replaced: components["schemas"]["PartUsageOut"][];
             /** Total Labor Hours */
@@ -786,6 +988,10 @@ export interface components {
             instrument_type: string;
             /** Model */
             model: string;
+            /** Manufacturer */
+            manufacturer: string;
+            /** Distributor */
+            distributor?: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -804,6 +1010,10 @@ export interface components {
             instrument_type: string;
             /** Model */
             model: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /** Distributor */
+            distributor: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -841,12 +1051,30 @@ export interface components {
          * @enum {string}
          */
         InstrumentStatus: "active" | "maintenance" | "retired";
+        /** InstrumentTypeCreate */
+        InstrumentTypeCreate: {
+            /** Display Name */
+            display_name: string;
+        };
+        /** InstrumentTypeOut */
+        InstrumentTypeOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Key */
+            key: string;
+            /** Display Name */
+            display_name: string;
+        };
         /**
          * InstrumentUpdate
          * @description PATCH /instruments/{id} — every field optional so a caller only sends
-         *     what's changing; `instrument_type` is deliberately not editable here (it's
-         *     a fixed "facs" for MVP per the Instrument model's own doc comment, with
-         *     nothing in the UI to pick another value yet). Which fields the caller
+         *     what's changing; `instrument_type` is deliberately not editable here (it is
+         *     chosen when the instrument is created, because its templates and reports
+         *     are tied to it). A name, model or serial number that is sent must not be
+         *     blank. Which fields the caller
          *     actually sent is read via `model_fields_set` in the router, the same
          *     partial-update pattern TemplateUpdate below already uses, so an omitted
          *     field is left alone rather than overwritten with None.
@@ -856,6 +1084,10 @@ export interface components {
             name?: string | null;
             /** Model */
             model?: string | null;
+            /** Manufacturer */
+            manufacturer?: string | null;
+            /** Distributor */
+            distributor?: string | null;
             /** Serial Number */
             serial_number?: string | null;
             /** Location */
@@ -1020,6 +1252,10 @@ export interface components {
             created_at: string;
             /** Finalized At */
             finalized_at: string | null;
+            /** Snippet */
+            snippet?: components["schemas"]["SnippetPiece"][] | null;
+            /** Matched Field */
+            matched_field?: string | null;
         };
         /** ReportOut */
         ReportOut: {
@@ -1037,6 +1273,10 @@ export interface components {
             extracted_fields: Record<string, never>;
             /** Technician Name */
             technician_name: string | null;
+            /** Issuer */
+            issuer?: string | null;
+            /** Report Type Note */
+            report_type_note?: string | null;
             /** Service Actions */
             service_actions: string | null;
             /** Parts Replaced */
@@ -1085,6 +1325,71 @@ export interface components {
          * @enum {string}
          */
         ReportType: "calibration" | "repair" | "preventive_maintenance" | "installation_upgrade";
+        /** SavedFilterCreate */
+        SavedFilterCreate: {
+            /** Name */
+            name: string;
+            filters: components["schemas"]["SavedFilterCriteria"];
+        };
+        /**
+         * SavedFilterCriteria
+         * @description What a saved filter stores. Extra keys are rejected (a seventh
+         *     criterion needs a deliberate change here), and only set criteria are kept.
+         */
+        SavedFilterCriteria: {
+            /** Instrument Id */
+            instrument_id?: string | null;
+            report_type?: components["schemas"]["ReportType"] | null;
+            status?: components["schemas"]["ReportStatus"] | null;
+            /** Date From */
+            date_from?: string | null;
+            /** Date To */
+            date_to?: string | null;
+            /** Technician */
+            technician?: string | null;
+            /** Q */
+            q?: string | null;
+        };
+        /** SavedFilterListOut */
+        SavedFilterListOut: {
+            /** Items */
+            items: components["schemas"]["SavedFilterOut"][];
+            /** Cap */
+            cap: number;
+        };
+        /** SavedFilterOut */
+        SavedFilterOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Filters */
+            filters: Record<string, never>;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+        };
+        /**
+         * SnippetPiece
+         * @description One run of an excerpt: plain text, and whether it is a matched word.
+         *     The server never sends HTML; the screen wraps matched pieces itself.
+         */
+        SnippetPiece: {
+            /** Text */
+            text: string;
+            /** Matched */
+            matched: boolean;
+        };
         /**
          * TemplateConfirmation
          * @description §9: PATCH /reports/{id}/template — confirm or override what classify
@@ -1169,6 +1474,94 @@ export interface components {
             /** Fields */
             fields?: components["schemas"]["TemplateFieldIn"][] | null;
         };
+        /**
+         * TemplateUsageOut
+         * @description How many reports point at one template — what the template manager
+         *     needs to warn before an edit and to explain why a delete is refused.
+         *     Templates no report uses are simply absent from the list.
+         */
+        TemplateUsageOut: {
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /** Report Count */
+            report_count: number;
+            /** Finalized Count */
+            finalized_count: number;
+        };
+        /**
+         * TranslateRequest
+         * @description POST /attachments/{id}/translate. `include_pages` asks for pages the model
+         *     would otherwise skip as instrument QC printouts to be translated too.
+         */
+        TranslateRequest: {
+            /**
+             * Include Pages
+             * @default []
+             */
+            include_pages: number[];
+        };
+        /**
+         * TranslationAccept
+         * @description POST /translations/{id}/accept. Omit `accepted_text` to accept the model's
+         *     text as it is; send it to accept an edited version.
+         */
+        TranslationAccept: {
+            /** Accepted Text */
+            accepted_text?: string | null;
+        };
+        /** TranslationOut */
+        TranslationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Attachment Id
+             * Format: uuid
+             */
+            attachment_id: string;
+            status: components["schemas"]["TranslationStatus"];
+            /** Source Language */
+            source_language: string;
+            /** Hebrew Share */
+            hebrew_share: number | null;
+            /** Model Text */
+            model_text: string | null;
+            /** Accepted Text */
+            accepted_text: string | null;
+            /** Ignored Pages */
+            ignored_pages: Record<string, never>[];
+            /** Included Pages */
+            included_pages: number[];
+            /** Identifier Check */
+            identifier_check: Record<string, never>;
+            /** Notes */
+            notes: string[];
+            /** Reader */
+            reader: string;
+            /** Model */
+            model: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Accepted At */
+            accepted_at: string | null;
+        };
+        /**
+         * TranslationStatus
+         * @description Life of one translation record. A person always reviews a translation
+         *     (`pending_review` -> `accepted`); `discarded` means the original is used as
+         *     it is today; `superseded` is a replaced translation kept as history;
+         *     `not_needed` records that the document was checked and is not Hebrew.
+         * @enum {string}
+         */
+        TranslationStatus: "pending_review" | "accepted" | "discarded" | "superseded" | "not_needed";
         /**
          * TrendFieldOut
          * @description One entry of GET /instruments/{id}/trend-fields: a field this
@@ -1264,6 +1657,59 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_instrument_types_instrument_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentTypeOut"][];
+                };
+            };
+        };
+    };
+    create_instrument_type_instrument_types_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstrumentTypeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentTypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_instruments_instruments_get: {
         parameters: {
             query?: never;
@@ -1565,6 +2011,26 @@ export interface operations {
             };
         };
     };
+    report_template_usage_report_templates_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateUsageOut"][];
+                };
+            };
+        };
+    };
     get_report_template_report_templates__template_id__get: {
         parameters: {
             query?: never;
@@ -1669,6 +2135,7 @@ export interface operations {
                 date_to?: string | null;
                 status?: components["schemas"]["ReportStatus"] | null;
                 technician?: string | null;
+                q?: string | null;
             };
             header?: never;
             path?: never;
@@ -1738,6 +2205,7 @@ export interface operations {
                 date_to?: string | null;
                 status?: components["schemas"]["ReportStatus"] | null;
                 technician?: string | null;
+                q?: string | null;
             };
             header?: never;
             path?: never;
@@ -1990,6 +2458,88 @@ export interface operations {
             };
         };
     };
+    list_saved_filters_saved_report_filters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedFilterListOut"];
+                };
+            };
+        };
+    };
+    create_saved_filter_saved_report_filters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedFilterCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedFilterOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_saved_filter_saved_report_filters__filter_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                filter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_attachment_reports__report_id__attachments_post: {
         parameters: {
             query?: never;
@@ -2156,9 +2706,183 @@ export interface operations {
             };
         };
     };
-    fleet_analytics_analytics_fleet_get: {
+    translate_attachment_attachments__attachment_id__translate_post: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TranslateRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_current_translation_attachments__attachment_id__translation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_translations_attachments__attachment_id__translations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_translation_translations__translation_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                translation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TranslationAccept"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discard_translation_translations__translation_id__discard_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                translation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fleet_analytics_analytics_fleet_get: {
+        parameters: {
+            query?: {
+                /** @description Only this instrument (also limits the units listed) */
+                instrument_id?: string | null;
+                /** @description Only instruments from this manufacturer (also limits the units listed) */
+                manufacturer?: string | null;
+                /** @description Only reports of this type */
+                report_type?: components["schemas"]["ReportType"] | null;
+                /** @description Report date on or after this day */
+                date_from?: string | null;
+                /** @description Report date on or before this day */
+                date_to?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2174,11 +2898,31 @@ export interface operations {
                     "application/json": components["schemas"]["FleetAnalyticsOut"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     model_comparison_analytics_models_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only this instrument (also limits the units listed) */
+                instrument_id?: string | null;
+                /** @description Only instruments from this manufacturer (also limits the units listed) */
+                manufacturer?: string | null;
+                /** @description Only reports of this type */
+                report_type?: components["schemas"]["ReportType"] | null;
+                /** @description Report date on or after this day */
+                date_from?: string | null;
+                /** @description Report date on or before this day */
+                date_to?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2194,6 +2938,15 @@ export interface operations {
                     "application/json": components["schemas"]["ModelComparisonOut"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     model_trend_analytics_models_trend_get: {
@@ -2203,6 +2956,16 @@ export interface operations {
                 model: string;
                 /** @description Key inside extracted_fields to plot, one series per unit */
                 field: string;
+                /** @description Only this instrument (also limits the units listed) */
+                instrument_id?: string | null;
+                /** @description Only instruments from this manufacturer (also limits the units listed) */
+                manufacturer?: string | null;
+                /** @description Only reports of this type */
+                report_type?: components["schemas"]["ReportType"] | null;
+                /** @description Report date on or after this day */
+                date_from?: string | null;
+                /** @description Report date on or before this day */
+                date_to?: string | null;
             };
             header?: never;
             path?: never;

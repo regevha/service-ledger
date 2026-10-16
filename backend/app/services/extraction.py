@@ -43,7 +43,8 @@ from app.services.claude_client import (
     get_client as _get_client,
     stable_unit as _stable_unit,
 )
-from app.services.documents import UnsupportedDocumentError, claude_content_block
+from app.services.documents import UnsupportedDocumentError
+from app.services.translation import source_block
 from app.services.errors import ExtractionError
 
 logger = logging.getLogger("app.services.extraction")
@@ -51,7 +52,7 @@ settings = get_settings()
 
 _EXTRACT_TOOL_NAME = "record_extraction"
 
-_EXTRACT_PROMPT_HEADER = """This is a scanned BD Care service report. Extract exactly the fields listed \
+_EXTRACT_PROMPT_HEADER = """This is a scanned service report (the notes below about dates and sign-offs are written for BD Care Work Order Service Reports; on another maker's report use the equivalent fields). Extract exactly the fields listed \
 in the tool schema below, and only those fields — nothing else on the page.
 
 For each field, give:
@@ -85,7 +86,13 @@ labor table, use the date printed beside the signatures. Never use the service \
 contract start/end dates, the PO date, or any date in the CALIBRATED TOOLS table — \
 those describe the contract and the engineer's test equipment, not this visit.
 
-BD forms are not consistent about day/month order: some print dates month-first \
+Durations: a time printed as a clock duration (HH:MM, for example 01:25) is hours and \
+minutes, not decimal hours; give a numeric hours field as decimal hours (01:25 is 1.42). \
+A number with no unit printed on a labour or work line is hours. Never invent a unit for a \
+value that has none. If the document is a reviewed English translation of a Hebrew form, \
+identifiers and dates in it are exactly as printed on the original.
+
+Forms are not consistent about day/month order (BD ones, for example): some print dates month-first \
 (02/10/2026 is 10 February 2026), others day-first (18/04/2021 is 18 April 2021). \
 Every date on one form uses the same order, so work it out from this form: any date \
 on the page with a part greater than 12 settles it (03/17/2025 can only be \
@@ -286,7 +293,7 @@ def _confidence_value(confidence: object, name: str, attachment_path: str) -> fl
 def _live_extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
     fields = template.field_schema.get("fields", [])
     try:
-        document_block = claude_content_block(attachment.file_path)
+        document_block = source_block(attachment)
     except UnsupportedDocumentError as e:
         raise ExtractionError(str(e)) from e
     tool = _build_extract_tool(fields)

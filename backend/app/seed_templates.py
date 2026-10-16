@@ -1,5 +1,6 @@
-"""Seeds the five report_templates rows described in spec §5 (v0.12, plus
-installation_upgrade).
+"""Seeds the report_templates rows described in spec §5 (v0.12, plus
+installation_upgrade) and three model-specific rows for the Cytek Aurora and
+CytoFLEX S.
 
 Field lists are transcribed field-for-field from the spec's tables — see
 SL-ARCH-001 §5 for the unit notes and the rationale behind each template's
@@ -87,14 +88,14 @@ REPAIR_FIELDS = [
         "name": "fault_category",
         "type": "enum",
         "unit": None,
-        "notes": "technician-assigned, not on the source form",
+        "notes": "lab-manager-assigned, not on the source form",
         "options": ["fluidics", "optics", "electronics", "software"],
     },
     {
         "name": "retest_result",
         "type": "enum",
         "unit": None,
-        "notes": "technician-assigned, not on the source form",
+        "notes": "lab-manager-assigned, not on the source form",
         "options": ["pass", "fail", "not retested"],
     },
 ]
@@ -156,7 +157,7 @@ PM_FIELDS = [
         "name": "verification_result",
         "type": "enum",
         "unit": None,
-        "notes": "technician-assigned, not on the source form — mirrors repair's retest_result",
+        "notes": "lab-manager-assigned, not on the source form — mirrors repair's retest_result",
         "options": ["pass", "fail", "not verified"],
     },
 ]
@@ -198,8 +199,134 @@ INSTALL_UPGRADE_FIELDS = [
         "name": "verification_result",
         "type": "enum",
         "unit": None,
-        "notes": "technician-assigned, not on the source form — mirrors preventive maintenance",
+        "notes": "lab-manager-assigned, not on the source form — mirrors preventive maintenance",
         "options": ["pass", "fail", "not verified"],
+    },
+]
+
+
+# ---------------------------------------------------------------------------
+# Model-specific templates for the two instruments from the Hebrew service
+# reports (docs: claude/proposal-hebrew-translation.md). They are shaped from
+# the two real forms and only for the report types those forms show, on the
+# same evidence-over-guess basis as the rest of this file; any other report
+# type for these models falls back to the shared row. Both forms are
+# translated and accepted by a person before extraction reads them, so the
+# notes below describe the accepted English.
+# ---------------------------------------------------------------------------
+
+# Cytek Aurora, almog diagnostic form (call 2046): a Hebrew form with a service
+# description, notes, a parts table (Cytek part numbers start N7-), a customer
+# order number, and travel and work numbers with no unit. The QC printout
+# pages that follow it are ignored by the scan. The customer found travel
+# useless, so no travel field exists here.
+_CYTEK_PARTS = {
+    "name": "parts_used",
+    "type": "object[]",
+    "unit": None,
+    "notes": "one entry per row of the form's parts table (Cytek part numbers start N7-); empty when none",
+    "item_schema": [
+        {"name": "part_name", "type": "text"},
+        {"name": "part_number", "type": "text"},
+        {"name": "qty", "type": "number"},
+    ],
+}
+_CYTEK_COMMON = [
+    {
+        "name": "service_description",
+        "type": "text",
+        "unit": None,
+        "notes": "the form's service line (e.g. \"ESP System Upgrade\")",
+    },
+    {
+        "name": "work_performed",
+        "type": "text",
+        "unit": None,
+        "notes": "the actions and notes written on the form; instrument QC printouts are not part of it",
+    },
+    _CYTEK_PARTS,
+    {
+        "name": "labor_hours",
+        "type": "number",
+        "unit": "hours",
+        "notes": "the work number on the form; an unmarked number on a work line is hours. Travel is not recorded",
+    },
+    {"name": "customer_order_number", "type": "text", "unit": None, "notes": "the customer's order number printed on the form"},
+    {
+        "name": "customer_signature_present",
+        "type": "boolean",
+        "unit": None,
+        "notes": (
+            "true only when a signature is actually drawn or written in the customer's own signature box; "
+            "the customer's printed name or the box title is not a signature, an empty box is false, and "
+            "the engineer's signature alone is false"
+        ),
+    },
+    {
+        "name": "verification_result",
+        "type": "enum",
+        "unit": None,
+        "notes": "lab-manager-assigned, not on the source form",
+        "options": ["pass", "fail", "not verified"],
+    },
+]
+CYTEK_AURORA_INSTALL_FIELDS = [dict(f) for f in _CYTEK_COMMON]
+CYTEK_AURORA_PM_FIELDS = [dict(f) for f in _CYTEK_COMMON]
+
+# CytoFLEX S, Rhenium form (SC26R006240): a one-page repair report with a fault
+# description, a free-text repair description, a work table in clock time
+# (HH:MM), a service contract level and number, no parts table, and a customer
+# approval block that is often blank. Travel is empty on purpose.
+CYTOFLEX_S_REPAIR_FIELDS = [
+    {"name": "fault_description", "type": "text", "unit": None, "notes": "the form's fault description and details"},
+    {
+        "name": "root_cause",
+        "type": "text",
+        "unit": None,
+        "notes": "the cause as the engineer states it in the repair description; empty when none is given",
+    },
+    {"name": "work_performed", "type": "text", "unit": None, "notes": "the repair description (what was found, replaced, and checked)"},
+    {
+        "name": "components_replaced",
+        "type": "object[]",
+        "unit": None,
+        "notes": "parts named in the repair text (the form has no parts table); empty when none",
+        "item_schema": [
+            {"name": "part_name", "type": "text"},
+            {"name": "part_number", "type": "text"},
+            {"name": "qty", "type": "number"},
+        ],
+    },
+    {
+        "name": "labor_hours",
+        "type": "number",
+        "unit": "hours",
+        "notes": "the total of the work-hours row, printed as HH:MM (01:25 is 1.42 hours); travel is not recorded",
+    },
+    {"name": "service_contract_level", "type": "text", "unit": None, "notes": "the form's service type, a contract level such as GOLD, not a report type"},
+    {"name": "service_contract_number", "type": "text", "unit": None, "notes": "the service contract number on the form"},
+    {
+        "name": "customer_signature_present",
+        "type": "boolean",
+        "unit": None,
+        "notes": (
+            "true only when a signature is actually drawn or written in the customer approval block; "
+            "a printed name alone is not a signature, and blank is normal and means false"
+        ),
+    },
+    {
+        "name": "fault_category",
+        "type": "enum",
+        "unit": None,
+        "notes": "lab-manager-assigned, not on the source form",
+        "options": ["fluidics", "optics", "electronics", "software"],
+    },
+    {
+        "name": "retest_result",
+        "type": "enum",
+        "unit": None,
+        "notes": "lab-manager-assigned, not on the source form",
+        "options": ["pass", "fail", "not retested"],
     },
 ]
 
@@ -215,6 +342,9 @@ TEMPLATE_ROWS: list[tuple[ReportType, str | None, list[dict]]] = [
     (ReportType.repair, None, REPAIR_FIELDS),
     (ReportType.preventive_maintenance, None, PM_FIELDS),
     (ReportType.installation_upgrade, None, INSTALL_UPGRADE_FIELDS),
+    (ReportType.installation_upgrade, "Cytek Aurora", CYTEK_AURORA_INSTALL_FIELDS),
+    (ReportType.preventive_maintenance, "Cytek Aurora", CYTEK_AURORA_PM_FIELDS),
+    (ReportType.repair, "CytoFLEX S", CYTOFLEX_S_REPAIR_FIELDS),
 ]
 
 

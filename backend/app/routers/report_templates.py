@@ -3,12 +3,14 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.db import get_db
 from app.models import ReportType
+from app.services.instrument_types import type_exists
 from app.services.templates import resolve_template
 
 router = APIRouter(tags=["report-templates"])
@@ -44,6 +46,22 @@ def list_all_report_templates(db: Session = Depends(get_db)):
         .order_by(models.ReportTemplate.report_type, models.ReportTemplate.model)
         .all()
     )
+
+
+@router.get("/report-templates/usage", response_model=list[schemas.TemplateUsageOut])
+def report_template_usage(db: Session = Depends(get_db)):
+    """Per template, how many reports use it and how many of those are
+    finalized. One query for the whole list, so the management screen does not
+    ask once per row. Registered before /report-templates/{template_id} so
+    "usage" is never read as a template id."""
+    finalized = func.count().filter(models.Report.status == models.ReportStatus.finalized)
+    rows = (
+        db.query(models.Report.template_id, func.count(), finalized)
+        .filter(models.Report.template_id.is_not(None))
+        .group_by(models.Report.template_id)
+        .all()
+    )
+    return [schemas.TemplateUsageOut(template_id=t, report_count=n, finalized_count=f) for t, n, f in rows]
 
 
 @router.get("/report-templates/{template_id}", response_model=schemas.ReportTemplateOut)
@@ -89,6 +107,8 @@ def _check_collision(db: Session, instrument_type: str, report_type: ReportType,
 
 @router.post("/report-templates", response_model=schemas.ReportTemplateOut, status_code=201)
 def create_report_template(payload: schemas.TemplateCreate, db: Session = Depends(get_db)):
+    if not type_exists(db, payload.instrument_type):
+        raise HTTPException(422, f"Unknown instrument type '{payload.instrument_type}'. Add it first.")
     _check_collision(db, payload.instrument_type, payload.report_type, payload.model)
     template = models.ReportTemplate(
         instrument_type=payload.instrument_type,

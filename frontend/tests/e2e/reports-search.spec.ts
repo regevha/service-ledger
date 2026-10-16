@@ -78,15 +78,16 @@ test.describe('reports search screen', () => {
     await page.selectOption('.filter-row select >> nth=2', 'finalized');
     await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
 
-    // "classified" is a status no seed anywhere in this suite ever leaves a
-    // report in (every seed either extracts, or extracts+finalizes) — a
-    // reliably-empty result regardless of what other specs in this same run
-    // created, unlike picking "some other report_type" which could
-    // coincidentally match a report another spec's stub-hashed fixture
-    // landed on. Proves the empty state renders and the export link (tied
-    // 1:1 to a non-empty result set) disappears with it.
+    // Scoped to this test's own marker: the report above is finalized, so
+    // filtering to "classified" while still searching for its technician
+    // marker must match nothing. (An unscoped "classified" filter is not
+    // reliably empty: other specs can leave confirmed-but-unextracted
+    // reports in that status, depending on run order.) Proves the empty
+    // state renders and the export link (tied 1:1 to a non-empty result set)
+    // disappears with it.
     await page.selectOption('.filter-row select >> nth=1', '');
     await page.selectOption('.filter-row select >> nth=2', 'classified');
+    await page.locator('input[aria-label="Lab manager"]').fill(marker);
     await expect(page.locator('.report-row-body')).toHaveCount(0);
     await expect(page.locator('.empty-hint')).toBeVisible();
     await expect(page.locator('a.btn:has-text("Export CSV")')).toHaveCount(0);
@@ -113,12 +114,12 @@ test.describe('reports search screen', () => {
     // A lowercased substring of just one marker's distinguishing part — the
     // input is debounced (300ms), so wait for the list to actually narrow
     // rather than asserting immediately after typing.
-    await page.fill('input[aria-label="Technician"]', 'tech-match');
+    await page.fill('input[aria-label="Lab manager"]', 'tech-match');
     await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
     await expect(page.locator('.report-row-body', { hasText: otherMarker })).toHaveCount(0);
 
     await page.click('button:has-text("Clear filters")');
-    await expect(page.locator('input[aria-label="Technician"]')).toHaveValue('');
+    await expect(page.locator('input[aria-label="Lab manager"]')).toHaveValue('');
     await expect(page.locator('.report-row-body', { hasText: otherMarker })).toBeVisible();
   });
 

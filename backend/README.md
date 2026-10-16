@@ -30,8 +30,8 @@ backend/
     schemas.py               Pydantic request/response shapes
     worker.py                §3's background worker — the only caller of classify()/extract(); claims jobs with
                               SELECT ... FOR UPDATE SKIP LOCKED, recovers jobs orphaned by a worker crash
-    seed_instruments.py      The fixed 3-instrument fleet (§1)
-    seed_templates.py        The five report_templates rows (§5)
+    seed_instruments.py      The fixed fleet (§1): three BD instruments, a Cytek Aurora and a CytoFLEX S
+    seed_templates.py        The report_templates rows (§5), plus three model-specific rows for the Cytek Aurora and CytoFLEX S
     seed_demo_reports.py     3 real finalized demo reports for the Reports screen — optional, manual only
     seed_trend_demo.py       5 synthetic calibration reports for the FACSAria III, for the trend chart — optional, manual only
     auth.py                  Sign-in: password hashing, sessions, and `required_role` (who may call what)
@@ -39,20 +39,28 @@ backend/
     routers/
       auth.py                POST /auth/login, POST /auth/logout, GET /auth/me
       users.py               GET/POST /users, PATCH /users/{id} (admin only)
+      instrument_types.py    GET/POST /instrument-types — the managed list of kinds of instrument (migration `a7c4e1f2b836`). Seeded: Flow cytometer (`facs`), Electron microscope, ImageStream, Mass spectrometer, PCR machine (`ensure_default_types`, run by the seeds and at startup; never renames or removes a type); more are added in the app
       instruments.py         POST/GET/PATCH/DELETE /instruments (DELETE also deletes the instrument's reports; PATCH backs the Instruments tab's create/edit UI —
-                              every field but instrument_type is editable); `manufacturer` is optional free text (blank = not recorded; the seeded fleet is "BD", filled in on existing rows only where empty); added by migration `f6a2c3d9e014`, GET /instruments/{id}/trend-fields
+                              every field but instrument_type is editable); `name`, `model`, `serial_number` and `manufacturer` are required text on create and may not be blank or all whitespace on create or PATCH (422 "<Field> cannot be blank"; values are trimmed); an optional free-text `distributor` (the local seller / service company when it is not the maker; trimmed, blank means none, editable and clearable; migration `c3d4e5f6a7b8`); on PATCH a manufacturer can still be cleared (the seeded fleet is "BD", filled in on existing rows only where empty; migration `f6a2c3d9e014`); `instrument_type` must be a key from /instrument-types, GET /instruments/{id}/trend-fields
                               (which numeric fields a given instrument's own finalized reports actually have
                               data for), GET .../trend (number and number[detector]/number[laser] both
                               supported — TrendOut/TrendPointOut)
-      report_templates.py    GET /report-templates (resolution logic, §2); GET .../all, GET/POST/PATCH/DELETE
+      report_templates.py    GET /report-templates (resolution logic, §2); GET .../usage (reports per template, for the manager's warnings); GET .../all, GET/POST/PATCH/DELETE
                               .../{id} — the structured field editor's CRUD, backed by a DB-level unique
                               index on (instrument_type, report_type, model) (migration 6b5fc4e1c3ca)
-      reports.py              /reports CRUD (incl. delete), search, export, template confirm, finalize, GET .../{id}/pdf
+      reports.py              /reports CRUD (incl. delete), filtered list with free-text search (`q`), export, template confirm, finalize, GET .../{id}/pdf
+      saved_filters.py        GET/POST/DELETE /saved-report-filters — a global list of at most five named
+                              combinations of the Reports list's six filters (migration a1b2c3d4e5f6); the
+                              client applies one through the ordinary GET /reports
       attachments.py          upload, GET .../file, classify, extract (both 202 + enqueue), extraction-jobs
+      translations.py         Hebrew translation (migration `d4e5f6a7b8c9`, proposal `claude/proposal-hebrew-translation.md`): `POST /attachments/{id}/translate` (202, enqueues a `translate` job; body `include_pages` asks for pages skipped as QC printouts to be included; sending it again translates again and keeps the earlier one as history), `GET /attachments/{id}/translation` (current) and `/translations` (history), `POST /translations/{id}/accept` (optional edited `accepted_text`; both texts are kept) and `/discard`. A review is always required: classify and extract answer 409 while a translation is being made or waits for review, and for a Hebrew text layer that was never translated; once accepted they read the accepted English instead of the original; a discarded translation means the original is used as before. Instrument QC printout pages are ignored (listed in `ignored_pages`). The English text is for the screen only: no route serves it as a file. No API key: a Hebrew text layer is refused with a message; in stub mode only a file whose name contains "hebrew" gets a fixed fixture. Classification of another company's form also returns `issuer`, `detected_manufacturer`, `maker_in_fleet` (false when the instrument is not in the fleet: the guess is then a zero-confidence placeholder) and `report_type_note` (a second report type); `issuer` and `report_type_note` are stored on the report.
       analytics.py             GET /analytics/fleet — fleet-wide roll-ups (parts, labor hours, pass/fail);
                               GET /analytics/models and /analytics/models/trend — units of one model side by side
     services/
       templates.py            Model-specific-row-over-NULL-row resolution (§2)
+      report_search.py        Free-text search: what is indexed (text fields, table text cells, instrument model and serial),
+                              the websearch query, excerpts; a before_flush listener keeps reports.search_text current
+                              (migration b2c3d4e5f6a7, partial GIN index on finalized reports)
       classification.py       classify() — live Claude call or stub, by settings.use_live_claude
       extraction.py            extract() — live Claude call or stub, by settings.use_live_claude
       text_reader.py           Reads a PDF's own text layer (model, serial, task code, work order) — no API key
@@ -176,6 +184,12 @@ Run the tests (against a separate `service_ledger_test` database — see
 pytest
 ```
 
+Locally the order is random on every run (`pytest-randomly`; the seed is on the
+first line of the output). In CI, pushes and pull requests use the fixed order
+(`-p no:randomly`) and a scheduled run once a day shuffles it and prints the
+seed. Replay a failing order with `pytest -p randomly --randomly-seed=<seed>`;
+turn shuffling off with `pytest -p no:randomly`.
+
 Coverage (settings and the reasons for the three omitted dev scripts are in
 `.coveragerc`; the run fails below the `fail_under` floor, currently 95%, and
 CI runs `pytest --cov`, so a coverage drop fails the build):
@@ -228,7 +242,7 @@ now backed by a real API:
    returns a pending job immediately; the worker runs `extract()` against
    the resolved template and the report moves to `extracted` once the
    polled job reaches `succeeded`.
-6. `PATCH /reports/{id}/fields` — technician corrections; moves to
+6. `PATCH /reports/{id}/fields` — lab manager corrections; moves to
    `in_review`. Synchronous.
 7. `POST /reports/{id}/finalize` — moves to `finalized`. Synchronous.
 8. `DELETE /reports/{id}` — permanently removes the report, its attachments,

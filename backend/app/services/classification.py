@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections import Counter
 from typing import Literal, NamedTuple
 
 from sqlalchemy.orm import Session
@@ -35,7 +36,8 @@ from app.services.claude_client import (
 from app.services.duplicates import find_duplicate_report_ids, normalize_work_order
 from app.services.errors import ClassificationError
 from app.services.text_reader import extract_text, read_identifiers
-from app.services.documents import UnsupportedDocumentError, claude_content_block
+from app.services.documents import UnsupportedDocumentError
+from app.services.translation import accepted_text, source_block
 from app.services.templates import resolve_template
 
 logger = logging.getLogger("app.services.classification")
@@ -43,11 +45,19 @@ settings = get_settings()
 
 _CLASSIFY_TOOL_NAME = "record_classification"
 
-_CLASSIFY_PROMPT = """This is a scanned BD Care service report for one flow cytometer in a fixed \
-fleet of three models. Identify three things and report a confidence (0 to 1) for each \
+# What the model answers for `instrument_model` when the document's instrument
+# is not any model in the fleet (for example a Cytek analyzer when the fleet is
+# all BD). It is never stored as a model: the read becomes a zero-confidence
+# placeholder for the manual pick and the maker is kept for the screen.
+NOT_IN_FLEET = "(not in the fleet)"
+
+_CLASSIFY_INTRO = """This is a scanned service report for one instrument in a fixed fleet. \
+Identify three things and report a confidence (0 to 1) for each \
 independently — they are not the same call.
 
-1. Which instrument model this document is for. Look for the "Installed Product" or \
+"""
+
+_CLASSIFY_BODY = """1. Which instrument model this document is for. Look for the "Installed Product" or \
 "System" field, which prints a code and model name (e.g. "648282B3 - ARIA III ACDU \
 6B/3R/3V" is a FACSAria III; "665158 - FACSDiscover S8 ..." is a FACSDiscover S8). \
 Only choose from the allowed options.
@@ -73,12 +83,66 @@ instead. If the Installed Product has no serial number, or it is printed as N/A,
 an empty string with confidence 0.
 
 4. The work-order number, exactly as printed (e.g. "WO-04587090"), in \
-`work_order_number`; an empty string if the document shows none.
+`work_order_number`; an empty string if the document shows none. On a form from \
+another company this is the number of the service call or service report itself \
+(labelled for example "service call", "call number" or "report number"). The \
+customer's order number, purchase-order number and customer number are not the \
+work-order number, even when they are printed near the top of the form; if the \
+form shows only those, return an empty string.
+
+5. Documents from another company, including translated ones. The company that issued \
+the form is often a distributor, not the instrument's maker: put it in `issuer` (empty if \
+unclear) and put the instrument's maker, as you can tell it from the model name, the \
+software or the part numbers, in `detected_manufacturer`, and its model name as printed \
+(for example "Cytek Aurora") in `detected_model`. If the instrument is not any \
+model in the fleet, answer "(not in the fleet)" for `instrument_model` with a low \
+confidence; never pick the nearest model in the fleet just to give an answer. On such a \
+form the serial is the number labelled "serial number" (or "S.N"), copied exactly. A number \
+labelled "device number" or "instrument number" can be the model code (for example BE50173 \
+on a CytoFLEX form), not the serial, and an asset or inventory number is not the serial \
+either. The work-order number on such a form is the number that identifies this visit \
+(labelled "service call", "call number", "service report" or "report number"); a \
+customer order or purchase-order number is not the work order, and neither is a part \
+number or an asset number. If one visit \
+fits two report types (an upgrade done together with a preventive maintenance visit), give \
+the main one in `report_type` and name the other in `report_type_note`. Numbers without a \
+unit are not given one.
 
 Give confidence scores that reflect real uncertainty. A clean, legible, unambiguous \
 read deserves something like 0.9-0.98. Anything you had to infer rather than read \
 directly, or where the document is ambiguous between two categories, deserves \
 meaningfully lower — do not default to a high number out of politeness."""
+
+_CLASSIFY_BRAND_NOTE = """The numbered notes below describe BD Care Work Order Service Reports \
+(their "Installed Product" block and "Work Order Task Code" field). A report from \
+another maker prints the same facts under its own labels: use the equivalent \
+fields, and apply the same rule of lower confidence when you have to infer.
+
+"""
+
+
+_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u200e\u200f\u2060\ufeff"))
+
+
+def _clean(value: object) -> str | None:
+    """A text the model returned, with invisible characters and surrounding
+    space removed; None when nothing is left. (A live read once returned a lone
+    zero-width space for "no work-order number".)"""
+    if not isinstance(value, str):
+        return None
+    cleaned = value.translate(_INVISIBLE).strip()
+    return cleaned or None
+
+
+def build_classify_prompt(instruments: list[Instrument]) -> str:
+    """The classification prompt for the current fleet: a type-neutral intro
+    that lists the fleet's manufacturers, kinds and models, then the BD Care
+    reading notes (unchanged) for BD documents."""
+    seen: dict[tuple[str, str, str], None] = {}
+    for i in instruments:
+        seen[(i.manufacturer or "unknown maker", i.instrument_type, i.model)] = None
+    fleet = "\n".join(f"- {maker} {model} ({kind})" for maker, kind, model in seen)
+    return f"{_CLASSIFY_INTRO}The fleet:\n{fleet}\n\n{_CLASSIFY_BRAND_NOTE}{_CLASSIFY_BODY}"
 
 
 class DocumentRead(NamedTuple):
@@ -97,6 +161,17 @@ class DocumentRead(NamedTuple):
     # text parsed in code (services/text_reader.py, no API key needed),
     # "stub" = the deterministic demo stand-in for a document with no text.
     reader: Literal["model", "text_layer", "stub"] = "model"
+    # Read off a document from another company's form (a translated Hebrew
+    # service report, say): who issued the form, the instrument's maker as the
+    # model could tell it, whether that instrument is in the fleet at all, and
+    # a note when the visit fits a second report type.
+    issuer: str | None = None
+    detected_manufacturer: str | None = None
+    maker_in_fleet: bool = True
+    report_type_note: str | None = None
+    # The instrument's model name as printed or as the model could tell it
+    # (e.g. "Cytek Aurora"), so the screen can offer to add it to the fleet.
+    detected_model: str | None = None
 
 
 # What the Work Order Task Code says about the kind of visit. Only codes whose
@@ -162,10 +237,10 @@ def _live_classify(
     rather than free text to parse (§4: "returns ... a confidence for
     each")."""
     try:
-        document_block = claude_content_block(attachment.file_path)
+        document_block = source_block(attachment)
     except UnsupportedDocumentError as e:
         raise ClassificationError(str(e)) from e
-    model_options = sorted({i.model for i in instruments})
+    model_options = sorted({i.model for i in instruments}) + [NOT_IN_FLEET]
 
     tool = {
         "name": _CLASSIFY_TOOL_NAME,
@@ -181,7 +256,11 @@ def _live_classify(
                 "instrument_serial_confidence": {"type": "number", "minimum": 0, "maximum": 1},
                 "task_code": {"type": "string", "description": "Work Order Task Code as printed (e.g. T113), or empty"},
                 "task_code_confidence": {"type": "number", "minimum": 0, "maximum": 1},
-                "work_order_number": {"type": "string", "description": "Work-order number as printed, or empty"},
+                "work_order_number": {"type": "string", "description": "Work-order number as printed (on another maker's form, the service call or report number, never the customer order number), or empty"},
+                "issuer": {"type": "string", "description": "Company that issued the form, or empty"},
+                "detected_manufacturer": {"type": "string", "description": "The instrument's maker, or empty"},
+                "detected_model": {"type": "string", "description": "The instrument's model name as printed, or empty"},
+                "report_type_note": {"type": "string", "description": "The second report type, if any, or empty"},
             },
             "required": [
                 "instrument_model",
@@ -209,7 +288,7 @@ def _live_classify(
                     "role": "user",
                     "content": [
                         document_block,
-                        {"type": "text", "text": _CLASSIFY_PROMPT},
+                        {"type": "text", "text": build_classify_prompt(instruments)},
                     ],
                 }
             ],
@@ -250,12 +329,29 @@ def _live_classify(
 
     type_guess, type_source = _apply_task_code(type_guess, data, attachment.file_path)
     work_order = data.get("work_order_number")
+
+    maker_in_fleet = True
+    if instrument_guess.value not in {i.model for i in instruments}:
+        # "(not in the fleet)", or a model the fleet does not have: keep the
+        # first model only as a zero-confidence placeholder for the manual pick.
+        maker_in_fleet = False
+        instrument_guess = ClassificationGuess(value=instruments[0].model, confidence=0.0)
+
+    def _text(key: str) -> str | None:
+        return _clean(data.get(key))
+
     return DocumentRead(
         instrument_guess,
         type_guess,
         _parse_serial_read(data, attachment.file_path),
-        work_order.strip() if isinstance(work_order, str) and work_order.strip() else None,
+        _clean(work_order),
         type_source,
+        "model",
+        _text("issuer"),
+        _text("detected_manufacturer"),
+        maker_in_fleet,
+        _text("report_type_note"),
+        _text("detected_model"),
     )
 
 
@@ -331,12 +427,14 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
     Installed Product line is 0.95; a report whose task code is unknown or
     missing gets type confidence 0, which sends it to the manual pick rather
     than guessing a type."""
-    try:
-        with open(attachment.file_path, "rb") as f:
-            data = f.read()
-    except OSError:
-        return None
-    text = extract_text(data)
+    text = accepted_text(attachment)
+    if text is None:
+        try:
+            with open(attachment.file_path, "rb") as f:
+                data = f.read()
+        except OSError:
+            return None
+        text = extract_text(data)
     if not text:
         return None
     read = read_identifiers(text, sorted({i.model for i in instruments}))
@@ -360,15 +458,84 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
     return DocumentRead(instrument_guess, type_guess, serial, read.work_order_number, source, "text_layer")
 
 
+def _has_readable_text(attachment: Attachment) -> bool:
+    try:
+        with open(attachment.file_path, "rb") as f:
+            return bool(extract_text(f.read()))
+    except OSError:
+        return False
+
+
+# A file whose name contains this is "read" in stub mode as another company's
+# form (the Cytek sample): while no fleet instrument has serial Y1033 the
+# instrument is not in the fleet; once one does, it is a confident match. This
+# lets the add-the-instrument-and-retry path run end to end without a model.
+STUB_OTHER_MAKER_MARKER = "othermaker"
+_STUB_OTHER_MAKER_SERIAL = "ZZ0000"  # the serial when the file name gives none
+
+
+def _stub_other_maker(attachment: Attachment, instruments: list[Instrument]) -> DocumentRead | None:
+    name = attachment.file_path.replace("\\", "/").rsplit("/", 1)[-1].lower()
+    if STUB_OTHER_MAKER_MARKER not in name:
+        return None
+    # "othermaker-ABC123-scan.pdf" is read as serial ABC123, so repeated runs
+    # against one database can use a fresh serial each time.
+    named = re.search(r"othermaker[-_]([a-z0-9]+)", name)
+    stub_serial = named.group(1).upper() if named else _STUB_OTHER_MAKER_SERIAL
+    known = next((i for i in instruments if i.serial_number == stub_serial), None)
+    common = dict(
+        issuer="almog diagnostic",
+        detected_manufacturer="Cytek Biosciences",
+        detected_model="Cytek Aurora",
+    )
+    upgrade = ReportType.installation_upgrade.value
+    serial_confidence = 0.95 if known else 0.9
+    serial = ClassificationGuess(value=stub_serial, confidence=serial_confidence)
+    if known is not None:
+        return DocumentRead(
+            ClassificationGuess(value=known.model, confidence=0.95),
+            ClassificationGuess(value=upgrade, confidence=0.95),
+            serial,
+            "2046",
+            "model",
+            "stub",
+            maker_in_fleet=True,
+            report_type_note="preventive_maintenance",
+            **common,
+        )
+    return DocumentRead(
+        ClassificationGuess(value=instruments[0].model, confidence=0.0),
+        ClassificationGuess(value=upgrade, confidence=0.9),
+        serial,
+        "2046",
+        "model",
+        "stub",
+        maker_in_fleet=False,
+        report_type_note="preventive_maintenance",
+        **common,
+    )
+
+
 def _stub_classify(
     attachment: Attachment, instruments: list[Instrument]
 ) -> DocumentRead:
+    other_maker = _stub_other_maker(attachment, instruments)
+    if other_maker is not None:
+        return other_maker
     # With no API key a real document is read from its own text layer. Only a
     # file with nothing to read (a scan, a placeholder) gets the deterministic
     # demo answer below.
     text_read = _text_classify(attachment, instruments)
     if text_read is not None:
         return text_read
+    if _has_readable_text(attachment):
+        # The file has text but none of it identifies a document this app can
+        # read without a model (not a BD service report). Showing demo values
+        # for it would be inventing an answer, so say so instead.
+        raise ClassificationError(
+            "This document is not from a manufacturer the app can read without an API key. "
+            "Set ANTHROPIC_API_KEY (USE_LIVE_CLAUDE=true) to read it."
+        )
     if _is_sample_document(attachment.file_path):
         # Reproduces the real BD Care EU Work Order Service Report case
         # discussed in spec §4: instrument ID is a confident read, report
@@ -382,7 +549,15 @@ def _stub_classify(
         # instrument and report type from a stable hash of the file path
         # rather than randomly, so re-classifying the same attachment always
         # returns the same answer.
-        instrument = instruments[int(_stable_unit(attachment.file_path, "instrument") * len(instruments))]
+        # Only from models with exactly one unit: a pick landing on a model that
+        # has several units can never auto-resolve (a model alone cannot tell
+        # them apart, see the comment in classify_attachment), so which uploads
+        # got a manual pick used to depend on a hash of the random file path
+        # and on whatever extra units had been added to the fleet. The hash
+        # still spreads uploads over the fleet, just not onto ambiguous models.
+        model_counts = Counter(i.model for i in instruments)
+        pickable = [i for i in instruments if model_counts[i.model] == 1] or instruments
+        instrument = pickable[int(_stable_unit(attachment.file_path, "instrument") * len(pickable))]
         # A file named after an instrument's serial number is "read" as that
         # instrument (see _stub_serial_read), as a real read of its serial
         # would be, so the model guess agrees with it.
@@ -465,7 +640,10 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
         and type_guess.confidence >= settings.classification_confidence_threshold
     ):
         resolved_template = resolve_template(
-            db, instrument_type="facs", report_type=type_guess.value, model=instrument_guess.value
+            db,
+            instrument_type=matched_instrument.instrument_type,
+            report_type=type_guess.value,
+            model=instrument_guess.value,
         )
         # Only report the instrument as resolved when a template was also
         # found — ClassificationResult's own docstring says these two are
@@ -493,6 +671,11 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
         report_type_source=document.report_type_source,
         reader=document.reader,
         work_order_number=document.work_order_number,
+        issuer=document.issuer,
+        detected_manufacturer=document.detected_manufacturer,
+        maker_in_fleet=document.maker_in_fleet,
+        report_type_note=document.report_type_note,
+        detected_model=document.detected_model,
         duplicate_report_ids=find_duplicate_report_ids(
             db, attachment, normalize_work_order(document.work_order_number)
         ),

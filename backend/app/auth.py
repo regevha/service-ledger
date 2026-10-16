@@ -119,13 +119,25 @@ def required_role(method: str, path: str) -> UserRole | None:
         return None
     if path == "/users" or path.startswith("/users/"):
         return UserRole.admin
+    # A saved filter is a shared convenience, not a record: a technician may
+    # remove one (the proposal narrows this to "the person who saved it, and
+    # admins" once filters carry a creator; until then any technician can).
+    if method == "DELETE" and path.startswith("/saved-report-filters/"):
+        return UserRole.technician
     if method == "DELETE":
         return UserRole.admin
     if method in ("POST", "PATCH", "PUT"):
         # The fleet and the templates are admin-managed; everything else a
         # write touches (reports, uploads, classify/extract, finalize) is
         # a technician's job.
+        # Adding an instrument is the one fleet change a technician makes: the
+        # intake screen offers it when a document comes from a maker that is
+        # not in the fleet (decision 2026-10-15). Editing and deleting stay admin.
+        if method == "POST" and path == "/instruments":
+            return UserRole.technician
         if path == "/instruments" or path.startswith("/instruments/"):
+            return UserRole.admin
+        if path == "/instrument-types":
             return UserRole.admin
         if path == "/report-templates" or path.startswith("/report-templates/"):
             return UserRole.admin

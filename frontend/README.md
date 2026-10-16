@@ -67,8 +67,11 @@ the generated file.
 have to re-check before every milestone: the confident upload→classify→
 extract→review→finalize happy path, the uncertain-report-type manual-confirm
 detour, the reports search/filter screen (including the empty state, the
-debounced technician free-text filter's case-insensitive partial match, and
-editing an already-finalized report), CSV export, the per-report PDF
+debounced lab manager free-text filter's case-insensitive partial match, and
+editing an already-finalized report), free-text search (finalized only, excerpts,
+highlighting on open, the status-filter message), saved filters (save, reload, pick,
+delete, duplicate name, the cap of five, a filter whose instrument was
+deleted), CSV export, the per-report PDF
 download (present once a template's resolved, absent otherwise), the FieldEditor's
 array-shaped controls (per-detector number maps, object-array tables), the
 Analytics tab's fleet-wide roll-ups, the Templates tab's structured field
@@ -120,6 +123,33 @@ config's `globalSetup`) creates a technician and a viewer through the API and
 saves the admin session as the default `storageState`. `auth.spec.ts` covers
 sign-in/out, each role's tabs and limits, and a session ending mid-use.
 
+### Templates tab
+
+`TemplateManager.tsx` is the structured editor for report templates. Beyond
+create/edit/delete it:
+
+* **Says what is wrong.** `templateProblems()` lists, as you type, what blocks
+  a save — no fields, a blank or repeated field name (case-insensitive), a
+  choice field with no options, a table field with no columns — instead of a
+  silently greyed-out button. Only rules the client cannot know (a reserved
+  name like `report_date`, a model/type collision) come back from the backend.
+* **Duplicates.** *Duplicate* opens a new template pre-filled with another's
+  fields and a blank model (each type + model can have one template, so the
+  copy needs a different model; saving a clash shows the backend's 409).
+* **Suggests models** from the fleet (`<datalist>` fed by the instruments list).
+* **Shows usage.** A *Reports* column (from `GET /report-templates/usage`:
+  reports using the template, and how many are finalized). A template reports
+  use has its *Delete* disabled with the reason; if a report attaches in the
+  moment between loading the list and confirming, the backend's 409 is shown.
+* **Warns before dropping fields.** Editing a template in use shows how many
+  reports use it; saving after removing or renaming a field asks first,
+  naming the fields (the stored values are kept, the fields just stop
+  appearing on those reports). Adding fields needs no confirmation.
+
+Covered by `template-management.spec.ts` (create → edit → delete) and
+`template-manager-improvements.spec.ts` (the above, plus field reorder/remove/
+retype, table-column rename rules, and the usage/list load failures).
+
 ### Instruments tab
 
 `InstrumentManager.tsx` — create/edit for the fleet, replacing "`POST
@@ -139,19 +169,36 @@ second copy, and a create/edit here is reflected in the Reports filter and
 instrument detail page immediately, not just after a reload.
 
 Every field but `instrument_type` is editable via the backend's new `PATCH
-/instruments/{id}` (fixed to `"facs"` for MVP — models.py's own doc
-comment — and nothing in the UI offers another value to pick yet). A new
+/instruments/{id}` (the type is picked at creation, see Instrument type
+below). On create the Name, Model, Serial number and Manufacturer must all be filled in
+(the Create button stays disabled otherwise, and the API refuses blanks too);
+Room name is optional. A new
 instrument is always created active; status only becomes something to
 change once it already exists, so the create form has no Status field at
 all, only the edit form does.
 
-**Manufacturer** is an optional free-text field (the fleet is no longer
-BD-only): a column in the list, a field on the create/edit form (blank
-clears it), and a prefix on the instrument detail page's header line.
+**Manufacturer** is free text (the fleet is no longer BD-only), required
+when an instrument is created: a column in the list, a field on the
+create/edit form (an existing instrument's can still be cleared), and a prefix on the instrument detail page's header line.
 It is deliberately not added to the model pickers (intake, Reports filter) or
 to the Analytics model comparison: those key on the model name, which already
 identifies a unit, and changing their option text would only churn labels.
 Covered by `instrument-manufacturer.spec.ts`.
+
+**Distributor** is optional free text: the local seller / service company when it
+is not the maker (for example Rhenium or almog diagnostic). A column in the
+list, a field on the create/edit form (blank or cleared means none), and
+"Distributor: …" at the end of the detail page's header line. Like the
+manufacturer, it is not in the model pickers or Analytics. Covered by
+`instrument-distributor.spec.ts`.
+
+**Instrument type** is a managed list (`GET/POST /instrument-types`) seeded with
+Flow cytometer, Electron microscope, ImageStream, Mass spectrometer and PCR
+machine. It is chosen when an instrument or a
+template is created and cannot be changed afterwards; the create form has an
+"+ Add a type" button. A report is matched to a template of its instrument's
+own type, and when that type has no template for the report the intake screen
+says so and points to the Templates tab. Covered by `instrument-types.spec.ts`.
 
 ### Trend chart
 
@@ -182,6 +229,8 @@ this so far" message instead of a one-point chart.
 npm run test:e2e       # headless run
 npm run test:e2e:ui    # Playwright's interactive UI mode
 npm run test:e2e:coverage  # same suite, instrumented; prints a coverage table, writes coverage/index.html
+npm run test:e2e:shuffled  # spec files in a random order; prints the seed (CI runs the shuffled coverage variant once a day; pushes and pull requests use the fixed order)
+E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled  # replay a failing order
 ```
 
 `playwright.config.ts` boots its own backend (stub-mode — `USE_LIVE_CLAUDE=false`,

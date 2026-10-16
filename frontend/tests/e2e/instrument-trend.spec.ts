@@ -12,14 +12,11 @@ import { BACKEND_PORT } from '../../playwright.config';
 // end-value label), the single-report fallback message, and the
 // no-numeric-fields-yet empty state.
 //
-// The multi-report test seeds calibration reports for FACSAria III — no
-// other spec in this suite finalizes a *calibration* report for that model
-// (only 'repair', in instrument-detail.spec.ts / fleet-analytics.spec.ts),
-// so exact point counts and values are safe to assert here despite this
-// suite having no per-test truncation. The single-point and empty-state
-// tests instead create a brand-new instrument each, so "exactly one
-// report" / "exactly zero reports" is guaranteed regardless of what other
-// specs are doing concurrently to the shared fleet.
+// Every test here creates a brand-new instrument of its own, so "exactly N
+// reports" is guaranteed regardless of what other specs do to the shared
+// fleet: this suite has no per-test truncation, and the stub classifier gives
+// other specs' uploads a hash-picked instrument and report type, so no model
+// in the seeded fleet is safe to assert exact counts on.
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
@@ -54,7 +51,7 @@ async function seedCalibrationReport(
 async function createInstrument(request: APIRequestContext, marker: string): Promise<{ id: string; name: string }> {
   const instrument = await (
     await request.post(`${API_BASE}/instruments`, {
-      data: { name: marker, model: marker, serial_number: `SN-${marker}` },
+      data: { name: marker, model: marker, manufacturer: 'E2E Maker', serial_number: `SN-${marker}` },
     })
   ).json();
   return { id: instrument.id as string, name: instrument.name as string };
@@ -72,8 +69,12 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   page,
   request,
 }) => {
-  const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
-  const facsAria = instruments.find((i: { model: string; id: string }) => i.model === 'FACSAria III');
+  // Its own brand-new instrument (like the two tests below): the stub
+  // classifier gives every other spec's upload a hash-picked instrument and
+  // report type, so some run can finalize a calibration on FACSAria III and
+  // an exact point count there is not guaranteed.
+  const marker = `E2E-Trend-Multi-${Date.now()}`;
+  const facsAria = await createInstrument(request, marker);
   const dates = ['2026-01-10', '2026-03-10', '2026-05-10', '2026-07-10'];
   const detector1 = [2.1, 2.3, 2.5, 2.7];
   const detector2 = [3.0, 3.2, 3.4, 3.6];
@@ -83,7 +84,7 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   for (let i = 0; i < dates.length; i++) {
     await seedCalibrationReport(request, {
       instrumentId: facsAria.id,
-      model: 'FACSAria III',
+      model: marker,
       reportDate: dates[i],
       extractedFields: {
         baseline_cv_percent: { detector_1: detector1[i], detector_2: detector2[i], detector_3: detector3[i] },

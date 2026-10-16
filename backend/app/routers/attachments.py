@@ -15,6 +15,7 @@ from app.db import get_db
 from app.services.duplicates import find_duplicate_report_ids, find_read_copy, normalize_work_order
 from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
 from app.services.text_reader import extract_text, read_work_order
+from app.services.translation import translation_gate
 
 router = APIRouter(tags=["attachments"])
 settings = get_settings()
@@ -125,12 +126,18 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session 
 
 
 @router.get("/attachments/{attachment_id}/file")
-def get_attachment_file(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
+def get_attachment_file(attachment_id: uuid.UUID, inline: bool = False, db: Session = Depends(get_db)):
     """Serves the original scanned file back byte-for-byte off local disk
     (§8: local disk for MVP) — the report screen's "View original scan"
     link. Nothing here re-derives, re-encodes, or previews the file; it's
     the same bytes upload_attachment wrote, so a technician can always check
-    the review screen's extracted values against the actual scan."""
+    the review screen's extracted values against the actual scan.
+
+    By default the response is an attachment (a link to it downloads the file).
+    `?inline=1` serves the same bytes for display instead, which the translation
+    review needs: a browser refuses to show an attachment in an <iframe>, so the
+    original pane stayed blank (found 2026-10-16 with the Cytek PDF, whose pages
+    are images; a text PDF behaved the same in Chromium)."""
     attachment = db.get(models.Attachment, attachment_id)
     if not attachment:
         raise HTTPException(404, "Attachment not found")
@@ -148,7 +155,15 @@ def get_attachment_file(attachment_id: uuid.UUID, db: Session = Depends(get_db))
     # on disk, so the browser's download/save-as dialog shows the
     # technician's own original filename rather than a UUID-prefixed one.
     original_name = path.name.split("_", 1)[1] if "_" in path.name else path.name
-    return FileResponse(path, media_type=attachment.file_type or "application/octet-stream", filename=original_name)
+    return FileResponse(
+        path,
+        media_type=attachment.file_type or "application/octet-stream",
+        filename=original_name,
+        content_disposition_type="inline" if inline else "attachment",
+        # Only PDFs and raster images are ever stored (checked at upload), and
+        # this keeps the browser from treating them as anything else.
+        headers={"X-Content-Type-Options": "nosniff"} if inline else None,
+    )
 
 
 @router.post(
@@ -176,6 +191,9 @@ def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db))
         # reports.py's confirm_template rejects with a 409, reachable here
         # through an unguarded path instead.
         raise HTTPException(409, "Cannot classify an attachment on a finalized report.")
+    blocked = translation_gate(attachment)
+    if blocked:
+        raise HTTPException(409, blocked)
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,
@@ -216,6 +234,9 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
         # silently overwrite extracted_fields and revert status back to
         # "extracted" while finalized_at stays set.
         raise HTTPException(409, "Cannot extract an attachment on a finalized report.")
+    blocked = translation_gate(attachment)
+    if blocked:
+        raise HTTPException(409, blocked)
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,

@@ -32,9 +32,20 @@ EXPECTED = {
     ("GET", "/instruments/{instrument_id}"): V,
     ("GET", "/instruments/{instrument_id}/trend"): V,
     ("GET", "/instruments/{instrument_id}/trend-fields"): V,
-    ("POST", "/instruments"): A,
+    ("POST", "/instruments"): T,
     ("PATCH", "/instruments/{instrument_id}"): A,
     ("DELETE", "/instruments/{instrument_id}"): A,
+    ("GET", "/instrument-types"): V,
+    ("POST", "/instrument-types"): A,
+    ("GET", "/saved-report-filters"): V,
+    ("POST", "/saved-report-filters"): T,
+    ("DELETE", "/saved-report-filters/{filter_id}"): T,
+    ("GET", "/attachments/{attachment_id}/translation"): V,
+    ("GET", "/attachments/{attachment_id}/translations"): V,
+    ("POST", "/attachments/{attachment_id}/translate"): T,
+    ("POST", "/translations/{translation_id}/accept"): T,
+    ("POST", "/translations/{translation_id}/discard"): T,
+    ("GET", "/report-templates/usage"): V,
     ("GET", "/report-templates"): V,
     ("GET", "/report-templates/all"): V,
     ("GET", "/report-templates/{template_id}"): V,
@@ -77,7 +88,7 @@ _RANK = {V: 0, T: 1, A: 2}
 
 def _call(client, method, path):
     url = path
-    for name in ("user_id", "instrument_id", "template_id", "report_id", "attachment_id", "job_id"):
+    for name in ("user_id", "instrument_id", "template_id", "report_id", "attachment_id", "job_id", "filter_id", "translation_id"):
         url = url.replace("{" + name + "}", str(uuid.uuid4()))
     return client.request(method, url)
 

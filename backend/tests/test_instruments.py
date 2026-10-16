@@ -16,7 +16,7 @@ from app.models import Instrument, Report, ReportStatus, ReportTemplate, ReportT
 def test_create_instrument(client):
     resp = client.post(
         "/instruments",
-        json={"name": "Test Cytometer", "model": "TestModel-9000", "serial_number": "TC-0001", "location": "Bench 9"},
+        json={"name": "Test Cytometer", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "TC-0001", "location": "Room 9"},
     )
     assert resp.status_code == 201
     body = resp.json()
@@ -26,7 +26,7 @@ def test_create_instrument(client):
 
 
 def test_create_instrument_conflicts_on_duplicate_serial(client):
-    payload = {"name": "Dup", "model": "TestModel-9000", "serial_number": "TC-0002"}
+    payload = {"name": "Dup", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "TC-0002"}
     first = client.post("/instruments", json=payload)
     assert first.status_code == 201
     second = client.post("/instruments", json=payload)
@@ -198,13 +198,13 @@ def test_instrument_trend_fields_ignores_non_finalized_and_templateless_reports(
 def test_update_instrument_partial_update_only_touches_provided_fields(client):
     created = client.post(
         "/instruments",
-        json={"name": "Edit Me", "model": "TestModel-9000", "serial_number": "PATCH-0001", "location": "Bench 1"},
+        json={"name": "Edit Me", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "PATCH-0001", "location": "Room 1"},
     ).json()
 
-    resp = client.patch(f"/instruments/{created['id']}", json={"location": "Bench 2"})
+    resp = client.patch(f"/instruments/{created['id']}", json={"location": "Room 2"})
     assert resp.status_code == 200
     body = resp.json()
-    assert body["location"] == "Bench 2"
+    assert body["location"] == "Room 2"
     # Everything not sent stays exactly as it was.
     assert body["name"] == "Edit Me"
     assert body["model"] == "TestModel-9000"
@@ -214,7 +214,7 @@ def test_update_instrument_partial_update_only_touches_provided_fields(client):
 
 def test_update_instrument_can_change_status(client):
     created = client.post(
-        "/instruments", json={"name": "Retiree", "model": "TestModel-9000", "serial_number": "PATCH-0002"}
+        "/instruments", json={"name": "Retiree", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "PATCH-0002"}
     ).json()
 
     resp = client.patch(f"/instruments/{created['id']}", json={"status": "retired"})
@@ -224,7 +224,7 @@ def test_update_instrument_can_change_status(client):
 
 def test_update_instrument_can_change_every_editable_field_at_once(client):
     created = client.post(
-        "/instruments", json={"name": "Old Name", "model": "OldModel", "serial_number": "PATCH-0003"}
+        "/instruments", json={"name": "Old Name", "model": "OldModel", "manufacturer": "TestCo", "serial_number": "PATCH-0003"}
     ).json()
 
     resp = client.patch(
@@ -233,7 +233,7 @@ def test_update_instrument_can_change_every_editable_field_at_once(client):
             "name": "New Name",
             "model": "NewModel",
             "serial_number": "PATCH-0003-NEW",
-            "location": "New Bench",
+            "location": "New Room",
             "status": "maintenance",
         },
     )
@@ -242,7 +242,7 @@ def test_update_instrument_can_change_every_editable_field_at_once(client):
     assert body["name"] == "New Name"
     assert body["model"] == "NewModel"
     assert body["serial_number"] == "PATCH-0003-NEW"
-    assert body["location"] == "New Bench"
+    assert body["location"] == "New Room"
     assert body["status"] == "maintenance"
 
 
@@ -253,7 +253,7 @@ def test_update_instrument_404_on_missing_instrument(client):
 
 def test_update_instrument_rejects_explicit_null_on_a_required_field(client):
     created = client.post(
-        "/instruments", json={"name": "No Null", "model": "TestModel-9000", "serial_number": "PATCH-0004"}
+        "/instruments", json={"name": "No Null", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "PATCH-0004"}
     ).json()
 
     resp = client.patch(f"/instruments/{created['id']}", json={"name": None})
@@ -262,10 +262,10 @@ def test_update_instrument_rejects_explicit_null_on_a_required_field(client):
 
 def test_update_instrument_conflicts_on_duplicate_serial_number(client):
     client.post(
-        "/instruments", json={"name": "First", "model": "TestModel-9000", "serial_number": "PATCH-0005-A"}
+        "/instruments", json={"name": "First", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "PATCH-0005-A"}
     ).json()
     second = client.post(
-        "/instruments", json={"name": "Second", "model": "TestModel-9000", "serial_number": "PATCH-0005-B"}
+        "/instruments", json={"name": "Second", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "PATCH-0005-B"}
     ).json()
 
     resp = client.patch(f"/instruments/{second['id']}", json={"serial_number": "PATCH-0005-A"})
@@ -278,15 +278,15 @@ def test_update_instrument_conflicts_on_duplicate_serial_number(client):
 
 def test_update_instrument_allows_resubmitting_its_own_current_serial_number(client):
     created = client.post(
-        "/instruments", json={"name": "Self", "model": "TestModel-9000", "serial_number": "PATCH-0006"}
+        "/instruments", json={"name": "Self", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "PATCH-0006"}
     ).json()
 
     # Re-sending the instrument's own serial number (e.g. a form that always
     # submits every field) must not trip the "already exists" check against
     # itself.
-    resp = client.patch(f"/instruments/{created['id']}", json={"serial_number": "PATCH-0006", "location": "Bench 3"})
+    resp = client.patch(f"/instruments/{created['id']}", json={"serial_number": "PATCH-0006", "location": "Room 3"})
     assert resp.status_code == 200
-    assert resp.json()["location"] == "Bench 3"
+    assert resp.json()["location"] == "Room 3"
 
 
 def test_get_instrument_returns_one_instrument(client):
@@ -311,11 +311,20 @@ def test_get_instrument_rejects_a_malformed_id(client):
 # ---------- manufacturer ----------
 
 
-def test_manufacturer_is_optional_and_returned(client):
-    plain = client.post("/instruments", json={"name": "No Maker", "model": "M1", "serial_number": "MFR-0001"})
-    assert plain.status_code == 201
-    assert plain.json()["manufacturer"] is None
+def test_manufacturer_is_required_for_a_new_instrument(client):
+    missing = client.post("/instruments", json={"name": "No Maker", "model": "M1", "serial_number": "MFR-0001"})
+    assert missing.status_code == 422
+    assert "manufacturer" in missing.text
+    blank = client.post(
+        "/instruments", json={"name": "Blank", "model": "M3", "serial_number": "MFR-0003", "manufacturer": "   "}
+    )
+    assert blank.status_code == 422
+    assert client.get("/instruments").json() == [] or all(
+        i["serial_number"] not in ("MFR-0001", "MFR-0003") for i in client.get("/instruments").json()
+    )
 
+
+def test_manufacturer_is_trimmed_and_returned(client):
     made = client.post(
         "/instruments", json={"name": "Maker", "model": "M2", "serial_number": "MFR-0002", "manufacturer": "  Beckman Coulter "}
     ).json()
@@ -325,25 +334,62 @@ def test_manufacturer_is_optional_and_returned(client):
     assert listed["MFR-0002"]["manufacturer"] == "Beckman Coulter"
 
 
-def test_blank_manufacturer_means_not_recorded(client):
-    created = client.post(
-        "/instruments", json={"name": "Blank", "model": "M3", "serial_number": "MFR-0003", "manufacturer": "   "}
-    ).json()
-    assert created["manufacturer"] is None
-
-
 def test_update_manufacturer_sets_changes_and_clears_it(client):
     created = client.post(
-        "/instruments", json={"name": "Edit Maker", "model": "M4", "serial_number": "MFR-0004", "location": "Bench 9"}
+        "/instruments", json={"name": "Edit Maker", "model": "M4", "manufacturer": "TestCo", "serial_number": "MFR-0004", "location": "Room 9"}
     ).json()
 
     set_ = client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek"}).json()
     assert set_["manufacturer"] == "Cytek"
-    assert set_["location"] == "Bench 9"  # other fields untouched
+    assert set_["location"] == "Room 9"  # other fields untouched
 
     # A PATCH that does not mention it leaves it alone…
-    assert client.patch(f"/instruments/{created['id']}", json={"location": "Bench 1"}).json()["manufacturer"] == "Cytek"
+    assert client.patch(f"/instruments/{created['id']}", json={"location": "Room 1"}).json()["manufacturer"] == "Cytek"
     # …and an explicit null (or blank) clears it.
     assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": None}).json()["manufacturer"] is None
     client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek"})
     assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": " "}).json()["manufacturer"] is None
+
+
+# ---------- distributor ----------
+
+
+def test_distributor_is_optional_trimmed_and_returned(client):
+    plain = client.post(
+        "/instruments", json={"name": "No Dist", "model": "D1", "manufacturer": "Cytek", "serial_number": "DIST-0001"}
+    )
+    assert plain.status_code == 201
+    assert plain.json()["distributor"] is None
+
+    made = client.post(
+        "/instruments",
+        json={"name": "With Dist", "model": "D2", "manufacturer": "Beckman Coulter", "serial_number": "DIST-0002", "distributor": "  Rhenium "},
+    ).json()
+    assert made["distributor"] == "Rhenium"  # trimmed
+    assert client.get(f"/instruments/{made['id']}").json()["distributor"] == "Rhenium"
+    listed = {i["serial_number"]: i for i in client.get("/instruments").json()}
+    assert listed["DIST-0002"]["distributor"] == "Rhenium"
+    assert listed["DIST-0001"]["distributor"] is None
+
+
+def test_a_blank_distributor_on_create_means_none(client):
+    made = client.post(
+        "/instruments",
+        json={"name": "Blank Dist", "model": "D3", "manufacturer": "Cytek", "serial_number": "DIST-0003", "distributor": "   "},
+    ).json()
+    assert made["distributor"] is None
+
+
+def test_update_distributor_sets_changes_and_clears_it(client):
+    created = client.post(
+        "/instruments", json={"name": "Edit Dist", "model": "D4", "manufacturer": "Cytek", "serial_number": "DIST-0004", "location": "Room 2"}
+    ).json()
+
+    assert client.patch(f"/instruments/{created['id']}", json={"distributor": "almog diagnostic"}).json()["distributor"] == "almog diagnostic"
+    # Other edits leave it alone, and so does a distributor edit leave the maker alone.
+    after = client.patch(f"/instruments/{created['id']}", json={"location": "Room 3"}).json()
+    assert after["distributor"] == "almog diagnostic" and after["manufacturer"] == "Cytek"
+    assert client.patch(f"/instruments/{created['id']}", json={"distributor": "Rhenium"}).json()["distributor"] == "Rhenium"
+    assert client.patch(f"/instruments/{created['id']}", json={"distributor": None}).json()["distributor"] is None
+    client.patch(f"/instruments/{created['id']}", json={"distributor": "Rhenium"})
+    assert client.patch(f"/instruments/{created['id']}", json={"distributor": " "}).json()["distributor"] is None

@@ -41,7 +41,10 @@ export default defineConfig({
   // rather than on absolute counts, so run order doesn't matter, but two
   // specs mutating the same report concurrently would.
   workers: 1,
-  retries: 0,
+  // One retry on CI only: a test that fails then passes is reported as "flaky"
+  // by name in the output instead of vanishing into a manual re-run. Locally
+  // nothing is retried, so a flake is never hidden while developing.
+  retries: process.env.CI ? 1 : 0,
   reporter: [['list']],
   timeout: 60_000,
 

@@ -18,7 +18,9 @@ import {
 import { useCan } from '../auth';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
+import { searchableSegments } from '../searchHighlight';
 import { ReviewScreen } from './ReviewScreen';
+import { SearchMatches } from './SearchMatches';
 
 function describeDuplicate(d: ReportDuplicate): string {
   const article = /^[aeiou]/i.test(d.status) ? 'an' : 'a';
@@ -43,6 +45,7 @@ export function ReportDetailScreen({
   onOpenReport,
   onViewInstrument,
   fieldConfidenceThreshold,
+  highlight,
 }: {
   item: ReportListItem;
   instruments: Instrument[];
@@ -53,6 +56,8 @@ export function ReportDetailScreen({
   onOpenReport?: (item: ReportListItem) => void;
   onViewInstrument: (instrumentId: string) => void;
   fieldConfidenceThreshold: number;
+  /** The free-text search this report was opened from; its matches are shown highlighted above the fields. */
+  highlight?: string;
 }) {
   // Deleting is admin-only and editing needs a technician; a viewer just reads.
   const canDelete = useCan('admin');
@@ -67,6 +72,7 @@ export function ReportDetailScreen({
   // Advisory only: if the check fails the screen simply shows no banner.
   const [duplicates, setDuplicates] = useState<ReportDuplicate[]>([]);
   const [duplicatesNonce, setDuplicatesNonce] = useState(0);
+  const [highlightOn, setHighlightOn] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,6 +223,14 @@ export function ReportDetailScreen({
           <div>{busyLabel ?? 'Loading report…'}</div>
         </div>
       ) : report && template ? (
+        <>
+          {highlight && highlightOn && (
+            <SearchMatches
+              query={highlight}
+              segments={searchableSegments(template, fields, item)}
+              onClear={() => setHighlightOn(false)}
+            />
+          )}
         <ReviewScreen
           template={template}
           fields={fields}
@@ -236,6 +250,7 @@ export function ReportDetailScreen({
           pdfUrl={reportPdfUrl(report.id)}
           readOnly={!canEdit}
         />
+        </>
       ) : report ? (
         <div className="empty-hint">
           No template could be resolved for this report (its instrument or report type isn't set), so its fields

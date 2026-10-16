@@ -123,7 +123,7 @@ function AppShell() {
         {view === 'analytics' ? (
           <AnalyticsScreen />
         ) : view === 'templates' ? (
-          <TemplateManagerScreen />
+          <TemplateManagerScreen knownModels={[...new Set(instruments.map((i) => i.model))].sort()} />
         ) : view === 'instruments' ? (
           <InstrumentManagerScreen
             instruments={instruments}
@@ -145,6 +145,7 @@ function AppShell() {
             fieldConfidenceThreshold={config.field_confidence_threshold}
             classificationConfidenceThreshold={config.classification_confidence_threshold}
             liveClaude={config.live_claude !== false}
+            onInstrumentAdded={refreshInstruments}
             onOpenReport={(reportId) => {
               setOpenReportId(reportId);
               setView('reports');

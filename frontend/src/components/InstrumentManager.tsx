@@ -1,5 +1,16 @@
-import { useState } from 'react';
-import { ApiError, createInstrument, deleteInstrument, listReports, updateInstrument, type Instrument, type InstrumentStatus } from '../api';
+import { useEffect, useState } from 'react';
+import {
+  ApiError,
+  createInstrument,
+  createInstrumentType,
+  deleteInstrument,
+  listInstrumentTypes,
+  listReports,
+  updateInstrument,
+  type Instrument,
+  type InstrumentStatus,
+  type InstrumentType,
+} from '../api';
 import { INSTRUMENT_STATUS_LABEL } from '../labels';
 
 /**
@@ -17,9 +28,9 @@ import { INSTRUMENT_STATUS_LABEL } from '../labels';
  * fetching its own copy, and a create/edit here is reflected everywhere
  * else immediately rather than only after a full reload.
  *
- * `instrument_type` is deliberately not exposed in either form: it's fixed
- * to "facs" for MVP (models.py's own doc comment) and nothing else in the
- * UI offers another value to pick.
+ * The instrument type is picked when an instrument is created (and a new
+ * type can be added right there); it cannot be changed afterwards because the
+ * instrument's templates and reports are tied to it.
  */
 
 const STATUS_OPTIONS: InstrumentStatus[] = ['active', 'maintenance', 'retired'];
@@ -36,11 +47,34 @@ function InstrumentFormScreen({
   const [name, setName] = useState(existing?.name ?? '');
   const [model, setModel] = useState(existing?.model ?? '');
   const [manufacturer, setManufacturer] = useState(existing?.manufacturer ?? '');
+  const [distributor, setDistributor] = useState(existing?.distributor ?? '');
   const [serialNumber, setSerialNumber] = useState(existing?.serial_number ?? '');
   const [location, setLocation] = useState(existing?.location ?? '');
   const [status, setStatus] = useState<InstrumentStatus>(existing?.status ?? 'active');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [types, setTypes] = useState<InstrumentType[]>([]);
+  const [typeKey, setTypeKey] = useState(existing?.instrument_type ?? 'facs');
+  const [newTypeName, setNewTypeName] = useState<string | null>(null);
+
+  useEffect(() => {
+    listInstrumentTypes()
+      .then(setTypes)
+      .catch(() => setTypes([]));
+  }, []);
+
+  async function handleAddType() {
+    if (!newTypeName || !newTypeName.trim()) return;
+    setError(null);
+    try {
+      const created = await createInstrumentType(newTypeName.trim());
+      setTypes((prev) => [...prev, created].sort((a, b) => a.display_name.localeCompare(b.display_name)));
+      setTypeKey(created.key);
+      setNewTypeName(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Could not add this type.');
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -52,6 +86,7 @@ function InstrumentFormScreen({
           name: name.trim(),
           model: model.trim(),
           manufacturer: manufacturer.trim() || null,
+          distributor: distributor.trim() || null,
           serial_number: serialNumber.trim(),
           location: trimmedLocation,
           status,
@@ -60,7 +95,9 @@ function InstrumentFormScreen({
         await createInstrument({
           name: name.trim(),
           model: model.trim(),
-          manufacturer: manufacturer.trim() || null,
+          instrument_type: typeKey,
+          manufacturer: manufacturer.trim(),
+          distributor: distributor.trim() || null,
           serial_number: serialNumber.trim(),
           location: trimmedLocation,
         });
@@ -73,7 +110,12 @@ function InstrumentFormScreen({
     }
   }
 
-  const canSave = name.trim().length > 0 && model.trim().length > 0 && serialNumber.trim().length > 0 && !saving;
+  const canSave =
+    name.trim().length > 0 &&
+    model.trim().length > 0 &&
+    serialNumber.trim().length > 0 &&
+    (existing !== undefined || manufacturer.trim().length > 0) &&
+    !saving;
 
   return (
     <div className="section">
@@ -84,6 +126,48 @@ function InstrumentFormScreen({
       <div className="section-title">{existing ? 'Edit instrument' : 'New instrument'}</div>
 
       {error && <div className="banner banner-crit">{error}</div>}
+
+      <div className="schema-form-row">
+        <label className="schema-form-label">
+          Instrument type
+          <select
+            id="instrument-type"
+            value={typeKey}
+            disabled={existing !== undefined}
+            onChange={(e) => setTypeKey(e.target.value)}
+          >
+            {types.length === 0 && <option value={typeKey}>{typeKey}</option>}
+            {types.map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.display_name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {!existing &&
+          (newTypeName === null ? (
+            <button type="button" className="btn small" onClick={() => setNewTypeName('')}>
+              + Add a type
+            </button>
+          ) : (
+            <div className="schema-form-label">
+              New type name
+              <input
+                type="text"
+                className="text-input"
+                placeholder="e.g. Electron microscope"
+                value={newTypeName}
+                onChange={(e) => setNewTypeName(e.target.value)}
+              />
+              <button type="button" className="btn small" onClick={() => void handleAddType()}>
+                Add
+              </button>
+              <button type="button" className="btn small" onClick={() => setNewTypeName(null)}>
+                Cancel
+              </button>
+            </div>
+          ))}
+      </div>
 
       <div className="schema-form-row">
         <label className="schema-form-label">
@@ -114,7 +198,7 @@ function InstrumentFormScreen({
           <input
             type="text"
             className="text-input"
-            placeholder="e.g. BD (optional)"
+            placeholder={existing ? "e.g. BD" : "e.g. BD (required)"}
             value={manufacturer}
             onChange={(e) => setManufacturer(e.target.value)}
           />
@@ -127,13 +211,23 @@ function InstrumentFormScreen({
 
       <div className="schema-form-row">
         <label className="schema-form-label">
-          Location
+          Room name
           <input
             type="text"
             className="text-input"
-            placeholder="e.g. Core Lab, Bench 3"
+            placeholder="e.g. Core Lab"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
+          />
+        </label>
+        <label className="schema-form-label">
+          Distributor
+          <input
+            type="text"
+            className="text-input"
+            placeholder="e.g. Rhenium (optional)"
+            value={distributor}
+            onChange={(e) => setDistributor(e.target.value)}
           />
         </label>
       </div>
@@ -189,6 +283,14 @@ export function InstrumentManagerScreen({
   );
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [typeNames, setTypeNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    listInstrumentTypes()
+      .then((rows) => setTypeNames(Object.fromEntries(rows.map((t) => [t.key, t.display_name]))))
+      .catch(() => setTypeNames({}));
+    // Re-read when coming back from the form: a type may have been added there.
+  }, [mode.kind]);
 
   // Deleting an instrument deletes every report on it too (drafts and
   // finalized, whatever the instrument's status), so count them first.
@@ -280,9 +382,10 @@ export function InstrumentManagerScreen({
           <div className="instrument-row template-row-head">
             <span>Name</span>
             <span>Manufacturer</span>
+            <span>Distributor</span>
             <span>Model</span>
             <span>Serial number</span>
-            <span>Location</span>
+            <span>Room name</span>
             <span>Status</span>
             <span>Actions</span>
           </div>
@@ -290,7 +393,11 @@ export function InstrumentManagerScreen({
             <div className="instrument-row template-row-body" key={inst.id}>
               <span>{inst.name}</span>
               <span>{inst.manufacturer ?? '—'}</span>
-              <span>{inst.model}</span>
+              <span>{inst.distributor ?? '—'}</span>
+              <span>
+                {inst.model}
+                <small className="muted"> · {typeNames[inst.instrument_type] ?? inst.instrument_type}</small>
+              </span>
               <span>{inst.serial_number}</span>
               <span>{inst.location ?? '—'}</span>
               <span>

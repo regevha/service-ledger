@@ -21,6 +21,7 @@ IN_FLIGHT_JOB_STATUSES = (
     models.ExtractionJobStatus.pending,
     models.ExtractionJobStatus.classifying,
     models.ExtractionJobStatus.extracting,
+    models.ExtractionJobStatus.translating,
 )
 
 

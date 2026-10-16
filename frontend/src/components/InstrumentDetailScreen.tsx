@@ -63,6 +63,7 @@ export function InstrumentDetailScreen({
               <div className="instrument-meta">
                 {instrument.manufacturer ? `${instrument.manufacturer} ` : ''}{instrument.model} · S/N {instrument.serial_number}
                 {instrument.location ? ` · ${instrument.location}` : ''}
+                {instrument.distributor ? ` · Distributor: ${instrument.distributor}` : ''}
               </div>
             </div>
             <span className={`status-pill instrument-status-${instrument.status}`}>
@@ -104,7 +105,7 @@ export function InstrumentDetailScreen({
             <div className="instrument-report-table">
               <div className="instrument-report-row instrument-report-row-head">
                 <span>Type</span>
-                <span>Technician</span>
+                <span>Lab manager</span>
                 <span>Report date</span>
                 <span>Status</span>
               </div>

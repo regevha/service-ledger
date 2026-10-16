@@ -20,13 +20,15 @@ const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function seedFinalizedReport(
   request: APIRequestContext,
-  opts: { model: string; reportType: string; technician: string; extractedFields: Record<string, unknown> }
+  opts: { model: string; serial?: string; reportType: string; technician: string; extractedFields: Record<string, unknown> }
 ): Promise<{ reportId: string; instrumentId: string }> {
   const report = await (
     await request.post(`${API_BASE}/reports`, { data: { technician_name: opts.technician } })
   ).json();
   const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
-  const instrument = instruments.find((i: { model: string }) => i.model === opts.model);
+  const instrument = instruments.find(
+    (i: { model: string; serial_number: string }) => i.model === opts.model && (!opts.serial || i.serial_number === opts.serial)
+  );
   const templates = await (
     await request.get(`${API_BASE}/report-templates`, { params: { report_type: opts.reportType, model: opts.model } })
   ).json();
@@ -56,6 +58,9 @@ test('instrument detail page: reached from the reports filter, shows history, an
   const technician = `E2E-Tech-${Date.now()}`;
   const { instrumentId } = await seedFinalizedReport(request, {
     model: 'FACSAria III',
+    // The seeded unit, by serial: a model alone can match another FACSAria III
+    // another spec added, and this test asserts this unit's own serial below.
+    serial: 'P648282B3003',
     reportType: 'repair',
     technician,
     extractedFields: { labor_hours: 2, fault_category: 'electronics', retest_result: 'pass' },
@@ -81,7 +86,9 @@ test('instrument detail page: reached from the reports filter, shows history, an
 
   const reportsOnFile = page.locator('.stat-tile').first().locator('.stat-value');
   await expect(reportsOnFile).toBeVisible();
-  expect(Number(await reportsOnFile.textContent())).toBeGreaterThanOrEqual(1);
+  // Polled: the tile is visible (showing 0) before the instrument's history has loaded,
+  // so a single read straight after toBeVisible() can see the placeholder.
+  await expect.poll(async () => Number(await reportsOnFile.textContent())).toBeGreaterThanOrEqual(1);
 
   // ---- This run's report shows up in the instrument's own history table ----
   const row = page.locator('.instrument-report-row-body', { hasText: technician });

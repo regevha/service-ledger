@@ -95,6 +95,39 @@ test.describe('signed out', () => {
     }
   });
 
+  test('a viewer can use the Analytics filters and the saved-filter picker but cannot save or delete one', async ({ page }) => {
+    await signIn(page, VIEWER);
+    await expect(page.locator('#current-user')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save this filter' })).toHaveCount(0);
+
+    await page.click('.view-tab:has-text("Analytics")');
+    await expect(page.getByTestId('analytics-filters')).toBeVisible({ timeout: 15_000 });
+    await page.getByLabel('Report type').selectOption({ label: 'Preventive maintenance' });
+    await expect(page.getByTestId('analytics-basis')).toContainText('matching the filters');
+  });
+
+  test('a technician can save a filter and add an instrument, but not edit one', async ({ page }) => {
+    await signIn(page, TECHNICIAN);
+    await page.click('.view-tab:has-text("Reports")');
+    await expect(page.getByRole('button', { name: 'Save this filter' })).toBeVisible();
+
+    const tech = await playwrightRequest.newContext({ baseURL: API });
+    await tech.post('/auth/login', { data: TECHNICIAN });
+    const serial = `E2E-ROLE-${Date.now()}`;
+    const created = await tech.post('/instruments', {
+      data: { name: 'Role test unit', model: 'RoleTest', manufacturer: 'Acme', serial_number: serial },
+    });
+    expect(created.status()).toBe(201);
+    expect((await tech.patch(`/instruments/${(await created.json()).id}`, { data: { name: 'x' } })).status()).toBe(403);
+    await tech.dispose();
+
+    const admin = await playwrightRequest.newContext({ baseURL: API });
+    await admin.post('/auth/login', { data: ADMIN });
+    const id = (await (await admin.get('/instruments')).json()).find((i: { serial_number: string }) => i.serial_number === serial).id;
+    await admin.delete(`/instruments/${id}`);
+    await admin.dispose();
+  });
+
   test('when the session ends mid-use the app returns to sign-in with a notice', async ({ page, context }) => {
     await signIn(page, VIEWER);
     await expect(page.locator('#current-user')).toBeVisible();

@@ -38,27 +38,41 @@ export interface Instrument {
   instrument_type: string;
   model: string;
   manufacturer: string | null;
+  /** The local seller / service company when it is not the maker (e.g. "Rhenium"). */
+  distributor: string | null;
   serial_number: string;
   location: string | null;
   status: InstrumentStatus;
 }
 
-// instrument_type is deliberately left out here too — schemas.py's
-// InstrumentCreate/InstrumentUpdate don't expose it either (see
-// InstrumentManager.tsx's comment: nothing in the UI picks a value other
-// than the fixed "facs" default yet).
+// instrument_type is chosen when an instrument is created and cannot be
+// changed afterwards (InstrumentUpdate has no such field).
 export interface InstrumentCreatePayload {
   name: string;
+  /** The `key` of an instrument type (GET /instrument-types). */
+  instrument_type: string;
   model: string;
-  manufacturer?: string | null;
+  /** Required for a new instrument. */
+  manufacturer: string;
+  /** Optional: the local seller / service company, if it is not the maker. */
+  distributor?: string | null;
   serial_number: string;
   location?: string | null;
+}
+
+export interface InstrumentType {
+  id: string;
+  /** What instruments and templates store (e.g. "facs"). */
+  key: string;
+  /** What people see (e.g. "Flow cytometer"). */
+  display_name: string;
 }
 
 export interface InstrumentUpdatePayload {
   name?: string;
   model?: string;
   manufacturer?: string | null;
+  distributor?: string | null;
   serial_number?: string;
   location?: string | null;
   status?: InstrumentStatus;
@@ -109,6 +123,10 @@ export interface Report {
   status: ReportStatus;
   extracted_fields: Record<string, unknown>;
   technician_name: string | null;
+  /** Who issued the form (often a distributor), when classification read one. */
+  issuer?: string | null;
+  /** A second report type the visit also fits, when classification read one. */
+  report_type_note?: string | null;
   service_actions: string | null;
   parts_replaced: string | null;
   next_service_due: string | null;
@@ -131,6 +149,9 @@ export interface ReportListItem {
   report_date: string | null;
   created_at: string;
   finalized_at: string | null;
+  /** Only when the list was searched: an excerpt around the first match (matched runs are the found words), and the field it came from. */
+  snippet?: { text: string; matched: boolean }[] | null;
+  matched_field?: string | null;
 }
 
 export interface Attachment {
@@ -139,6 +160,8 @@ export interface Attachment {
   file_path: string;
   file_type: string;
   page_count: number;
+  /** Status of the current translation, or null when it never went through the translate step. */
+  translation_status?: TranslationStatus | null;
   // Only on the upload response: other reports already holding a file with
   // these exact bytes (a warning, never a rejection).
   duplicate_report_ids?: string[];
@@ -173,6 +196,15 @@ export interface ClassificationResult {
   // key needed), or the demo stand-in for a file with no text.
   reader?: 'model' | 'text_layer' | 'stub';
   work_order_number?: string | null;
+  // Read off another company's form: who issued it (often a distributor), the
+  // instrument's maker and model name as far as the model could tell, false when
+  // the instrument is not any model in the fleet (the instrument guess is then
+  // a zero-confidence placeholder), and a second report type if the visit fits two.
+  issuer?: string | null;
+  detected_manufacturer?: string | null;
+  detected_model?: string | null;
+  maker_in_fleet?: boolean;
+  report_type_note?: string | null;
   // Other reports already holding this document: same file bytes or same
   // work-order number.
   duplicate_report_ids?: string[];
@@ -230,6 +262,7 @@ export interface PassFailBreakdown {
 }
 
 export interface FleetAnalytics {
+  finalized_report_count: number;
   parts_replaced: PartUsage[];
   total_labor_hours: number;
   labor_hours_by_instrument: InstrumentRollup[];
@@ -348,6 +381,14 @@ export function listInstruments(): Promise<Instrument[]> {
   return apiFetch('/instruments');
 }
 
+export function listInstrumentTypes(): Promise<InstrumentType[]> {
+  return apiFetch('/instrument-types');
+}
+
+export function createInstrumentType(displayName: string): Promise<InstrumentType> {
+  return apiFetch('/instrument-types', { method: 'POST', body: JSON.stringify({ display_name: displayName }) });
+}
+
 export function createInstrument(payload: InstrumentCreatePayload): Promise<Instrument> {
   return apiFetch('/instruments', { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -429,24 +470,52 @@ export interface ModelTrend {
   series: ModelTrendSeries[];
 }
 
+/**
+ * What the analytics are computed from; every field is optional and they
+ * combine. The same meaning as on the Reports list: the type is the report's
+ * template type, the dates are the report date (a report with no date drops out
+ * once a date is set), and the instrument is one unit and the manufacturer is
+ * every unit from that maker (both also limit the units listed).
+ */
+export interface AnalyticsFilters {
+  instrument_id?: string;
+  manufacturer?: string;
+  report_type?: ReportType;
+  date_from?: string;
+  date_to?: string;
+}
+
+function analyticsParams(filters: AnalyticsFilters, extra: Record<string, string> = {}): string {
+  const params = new URLSearchParams(extra);
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
 // Units of the same model side by side (finalized reports only).
-export function getModelComparison(): Promise<ModelComparison[]> {
-  return apiFetch('/analytics/models');
+export function getModelComparison(filters: AnalyticsFilters = {}): Promise<ModelComparison[]> {
+  return apiFetch(`/analytics/models${analyticsParams(filters)}`);
 }
 
-export function getModelTrend(model: string, field: string): Promise<ModelTrend> {
-  return apiFetch(`/analytics/models/trend?${new URLSearchParams({ model, field })}`);
+export function getModelTrend(model: string, field: string, filters: AnalyticsFilters = {}): Promise<ModelTrend> {
+  return apiFetch(`/analytics/models/trend${analyticsParams(filters, { model, field })}`);
 }
 
-export function getFleetAnalytics(): Promise<FleetAnalytics> {
-  return apiFetch('/analytics/fleet');
+export function getFleetAnalytics(filters: AnalyticsFilters = {}): Promise<FleetAnalytics> {
+  return apiFetch(`/analytics/fleet${analyticsParams(filters)}`);
 }
 
 // ---------- Report templates ----------
 
-export function findTemplate(model: string, reportType: ReportType): Promise<ReportTemplate | null> {
+export function findTemplate(
+  model: string,
+  reportType: ReportType,
+  instrumentType: string
+): Promise<ReportTemplate | null> {
   return apiFetch<ReportTemplate[]>(
-    `/report-templates?${new URLSearchParams({ model, report_type: reportType })}`
+    `/report-templates?${new URLSearchParams({ model, report_type: reportType, instrument_type: instrumentType })}`
   ).then((list) => list[0] ?? null);
 }
 
@@ -491,6 +560,18 @@ export interface TemplateUpdatePayload {
 // currently resolves to.
 export function listAllReportTemplates(): Promise<ReportTemplate[]> {
   return apiFetch('/report-templates/all');
+}
+
+export interface TemplateUsage {
+  template_id: string;
+  report_count: number;
+  finalized_count: number;
+}
+
+// GET /report-templates/usage — per template, how many reports use it (and how
+// many of those are finalized). Templates nothing uses are not listed.
+export function getTemplateUsage(): Promise<TemplateUsage[]> {
+  return apiFetch('/report-templates/usage');
 }
 
 export function getReportTemplate(templateId: string): Promise<ReportTemplate> {
@@ -543,6 +624,8 @@ export interface ReportFilters {
   date_from?: string;
   date_to?: string;
   technician?: string;
+  /** Free-text search over finalized reports (two or more characters). */
+  q?: string;
 }
 
 export function listReports(filters: ReportFilters = {}): Promise<ReportListItem[]> {
@@ -608,8 +691,11 @@ export function uploadAttachment(reportId: string, file: File): Promise<Attachme
 // this is a direct link href (opened in a new tab, or downloaded), not a
 // fetch, so the browser handles the PDF/image response and its
 // Content-Disposition filename itself rather than any JS/blob plumbing here.
-export function attachmentFileUrl(attachmentId: string): string {
-  return `${API_BASE}/attachments/${attachmentId}/file`;
+//
+// `inline` asks for the file to be displayed rather than downloaded: needed for
+// an <iframe>, which stays blank when the response is an attachment.
+export function attachmentFileUrl(attachmentId: string, opts: { inline?: boolean } = {}): string {
+  return `${API_BASE}/attachments/${attachmentId}/file${opts.inline ? '?inline=1' : ''}`;
 }
 
 // Both of these now only enqueue a job and return immediately (202) — the
@@ -649,4 +735,87 @@ export async function pollExtractionJob(
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
+}
+
+// ---------- Hebrew translation ----------
+
+export type TranslationStatus = 'pending_review' | 'accepted' | 'discarded' | 'superseded' | 'not_needed';
+
+export interface Translation {
+  id: string;
+  attachment_id: string;
+  status: TranslationStatus;
+  source_language: string;
+  hebrew_share: number | null;
+  /** The model's English text. */
+  model_text: string | null;
+  /** The text a person accepted (possibly edited). */
+  accepted_text: string | null;
+  /** Pages left out as instrument QC printouts: [{page, reason}]. */
+  ignored_pages: { page: number; reason: string }[];
+  included_pages: number[];
+  /** Identifiers listed for the document and the ones missing from the English. */
+  identifier_check: { checked?: number; missing?: string[] };
+  notes: string[];
+  reader: string;
+  model: string | null;
+  created_at: string;
+  accepted_at: string | null;
+}
+
+// Enqueues a translate job (202); poll it with pollExtractionJob. `includePages`
+// asks for pages that would be skipped as QC printouts to be translated too.
+export function translateAttachment(attachmentId: string, includePages: number[] = []): Promise<ExtractionJob> {
+  return apiFetch(`/attachments/${attachmentId}/translate`, {
+    method: 'POST',
+    body: JSON.stringify({ include_pages: includePages }),
+  });
+}
+
+/** The attachment's current translation; rejects with a 404 ApiError when it has none. */
+export function getTranslation(attachmentId: string): Promise<Translation> {
+  return apiFetch(`/attachments/${attachmentId}/translation`);
+}
+
+/** Accept the translation; send `acceptedText` to accept an edited version. */
+export function acceptTranslation(translationId: string, acceptedText?: string): Promise<Translation> {
+  return apiFetch(`/translations/${translationId}/accept`, {
+    method: 'POST',
+    body: JSON.stringify(acceptedText === undefined ? {} : { accepted_text: acceptedText }),
+  });
+}
+
+/** Drop the translation and go on with the original document. */
+export function discardTranslation(translationId: string): Promise<Translation> {
+  return apiFetch(`/translations/${translationId}/discard`, { method: 'POST' });
+}
+
+// ---------- Saved report filters ----------
+
+// A named combination of the Reports list's six filters, shared by everyone
+// (at most `cap` exist). `filters` holds only the criteria that were set.
+export interface SavedFilter {
+  id: string;
+  name: string;
+  filters: ReportFilters;
+  created_at: string;
+  /** The saved instrument no longer exists. */
+  stale: boolean;
+}
+
+export interface SavedFilterList {
+  items: SavedFilter[];
+  cap: number;
+}
+
+export function listSavedFilters(): Promise<SavedFilterList> {
+  return apiFetch('/saved-report-filters');
+}
+
+export function createSavedFilter(name: string, filters: ReportFilters): Promise<SavedFilter> {
+  return apiFetch('/saved-report-filters', { method: 'POST', body: JSON.stringify({ name, filters }) });
+}
+
+export function deleteSavedFilter(id: string): Promise<void> {
+  return apiFetch(`/saved-report-filters/${id}`, { method: 'DELETE' });
 }

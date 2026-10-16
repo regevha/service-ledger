@@ -21,7 +21,7 @@ PDF = ("scan.pdf", b"%PDF-1.4 x", "application/pdf")
 
 
 def _fleet(*pairs):
-    return [SimpleNamespace(model=m, serial_number=s) for m, s in pairs]
+    return [SimpleNamespace(model=m, serial_number=s, manufacturer="BD", instrument_type="facs") for m, s in pairs]
 
 
 def _guess(value, confidence=0.97):
@@ -74,7 +74,7 @@ def test_the_stub_reads_a_serial_only_from_the_file_name():
 
 
 def _add_second_aria(client, serial="A50002"):
-    resp = client.post("/instruments", json={"name": "Aria Annex", "model": "FACSAria III", "serial_number": serial})
+    resp = client.post("/instruments", json={"name": "Aria Annex", "model": "FACSAria III", "manufacturer": "TestCo", "serial_number": serial})
     assert resp.status_code == 201
     return resp.json()
 
@@ -220,3 +220,38 @@ def test_the_live_call_asks_for_the_serial_and_returns_it(tmp_path, monkeypatch)
     assert {"instrument_serial", "instrument_serial_confidence"} <= set(schema["required"])
     prompt = sent["messages"][0]["content"][-1]["text"]
     assert "Serial/Lot Number" in prompt and "N/A" in prompt
+
+
+# ---------- the stub never lands on a model it cannot resolve ----------
+
+
+def test_stub_classify_only_picks_models_with_a_single_unit(monkeypatch):
+    """The stub's instrument pick used to hash the file path over the whole
+    fleet, so with a second unit of one model in the fleet a share of uploads
+    landed on that model and fell through to the manual pick (which one
+    depended on the random path, hence an intermittent end-to-end failure).
+    It now picks only among models that have exactly one unit."""
+    monkeypatch.setattr(classification, "_text_classify", lambda attachment, instruments: None)
+    monkeypatch.setattr(classification, "_is_sample_document", lambda path: False)
+    fleet = [
+        SimpleNamespace(model="FACSAria III", serial_number="A1"),
+        SimpleNamespace(model="FACSAria III", serial_number="A2"),
+        SimpleNamespace(model="LSRFortessa", serial_number="R1"),
+        SimpleNamespace(model="FACSDiscover S8", serial_number="S1"),
+    ]
+    picked = {
+        classification._stub_classify(SimpleNamespace(file_path=f"/storage/{n}/scan_{n}.pdf"), fleet)[0].value
+        for n in range(300)
+    }
+    assert picked == {"LSRFortessa", "FACSDiscover S8"}
+
+
+def test_stub_classify_still_picks_something_when_every_model_has_several_units(monkeypatch):
+    monkeypatch.setattr(classification, "_text_classify", lambda attachment, instruments: None)
+    monkeypatch.setattr(classification, "_is_sample_document", lambda path: False)
+    fleet = [
+        SimpleNamespace(model="FACSAria III", serial_number="A1"),
+        SimpleNamespace(model="FACSAria III", serial_number="A2"),
+    ]
+    guess = classification._stub_classify(SimpleNamespace(file_path="/storage/x/scan.pdf"), fleet)[0]
+    assert guess.value == "FACSAria III"

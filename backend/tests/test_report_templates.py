@@ -32,6 +32,7 @@ def test_create_report_template(client):
 
 
 def test_create_report_template_defaults_model_to_any(client):
+    client.post("/instrument-types", json={"display_name": "other"})
     # No `model` key at all — distinct from the empty-string/whitespace case
     # below, which is normalized to the same None. A non-"facs" instrument
     # type sidesteps seed_templates.py's own None-model calibration row,
@@ -44,6 +45,7 @@ def test_create_report_template_defaults_model_to_any(client):
 
 
 def test_create_report_template_blank_model_normalizes_to_any(client):
+    client.post("/instrument-types", json={"display_name": "other"})
     resp = client.post(
         "/report-templates",
         json={"instrument_type": "other", "report_type": "calibration", "model": "   ", "fields": MIN_FIELDS},
@@ -240,12 +242,13 @@ def test_database_itself_rejects_duplicate_null_model_rows(seeded):
 
 
 def test_list_all_report_templates_returns_every_row_unresolved(client, seeded):
-    # seed_templates.py seeds 5 rows (§5, v0.12 + installation_upgrade) — unlike GET
+    # seed_templates.py seeds 8 rows (§5, v0.12 + installation_upgrade, plus three
+    # model-specific rows for the Cytek Aurora and CytoFLEX S) — unlike GET
     # /report-templates (resolve_template()'s one-per-report_type pick),
     # /all must return every one of them.
     resp = client.get("/report-templates/all")
     assert resp.status_code == 200
-    assert len(resp.json()) == 5
+    assert len(resp.json()) == 8
 
 
 def test_get_report_template_by_id(client):
@@ -281,6 +284,7 @@ def test_update_report_template_null_fields_rejected(client):
 
 
 def test_update_report_template_can_null_out_model(client):
+    client.post("/instrument-types", json={"display_name": "other"})
     # instrument_type="other" so nulling the model doesn't collide with
     # seed_templates.py's own None-model "facs"/repair row.
     created = client.post(
@@ -325,7 +329,11 @@ def test_delete_report_template_404(client):
 
 
 def test_delete_report_template_conflicts_when_reports_reference_it(client, seeded):
-    template = seeded.query(ReportTemplate).filter(ReportTemplate.report_type == ReportType.repair).one()
+    template = (
+        seeded.query(ReportTemplate)
+        .filter(ReportTemplate.report_type == ReportType.repair, ReportTemplate.model.is_(None))
+        .one()
+    )
     report = Report(template_id=template.id, status=ReportStatus.draft, extracted_fields={})
     seeded.add(report)
     seeded.commit()

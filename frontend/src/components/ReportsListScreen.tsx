@@ -12,6 +12,8 @@ import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { InstrumentDetailScreen } from './InstrumentDetailScreen';
 import { ReportDetailScreen } from './ReportDetailScreen';
+import { SavedFilters } from './SavedFilters';
+import { nextSort, SORT_LABEL, sortReports, type SortKey, type SortState } from '../reportSort';
 
 const STATUS_OPTIONS: ReportStatus[] = ['draft', 'classified', 'extracted', 'in_review', 'finalized'];
 
@@ -22,7 +24,16 @@ const STATUS_OPTIONS: ReportStatus[] = ['draft', 'classified', 'extracted', 'in_
 type ReportsScreen =
   | { kind: 'list' }
   | { kind: 'instrument'; instrumentId: string }
-  | { kind: 'report'; item: ReportListItem; returnTo: { kind: 'list' } | { kind: 'instrument'; instrumentId: string } };
+  | {
+      kind: 'report';
+      item: ReportListItem;
+      returnTo: { kind: 'list' } | { kind: 'instrument'; instrumentId: string };
+      /** The search text the report was opened from; its matches are highlighted on the report screen. */
+      highlight?: string;
+    };
+
+// Free-text search needs at least this many characters (the backend refuses less).
+const MIN_SEARCH_LENGTH = 2;
 
 export function ReportsListScreen({
   instruments,
@@ -37,12 +48,16 @@ export function ReportsListScreen({
   onOpenReportHandled?: () => void;
 }) {
   const [filters, setFilters] = useState<ReportFilters>({});
-  // Technician is free text (§4: typed at intake, not a dropdown), so it gets
+  // Lab manager is free text (§4: typed at intake, not a dropdown), so it gets
   // its own local state that updates on every keystroke for a responsive
   // input, debounced into `filters` — the actual fetch trigger below — so
   // "Jane Smith" doesn't fire nine separate /reports requests as it's typed.
   const [technicianInput, setTechnicianInput] = useState(filters.technician ?? '');
+  // Free-text search: same debounce idea, and only sent once it is long enough.
+  const [searchInput, setSearchInput] = useState(filters.q ?? '');
   const [items, setItems] = useState<ReportListItem[]>([]);
+  // Column the table is sorted by (null: the server's order). Sorting is done here, on the rows already loaded.
+  const [sort, setSort] = useState<SortState | null>(null);
   const [screen, setScreen] = useState<ReportsScreen>({ kind: 'list' });
   // `items` lives here, and this component stays mounted while a report is
   // open, so the list doesn't refetch on its own when the technician comes
@@ -59,6 +74,14 @@ export function ReportsListScreen({
     }, 300);
     return () => clearTimeout(handle);
   }, [technicianInput]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      const q = searchInput.trim();
+      setFilters((f) => ({ ...f, q: q.length >= MIN_SEARCH_LENGTH ? q : undefined }));
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
   const { loading, error } = useAsyncEffect(
     async (isCancelled) => {
@@ -105,6 +128,7 @@ export function ReportsListScreen({
         onOpenReport={(other) => setScreen({ kind: 'report', item: other, returnTo: screen.returnTo })}
         onViewInstrument={(instrumentId) => leaveReport({ kind: 'instrument', instrumentId })}
         fieldConfidenceThreshold={fieldConfidenceThreshold}
+        highlight={screen.highlight}
       />
     );
   }
@@ -122,14 +146,51 @@ export function ReportsListScreen({
   }
 
   const hasFilters = Boolean(
-    filters.instrument_id || filters.report_type || filters.status || filters.date_from || filters.date_to || filters.technician
+    filters.instrument_id ||
+      filters.report_type ||
+      filters.status ||
+      filters.date_from ||
+      filters.date_to ||
+      filters.technician ||
+      filters.q
   );
+  const searching = Boolean(filters.q);
+  const shown = sortReports(items, sort);
+  const searchTooShort = searchInput.trim().length > 0 && searchInput.trim().length < MIN_SEARCH_LENGTH;
+  // Search covers finalized reports only, so another status filter can only be empty.
+  const statusBlocksSearch = searching && Boolean(filters.status) && filters.status !== 'finalized';
 
   return (
     <div className="section">
       <div className="section-title">Reports</div>
 
+      <SavedFilters
+        filters={filters}
+        onApply={(applied) => {
+          setFilters(applied);
+          setTechnicianInput(applied.technician ?? '');
+          // A saved search refills the search box too (and an empty one clears it).
+          setSearchInput(applied.q ?? '');
+        }}
+      />
+
       <div className="filter-row">
+        <span className="search-box">
+          <input
+            type="search"
+            aria-label="Search reports"
+            placeholder="Search report text…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            title='Finds finalized reports containing all the words. Use "quotes" for an exact phrase and a minus sign to leave a word out. Numbers are not searched.'
+          />
+          {searchInput && (
+            <button type="button" className="btn small" aria-label="Clear search" onClick={() => setSearchInput('')}>
+              ×
+            </button>
+          )}
+        </span>
+
         <select
           value={filters.instrument_id ?? ''}
           onChange={(e) => setFilters((f) => ({ ...f, instrument_id: e.target.value || undefined }))}
@@ -184,8 +245,8 @@ export function ReportsListScreen({
 
         <input
           type="text"
-          aria-label="Technician"
-          placeholder="Technician"
+          aria-label="Lab manager"
+          placeholder="Lab manager"
           value={technicianInput}
           onChange={(e) => setTechnicianInput(e.target.value)}
         />
@@ -205,6 +266,7 @@ export function ReportsListScreen({
             onClick={() => {
               setFilters({});
               setTechnicianInput('');
+              setSearchInput('');
             }}
           >
             Clear filters
@@ -212,6 +274,7 @@ export function ReportsListScreen({
         )}
       </div>
 
+      {searchTooShort && <div className="muted search-hint">Type at least {MIN_SEARCH_LENGTH} characters to search.</div>}
       {error && <div className="banner banner-warn">{error}</div>}
 
       {loading ? (
@@ -220,12 +283,24 @@ export function ReportsListScreen({
           <div>Loading reports…</div>
         </div>
       ) : items.length === 0 ? (
-        <div className="empty-hint">No reports match these filters.</div>
+        <div className="empty-hint" data-testid="empty-hint">
+          {statusBlocksSearch
+            ? 'Search covers finalized reports only. Set the status filter to Finalized or clear it.'
+            : searching
+              ? `No finalized reports contain “${filters.q}” with these filters.`
+              : 'No reports match these filters.'}
+        </div>
       ) : (
         <>
           <div className="table-toolbar">
-            <span className="table-toolbar-count">
-              {items.length} report{items.length === 1 ? '' : 's'}
+            <span className="table-toolbar-count" data-testid="result-count">
+              {searching
+                ? `${items.length} finalized report${items.length === 1 ? '' : 's'} match “${filters.q}” · ${
+                    sort ? `sorted by ${SORT_LABEL[sort.key].toLowerCase()}` : 'best match first'
+                  }`
+                : `${items.length} report${items.length === 1 ? '' : 's'}${
+                    sort ? ` · sorted by ${SORT_LABEL[sort.key].toLowerCase()}` : ''
+                  }`}
             </span>
             <a className="btn small" href={reportsExportUrl(filters)}>
               ⬇ Export CSV
@@ -233,17 +308,34 @@ export function ReportsListScreen({
           </div>
           <div className="report-table">
             <div className="report-row report-row-head">
-              <span>Instrument</span>
-              <span>Type</span>
-              <span>Technician</span>
-              <span>Report date</span>
-              <span>Status</span>
+              {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => {
+                const active = sort?.key === key ? sort.direction : null;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`sort-head${active ? ' sort-head-active' : ''}`}
+                    data-sort={active ?? 'none'}
+                    data-testid={`sort-${key}`}
+                    title={`Sort by ${SORT_LABEL[key].toLowerCase()}`}
+                    aria-label={`Sort by ${SORT_LABEL[key].toLowerCase()}${
+                      active ? `, currently ${active === 'asc' ? 'ascending' : 'descending'}` : ''
+                    }`}
+                    onClick={() => setSort((cur) => nextSort(cur, key))}
+                  >
+                    {SORT_LABEL[key]}
+                    <span className="sort-arrow" aria-hidden="true">
+                      {active === 'asc' ? '▲' : active === 'desc' ? '▼' : ''}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            {items.map((r) => (
+            {shown.map((r) => (
               <button
                 className="report-row report-row-body"
                 key={r.id}
-                onClick={() => setScreen({ kind: 'report', item: r, returnTo: { kind: 'list' } })}
+                onClick={() => setScreen({ kind: 'report', item: r, returnTo: { kind: 'list' }, highlight: filters.q })}
               >
                 <span>
                   {r.instrument_model ?? '—'}
@@ -253,6 +345,14 @@ export function ReportsListScreen({
                 <span>{r.technician_name ?? '—'}</span>
                 <span>{r.report_date ?? '—'}</span>
                 <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                {r.snippet && r.snippet.length > 0 && (
+                  <span className="report-excerpt" data-testid="excerpt">
+                    {r.matched_field && <span className="excerpt-field">{r.matched_field}: </span>}
+                    {r.snippet.map((piece, i) =>
+                      piece.matched ? <mark key={i}>{piece.text}</mark> : <span key={i}>{piece.text}</span>
+                    )}
+                  </span>
+                )}
               </button>
             ))}
           </div>

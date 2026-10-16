@@ -1,18 +1,23 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   deleteReport,
   ApiError,
+  acceptTranslation,
   attachmentFileUrl,
   classifyAttachment,
   confirmTemplate,
   createReport,
+  discardTranslation,
   extractAttachment,
   findTemplate,
+  listInstrumentTypes,
   finalizeReport,
   getReport,
   getReportTemplate,
+  getTranslation,
   pollExtractionJob,
   reportPdfUrl,
+  translateAttachment,
   updateReportFields,
   uploadAttachment,
   type ClassificationResult,
@@ -21,10 +26,13 @@ import {
   type ReportTemplate,
   type ReportType,
   type SerialMatch,
+  type Translation,
 } from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
+import { AddInstrumentPanel } from './AddInstrumentPanel';
 import { ReviewScreen } from './ReviewScreen';
+import { TranslationReview } from './TranslationReview';
 
 /**
  * The "New report" tab's full upload → classify → review → finalize wizard
@@ -42,6 +50,7 @@ import { ReviewScreen } from './ReviewScreen';
 type Phase =
   | { name: 'intake' }
   | { name: 'working'; label: string }
+  | { name: 'review-translation' }
   | { name: 'confirm-classification' }
   | { name: 'review' }
   | { name: 'done' }
@@ -60,7 +69,7 @@ function StepBar({ phase }: { phase: Phase }) {
   const stepIndex =
     phase.name === 'intake'
       ? 0
-      : phase.name === 'confirm-classification' || (phase.name === 'working' && phase.label.includes('lassif'))
+      : phase.name === 'review-translation' || phase.name === 'confirm-classification' || (phase.name === 'working' && phase.label.includes('lassif'))
         ? 1
         : phase.name === 'review' || phase.name === 'done' || (phase.name === 'working' && phase.label.includes('aving'))
           ? 2
@@ -94,7 +103,7 @@ function IntakeScreen({
 }) {
   return (
     <div className="section">
-      <div className="section-title">Technician</div>
+      <div className="section-title">Lab manager</div>
       <input
         type="text"
         className="text-input"
@@ -206,6 +215,8 @@ function ConfirmClassificationScreen({
   setPickReportType,
   classificationConfidenceThreshold,
   onConfirm,
+  onInstrumentAdded,
+  busy,
 }: {
   classification: ClassificationResult;
   instruments: Instrument[];
@@ -215,10 +226,17 @@ function ConfirmClassificationScreen({
   setPickReportType: (v: ReportType) => void;
   classificationConfidenceThreshold: number;
   onConfirm: () => void;
+  onInstrumentAdded: (instrument: Instrument) => void;
+  busy: boolean;
 }) {
   const serial = classification.instrument_serial ?? null;
   const match: SerialMatch = classification.serial_match ?? 'not_read';
+  const noteType = classification.report_type_note as ReportType | null | undefined;
   return (
+    <>
+    {classification.maker_in_fleet === false && (
+      <AddInstrumentPanel classification={classification} busy={busy} onAdded={onInstrumentAdded} />
+    )}
     <div className="section">
       <div className="section-title">Detected from the document</div>
       <p className="hint-text">
@@ -235,8 +253,21 @@ function ConfirmClassificationScreen({
             label={classificationLabel(classification.reader, classification.instrument.confidence)}
           />
         </div>
-        <div className="read-value">{classification.instrument.value || '—'}</div>
+        <div className="read-value">
+          {classification.maker_in_fleet === false
+            ? `${[classification.detected_manufacturer, classification.detected_model].filter(Boolean).join(' ') || 'Unknown'} (not in your fleet)`
+            : classification.instrument.value || '—'}
+        </div>
       </div>
+
+      {classification.issuer && (
+        <div className="read-row" id="read-issuer">
+          <div className="crow-top">
+            <span className="clabel">Form issued by</span>
+          </div>
+          <div className="read-value">{classification.issuer}</div>
+        </div>
+      )}
 
       <div className="read-row" id="read-serial">
         <div className="crow-top">
@@ -312,6 +343,11 @@ function ConfirmClassificationScreen({
             </option>
           ))}
         </select>
+        {classification.report_type_note && (
+          <div className="field-note" id="report-type-note">
+            This visit also looks like: {noteType && REPORT_TYPE_LABEL[noteType] ? REPORT_TYPE_LABEL[noteType] : classification.report_type_note}.
+          </div>
+        )}
       </div>
 
       <div className="cta-row">
@@ -320,6 +356,7 @@ function ConfirmClassificationScreen({
         </button>
       </div>
     </div>
+    </>
   );
 }
 
@@ -346,6 +383,7 @@ export function IntakeFlow({
   classificationConfidenceThreshold,
   liveClaude = true,
   onOpenReport,
+  onInstrumentAdded,
 }: {
   instruments: Instrument[];
   instrumentsError: string | null;
@@ -354,8 +392,17 @@ export function IntakeFlow({
   liveClaude?: boolean;
   /** Open an existing report on the Reports tab (used when an upload is refused as already on file). */
   onOpenReport?: (reportId: string) => void;
+  /** Called after an instrument is added here, so the app's fleet list reloads. */
+  onInstrumentAdded?: () => Promise<void> | void;
 }) {
   const [phase, setPhase] = useState<Phase>({ name: 'intake' });
+  // The fleet as the in-flight steps below should see it: the prop, plus any
+  // instrument added during this intake (the prop only catches up after the
+  // app reloads its list, and these async steps hold an older render's copy).
+  const instrumentsRef = useRef(instruments);
+  instrumentsRef.current = instruments;
+  const [translation, setTranslation] = useState<Translation | null>(null);
+  const [translationBusy, setTranslationBusy] = useState(false);
 
   const [technicianName, setTechnicianName] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -403,6 +450,7 @@ export function IntakeFlow({
     setFile(null);
     setReport(null);
     setClassification(null);
+    setTranslation(null);
     setAttachmentId(null);
     setTemplate(null);
     setFieldConfidences({});
@@ -453,20 +501,100 @@ export function IntakeFlow({
     });
   }
 
-  async function resolveAndExtract(reportId: string, attId: string, model: string, reportType: ReportType, instrumentId: string) {
+  async function resolveAndExtract(
+    reportId: string,
+    attId: string,
+    model: string,
+    reportType: ReportType,
+    instrumentId: string,
+    instrumentType: string
+  ) {
     setPhase({ name: 'working', label: 'Resolving the matching template…' });
     await attempt(
       'Could not resolve a template.',
-      () => void resolveAndExtract(reportId, attId, model, reportType, instrumentId),
+      () => void resolveAndExtract(reportId, attId, model, reportType, instrumentId, instrumentType),
       async () => {
-        const tpl = await findTemplate(model, reportType);
-        if (!tpl) throw new ApiError(404, `No template resolves for ${model} / ${reportType}.`);
+        const tpl = await findTemplate(model, reportType, instrumentType);
+        if (!tpl) {
+          // Common for a new kind of instrument: it has no generic template yet.
+          const kind = await listInstrumentTypes()
+            .then((types) => types.find((t) => t.key === instrumentType)?.display_name ?? instrumentType)
+            .catch(() => instrumentType);
+          throw new ApiError(
+            404,
+            `There is no ${REPORT_TYPE_LABEL[reportType]} template for ${kind} / ${model} yet. ` +
+              'Create one on the Templates tab (choose this instrument type), then upload the report again.'
+          );
+        }
         const updated = await confirmTemplate(reportId, instrumentId, tpl.id);
         setReport(updated);
         setTemplate(tpl);
         await runExtraction(attId, reportId, tpl);
       }
     );
+  }
+
+  // Every upload is checked for language first (a cheap local check for a PDF
+  // with text, one model call for a scan). A Hebrew document stops at the
+  // review screen; anything else, or a discarded translation, goes straight on
+  // to classification.
+  async function runTranslation(attId: string, reportId: string, includePages: number[] = []) {
+    setPhase({
+      name: 'working',
+      label: includePages.length ? 'Translating again…' : 'Checking the language of the document…',
+    });
+    await attempt('Translation failed unexpectedly.', () => void runTranslation(attId, reportId, includePages), async () => {
+      const submitted = await translateAttachment(attId, includePages);
+      const job = await pollExtractionJob(submitted.id, { timeoutMs: 300_000 });
+      if (job.status === 'failed') {
+        failPhase(job.error_message || 'Translation failed for an unknown reason.', () => void runTranslation(attId, reportId, includePages));
+        return;
+      }
+      const current = await getTranslation(attId);
+      if (current.status === 'pending_review') {
+        setTranslation(current);
+        setPhase({ name: 'review-translation' });
+        return;
+      }
+      await runClassification(attId, reportId);
+    });
+  }
+
+  async function handleAcceptTranslation(editedText: string | undefined) {
+    if (!translation || !attachmentId || !report) return;
+    setTranslationBusy(true);
+    try {
+      await acceptTranslation(translation.id, editedText);
+    } catch (e) {
+      setTranslationBusy(false);
+      failPhase(e instanceof ApiError ? e.message : 'Could not accept the translation.', () => void handleAcceptTranslation(editedText));
+      return;
+    }
+    setTranslationBusy(false);
+    await runClassification(attachmentId, report.id);
+  }
+
+  async function handleDiscardTranslation() {
+    if (!translation || !attachmentId || !report) return;
+    setTranslationBusy(true);
+    try {
+      await discardTranslation(translation.id);
+    } catch (e) {
+      setTranslationBusy(false);
+      failPhase(e instanceof ApiError ? e.message : 'Could not discard the translation.', () => void handleDiscardTranslation());
+      return;
+    }
+    setTranslationBusy(false);
+    setTranslation(null);
+    await runClassification(attachmentId, report.id);
+  }
+
+  async function handleInstrumentAdded() {
+    if (!attachmentId || !report) return;
+    // Wait for the app to reload the fleet, then classify the same document
+    // again against it.
+    await onInstrumentAdded?.();
+    await runClassification(attachmentId, report.id);
   }
 
   async function runClassification(attId: string, reportId: string) {
@@ -489,8 +617,10 @@ export function IntakeFlow({
       setSerialNotice(
         describeSerialMatch(
           result,
-          instruments,
-          result.resolved_instrument_id ? instruments.find((inst) => inst.id === result.resolved_instrument_id) : undefined,
+          instrumentsRef.current,
+          result.resolved_instrument_id
+            ? instrumentsRef.current.find((inst) => inst.id === result.resolved_instrument_id)
+            : undefined,
           classificationConfidenceThreshold
         )
       );
@@ -517,7 +647,7 @@ export function IntakeFlow({
         // The backend's suggested_instrument_id already folds in the serial
         // number read off the document (and falls back to "the only unit of
         // that model"); older results without it get the model-only rule.
-        const guessed = instruments.filter((inst) => inst.model === result.instrument.value);
+        const guessed = instrumentsRef.current.filter((inst) => inst.model === result.instrument.value);
         setPickInstrumentId(result.suggested_instrument_id ?? (guessed.length === 1 ? guessed[0].id : ''));
         setPickReportType((result.report_type.value as ReportType) ?? 'repair');
         setPhase({ name: 'confirm-classification' });
@@ -560,7 +690,7 @@ export function IntakeFlow({
       }
       setAttachmentId(attachment.id);
       noteDuplicates(attachment.duplicate_report_ids);
-      await runClassification(attachment.id, reportId);
+      await runTranslation(attachment.id, reportId);
     });
   }
 
@@ -568,7 +698,7 @@ export function IntakeFlow({
     if (!report || !attachmentId) return;
     const instrument = instruments.find((inst) => inst.id === pickInstrumentId);
     if (!instrument) return;
-    await resolveAndExtract(report.id, attachmentId, instrument.model, pickReportType, instrument.id);
+    await resolveAndExtract(report.id, attachmentId, instrument.model, pickReportType, instrument.id, instrument.instrument_type);
   }
 
   async function handleSaveFields(finalize: boolean) {
@@ -618,6 +748,18 @@ export function IntakeFlow({
         </div>
       )}
 
+      {phase.name === 'review-translation' && translation && attachmentId && report && (
+        <TranslationReview
+          key={translation.id}
+          translation={translation}
+          originalUrl={attachmentFileUrl(attachmentId, { inline: true })}
+          busy={translationBusy}
+          onAccept={(text) => void handleAcceptTranslation(text)}
+          onDiscard={() => void handleDiscardTranslation()}
+          onTranslateAgain={(pages) => void runTranslation(attachmentId, report.id, pages)}
+        />
+      )}
+
       {phase.name === 'confirm-classification' && classification && (
         <ConfirmClassificationScreen
           classification={classification}
@@ -628,6 +770,8 @@ export function IntakeFlow({
           setPickReportType={setPickReportType}
           classificationConfidenceThreshold={classificationConfidenceThreshold}
           onConfirm={() => void handleConfirmClassification()}
+          onInstrumentAdded={() => void handleInstrumentAdded()}
+          busy={false}
         />
       )}
 

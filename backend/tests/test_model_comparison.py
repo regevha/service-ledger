@@ -11,7 +11,7 @@ from app.models import Instrument, Report, ReportStatus, ReportTemplate, ReportT
 def _second_fortessa(client, serial="R647794E6099"):
     resp = client.post(
         "/instruments",
-        json={"name": "Fortessa B", "model": "LSRFortessa", "serial_number": serial},
+        json={"name": "Fortessa B", "model": "LSRFortessa", "manufacturer": "TestCo", "serial_number": serial},
     )
     assert resp.status_code == 201, resp.text
     return resp.json()["id"]
@@ -48,7 +48,7 @@ def _unit(body, model, serial):
 def test_every_model_is_listed_with_its_units_even_with_no_reports(client):
     body = client.get("/analytics/models").json()
 
-    assert [m["model"] for m in body] == ["FACSAria III", "FACSDiscover S8", "LSRFortessa"]
+    assert [m["model"] for m in body] == ["Cytek Aurora", "CytoFLEX S", "FACSAria III", "FACSDiscover S8", "LSRFortessa"]
     assert all(len(m["units"]) == 1 for m in body)
     unit = body[0]["units"][0]
     assert unit["finalized_report_count"] == 0 and unit["total_labor_hours"] == 0.0 and unit["last_report_date"] is None

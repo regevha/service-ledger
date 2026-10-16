@@ -3,9 +3,9 @@
 [![Tests](https://github.com/regevha/service-ledger/actions/workflows/test.yml/badge.svg)](https://github.com/regevha/service-ledger/actions/workflows/test.yml)
 
 A document-first service ledger for a small fleet of lab instruments (flow
-cytometers, to start): technicians upload a scanned service report, Claude
+cytometers, to start): lab managers upload a scanned service report, Claude
 classifies which instrument and report type it is and extracts the
-structured fields, and the technician reviews/corrects the result before
+structured fields, and the lab manager reviews/corrects the result before
 finalizing it. Reports become searchable, exportable, and chartable
 (per-instrument trend lines, fleet-wide analytics, side-by-side comparison of units of the same model) once finalized.
 
@@ -86,6 +86,16 @@ request — see the badge at the top of this file. CI runs them with coverage
 (`pytest --cov`, `npm run test:e2e:coverage`) and **fails when coverage drops**:
 backend below 95% (`backend/.coveragerc`), frontend below 88% lines or 70%
 branches (`frontend/package.json`). Raise those floors when coverage improves.
+
+**Test order is shuffled once a day, not on every push.** Pushes and pull
+requests run the tests in the fixed order. A scheduled CI run once a day
+(03:17 UTC; also "Run workflow" in the Actions tab) shuffles the backend tests
+(`pytest-randomly`) and the e2e spec files (`npm run test:e2e:coverage:shuffled`),
+so a test that only passes because of what ran before it is found within a day.
+The run prints its seed (at the top of each step, and in the run summary). Replay
+a failing order with `pytest -p randomly --randomly-seed=<seed>` or
+`E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled`. On your own machine
+`pytest` shuffles every run unless you pass `-p no:randomly`.
 
 An opt-in live-Claude smoke test (`frontend/tests/e2e-live/`) and a
 CLI-driven demo script (`docs/service-ledger-demo-script.md`) are also

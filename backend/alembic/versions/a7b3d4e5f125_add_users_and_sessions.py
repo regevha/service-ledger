@@ -1,7 +1,7 @@
 """add users and user_sessions
 
 Revision ID: a7b3d4e5f125
-Revises: f6a2c3d9e014
+Revises: d4e5f6a7b8c9
 Create Date: 2026-10-11 00:00:00.000000
 
 """
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = 'a7b3d4e5f125'
-down_revision: Union[str, None] = 'f6a2c3d9e014'
+down_revision: Union[str, None] = 'd4e5f6a7b8c9'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
