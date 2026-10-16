@@ -463,7 +463,7 @@ def _has_readable_text(attachment: Attachment) -> bool:
 # instrument is not in the fleet; once one does, it is a confident match. This
 # lets the add-the-instrument-and-retry path run end to end without a model.
 STUB_OTHER_MAKER_MARKER = "othermaker"
-_STUB_OTHER_MAKER_SERIAL = "Y1033"  # the serial when the file name gives none
+_STUB_OTHER_MAKER_SERIAL = "ZZ0000"  # the serial when the file name gives none
 
 
 def _stub_other_maker(attachment: Attachment, instruments: list[Instrument]) -> DocumentRead | None:
