@@ -48,8 +48,13 @@ export default defineConfig({
   reporter: [['list']],
   timeout: 60_000,
 
+  // Creates the technician/viewer accounts and saves an admin session (auth-setup.ts).
+  globalSetup: './tests/e2e/auth-setup.ts',
+
   use: {
     baseURL: `http://localhost:${FRONTEND_PORT}`,
+    // Signed in as the e2e admin by default (see auth-setup.ts).
+    storageState: 'tests/e2e/.auth/admin.json',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     launchOptions: {
@@ -70,7 +75,7 @@ export default defineConfig({
       // app.main's own startup lifespan reseeds the instrument fleet +
       // report templates the moment this boots, so reset_db.py only has to
       // clear rows, never restore them.
-      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false python3 -m app.testing.reset_db && DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT}"`,
+      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false python3 -m app.testing.reset_db && DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false INITIAL_ADMIN_USERNAME=e2e-admin INITIAL_ADMIN_PASSWORD=e2e-admin-password uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT}"`,
       cwd: '../backend',
       url: `http://localhost:${BACKEND_PORT}/health`,
       reuseExistingServer: false,

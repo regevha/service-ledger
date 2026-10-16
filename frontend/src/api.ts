@@ -284,11 +284,20 @@ export class ApiError extends Error {
   }
 }
 
+let unauthorizedHandler: (() => void) | null = null;
+
+/** Registered by the auth provider (auth.tsx); called when any request is answered 401. */
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
       ...init,
+      // The session cookie: the API is on another origin than this page.
+      credentials: 'include',
       headers: init?.body instanceof FormData ? init.headers : { 'Content-Type': 'application/json', ...init?.headers },
     });
   } catch {
@@ -297,6 +306,12 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     // catches the layer below that: the request never reached the backend
     // at all (server not running, wrong VITE_API_BASE_URL, CORS/network).
     throw new ApiError(0, `Could not reach the backend at ${API_BASE}. Is it running (uvicorn app.main:app), and is VITE_API_BASE_URL correct?`);
+  }
+
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    // The session ended (expired, signed out elsewhere, user deactivated):
+    // the app shows the sign-in screen again.
+    unauthorizedHandler?.();
   }
 
   if (!response.ok) {
@@ -329,6 +344,29 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
+}
+
+// ---------- Sign-in ----------
+
+export type UserRole = 'viewer' | 'technician' | 'admin';
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  role: UserRole;
+  is_active: boolean;
+}
+
+export function login(username: string, password: string): Promise<AuthUser> {
+  return apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+}
+
+export function logout(): Promise<void> {
+  return apiFetch('/auth/logout', { method: 'POST' });
+}
+
+export function getMe(): Promise<AuthUser> {
+  return apiFetch('/auth/me');
 }
 
 // ---------- App config ----------

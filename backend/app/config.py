@@ -42,6 +42,22 @@ class Settings(BaseSettings):
     # (nothing pending) at single-user scale.
     worker_poll_interval_seconds: float = 0.5
 
+    # ---- Sign-in (app/auth.py) ----
+    # A session is an opaque random token kept in an HttpOnly cookie; only its
+    # SHA-256 is stored, so a leaked table cannot be replayed.
+    session_cookie_name: str = "sl_session"
+    session_ttl_hours: int = 12
+    # Set true when the app is served over HTTPS.
+    session_cookie_secure: bool = False
+    # Extra browser origins allowed to call the API with the cookie, comma
+    # separated. http(s)://localhost and 127.0.0.1 on any port are always allowed.
+    cors_allowed_origins: str = ""
+    # With an empty users table, startup creates this admin so there is a way
+    # in. Both must be set; ignored once any user exists. More users: the
+    # admin-only /users API, or `python -m app.create_user`.
+    initial_admin_username: str = ""
+    initial_admin_password: str = ""
+
     use_live_claude: bool = False
     anthropic_api_key: str = ""
     # Was a literal "claude-sonnet-5" duplicated separately inside both

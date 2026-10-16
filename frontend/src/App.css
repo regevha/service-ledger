@@ -1161,6 +1161,27 @@ textarea {
   background: var(--surface-2);
 }
 
+.plain-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.masthead-user {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.login-form {
+  max-width: 360px;
+  display: grid;
+  gap: 12px;
+}
+
 .template-problems {
   margin: 12px 0 0;
   padding-left: 30px;

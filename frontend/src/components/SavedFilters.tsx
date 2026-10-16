@@ -7,6 +7,7 @@ import {
   type SavedFilter,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import { useCan } from '../auth';
 
 const KEYS = ['instrument_id', 'report_type', 'status', 'date_from', 'date_to', 'technician', 'q'] as const;
 
@@ -44,6 +45,8 @@ export function SavedFilters({
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Saving and deleting are a technician's; a viewer can still pick a saved filter.
+  const canSave = useCan('technician');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -129,7 +132,7 @@ export function SavedFilters({
         ))}
       </select>
 
-      {!naming && (
+      {canSave && !naming && (
         <button
           className="btn small"
           disabled={!hasCriteria || full}
@@ -150,7 +153,7 @@ export function SavedFilters({
         </button>
       )}
 
-      {naming && (
+      {canSave && naming && (
         <span className="saved-filter-name">
           <input
             type="text"
@@ -181,12 +184,12 @@ export function SavedFilters({
         </span>
       )}
 
-      {active && !confirmingDelete && (
+      {canSave && active && !confirmingDelete && (
         <button className="btn small" onClick={() => setConfirmingDelete(true)}>
           Delete “{active.name}”
         </button>
       )}
-      {active && confirmingDelete && (
+      {canSave && active && confirmingDelete && (
         <span className="saved-filter-name">
           <span>Delete “{active.name}” for everyone?</span>
           <button className="btn small" onClick={() => void remove()}>

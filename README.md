@@ -46,6 +46,7 @@ cp .env.example .env            # adjust DATABASE_URL etc. for your setup
 alembic upgrade head
 python -m app.seed_instruments
 python -m app.seed_templates
+python -m app.create_user yourname admin   # the app requires sign-in; this makes the first admin (asks for a password)
 uvicorn app.main:app --reload   # → http://127.0.0.1:8000/docs
 
 # 2. Background worker (second terminal, same venv)
@@ -57,6 +58,12 @@ npm install
 cp .env.example .env.local
 npm run dev                     # → http://localhost:5173
 ```
+
+Sign in at http://localhost:5173 with the account you created. There are three
+roles — **viewer** (reads reports and analytics), **technician** (also
+uploads, reviews, edits and finalizes reports) and **admin** (also deletes
+reports and instruments, and manages instruments, templates and users); see
+`backend/README.md`'s "Sign-in and roles".
 
 Without the worker running, uploads stay stuck at "pending" — nothing else
 calls `classify()`/`extract()`. See `backend/README.md`'s "Running it"

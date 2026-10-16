@@ -103,6 +103,26 @@ needed, since the fleet is small enough (§1: a fixed 3-instrument list, at
 least until the Instruments tab below lets it grow) to already be fully
 loaded by `App`'s own `useEffect` and looked up by id client-side.
 
+### Sign-in and roles
+
+`auth.tsx` owns "who is signed in": on load it asks `GET /auth/me`, shows
+`LoginScreen.tsx` until there is an answer, and drops back to it (with a
+"session ended" notice) the moment any request is answered 401. Nothing else
+mounts — or fetches — before sign-in. `api.ts` sends `credentials:
+'include'` so the session cookie goes with every call.
+
+What each role sees: **viewers** get Reports and Analytics, and an opened
+report is read-only (fields disabled, no save/finalize/delete — `ReviewScreen`'s
+`readOnly`); **technicians** also get *New report* and can edit and finalize;
+**admins** also get the Templates and Instruments tabs and *Delete report*.
+Hiding is a courtesy so nobody meets a 403 — the backend enforces it. The
+masthead shows `username · role` and *Sign out*.
+
+The e2e suite signs in as an admin by default: `tests/e2e/auth-setup.ts` (the
+config's `globalSetup`) creates a technician and a viewer through the API and
+saves the admin session as the default `storageState`. `auth.spec.ts` covers
+sign-in/out, each role's tabs and limits, and a session ending mid-use.
+
 ### Templates tab
 
 `TemplateManager.tsx` is the structured editor for report templates. Beyond

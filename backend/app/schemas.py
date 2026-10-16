@@ -21,6 +21,7 @@ from app.models import (
     ReportStatus,
     ReportType,
     TranslationStatus,
+    UserRole,
 )
 
 
@@ -764,6 +765,50 @@ class ModelTrendOut(BaseModel):
     model: str
     field: str
     series: list[ModelTrendSeriesOut]
+
+
+# ---------- Users and sign-in ----------
+
+
+class LoginIn(BaseModel):
+    username: str
+    password: str
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    username: str
+    role: UserRole
+    is_active: bool
+
+
+def _clean_username(value: str) -> str:
+    cleaned = value.strip().lower()
+    if not cleaned:
+        raise ValueError("username cannot be blank")
+    return cleaned
+
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: UserRole
+
+    @field_validator("username")
+    @classmethod
+    def _username(cls, value: str) -> str:
+        return _clean_username(value)
+
+
+class UserUpdate(BaseModel):
+    """PATCH /users/{id}: only what is sent changes. A new password or a
+    deactivation signs the user out everywhere."""
+
+    role: UserRole | None = None
+    is_active: bool | None = None
+    password: str | None = None
 
 
 # ---------- Saved report filters ----------

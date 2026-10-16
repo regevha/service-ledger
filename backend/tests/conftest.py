@@ -27,9 +27,16 @@ os.environ.setdefault(
 # ever meant to be live for the running dev server, never for the test suite.
 os.environ["USE_LIVE_CLAUDE"] = "false"
 
-from app import seed_instruments, seed_templates  # noqa: E402
+from app import auth, seed_instruments, seed_templates  # noqa: E402
+from app.create_user import upsert_user  # noqa: E402
+from app.models import UserRole  # noqa: E402
 from app.db import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
+
+# Cheap password hashing for tests (the cost is stored in each hash, so real
+# hashes still verify with their own cost); production keeps the full cost.
+auth._SCRYPT_N = 2**4
+PASSWORD = "correct horse battery"
 
 test_engine = create_engine(os.environ["DATABASE_URL"], future=True)
 TestSessionLocal = sessionmaker(bind=test_engine, autoflush=False, autocommit=False, future=True)
@@ -45,7 +52,7 @@ def _schema():
 @pytest.fixture(autouse=True)
 def _clean_tables():
     with test_engine.begin() as conn:
-        for table in ("translations", "extraction_jobs", "attachments", "reports", "report_templates", "instruments", "instrument_types", "saved_report_filters"):
+        for table in ("user_sessions", "users", "translations", "extraction_jobs", "attachments", "reports", "report_templates", "instruments", "instrument_types", "saved_report_filters"):
             conn.execute(text(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE"))
     yield
 
@@ -67,7 +74,9 @@ def seeded(db_session):
 
 
 @pytest.fixture()
-def client(seeded):
+def _api(seeded):
+    """The app wired to the test database."""
+
     def _override_get_db():
         db = TestSessionLocal()
         try:
@@ -76,9 +85,49 @@ def client(seeded):
             db.close()
 
     app.dependency_overrides[get_db] = _override_get_db
+    yield
+    app.dependency_overrides.clear()
+
+
+def _signed_in(role: UserRole, username: str | None = None) -> TestClient:
+    username = username or f"{role.value}-user"
+    with TestSessionLocal() as db:
+        upsert_user(db, username, PASSWORD, role)
+    test_client = TestClient(app)
+    test_client.__enter__()
+    response = test_client.post("/auth/login", json={"username": username, "password": PASSWORD})
+    assert response.status_code == 200, response.text
+    return test_client
+
+
+@pytest.fixture()
+def client(_api):
+    """Signed in as an admin, so tests exercise the API without role limits;
+    tests of the limits themselves use `client_as` / `anon_client`."""
+    test_client = _signed_in(UserRole.admin)
+    yield test_client
+    test_client.__exit__(None, None, None)
+
+
+@pytest.fixture()
+def client_as(_api):
+    """`client_as("viewer")` -> a client signed in with that role."""
+    opened: list[TestClient] = []
+
+    def _make(role: str, username: str | None = None) -> TestClient:
+        test_client = _signed_in(UserRole(role), username)
+        opened.append(test_client)
+        return test_client
+
+    yield _make
+    for test_client in opened:
+        test_client.__exit__(None, None, None)
+
+
+@pytest.fixture()
+def anon_client(_api):
     with TestClient(app) as test_client:
         yield test_client
-    app.dependency_overrides.clear()
 
 
 @pytest.fixture()

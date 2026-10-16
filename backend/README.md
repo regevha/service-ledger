@@ -34,7 +34,11 @@ backend/
     seed_templates.py        The report_templates rows (§5), plus three model-specific rows for the Cytek Aurora and CytoFLEX S
     seed_demo_reports.py     3 real finalized demo reports for the Reports screen — optional, manual only
     seed_trend_demo.py       5 synthetic calibration reports for the FACSAria III, for the trend chart — optional, manual only
+    auth.py                  Sign-in: password hashing, sessions, and `required_role` (who may call what)
+    create_user.py           `python -m app.create_user NAME ROLE` — the first admin / a lockout reset
     routers/
+      auth.py                POST /auth/login, POST /auth/logout, GET /auth/me
+      users.py               GET/POST /users, PATCH /users/{id} (admin only)
       instrument_types.py    GET/POST /instrument-types — the managed list of kinds of instrument (migration `a7c4e1f2b836`). Seeded: Flow cytometer (`facs`), Electron microscope, ImageStream, Mass spectrometer, PCR machine (`ensure_default_types`, run by the seeds and at startup; never renames or removes a type); more are added in the app
       instruments.py         POST/GET/PATCH/DELETE /instruments (DELETE also deletes the instrument's reports; PATCH backs the Instruments tab's create/edit UI —
                               every field but instrument_type is editable); `name`, `model`, `serial_number` and `manufacturer` are required text on create and may not be blank or all whitespace on create or PATCH (422 "<Field> cannot be blank"; values are trimmed); an optional free-text `distributor` (the local seller / service company when it is not the maker; trimmed, blank means none, editable and clearable; migration `c3d4e5f6a7b8`); on PATCH a manufacturer can still be cleared (the seeded fleet is "BD", filled in on existing rows only where empty; migration `f6a2c3d9e014`); `instrument_type` must be a key from /instrument-types, GET /instruments/{id}/trend-fields
@@ -82,6 +86,54 @@ frontend/
   src/components/InstrumentManager.tsx  The Instruments tab — create/edit UI for the fleet (POST/PATCH /instruments)
   tests/e2e/                   Playwright specs against a running backend
 ```
+
+## Sign-in and roles
+
+Every endpoint but `GET /health`, `GET /config` and `POST /auth/login|logout`
+needs a signed-in user (401 otherwise). Three roles, each including the one
+before it:
+
+| Role | May |
+|---|---|
+| `viewer` | read reports, instruments, templates, analytics, scans, PDFs, CSV export |
+| `technician` | also create reports, upload, classify, extract, edit fields, finalize |
+| `admin` | also delete reports and instruments; create/edit/delete instruments and templates; manage users (`/users`) |
+
+A request the role does not allow is answered 403. The rule lives in one
+place, `app/auth.py`'s `required_role(method, path)`, applied to every
+request by an app-wide dependency — a new endpoint is protected by default
+(read = viewer, POST/PATCH = technician, DELETE = admin), and
+`tests/test_auth_policy.py` fails until the route is added to its table of
+expected roles; it also calls every endpoint as each role to check the live
+answers.
+
+* **Login:** `POST /auth/login {username, password}` sets an HttpOnly,
+  `SameSite=Lax` cookie (`sl_session`, 12 h by default) holding a random
+  token; only its SHA-256 is stored (`user_sessions`), so a session can be
+  ended: `POST /auth/logout`, a password change, or deactivating the user
+  end it at once, and a role change applies on the very next request.
+  `GET /auth/me` says who is signed in. A cookie (not a bearer header) is
+  used because the app links straight to scans, PDFs and the CSV export.
+* **Passwords:** salted scrypt from the standard library, minimum 8
+  characters. A wrong password, an unknown user and a deactivated user get
+  the same 401 and cost the same time.
+* **Users:** `GET/POST /users`, `PATCH /users/{id}` (role, `is_active`,
+  password), admin only. There is always at least one active admin: demoting
+  or deactivating the last one is refused (409). Usernames are trimmed,
+  lower-case and unique. Tables `users` and `user_sessions` come from
+  migration `a7b3d4e5f125`.
+* **The first admin:** `python -m app.create_user NAME admin` (prompts for the
+  password; also resets an existing user, which is the way back in if every
+  admin is locked out). Or set `INITIAL_ADMIN_USERNAME` and
+  `INITIAL_ADMIN_PASSWORD` — startup then creates that admin if, and only if,
+  there are no users yet.
+* **Browser access:** CORS now allows credentials, so it lists origins
+  instead of `*`: any `localhost`/`127.0.0.1` port, plus whatever is in
+  `CORS_ALLOWED_ORIGINS` (comma separated). Behind HTTPS set
+  `SESSION_COOKIE_SECURE=true`.
+* **Not here yet:** no sign-in rate limiting, password reset by email, or
+  audit trail of who changed what. The background worker is not an HTTP
+  client and is unaffected.
 
 ## Running it
 
