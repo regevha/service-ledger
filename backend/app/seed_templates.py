@@ -256,7 +256,11 @@ _CYTEK_COMMON = [
         "name": "customer_signature_present",
         "type": "boolean",
         "unit": None,
-        "notes": "true only when the customer's own signature line is signed; the engineer's signature alone is false",
+        "notes": (
+            "true only when a signature is actually drawn or written in the customer's own signature box; "
+            "the customer's printed name or the box title is not a signature, an empty box is false, and "
+            "the engineer's signature alone is false"
+        ),
     },
     {
         "name": "verification_result",
@@ -305,7 +309,10 @@ CYTOFLEX_S_REPAIR_FIELDS = [
         "name": "customer_signature_present",
         "type": "boolean",
         "unit": None,
-        "notes": "true only when the customer approval block is signed; blank is normal and means false",
+        "notes": (
+            "true only when a signature is actually drawn or written in the customer approval block; "
+            "a printed name alone is not a signature, and blank is normal and means false"
+        ),
     },
     {
         "name": "fault_category",
