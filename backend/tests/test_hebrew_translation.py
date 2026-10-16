@@ -602,7 +602,7 @@ def test_stub_other_maker_file_is_not_in_the_fleet_until_it_is_added(client, run
             "model": "Cytek Aurora",
             "manufacturer": "Cytek Biosciences",
             "distributor": "almog diagnostic",
-            "serial_number": "Y1033",
+            "serial_number": "ZZ0000",
         },
     )
     assert added.status_code == 201

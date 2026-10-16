@@ -55,6 +55,8 @@ def test_empty_fleet_returns_zeroed_rollups_for_every_instrument(client, seeded)
         "FACSAria III",
         "LSRFortessa",
         "FACSDiscover S8",
+        "Cytek Aurora",
+        "CytoFLEX S",
     }
     assert all(row["report_count"] == 0 and row["total_labor_hours"] == 0.0 for row in body["labor_hours_by_instrument"])
     assert body["pass_fail_by_report_type"] == {
