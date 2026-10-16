@@ -8,9 +8,9 @@ import {
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 
-const KEYS = ['instrument_id', 'report_type', 'status', 'date_from', 'date_to', 'technician'] as const;
+const KEYS = ['instrument_id', 'report_type', 'status', 'date_from', 'date_to', 'technician', 'q'] as const;
 
-/** Only the six saved-filter criteria, with empty values dropped, so two filter objects compare by content. */
+/** Only the saved-filter criteria (the six filters and the search text), with empty values dropped, so two filter objects compare by content. */
 function criteria(f: ReportFilters): ReportFilters {
   const out: ReportFilters = {};
   for (const k of KEYS) {
@@ -137,8 +137,8 @@ export function SavedFilters({
             full
               ? `${cap} saved filters already exist. Delete one first.`
               : hasCriteria
-                ? 'Save the current filters. The search text is not saved.'
-                : 'Set at least one filter first.'
+                ? 'Save the current filters and search.'
+                : 'Set at least one filter, or type a search of two or more characters, first.'
           }
           onClick={() => {
             setNaming(true);

@@ -1341,6 +1341,8 @@ export interface components {
             date_to?: string | null;
             /** Technician */
             technician?: string | null;
+            /** Q */
+            q?: string | null;
         };
         /** SavedFilterListOut */
         SavedFilterListOut: {
