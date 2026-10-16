@@ -120,11 +120,27 @@ def test_a_different_identifier_is_still_reported_missing_from_a_visual_order_la
     assert check["missing"] == ["50173BE"]
 
 
-def test_identifiers_the_model_listed_must_match_exactly():
-    # The tolerance is only for the text layer; a listed identifier reordered
-    # in the English is a real difference.
-    check = identifier_check(["BE50173"], "Device 50173BE")
-    assert check["missing"] == ["BE50173"]
+def test_identifiers_the_model_listed_in_reversed_order_are_not_reported_missing():
+    # Live run of 2026-10-16: the model copied these into its own list from the
+    # visual-order text layer, while its English has them as printed.
+    listed = ["50173BE", "96621B-BC", "000030R23SR"]
+    english = "Device BE50173, product BC-B96621, contract SR23R000030"
+    check = identifier_check(listed, english)
+    assert check == {"checked": 3, "missing": []}
+
+
+def test_a_listed_identifier_that_differs_is_still_reported_missing():
+    # Same letters, different digits: a real difference, not a reordering.
+    check = identifier_check(["50173BE", "Y1033"], "Device BE50174, S.N Y1033")
+    assert check["missing"] == ["50173BE"]
+
+
+def test_the_translation_prompt_asks_for_identifiers_as_printed_and_for_signature_state():
+    from app.services.translation import _PROMPT
+
+    assert "not 50173BE" in _PROMPT
+    assert 'write each one as "signed" or "blank"' in _PROMPT
+    assert "does not make it signed" in _PROMPT
 
 
 # ---------- stub mode: the review flow ----------
