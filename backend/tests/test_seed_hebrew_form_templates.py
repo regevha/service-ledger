@@ -89,6 +89,6 @@ def test_the_customer_signature_rule_needs_an_actual_signature_not_a_printed_nam
 def test_the_classify_prompt_says_the_work_order_is_the_service_call_never_the_customers_order():
     from app.services.classification import _CLASSIFY_BODY  # noqa: PLC0415
 
-    assert "service call or service report number" in _CLASSIFY_BODY
-    assert "never the customer's" in _CLASSIFY_BODY
-    assert "purchase-order or customer number" in _CLASSIFY_BODY
+    assert "service call or service report itself" in _CLASSIFY_BODY
+    assert "customer's order number, purchase-order number and customer number are not" in _CLASSIFY_BODY
+    assert "return an empty string" in _CLASSIFY_BODY.split("5. Documents from another company")[0]

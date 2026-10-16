@@ -600,6 +600,29 @@ def test_the_prompt_does_not_call_a_device_number_the_serial(client, run_worker,
     assert "serial, which may be labelled" not in prompt
 
 
+def test_the_prompt_does_not_call_a_customer_order_number_the_work_order(client, run_worker, live):
+    # On the Cytek form the service call is 2046 and 4010348 is the customer's
+    # order number; the live read once returned the order number as the work
+    # order (project owner decided on 2026-10-16 to fix it in this prompt).
+    _, _, fake = _classify_live(
+        client,
+        run_worker,
+        live,
+        {
+            "instrument_model": "(not in the fleet)",
+            "instrument_confidence": 0.9,
+            "report_type": "installation_upgrade",
+            "report_type_confidence": 0.7,
+            "instrument_serial": "Y1033",
+            "instrument_serial_confidence": 0.9,
+            "work_order_number": "2046",
+        },
+    )
+    prompt = fake.messages.calls[0]["messages"][0]["content"][1]["text"]
+    assert "service call or service report itself" in prompt
+    assert "customer's order number, purchase-order number and customer number are not" in prompt
+
+
 def test_the_prompt_reads_the_service_call_as_the_work_order_not_the_order_number(client, run_worker, live):
     # On the Cytek form the service call (2046) identifies the visit; the
     # customer order number (4010348) must not be taken for the work order.
