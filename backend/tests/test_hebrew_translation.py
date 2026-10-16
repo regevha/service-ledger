@@ -105,6 +105,28 @@ def test_identifier_check_reports_the_ones_missing_from_the_translation():
     assert check["missing"] == ["N7-97566", "BE50173"]
 
 
+def test_identifiers_from_a_visual_order_text_layer_are_not_reported_missing():
+    # The Rhenium text layer (visual order) gives these reordered; the English
+    # has them as printed on the form. Found in the live run of 2026-10-15.
+    layer = "50173BE 96621B-BC 006240R26SC 000030R23SR 767C"
+    english = "Device BE50173, product BC-B96621, call SC26R006240, SR23R000030, room C767"
+    check = identifier_check([], english, original_text=layer)
+    assert check == {"checked": 5, "missing": []}
+
+
+def test_a_different_identifier_is_still_reported_missing_from_a_visual_order_layer():
+    # Same letters, different digits: not a reordering, so it is flagged.
+    check = identifier_check([], "Device BE50174", original_text="50173BE")
+    assert check["missing"] == ["50173BE"]
+
+
+def test_identifiers_the_model_listed_must_match_exactly():
+    # The tolerance is only for the text layer; a listed identifier reordered
+    # in the English is a real difference.
+    check = identifier_check(["BE50173"], "Device 50173BE")
+    assert check["missing"] == ["BE50173"]
+
+
 # ---------- stub mode: the review flow ----------
 
 
