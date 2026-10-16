@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   getModelComparison,
   getModelTrend,
+  type AnalyticsFilters,
   type ModelComparison,
   type ModelTrend,
   type PassFailBreakdown,
@@ -254,7 +255,7 @@ function ComparisonChart({ lines, field }: { lines: UnitLine[]; field: TrendFiel
   );
 }
 
-function ModelTrendSection({ group }: { group: ModelComparison }) {
+function ModelTrendSection({ group, filters }: { group: ModelComparison; filters: AnalyticsFilters }) {
   const [fieldName, setFieldName] = useState('');
   const [valueKey, setValueKey] = useState('');
   const field = group.trend_fields.find((f) => f.name === fieldName) ?? group.trend_fields[0];
@@ -263,10 +264,10 @@ function ModelTrendSection({ group }: { group: ModelComparison }) {
   const { loading, error } = useAsyncEffect(
     async (isCancelled) => {
       if (!field) return;
-      const t = await getModelTrend(group.model, field.name);
+      const t = await getModelTrend(group.model, field.name, filters);
       if (!isCancelled()) setTrend(t);
     },
-    [group.model, field?.name],
+    [group.model, field?.name, JSON.stringify(filters)],
     "Could not load this field's history.",
   );
 
@@ -313,24 +314,27 @@ function ModelTrendSection({ group }: { group: ModelComparison }) {
   );
 }
 
-export function ModelComparisonSection() {
+export function ModelComparisonSection({ filters = {} }: { filters?: AnalyticsFilters }) {
   const [groups, setGroups] = useState<ModelComparison[] | null>(null);
   const [selectedModel, setSelectedModel] = useState('');
 
   const { loading, error } = useAsyncEffect(
     async (isCancelled) => {
-      const result = await getModelComparison();
+      const result = await getModelComparison(filters);
       if (isCancelled()) return;
       setGroups(result);
-      // Start on a model that actually has units to compare.
-      const first = result.find((g) => g.units.length >= 2) ?? result[0];
-      if (first) setSelectedModel(first.model);
+      // Start on a model that actually has units to compare; a refresh after a
+      // filter change keeps the model being looked at if it is still there.
+      setSelectedModel((current) => {
+        if (result.some((g) => g.model === current)) return current;
+        return (result.find((g) => g.units.length >= 2) ?? result[0])?.model ?? '';
+      });
     },
-    [],
+    [JSON.stringify(filters)],
     'Could not load the model comparison.',
   );
 
-  if (loading) return null; // the fleet section above carries the page's loading state
+  if (!groups && loading) return null; // the fleet section above carries the page's first loading state
   if (error) return <div className="banner banner-warn">{error}</div>;
   if (!groups || groups.length === 0) return null;
 
@@ -355,7 +359,7 @@ export function ModelComparisonSection() {
         </p>
       )}
       <UnitTable units={group.units} />
-      <ModelTrendSection key={group.model} group={group} />
+      <ModelTrendSection key={group.model} group={group} filters={filters} />
     </div>
   );
 }

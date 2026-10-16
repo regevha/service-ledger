@@ -729,7 +729,8 @@ export interface paths {
          * Model Comparison
          * @description Instruments of the same model side by side: per unit (serial), finalized
          *     report count, labor hours, parts replaced and pass/fail results, plus the
-         *     numeric fields the comparison chart can plot. Finalized reports only.
+         *     numeric fields the comparison chart can plot. Finalized reports only,
+         *     narrowed by the optional filters.
          */
         get: operations["model_comparison_analytics_models_get"];
         put?: never;
@@ -951,6 +952,11 @@ export interface components {
          *     tables. See services/analytics.py for exactly how each number is derived.
          */
         FleetAnalyticsOut: {
+            /**
+             * Finalized Report Count
+             * @default 0
+             */
+            finalized_report_count: number;
             /** Parts Replaced */
             parts_replaced: components["schemas"]["PartUsageOut"][];
             /** Total Labor Hours */
@@ -2863,7 +2869,18 @@ export interface operations {
     };
     fleet_analytics_analytics_fleet_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only this instrument (also limits the units listed) */
+                instrument_id?: string | null;
+                /** @description Only instruments from this manufacturer (also limits the units listed) */
+                manufacturer?: string | null;
+                /** @description Only reports of this type */
+                report_type?: components["schemas"]["ReportType"] | null;
+                /** @description Report date on or after this day */
+                date_from?: string | null;
+                /** @description Report date on or before this day */
+                date_to?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2879,11 +2896,31 @@ export interface operations {
                     "application/json": components["schemas"]["FleetAnalyticsOut"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     model_comparison_analytics_models_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only this instrument (also limits the units listed) */
+                instrument_id?: string | null;
+                /** @description Only instruments from this manufacturer (also limits the units listed) */
+                manufacturer?: string | null;
+                /** @description Only reports of this type */
+                report_type?: components["schemas"]["ReportType"] | null;
+                /** @description Report date on or after this day */
+                date_from?: string | null;
+                /** @description Report date on or before this day */
+                date_to?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2899,6 +2936,15 @@ export interface operations {
                     "application/json": components["schemas"]["ModelComparisonOut"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     model_trend_analytics_models_trend_get: {
@@ -2908,6 +2954,16 @@ export interface operations {
                 model: string;
                 /** @description Key inside extracted_fields to plot, one series per unit */
                 field: string;
+                /** @description Only this instrument (also limits the units listed) */
+                instrument_id?: string | null;
+                /** @description Only instruments from this manufacturer (also limits the units listed) */
+                manufacturer?: string | null;
+                /** @description Only reports of this type */
+                report_type?: components["schemas"]["ReportType"] | null;
+                /** @description Report date on or after this day */
+                date_from?: string | null;
+                /** @description Report date on or before this day */
+                date_to?: string | null;
             };
             header?: never;
             path?: never;
