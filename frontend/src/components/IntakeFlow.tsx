@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   deleteReport,
   ApiError,
@@ -29,6 +29,7 @@ import {
   type Translation,
 } from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
+import type { TemplateRequest } from '../templateRequest';
 import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
 import { AddInstrumentPanel } from './AddInstrumentPanel';
 import { ReviewScreen } from './ReviewScreen';
@@ -55,7 +56,24 @@ type Phase =
   | { name: 'review' }
   | { name: 'done' }
   | { name: 'already-on-file'; existingReportId: string }
-  | { name: 'error'; message: string; retry: () => void };
+  | { name: 'error'; message: string; retry: () => void; action?: { label: string; run: () => void } };
+
+/** A report that is waiting for a template to be created (see TemplateRequest). */
+interface WaitingForTemplate {
+  reportId: string;
+  attachmentId: string;
+  instrument: Instrument;
+  reportType: ReportType;
+}
+
+/** Whether a newly saved template is the one this waiting report would resolve to. */
+function templateApplies(template: ReportTemplate, waiting: WaitingForTemplate): boolean {
+  return (
+    template.instrument_type === waiting.instrument.instrument_type &&
+    template.report_type === waiting.reportType &&
+    (template.model === null || template.model === waiting.instrument.model)
+  );
+}
 
 function StepBar({ phase }: { phase: Phase }) {
   // Every "working" phase before the review screen (upload, classify,
@@ -384,6 +402,8 @@ export function IntakeFlow({
   liveClaude = true,
   onOpenReport,
   onInstrumentAdded,
+  onCreateTemplate,
+  templateCreated,
 }: {
   instruments: Instrument[];
   instrumentsError: string | null;
@@ -394,6 +414,10 @@ export function IntakeFlow({
   onOpenReport?: (reportId: string) => void;
   /** Called after an instrument is added here, so the app's fleet list reloads. */
   onInstrumentAdded?: () => Promise<void> | void;
+  /** Ask the Templates tab for a template for this model and report type (prefilled, with the closest one as the start). */
+  onCreateTemplate?: (request: TemplateRequest) => void;
+  /** Set when a template was just saved for a request made here; `nonce` changes on every save. */
+  templateCreated?: { template: ReportTemplate; nonce: number } | null;
 }) {
   const [phase, setPhase] = useState<Phase>({ name: 'intake' });
   // The fleet as the in-flight steps below should see it: the prop, plus any
@@ -414,6 +438,12 @@ export function IntakeFlow({
   const [fieldConfidences, setFieldConfidences] = useState<Record<string, number>>({});
   const [fields, setFields] = useState<Record<string, unknown>>({});
   const [reportDate, setReportDate] = useState<string | null>(null);
+
+  // The report that asked for a template of its own, until one is saved.
+  const waitingRef = useRef<WaitingForTemplate | null>(null);
+  const [genericNoticeDismissed, setGenericNoticeDismissed] = useState(false);
+  // Said in the review screen when a saved template did not apply to this report.
+  const [templateNote, setTemplateNote] = useState<string | null>(null);
 
   // Identifies the manual-confirm pick by instrument id, not model — model
   // isn't unique across the fleet (see the <select>'s own comment in
@@ -457,7 +487,43 @@ export function IntakeFlow({
     setFields({});
     setReportDate(null);
     setDuplicates({});
+    waitingRef.current = null;
+    setGenericNoticeDismissed(false);
+    setTemplateNote(null);
   }
+
+  function requestTemplate(waiting: WaitingForTemplate) {
+    waitingRef.current = waiting;
+    setTemplateNote(null);
+    onCreateTemplate?.({
+      instrumentType: waiting.instrument.instrument_type,
+      reportType: waiting.reportType,
+      model: waiting.instrument.model,
+    });
+  }
+
+  // A template was saved for the request made above: read the waiting report
+  // again with it, as long as it is the template this report resolves to.
+  useEffect(() => {
+    const waiting = waitingRef.current;
+    if (!templateCreated || !waiting) return;
+    waitingRef.current = null;
+    if (!templateApplies(templateCreated.template, waiting)) {
+      setTemplateNote(
+        `The template you saved is for ${templateCreated.template.model ?? 'any model'} / ${REPORT_TYPE_LABEL[templateCreated.template.report_type]}, ` +
+          `so this ${waiting.instrument.model} report still uses the template it already had.`
+      );
+      return;
+    }
+    void resolveAndExtract(
+      waiting.reportId,
+      waiting.attachmentId,
+      waiting.instrument.model,
+      waiting.reportType,
+      waiting.instrument.id,
+      waiting.instrument.instrument_type
+    );
+  }, [templateCreated?.nonce]);
 
   // Every step below (upload, classify, resolve-template, extract, save)
   // follows the same shape: show a "working" phase, run some API calls, and
@@ -468,8 +534,8 @@ export function IntakeFlow({
   // directly for a job that finished with status 'failed', which isn't a
   // thrown exception); `attempt` wraps a step's body so each step below only
   // states its fallback message, its retry, and what it actually does.
-  function failPhase(message: string, retry: () => void) {
-    setPhase({ name: 'error', message, retry });
+  function failPhase(message: string, retry: () => void, action?: { label: string; run: () => void }) {
+    setPhase({ name: 'error', message, retry, action });
   }
 
   async function attempt(fallbackMessage: string, retry: () => void, fn: () => Promise<void>) {
@@ -520,11 +586,21 @@ export function IntakeFlow({
           const kind = await listInstrumentTypes()
             .then((types) => types.find((t) => t.key === instrumentType)?.display_name ?? instrumentType)
             .catch(() => instrumentType);
-          throw new ApiError(
-            404,
+          const instrument = instrumentsRef.current.find((inst) => inst.id === instrumentId);
+          failPhase(
             `There is no ${REPORT_TYPE_LABEL[reportType]} template for ${kind} / ${model} yet. ` +
-              'Create one on the Templates tab (choose this instrument type), then upload the report again.'
+              (onCreateTemplate
+                ? 'Create one now and this report is read again with it.'
+                : 'Create one on the Templates tab (choose this instrument type), then upload the report again.'),
+            () => void resolveAndExtract(reportId, attId, model, reportType, instrumentId, instrumentType),
+            instrument && onCreateTemplate
+              ? {
+                  label: `Create a ${REPORT_TYPE_LABEL[reportType]} template for ${model}`,
+                  run: () => requestTemplate({ reportId, attachmentId: attId, instrument, reportType }),
+                }
+              : undefined
           );
+          return;
         }
         const updated = await confirmTemplate(reportId, instrumentId, tpl.id);
         setReport(updated);
@@ -713,6 +789,8 @@ export function IntakeFlow({
     });
   }
 
+  const reviewInstrument = report?.instrument_id ? instruments.find((inst) => inst.id === report.instrument_id) : undefined;
+
   return (
     <>
       <StepBar phase={phase} />
@@ -775,6 +853,36 @@ export function IntakeFlow({
         />
       )}
 
+      {phase.name === 'review' && templateNote && (
+        <div className="banner banner-info" id="template-note">
+          {templateNote}
+        </div>
+      )}
+
+      {phase.name === 'review' && template && template.model === null && reviewInstrument && attachmentId && report && onCreateTemplate && !genericNoticeDismissed && (
+        <div className="banner banner-info" id="generic-template-notice">
+          <div>
+            This report used the generic {REPORT_TYPE_LABEL[template.report_type]} template for {reviewInstrument.model}. A template made for{' '}
+            {reviewInstrument.model} can ask for the fields its forms carry. When you save it, this report is read again with it and what is
+            on screen is replaced.
+          </div>
+          <div className="cta-row">
+            <button
+              type="button"
+              className="btn small primary"
+              onClick={() =>
+                requestTemplate({ reportId: report.id, attachmentId, instrument: reviewInstrument, reportType: template.report_type })
+              }
+            >
+              Create a {reviewInstrument.model} template
+            </button>{' '}
+            <button type="button" className="btn small" onClick={() => setGenericNoticeDismissed(true)}>
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+
       {phase.name === 'review' && template && (
         <ReviewScreen
           template={template}
@@ -826,7 +934,12 @@ export function IntakeFlow({
             <button className="btn" onClick={resetToIntake}>
               Start over
             </button>
-            <button className="btn primary" onClick={phase.retry}>
+            {phase.action && (
+              <button className="btn primary" id="create-template-action" onClick={phase.action.run}>
+                {phase.action.label}
+              </button>
+            )}
+            <button className={phase.action ? 'btn' : 'btn primary'} onClick={phase.retry}>
               Try again
             </button>
           </div>

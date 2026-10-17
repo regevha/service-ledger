@@ -481,6 +481,29 @@ export function findTemplate(
   ).then((list) => list[0] ?? null);
 }
 
+// One existing template offered as the starting point for a new one
+// (GET /report-templates/suggestions). Advice only: choosing it just copies its
+// fields into the new-template form, where a person edits them before saving.
+export interface TemplateSuggestion {
+  template: ReportTemplate;
+  score: number;
+  /** Why it was picked, e.g. "same report type, same FACSAria family (FACSAria III)". */
+  reason: string;
+  field_count: number;
+}
+
+export function getTemplateSuggestions(params: {
+  reportType: ReportType;
+  instrumentType: string;
+  model?: string | null;
+  limit?: number;
+}): Promise<TemplateSuggestion[]> {
+  const query = new URLSearchParams({ report_type: params.reportType, instrument_type: params.instrumentType });
+  if (params.model) query.set('model', params.model);
+  if (params.limit) query.set('limit', String(params.limit));
+  return apiFetch(`/report-templates/suggestions?${query}`);
+}
+
 // ---------- Report template management ----------
 //
 // Structured-editor CRUD (the Templates tab) — mirrors backend/app/schemas.py's
