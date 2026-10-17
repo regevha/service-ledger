@@ -43,8 +43,6 @@ test('the original beside the English is served for display, not as a download',
   // Found on 2026-10-16 with the Cytek PDF (pages are images): the original
   // pane stayed blank because the file came back as an attachment, which a
   // browser refuses to show in an iframe.
-  const downloads: string[] = [];
-  page.on('download', (d) => downloads.push(d.suggestedFilename()));
   await upload(page, `hebrew-inline-${Date.now()}.pdf`);
   await expect(page.locator('#translation-review')).toBeVisible({ timeout: 30_000 });
 
@@ -53,8 +51,9 @@ test('the original beside the English is served for display, not as a download',
   const res = await request.get(src!);
   expect(res.status()).toBe(200);
   expect(res.headers()['content-disposition']).toMatch(/^inline/);
-  await page.waitForTimeout(1000);
-  expect(downloads).toEqual([]);
+  // Not asserted: whether the browser draws the PDF. The headless Chromium in
+  // CI has no PDF viewer and turns an inline PDF in an iframe into a download,
+  // while Chrome shows it; the inline disposition above is what decides that.
 });
 
 test('editing the English shows durations in decimal hours and accepting continues to the report', async ({ page }) => {
