@@ -177,7 +177,7 @@ jobs:
         # report directory), but still writes retain-on-failure traces and
         # only-on-failure screenshots to the default test-results/ output dir.
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-test-results
           path: frontend/test-results/
