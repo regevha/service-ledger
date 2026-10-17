@@ -12,4 +12,4 @@ pytest-randomly==5.0.0  # shuffles test order every run and prints the seed; rep
 httpx==0.28.1
 anthropic==1.13.0
 reportlab==4.4.10
-pypdf==3.17.4  # reads the text layer of uploaded PDFs (services/text_reader.py); tests also use it to verify generated PDFs
+pypdf==6.20.1  # reads the text layer of uploaded PDFs (services/text_reader.py); tests also use it to verify generated PDFs
