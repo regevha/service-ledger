@@ -11,7 +11,7 @@ from app import models, schemas
 from app.db import get_db
 from app.models import ReportType
 from app.services.instrument_types import type_exists
-from app.services.templates import resolve_template
+from app.services.templates import resolve_template, suggest_templates
 
 router = APIRouter(tags=["report-templates"])
 
@@ -62,6 +62,31 @@ def report_template_usage(db: Session = Depends(get_db)):
         .all()
     )
     return [schemas.TemplateUsageOut(template_id=t, report_count=n, finalized_count=f) for t, n, f in rows]
+
+
+@router.get("/report-templates/suggestions", response_model=list[schemas.TemplateSuggestionOut])
+def report_template_suggestions(
+    report_type: ReportType = Query(..., description="Only templates of this report type are offered"),
+    instrument_type: str = "facs",
+    model: str | None = Query(None, description="The model the new template is for"),
+    limit: int = Query(3, ge=1, le=10),
+    db: Session = Depends(get_db),
+):
+    """The closest existing templates to start a new one from, best first, each
+    with the reason it was picked. Read-only: it never creates or changes a
+    template. Registered before /report-templates/{template_id} so
+    "suggestions" is never read as a template id."""
+    return [
+        schemas.TemplateSuggestionOut(
+            template=schemas.ReportTemplateOut.model_validate(s.template),
+            score=s.score,
+            reason=s.reason,
+            field_count=s.field_count,
+        )
+        for s in suggest_templates(
+            db, instrument_type=instrument_type, report_type=report_type.value, model=model, limit=limit
+        )
+    ]
 
 
 @router.get("/report-templates/{template_id}", response_model=schemas.ReportTemplateOut)

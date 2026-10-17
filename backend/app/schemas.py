@@ -191,6 +191,16 @@ class ReportTemplateOut(BaseModel):
 # ---------- Report template management ----------
 
 
+class TemplateSuggestionOut(BaseModel):
+    """One existing template offered as the starting point for a new one
+    (GET /report-templates/suggestions). Advice only; nothing is applied."""
+
+    template: ReportTemplateOut
+    score: int
+    reason: str
+    field_count: int
+
+
 class TemplateUsageOut(BaseModel):
     """How many reports point at one template — what the template manager
     needs to warn before an edit and to explain why a delete is refused.
