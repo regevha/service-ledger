@@ -202,6 +202,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/report-templates/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Report Template Suggestions
+         * @description The closest existing templates to start a new one from, best first, each
+         *     with the reason it was picked. Read-only: it never creates or changes a
+         *     template. Registered before /report-templates/{template_id} so
+         *     "suggestions" is never read as a template id.
+         */
+        get: operations["report_template_suggestions_report_templates_suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/report-templates/{template_id}": {
         parameters: {
             query?: never;
@@ -508,6 +531,12 @@ export interface paths {
          *     link. Nothing here re-derives, re-encodes, or previews the file; it's
          *     the same bytes upload_attachment wrote, so a technician can always check
          *     the review screen's extracted values against the actual scan.
+         *
+         *     By default the response is an attachment (a link to it downloads the file).
+         *     `?inline=1` serves the same bytes for display instead, which the translation
+         *     review needs: a browser refuses to show an attachment in an <iframe>, so the
+         *     original pane stayed blank (found 2026-10-16 with the Cytek PDF, whose pages
+         *     are images; a text PDF behaved the same in Chromium).
          */
         get: operations["get_attachment_file_attachments__attachment_id__file_get"];
         put?: never;
@@ -928,9 +957,13 @@ export interface components {
             kind: components["schemas"]["ExtractionJobKind"];
             status: components["schemas"]["ExtractionJobStatus"];
             /** Classification */
-            classification: Record<string, never> | null;
+            classification: {
+                [key: string]: unknown;
+            } | null;
             /** Field Confidences */
-            field_confidences: Record<string, never> | null;
+            field_confidences: {
+                [key: string]: unknown;
+            } | null;
             /** Error Message */
             error_message?: string | null;
             /** Started At */
@@ -1207,7 +1240,9 @@ export interface components {
          */
         ReportFieldsUpdate: {
             /** Extracted Fields */
-            extracted_fields?: Record<string, never> | null;
+            extracted_fields?: {
+                [key: string]: unknown;
+            } | null;
             /** Technician Name */
             technician_name?: string | null;
             /** Service Actions */
@@ -1270,7 +1305,9 @@ export interface components {
             template_id: string | null;
             status: components["schemas"]["ReportStatus"];
             /** Extracted Fields */
-            extracted_fields: Record<string, never>;
+            extracted_fields: {
+                [key: string]: unknown;
+            };
             /** Technician Name */
             technician_name: string | null;
             /** Issuer */
@@ -1318,7 +1355,9 @@ export interface components {
             /** Model */
             model: string | null;
             /** Field Schema */
-            field_schema: Record<string, never>;
+            field_schema: {
+                [key: string]: unknown;
+            };
         };
         /**
          * ReportType
@@ -1367,7 +1406,9 @@ export interface components {
             /** Name */
             name: string;
             /** Filters */
-            filters: Record<string, never>;
+            filters: {
+                [key: string]: unknown;
+            };
             /**
              * Created At
              * Format: date-time
@@ -1459,6 +1500,20 @@ export interface components {
          */
         TemplateFieldType: "text" | "number" | "boolean" | "date" | "enum" | "enum[]" | "object[]" | "number[detector]" | "number[laser]";
         /**
+         * TemplateSuggestionOut
+         * @description One existing template offered as the starting point for a new one
+         *     (GET /report-templates/suggestions). Advice only; nothing is applied.
+         */
+        TemplateSuggestionOut: {
+            template: components["schemas"]["ReportTemplateOut"];
+            /** Score */
+            score: number;
+            /** Reason */
+            reason: string;
+            /** Field Count */
+            field_count: number;
+        };
+        /**
          * TemplateUpdate
          * @description PATCH /report-templates/{id} — exclude_unset semantics, same
          *     precedent as ReportFieldsUpdate: `model` can be explicitly nulled (falls
@@ -1534,11 +1589,15 @@ export interface components {
             /** Accepted Text */
             accepted_text: string | null;
             /** Ignored Pages */
-            ignored_pages: Record<string, never>[];
+            ignored_pages: {
+                [key: string]: unknown;
+            }[];
             /** Included Pages */
             included_pages: number[];
             /** Identifier Check */
-            identifier_check: Record<string, never>;
+            identifier_check: {
+                [key: string]: unknown;
+            };
             /** Notes */
             notes: string[];
             /** Reader */
@@ -2027,6 +2086,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TemplateUsageOut"][];
+                };
+            };
+        };
+    };
+    report_template_suggestions_report_templates_suggestions_get: {
+        parameters: {
+            query: {
+                /** @description Only templates of this report type are offered */
+                report_type: components["schemas"]["ReportType"];
+                instrument_type?: string;
+                /** @description The model the new template is for */
+                model?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateSuggestionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2584,7 +2679,9 @@ export interface operations {
     };
     get_attachment_file_attachments__attachment_id__file_get: {
         parameters: {
-            query?: never;
+            query?: {
+                inline?: boolean;
+            };
             header?: never;
             path: {
                 attachment_id: string;

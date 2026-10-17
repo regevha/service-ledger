@@ -3,6 +3,7 @@ import {
   ApiError,
   createReportTemplate,
   deleteReportTemplate,
+  getTemplateSuggestions,
   getTemplateUsage,
   listAllReportTemplates,
   listInstrumentTypes,
@@ -18,6 +19,7 @@ import {
 } from '../api';
 import { EnumArrayInput } from './FieldEditor';
 import { REPORT_TYPE_LABEL } from '../labels';
+import type { TemplateRequest } from '../templateRequest';
 
 /**
  * The Templates tab: CRUD for report_templates rows, replacing "edit
@@ -315,9 +317,16 @@ function droppedFieldNames(existing: ReportTemplate | undefined, fields: Templat
   return existing.field_schema.fields.map((f) => f.name).filter((name) => !kept.has(name));
 }
 
+/** One entry of the "Start from" list: an existing template and why it is offered. */
+interface StartOption {
+  template: ReportTemplate;
+  reason: string;
+}
+
 function TemplateFormScreen({
   existing,
   copyOf,
+  request,
   usage,
   knownModels,
   onCancel,
@@ -326,24 +335,100 @@ function TemplateFormScreen({
   existing?: ReportTemplate;
   /** Start a new template from this one's fields (the Duplicate button). */
   copyOf?: ReportTemplate;
+  /** A waiting report asked for this template: prefill it and start from the closest existing one. */
+  request?: TemplateRequest;
   usage?: TemplateUsage;
   knownModels: string[];
   onCancel: () => void;
-  onSaved: () => void;
+  onSaved: (saved?: ReportTemplate) => void;
 }) {
   const seed = existing ?? copyOf;
+  const isCreate = !existing && !copyOf;
   const [types, setTypes] = useState<InstrumentType[]>([]);
-  const [instrumentType, setInstrumentType] = useState(seed?.instrument_type ?? 'facs');
+  const [instrumentType, setInstrumentType] = useState(seed?.instrument_type ?? request?.instrumentType ?? 'facs');
   useEffect(() => {
     listInstrumentTypes()
       .then(setTypes)
       .catch(() => setTypes([]));
   }, []);
-  const [reportType, setReportType] = useState<ReportType>(seed?.report_type ?? 'repair');
+  const [reportType, setReportType] = useState<ReportType>(seed?.report_type ?? request?.reportType ?? 'repair');
   // A copy starts with a blank model: the same report type + model already
   // has a template (the one being copied), and only one is allowed.
-  const [model, setModel] = useState(existing ? (existing.model ?? '') : '');
+  const [model, setModel] = useState(existing ? (existing.model ?? '') : (request?.model ?? ''));
   const [fields, setFields] = useState<TemplateField[]>(() => structuredClone(seed?.field_schema.fields ?? []));
+
+  // "Start from": the closest existing templates for this type and model, best
+  // first. Picking one copies its fields in; nothing is applied until Create.
+  const [startOptions, setStartOptions] = useState<StartOption[]>([]);
+  const [startFrom, setStartFrom] = useState('');
+  // The option that was applied, kept even when a later search for suggestions
+  // (the model or report type changed) no longer lists it, so the select still
+  // shows what the fields came from.
+  const [startPinned, setStartPinned] = useState<StartOption | null>(null);
+  // Remounts the field editor when the fields are replaced wholesale (it keeps
+  // its own per-row identity, which would otherwise point at the old rows).
+  const [fieldsVersion, setFieldsVersion] = useState(0);
+  // True once the person has edited the fields, so replacing them asks first.
+  const [touched, setTouched] = useState(false);
+  const [pendingStart, setPendingStart] = useState<string | null>(null);
+  const autoApplied = useRef(false);
+
+  useEffect(() => {
+    if (!isCreate) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      getTemplateSuggestions({ reportType, instrumentType, model: model.trim() || null })
+        .then(async (list): Promise<StartOption[]> => {
+          if (list.length > 0) return list.map((s) => ({ template: s.template, reason: `${s.reason}, ${s.field_count} fields` }));
+          // Nothing shares the report type: fall back to every template of this
+          // instrument type, labelled as a different report type.
+          const all = await listAllReportTemplates();
+          return all
+            .filter((t) => t.instrument_type === instrumentType)
+            .map((t) => ({
+              template: t,
+              reason: `${REPORT_TYPE_LABEL[t.report_type]} template (different report type), ${t.field_schema.fields.length} fields`,
+            }));
+        })
+        .then((options) => {
+          if (!cancelled) setStartOptions(options);
+        })
+        .catch(() => {
+          if (!cancelled) setStartOptions([]);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isCreate, reportType, instrumentType, model]);
+
+  function applyStart(id: string) {
+    const option = startOptions.find((o) => o.template.id === id);
+    setFields(option ? structuredClone(option.template.field_schema.fields) : []);
+    setFieldsVersion((v) => v + 1);
+    setTouched(false);
+    setPendingStart(null);
+    setStartFrom(id);
+    setStartPinned(option ?? null);
+  }
+
+  function chooseStart(id: string) {
+    if (id === startFrom) return;
+    if (touched && fields.length > 0) {
+      setPendingStart(id);
+      return;
+    }
+    applyStart(id);
+  }
+
+  // Opened for a waiting report: start from the best suggestion without being
+  // asked. The person can pick another one, or Blank, and edit everything.
+  useEffect(() => {
+    if (!request || autoApplied.current || startOptions.length === 0) return;
+    autoApplied.current = true;
+    applyStart(startOptions[0].template.id);
+  }, [request, startOptions]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Set when saving would drop fields that reports already use — the user
@@ -372,15 +457,16 @@ function TemplateFormScreen({
           model: model.trim() ? model.trim() : null,
           fields: payloadFields,
         });
+        onSaved();
       } else {
-        await createReportTemplate({
+        const created = await createReportTemplate({
           instrument_type: instrumentType,
           report_type: reportType,
           model: model.trim() ? model.trim() : null,
           fields: payloadFields,
         });
+        onSaved(created);
       }
-      onSaved();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not save this template.');
     } finally {
@@ -399,6 +485,12 @@ function TemplateFormScreen({
 
       <div className="section-title">{existing ? 'Edit template' : 'New template'}</div>
 
+      {request && (
+        <div className="banner banner-info" id="template-request-notice">
+          A {REPORT_TYPE_LABEL[request.reportType]} report for {request.model} is waiting. Save a template for it and the report is
+          read again with it automatically.
+        </div>
+      )}
       {copyOf && (
         <div className="banner banner-warn" id="copy-notice">
           This is a copy of the {REPORT_TYPE_LABEL[copyOf.report_type]} template for {copyOf.model ?? 'any model'}. Each
@@ -459,10 +551,44 @@ function TemplateFormScreen({
         </label>
       </div>
 
+      {isCreate && (
+        <div className="schema-form-row" id="start-from">
+          <label className="schema-form-label">
+            Start from
+            <select id="template-start-from" value={startFrom} onChange={(e) => chooseStart(e.target.value)}>
+              <option value="">Blank (no starting template)</option>
+              {[...startOptions, ...(startPinned && !startOptions.some((o) => o.template.id === startPinned.template.id) ? [startPinned] : [])].map((o) => (
+                <option key={o.template.id} value={o.template.id}>
+                  {REPORT_TYPE_LABEL[o.template.report_type]} · {o.template.model ?? '(any model)'}: {o.reason}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+      {pendingStart !== null && (
+        <div className="banner banner-warn" role="alertdialog" aria-label="Confirm replacing fields">
+          <div>Starting from another template replaces the fields below, including the changes you made.</div>
+          <button type="button" className="btn small" onClick={() => applyStart(pendingStart)}>
+            Replace fields
+          </button>{' '}
+          <button type="button" className="btn small" onClick={() => setPendingStart(null)}>
+            Keep my fields
+          </button>
+        </div>
+      )}
+
       <div className="section-title" style={{ marginTop: 18 }}>
         Fields
       </div>
-      <FieldSchemaEditor fields={fields} onChange={setFields} />
+      <FieldSchemaEditor
+        key={fieldsVersion}
+        fields={fields}
+        onChange={(next) => {
+          setFields(next);
+          setTouched(true);
+        }}
+      />
 
       {problems.length > 0 && (
         <ul className="banner banner-warn template-problems" id="template-problems">
@@ -506,12 +632,22 @@ type ManagerMode =
   | { kind: 'copy'; template: ReportTemplate }
   | { kind: 'edit'; template: ReportTemplate };
 
-export function TemplateManagerScreen({ knownModels = [] }: { knownModels?: string[] }) {
+export function TemplateManagerScreen({
+  knownModels = [],
+  request = null,
+  onRequestClose,
+}: {
+  knownModels?: string[];
+  /** A waiting report's request: opens straight into a prefilled new-template form. */
+  request?: TemplateRequest | null;
+  /** The request is over: `saved` is the template that was created for it, absent when the form was cancelled. */
+  onRequestClose?: (saved?: ReportTemplate) => void;
+}) {
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [usage, setUsage] = useState<Record<string, TemplateUsage>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<ManagerMode>({ kind: 'list' });
+  const [mode, setMode] = useState<ManagerMode>(() => (request ? { kind: 'create' } : { kind: 'list' }));
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [typeNames, setTypeNames] = useState<Record<string, string>>({});
 
@@ -550,13 +686,24 @@ export function TemplateManagerScreen({ knownModels = [] }: { knownModels?: stri
     }
   }
 
-  const backToList = () => setMode({ kind: 'list' });
-  const savedAndBack = () => {
+  const backToList = () => {
+    setMode({ kind: 'list' });
+    if (request) onRequestClose?.();
+  };
+  const savedAndBack = (saved?: ReportTemplate) => {
     setMode({ kind: 'list' });
     reload();
+    if (request && saved) onRequestClose?.(saved);
   };
   if (mode.kind === 'create') {
-    return <TemplateFormScreen knownModels={knownModels} onCancel={backToList} onSaved={savedAndBack} />;
+    return (
+      <TemplateFormScreen
+        knownModels={knownModels}
+        request={request ?? undefined}
+        onCancel={backToList}
+        onSaved={savedAndBack}
+      />
+    );
   }
   if (mode.kind === 'copy') {
     return <TemplateFormScreen copyOf={mode.template} knownModels={knownModels} onCancel={backToList} onSaved={savedAndBack} />;
