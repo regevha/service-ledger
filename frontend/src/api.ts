@@ -507,7 +507,7 @@ export function getTemplateSuggestions(params: {
 // Two templates of one instrument type with their fields lined up
 // (GET /report-templates/compare). Read-only advice for a person; asking
 // changes nothing. `differences` names what differs on a "differs" row.
-export type CompareStatus = 'same' | 'differs' | 'only_left' | 'only_right';
+export type CompareStatus = 'same' | 'differs' | 'only_left' | 'only_right' | 'possible_match';
 export type CompareAttribute = 'name' | 'type' | 'unit' | 'notes' | 'options' | 'item_schema';
 
 export interface TemplateCompareRow {
@@ -516,6 +516,8 @@ export interface TemplateCompareRow {
   differences: CompareAttribute[];
   left: TemplateField | null;
   right: TemplateField | null;
+  /** On a possible_match row: the alias group that lists the two names as one concept. */
+  concept?: { id: string; label: string | null; names: string[] } | null;
 }
 
 export interface TemplateCompare {
@@ -529,12 +531,47 @@ export interface TemplateCompare {
     differs: number;
     only_left: number;
     only_right: number;
+    possible_match: number;
   };
   rows: TemplateCompareRow[];
 }
 
 export function compareTemplates(leftId: string, rightId: string): Promise<TemplateCompare> {
   return apiFetch(`/report-templates/compare?${new URLSearchParams({ left: leftId, right: rightId })}`);
+}
+
+// ---------- Field aliases ----------
+//
+// Sets of field names that mean the same thing under different wording
+// ("retest_result", "verification_result"), kept by hand and shared by everyone.
+// The template comparison reads them to show a "possible match"; nothing is
+// renamed or merged because of them.
+export interface FieldAliasGroup {
+  id: string;
+  label: string | null;
+  names: string[];
+  created_at: string;
+}
+
+export interface FieldAliasGroupPayload {
+  label: string | null;
+  names: string[];
+}
+
+export function listFieldAliases(): Promise<FieldAliasGroup[]> {
+  return apiFetch('/field-aliases');
+}
+
+export function createFieldAliasGroup(payload: FieldAliasGroupPayload): Promise<FieldAliasGroup> {
+  return apiFetch('/field-aliases', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function replaceFieldAliasGroup(id: string, payload: FieldAliasGroupPayload): Promise<FieldAliasGroup> {
+  return apiFetch(`/field-aliases/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export function deleteFieldAliasGroup(id: string): Promise<void> {
+  return apiFetch(`/field-aliases/${id}`, { method: 'DELETE' });
 }
 
 // ---------- Report template management ----------

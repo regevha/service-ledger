@@ -182,6 +182,7 @@ def test_endpoint_compares_the_generic_and_cytoflex_repair_templates(client):
         "differs": 5,
         "only_left": 0,
         "only_right": 3,
+        "possible_match": 0,
     }
     only_right = [r["name"] for r in body["rows"] if r["status"] == "only_right"]
     assert only_right == ["service_contract_level", "service_contract_number", "customer_signature_present"]

@@ -28,6 +28,7 @@ const STATUS_LABEL: Record<TemplateCompareRow['status'], string> = {
   differs: 'Differs',
   only_left: 'Only on the left',
   only_right: 'Only on the right',
+  possible_match: 'Possible match',
 };
 
 const ATTRIBUTE_LABEL: Record<CompareAttribute, string> = {
@@ -119,12 +120,15 @@ export function TemplateCompareScreen({
   typeNames,
   initialLeft = null,
   onBack,
+  onManageAliases,
 }: {
   templates: ReportTemplate[];
   typeNames: Record<string, string>;
   /** The template the person started from (the row's Compare action), if any. */
   initialLeft?: ReportTemplate | null;
   onBack: () => void;
+  /** Opens the field aliases screen, where possible matches come from. */
+  onManageAliases?: () => void;
 }) {
   const [leftId, setLeftId] = useState(initialLeft?.id ?? '');
   const [rightId, setRightId] = useState('');
@@ -202,6 +206,16 @@ export function TemplateCompareScreen({
       <div className="section-title">Compare templates</div>
       <div className="muted compare-intro">
         See how two templates of the same instrument type differ. This only shows the differences; nothing is changed.
+        {onManageAliases && (
+          <>
+            {' '}
+            Differently named fields that mean the same thing are paired using the{' '}
+            <button type="button" className="link-button" onClick={onManageAliases}>
+              field aliases
+            </button>
+            .
+          </>
+        )}
       </div>
 
       <div className="schema-form-row">
@@ -263,6 +277,12 @@ export function TemplateCompareScreen({
             {result.summary.only_left} only in “{templateLabel(result.left)}”
             {' · '}
             {result.summary.only_right} only in “{templateLabel(result.right)}”
+            {result.summary.possible_match > 0 && (
+              <>
+                {' · '}
+                {result.summary.possible_match} possible match{result.summary.possible_match === 1 ? '' : 'es'}
+              </>
+            )}
           </div>
           <label className="compare-filter">
             <input type="checkbox" checked={onlyDifferences} onChange={(e) => setOnlyDifferences(e.target.checked)} /> Show only the
@@ -289,14 +309,18 @@ export function TemplateCompareScreen({
                         <div className="compare-name">{row.name}</div>
                         <span className={`compare-chip compare-chip-${row.status}`}>
                           {STATUS_LABEL[row.status]}
-                          {row.status === 'differs' && `: ${row.differences.map((d) => ATTRIBUTE_LABEL[d]).join(', ')}`}
+                          {(row.status === 'differs' || row.status === 'possible_match') &&
+                            `: ${row.differences.map((d) => ATTRIBUTE_LABEL[d]).join(', ')}`}
                         </span>
+                        {row.status === 'possible_match' && row.concept && (
+                          <div className="muted compare-concept">Listed as the same thing: {row.concept.label ?? row.concept.names.join(', ')}</div>
+                        )}
                       </th>
                       <td>
-                        <FieldCell field={row.left} other={row.right} differences={row.status === 'differs' ? row.differences : []} />
+                        <FieldCell field={row.left} other={row.right} differences={row.status === 'differs' || row.status === 'possible_match' ? row.differences : []} />
                       </td>
                       <td>
-                        <FieldCell field={row.right} other={row.left} differences={row.status === 'differs' ? row.differences : []} />
+                        <FieldCell field={row.right} other={row.left} differences={row.status === 'differs' || row.status === 'possible_match' ? row.differences : []} />
                       </td>
                     </tr>
                   ))}
