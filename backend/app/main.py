@@ -1,7 +1,9 @@
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app import schemas, seed_instruments, seed_templates
 from app.config import get_settings
@@ -43,13 +45,42 @@ app = FastAPI(
 # HTML file that may be opened from file:// or served from a different port,
 # so it needs a permissive dev CORS policy to reach this API at all. Tighten
 # this to a real allowlist before this system has more than one evaluator (§1).
+CORS_ORIGINS = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+logger = logging.getLogger("app.main")
+
+
+@app.exception_handler(Exception)
+async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
+    """An exception no route handled used to reach the browser as a bare 500
+    with no CORS headers (Starlette's error middleware sits outside the CORS
+    middleware), which the browser reports as a network failure, and the screen
+    said "Could not reach the backend" for what was a server bug. This answers
+    with a JSON message the screen can show, and the CORS header the browser
+    needs to let the page read it. The traceback is still logged by Starlette,
+    which re-raises after this handler."""
+    logger.error("Unhandled error on %s %s", request.method, request.url.path)
+    origin = request.headers.get("origin")
+    headers = {}
+    if "*" in CORS_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = "*"
+    elif origin in CORS_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Vary"] = "Origin"
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong on the server. Nothing was saved; see the server log for the cause."},
+        headers=headers,
+    )
+
 
 app.include_router(instrument_types.router)
 app.include_router(instruments.router)
