@@ -1,3 +1,5 @@
+> **Superseded.** This script describes an earlier build. Use `docs/demo-script.md` (2026-10-19), which covers search, saved filters, sorting, Analytics filters, template suggestion and comparison, field aliases, instrument types and Hebrew translation review.
+
 # ServiceLedger Demo Script
 
 > This is a checked-in copy of the live, editable version at
