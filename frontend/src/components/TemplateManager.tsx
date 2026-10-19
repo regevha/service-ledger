@@ -18,6 +18,7 @@ import {
   type TemplateUsage,
 } from '../api';
 import { EnumArrayInput } from './FieldEditor';
+import { FieldAliasManagerScreen } from './FieldAliasManager';
 import { TemplateCompareScreen } from './TemplateCompare';
 import { REPORT_TYPE_LABEL } from '../labels';
 import type { TemplateRequest } from '../templateRequest';
@@ -631,6 +632,7 @@ type ManagerMode =
   | { kind: 'list' }
   | { kind: 'create' }
   | { kind: 'compare'; left: ReportTemplate | null }
+  | { kind: 'aliases' }
   | { kind: 'copy'; template: ReportTemplate }
   | { kind: 'edit'; template: ReportTemplate };
 
@@ -714,8 +716,12 @@ export function TemplateManagerScreen({
         typeNames={typeNames}
         initialLeft={mode.left}
         onBack={() => setMode({ kind: 'list' })}
+        onManageAliases={() => setMode({ kind: 'aliases' })}
       />
     );
+  }
+  if (mode.kind === 'aliases') {
+    return <FieldAliasManagerScreen onBack={() => setMode({ kind: 'list' })} />;
   }
   if (mode.kind === 'copy') {
     return <TemplateFormScreen copyOf={mode.template} knownModels={knownModels} onCancel={backToList} onSaved={savedAndBack} />;
@@ -746,6 +752,9 @@ export function TemplateManagerScreen({
             onClick={() => setMode({ kind: 'compare', left: null })}
           >
             Compare templates
+          </button>
+          <button type="button" className="btn small" id="field-aliases" onClick={() => setMode({ kind: 'aliases' })}>
+            Field aliases
           </button>
           <button type="button" className="btn small primary" onClick={() => setMode({ kind: 'create' })}>
             + New template
