@@ -1,4 +1,4 @@
-import type { InstrumentStatus, ReportStatus, ReportType } from './api';
+import type { FieldType, InstrumentStatus, ReportStatus, ReportType } from './api';
 
 // Shared between several components/*.tsx screens — pulled out to its own
 // module rather than exported from any one of them so none of them form a
@@ -31,4 +31,18 @@ export const STATUS_LABEL: Record<ReportStatus, string> = {
   extracted: 'Extracted',
   in_review: 'In review',
   finalized: 'Finalized',
+};
+
+// The plain-language name of each template field type, as the template editor's
+// type dropdown words it; the comparison view shows the same words.
+export const FIELD_TYPE_LABEL: Record<FieldType, string> = {
+  text: 'Text (long)',
+  number: 'Number',
+  boolean: 'Yes / No',
+  date: 'Date',
+  enum: 'Choice (one of…)',
+  'enum[]': 'Choices (any of…)',
+  'object[]': 'Table of rows',
+  'number[detector]': 'Per-detector numbers',
+  'number[laser]': 'Per-laser numbers',
 };

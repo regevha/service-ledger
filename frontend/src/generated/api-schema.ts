@@ -225,6 +225,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/report-templates/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Report Templates
+         * @description Two templates of the same instrument type with their fields lined up:
+         *     shared, differing (type, unit, notes, options, table columns, spelling of
+         *     the name) and only on one side. Read-only: it never changes a template, and
+         *     what to do about a difference stays a person's decision. Registered before
+         *     /report-templates/{template_id} so "compare" is never read as a template id.
+         */
+        get: operations["compare_report_templates_report_templates_compare_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/report-templates/{template_id}": {
         parameters: {
             query?: never;
@@ -1432,6 +1456,61 @@ export interface components {
             matched: boolean;
         };
         /**
+         * TemplateCompareOut
+         * @description Two templates of one instrument type, their fields lined up. Read-only
+         *     advice for a person; nothing is changed by asking.
+         */
+        TemplateCompareOut: {
+            left: components["schemas"]["ReportTemplateOut"];
+            right: components["schemas"]["ReportTemplateOut"];
+            summary: components["schemas"]["TemplateCompareSummaryOut"];
+            /** Rows */
+            rows: components["schemas"]["TemplateCompareRowOut"][];
+        };
+        /**
+         * TemplateCompareRowOut
+         * @description One field of a comparison (GET /report-templates/compare). `left` and
+         *     `right` are the field definitions as stored, absent on the side that does
+         *     not have the field. `differences` names what differs for a "differs" row:
+         *     name (spelled differently), type, unit, notes, options, item_schema.
+         */
+        TemplateCompareRowOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "same" | "differs" | "only_left" | "only_right";
+            /** Name */
+            name: string;
+            /** Differences */
+            differences: ("name" | "type" | "unit" | "notes" | "options" | "item_schema")[];
+            /** Left */
+            left: {
+                [key: string]: unknown;
+            } | null;
+            /** Right */
+            right: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** TemplateCompareSummaryOut */
+        TemplateCompareSummaryOut: {
+            /** Left Count */
+            left_count: number;
+            /** Right Count */
+            right_count: number;
+            /** Shared */
+            shared: number;
+            /** Same */
+            same: number;
+            /** Differs */
+            differs: number;
+            /** Only Left */
+            only_left: number;
+            /** Only Right */
+            only_right: number;
+        };
+        /**
          * TemplateConfirmation
          * @description §9: PATCH /reports/{id}/template — confirm or override what classify
          *     guessed. An override re-triggers extraction (§4, §6).
@@ -2113,6 +2192,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TemplateSuggestionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_report_templates_report_templates_compare_get: {
+        parameters: {
+            query: {
+                left: string;
+                right: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateCompareOut"];
                 };
             };
             /** @description Validation Error */
