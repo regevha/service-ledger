@@ -15,6 +15,7 @@ from app.routers import (
     report_templates,
     reports,
     saved_filters,
+    field_aliases,
     translations,
 )
 
@@ -55,6 +56,7 @@ app.include_router(instruments.router)
 app.include_router(report_templates.router)
 app.include_router(reports.router)
 app.include_router(saved_filters.router)
+app.include_router(field_aliases.router)
 app.include_router(attachments.router)
 app.include_router(translations.router)
 app.include_router(analytics.router)

@@ -11,7 +11,8 @@ from app import models, schemas
 from app.db import get_db
 from app.models import ReportType
 from app.services.instrument_types import type_exists
-from app.services.template_compare import DIFFERS, ONLY_LEFT, ONLY_RIGHT, SAME, compare_templates
+from app.services.field_aliases import load_alias_index
+from app.services.template_compare import DIFFERS, ONLY_LEFT, ONLY_RIGHT, POSSIBLE_MATCH, SAME, compare_templates
 from app.services.templates import resolve_template, suggest_templates
 
 router = APIRouter(tags=["report-templates"])
@@ -94,7 +95,8 @@ def report_template_suggestions(
 def compare_report_templates(left: uuid.UUID, right: uuid.UUID, db: Session = Depends(get_db)):
     """Two templates of the same instrument type with their fields lined up:
     shared, differing (type, unit, notes, options, table columns, spelling of
-    the name) and only on one side. Read-only: it never changes a template, and
+    the name), only on one side, and possible matches (differently named fields
+    an alias group lists as the same concept). Read-only: it never changes a template, and
     what to do about a difference stays a person's decision. Registered before
     /report-templates/{template_id} so "compare" is never read as a template id."""
     left_row = db.get(models.ReportTemplate, left)
@@ -105,7 +107,7 @@ def compare_report_templates(left: uuid.UUID, right: uuid.UUID, db: Session = De
         raise HTTPException(
             422, "Only templates of the same instrument type can be compared."
         )
-    result = compare_templates(left_row, right_row)
+    result = compare_templates(left_row, right_row, load_alias_index(db))
     return schemas.TemplateCompareOut(
         left=schemas.ReportTemplateOut.model_validate(left_row),
         right=schemas.ReportTemplateOut.model_validate(right_row),
@@ -117,10 +119,20 @@ def compare_report_templates(left: uuid.UUID, right: uuid.UUID, db: Session = De
             differs=result.count(DIFFERS),
             only_left=result.count(ONLY_LEFT),
             only_right=result.count(ONLY_RIGHT),
+            possible_match=result.count(POSSIBLE_MATCH),
         ),
         rows=[
             schemas.TemplateCompareRowOut(
-                status=r.status, name=r.name, differences=r.differences, left=r.left, right=r.right
+                status=r.status,
+                name=r.name,
+                differences=r.differences,
+                left=r.left,
+                right=r.right,
+                concept=(
+                    schemas.AliasConceptOut(id=r.concept.id, label=r.concept.label, names=list(r.concept.names))
+                    if r.concept
+                    else None
+                ),
             )
             for r in result.rows
         ],

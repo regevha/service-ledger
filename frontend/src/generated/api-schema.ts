@@ -236,7 +236,8 @@ export interface paths {
          * Compare Report Templates
          * @description Two templates of the same instrument type with their fields lined up:
          *     shared, differing (type, unit, notes, options, table columns, spelling of
-         *     the name) and only on one side. Read-only: it never changes a template, and
+         *     the name), only on one side, and possible matches (differently named fields
+         *     an alias group lists as the same concept). Read-only: it never changes a template, and
          *     what to do about a difference stays a person's decision. Registered before
          *     /report-templates/{template_id} so "compare" is never read as a template id.
          */
@@ -515,6 +516,42 @@ export interface paths {
         post?: never;
         /** Delete Saved Filter */
         delete: operations["delete_saved_filter_saved_report_filters__filter_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/field-aliases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Field Aliases */
+        get: operations["list_field_aliases_field_aliases_get"];
+        put?: never;
+        /** Create Field Alias Group */
+        post: operations["create_field_alias_group_field_aliases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/field-aliases/{group_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace Field Alias Group */
+        put: operations["replace_field_alias_group_field_aliases__group_id__put"];
+        post?: never;
+        /** Delete Field Alias Group */
+        delete: operations["delete_field_alias_group_field_aliases__group_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -860,6 +897,21 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AliasConceptOut
+         * @description The alias group behind a "possible match" row of a comparison.
+         */
+        AliasConceptOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Label */
+            label: string | null;
+            /** Names */
+            names: string[];
+        };
+        /**
          * AppConfigOut
          * @description GET /config (§4/§12): the confidence thresholds the frontend used to
          *     hardcode as its own literal copies of app/config.py's settings. Those two
@@ -1002,6 +1054,35 @@ export interface components {
          * @enum {string}
          */
         ExtractionJobStatus: "pending" | "classifying" | "extracting" | "translating" | "succeeded" | "failed";
+        /**
+         * FieldAliasGroupIn
+         * @description A set of at least two field names that mean the same thing. Names are
+         *     trimmed; two names that match once case, spaces, underscores and hyphens are
+         *     ignored count as one and are rejected.
+         */
+        FieldAliasGroupIn: {
+            /** Label */
+            label?: string | null;
+            /** Names */
+            names: string[];
+        };
+        /** FieldAliasGroupOut */
+        FieldAliasGroupOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Label */
+            label: string | null;
+            /** Names */
+            names: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /**
          * FleetAnalyticsOut
          * @description GET /analytics/fleet (new): fleet-wide roll-ups computed entirely from
@@ -1471,15 +1552,17 @@ export interface components {
          * TemplateCompareRowOut
          * @description One field of a comparison (GET /report-templates/compare). `left` and
          *     `right` are the field definitions as stored, absent on the side that does
-         *     not have the field. `differences` names what differs for a "differs" row:
-         *     name (spelled differently), type, unit, notes, options, item_schema.
+         *     not have the field. `differences` names what differs for a "differs" or
+         *     "possible_match" row: name (spelled differently), type, unit, notes,
+         *     options, item_schema. A "possible_match" row pairs two differently named
+         *     fields that an alias group lists as the same concept.
          */
         TemplateCompareRowOut: {
             /**
              * Status
              * @enum {string}
              */
-            status: "same" | "differs" | "only_left" | "only_right";
+            status: "same" | "differs" | "only_left" | "only_right" | "possible_match";
             /** Name */
             name: string;
             /** Differences */
@@ -1492,6 +1575,7 @@ export interface components {
             right: {
                 [key: string]: unknown;
             } | null;
+            concept?: components["schemas"]["AliasConceptOut"] | null;
         };
         /** TemplateCompareSummaryOut */
         TemplateCompareSummaryOut: {
@@ -1509,6 +1593,11 @@ export interface components {
             only_left: number;
             /** Only Right */
             only_right: number;
+            /**
+             * Possible Match
+             * @default 0
+             */
+            possible_match: number;
         };
         /**
          * TemplateConfirmation
@@ -2723,6 +2812,123 @@ export interface operations {
             header?: never;
             path: {
                 filter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_field_aliases_field_aliases_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldAliasGroupOut"][];
+                };
+            };
+        };
+    };
+    create_field_alias_group_field_aliases_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FieldAliasGroupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldAliasGroupOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_field_alias_group_field_aliases__group_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FieldAliasGroupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldAliasGroupOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_field_alias_group_field_aliases__group_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
             };
             cookie?: never;
         };
