@@ -11,6 +11,7 @@ from app import models, schemas
 from app.db import get_db
 from app.models import ReportType
 from app.services.instrument_types import type_exists
+from app.services.template_compare import DIFFERS, ONLY_LEFT, ONLY_RIGHT, SAME, compare_templates
 from app.services.templates import resolve_template, suggest_templates
 
 router = APIRouter(tags=["report-templates"])
@@ -87,6 +88,43 @@ def report_template_suggestions(
             db, instrument_type=instrument_type, report_type=report_type.value, model=model, limit=limit
         )
     ]
+
+
+@router.get("/report-templates/compare", response_model=schemas.TemplateCompareOut)
+def compare_report_templates(left: uuid.UUID, right: uuid.UUID, db: Session = Depends(get_db)):
+    """Two templates of the same instrument type with their fields lined up:
+    shared, differing (type, unit, notes, options, table columns, spelling of
+    the name) and only on one side. Read-only: it never changes a template, and
+    what to do about a difference stays a person's decision. Registered before
+    /report-templates/{template_id} so "compare" is never read as a template id."""
+    left_row = db.get(models.ReportTemplate, left)
+    right_row = db.get(models.ReportTemplate, right)
+    if left_row is None or right_row is None:
+        raise HTTPException(404, "Template not found")
+    if left_row.instrument_type != right_row.instrument_type:
+        raise HTTPException(
+            422, "Only templates of the same instrument type can be compared."
+        )
+    result = compare_templates(left_row, right_row)
+    return schemas.TemplateCompareOut(
+        left=schemas.ReportTemplateOut.model_validate(left_row),
+        right=schemas.ReportTemplateOut.model_validate(right_row),
+        summary=schemas.TemplateCompareSummaryOut(
+            left_count=result.left_count,
+            right_count=result.right_count,
+            shared=result.count(SAME) + result.count(DIFFERS),
+            same=result.count(SAME),
+            differs=result.count(DIFFERS),
+            only_left=result.count(ONLY_LEFT),
+            only_right=result.count(ONLY_RIGHT),
+        ),
+        rows=[
+            schemas.TemplateCompareRowOut(
+                status=r.status, name=r.name, differences=r.differences, left=r.left, right=r.right
+            )
+            for r in result.rows
+        ],
+    )
 
 
 @router.get("/report-templates/{template_id}", response_model=schemas.ReportTemplateOut)

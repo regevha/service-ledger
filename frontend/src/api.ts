@@ -504,6 +504,39 @@ export function getTemplateSuggestions(params: {
   return apiFetch(`/report-templates/suggestions?${query}`);
 }
 
+// Two templates of one instrument type with their fields lined up
+// (GET /report-templates/compare). Read-only advice for a person; asking
+// changes nothing. `differences` names what differs on a "differs" row.
+export type CompareStatus = 'same' | 'differs' | 'only_left' | 'only_right';
+export type CompareAttribute = 'name' | 'type' | 'unit' | 'notes' | 'options' | 'item_schema';
+
+export interface TemplateCompareRow {
+  status: CompareStatus;
+  name: string;
+  differences: CompareAttribute[];
+  left: TemplateField | null;
+  right: TemplateField | null;
+}
+
+export interface TemplateCompare {
+  left: ReportTemplate;
+  right: ReportTemplate;
+  summary: {
+    left_count: number;
+    right_count: number;
+    shared: number;
+    same: number;
+    differs: number;
+    only_left: number;
+    only_right: number;
+  };
+  rows: TemplateCompareRow[];
+}
+
+export function compareTemplates(leftId: string, rightId: string): Promise<TemplateCompare> {
+  return apiFetch(`/report-templates/compare?${new URLSearchParams({ left: leftId, right: rightId })}`);
+}
+
 // ---------- Report template management ----------
 //
 // Structured-editor CRUD (the Templates tab) — mirrors backend/app/schemas.py's
