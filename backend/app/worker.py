@@ -36,6 +36,7 @@ from app.services.classification import classify as run_classify
 from app.services.duplicates import normalize_work_order
 from app.services.errors import ClassificationError, ExtractionError, TranslationError
 from app.services.extraction import extract as run_extract
+from app.services.serial_check import correct_serial_typos
 from app.services.text_reader import extract_text
 from app.services.translation import identifier_check, translate as run_translate
 
@@ -279,6 +280,12 @@ def _run_extract_job(db: Session, job: models.ExtractionJob) -> None:
         )
         return
 
+    instrument = db.get(models.Instrument, report.instrument_id)
+    if instrument is not None:
+        for fix in correct_serial_typos(result.extracted_fields, instrument.serial_number):
+            logger.warning(
+                "Extraction job %s: replaced %r in field %r with the instrument's serial", job.id, fix.found, fix.field
+            )
     report.extracted_fields = result.extracted_fields
     if result.report_date is not None:
         # Only overwrite with a date actually read off the document — when
