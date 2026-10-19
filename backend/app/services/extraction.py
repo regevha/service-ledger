@@ -76,6 +76,12 @@ Recurring". Likewise a quote reading "Air bubble in bleach line. By Shachar on \
 18/04/2021" contains a technician sign-off — extract only "Air bubble in bleach \
 line".
 
+Serial numbers: the Subject and Description lines are typed by hand and can carry a \
+serial with a typo (for example "S/N R6651580000057" on a form whose Installed Product \
+box shows MP6651580000057). The instrument's serial is stored separately, so do not copy \
+a serial number or an "S/N ..." phrase from those lines into a field's value; describe \
+what was done without it.
+
 Separately from the template's fields, also give `report_date`: the date this \
 service visit was carried out, as YYYY-MM-DD. This is the one date the record \
 itself needs — the privacy rule above is about keeping dates out of *field \
