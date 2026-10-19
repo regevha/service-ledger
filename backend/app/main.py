@@ -77,7 +77,7 @@ async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
         headers["Vary"] = "Origin"
     return JSONResponse(
         status_code=500,
-        content={"detail": "Something went wrong on the server. Nothing was saved; see the server log for the cause."},
+        content={"detail": "Something went wrong on the server. See the server log for the cause."},
         headers=headers,
     )
 
