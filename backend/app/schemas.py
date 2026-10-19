@@ -191,6 +191,39 @@ class ReportTemplateOut(BaseModel):
 # ---------- Report template management ----------
 
 
+class TemplateCompareRowOut(BaseModel):
+    """One field of a comparison (GET /report-templates/compare). `left` and
+    `right` are the field definitions as stored, absent on the side that does
+    not have the field. `differences` names what differs for a "differs" row:
+    name (spelled differently), type, unit, notes, options, item_schema."""
+
+    status: Literal["same", "differs", "only_left", "only_right"]
+    name: str
+    differences: list[Literal["name", "type", "unit", "notes", "options", "item_schema"]]
+    left: dict | None
+    right: dict | None
+
+
+class TemplateCompareSummaryOut(BaseModel):
+    left_count: int
+    right_count: int
+    shared: int
+    same: int
+    differs: int
+    only_left: int
+    only_right: int
+
+
+class TemplateCompareOut(BaseModel):
+    """Two templates of one instrument type, their fields lined up. Read-only
+    advice for a person; nothing is changed by asking."""
+
+    left: ReportTemplateOut
+    right: ReportTemplateOut
+    summary: TemplateCompareSummaryOut
+    rows: list[TemplateCompareRowOut]
+
+
 class TemplateSuggestionOut(BaseModel):
     """One existing template offered as the starting point for a new one
     (GET /report-templates/suggestions). Advice only; nothing is applied."""
