@@ -916,6 +916,68 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* ---------- Field aliases ---------- */
+
+.alias-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.alias-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  background: var(--surface);
+}
+.alias-group + .alias-group {
+  border-top: 1px solid var(--border);
+}
+.alias-group-label {
+  font-weight: 600;
+  font-size: 0.86rem;
+  margin-bottom: 6px;
+}
+.alias-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.alias-chip {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.alias-names {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+.alias-name-row {
+  grid-template-columns: 1fr auto;
+}
+.alias-hint {
+  margin: 10px 0;
+  font-size: 0.8rem;
+}
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* ---------- Template comparison ---------- */
 
 .compare-intro {
@@ -980,6 +1042,15 @@ textarea {
 .compare-chip-differs {
   background: var(--warn-soft);
   color: var(--warn);
+}
+.compare-chip-possible_match {
+  background: var(--surface);
+  color: var(--accent-strong);
+  border: 1px dashed var(--accent);
+}
+.compare-concept {
+  margin-top: 4px;
+  font-size: 0.74rem;
 }
 .compare-chip-only_left,
 .compare-chip-only_right {

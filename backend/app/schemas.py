@@ -191,17 +191,87 @@ class ReportTemplateOut(BaseModel):
 # ---------- Report template management ----------
 
 
+# ---------- Field aliases ----------
+
+_ALIAS_NAME_MAX = 100
+_ALIAS_NAMES_MAX = 20
+
+
+class FieldAliasGroupIn(BaseModel):
+    """A set of at least two field names that mean the same thing. Names are
+    trimmed; two names that match once case, spaces, underscores and hyphens are
+    ignored count as one and are rejected."""
+
+    label: str | None = None
+    names: list[str]
+
+    @field_validator("label")
+    @classmethod
+    def _label(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if len(v) > _ALIAS_NAME_MAX:
+            raise ValueError(f"The label can be at most {_ALIAS_NAME_MAX} characters")
+        return v or None
+
+    @field_validator("names")
+    @classmethod
+    def _names(cls, v: list[str]) -> list[str]:
+        from app.services.template_compare import normalize_name
+
+        cleaned = [n.strip() for n in v]
+        if any(not n for n in cleaned):
+            raise ValueError("A name cannot be blank")
+        if any(len(n) > _ALIAS_NAME_MAX for n in cleaned):
+            raise ValueError(f"A name can be at most {_ALIAS_NAME_MAX} characters")
+        if any(not normalize_name(n) for n in cleaned):
+            raise ValueError("A name needs at least one letter or digit")
+        if len(cleaned) < 2:
+            raise ValueError("A group needs at least two names")
+        if len(cleaned) > _ALIAS_NAMES_MAX:
+            raise ValueError(f"A group can have at most {_ALIAS_NAMES_MAX} names")
+        seen: dict[str, str] = {}
+        for n in cleaned:
+            key = normalize_name(n)
+            if key in seen:
+                raise ValueError(f"'{seen[key]}' and '{n}' are the same name once case, spaces and underscores are ignored")
+            seen[key] = n
+        return cleaned
+
+
+class FieldAliasGroupOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    label: str | None
+    names: list[str]
+    created_at: datetime
+
+
+class AliasConceptOut(BaseModel):
+    """The alias group behind a "possible match" row of a comparison."""
+
+    id: uuid.UUID
+    label: str | None
+    names: list[str]
+
+
 class TemplateCompareRowOut(BaseModel):
     """One field of a comparison (GET /report-templates/compare). `left` and
     `right` are the field definitions as stored, absent on the side that does
-    not have the field. `differences` names what differs for a "differs" row:
-    name (spelled differently), type, unit, notes, options, item_schema."""
+    not have the field. `differences` names what differs for a "differs" or
+    "possible_match" row: name (spelled differently), type, unit, notes,
+    options, item_schema. A "possible_match" row pairs two differently named
+    fields that an alias group lists as the same concept."""
 
-    status: Literal["same", "differs", "only_left", "only_right"]
+    status: Literal["same", "differs", "only_left", "only_right", "possible_match"]
     name: str
     differences: list[Literal["name", "type", "unit", "notes", "options", "item_schema"]]
     left: dict | None
     right: dict | None
+    # Set on a "possible_match" row: the alias group that links the two names.
+    concept: AliasConceptOut | None = None
 
 
 class TemplateCompareSummaryOut(BaseModel):
@@ -212,6 +282,7 @@ class TemplateCompareSummaryOut(BaseModel):
     differs: int
     only_left: int
     only_right: int
+    possible_match: int = 0
 
 
 class TemplateCompareOut(BaseModel):
