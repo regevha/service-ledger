@@ -18,6 +18,7 @@ import {
   type TemplateUsage,
 } from '../api';
 import { EnumArrayInput } from './FieldEditor';
+import { TemplateCompareScreen } from './TemplateCompare';
 import { REPORT_TYPE_LABEL } from '../labels';
 import type { TemplateRequest } from '../templateRequest';
 
@@ -629,6 +630,7 @@ function TemplateFormScreen({
 type ManagerMode =
   | { kind: 'list' }
   | { kind: 'create' }
+  | { kind: 'compare'; left: ReportTemplate | null }
   | { kind: 'copy'; template: ReportTemplate }
   | { kind: 'edit'; template: ReportTemplate };
 
@@ -705,6 +707,16 @@ export function TemplateManagerScreen({
       />
     );
   }
+  if (mode.kind === 'compare') {
+    return (
+      <TemplateCompareScreen
+        templates={templates}
+        typeNames={typeNames}
+        initialLeft={mode.left}
+        onBack={() => setMode({ kind: 'list' })}
+      />
+    );
+  }
   if (mode.kind === 'copy') {
     return <TemplateFormScreen copyOf={mode.template} knownModels={knownModels} onCancel={backToList} onSaved={savedAndBack} />;
   }
@@ -724,9 +736,21 @@ export function TemplateManagerScreen({
     <div className="section">
       <div className="section-title-row">
         <div className="section-title">Report templates</div>
-        <button type="button" className="btn small primary" onClick={() => setMode({ kind: 'create' })}>
-          + New template
-        </button>
+        <div className="section-title-actions">
+          <button
+            type="button"
+            className="btn small"
+            id="compare-templates"
+            disabled={templates.length < 2}
+            title={templates.length < 2 ? 'There need to be two templates to compare.' : undefined}
+            onClick={() => setMode({ kind: 'compare', left: null })}
+          >
+            Compare templates
+          </button>
+          <button type="button" className="btn small primary" onClick={() => setMode({ kind: 'create' })}>
+            + New template
+          </button>
+        </div>
       </div>
 
       {error && <div className="banner banner-warn">{error}</div>}
@@ -764,6 +788,9 @@ export function TemplateManagerScreen({
                 </button>
                 <button type="button" className="btn small" onClick={() => setMode({ kind: 'copy', template: tpl })}>
                   Duplicate
+                </button>
+                <button type="button" className="btn small" onClick={() => setMode({ kind: 'compare', left: tpl })}>
+                  Compare
                 </button>
                 {confirmDeleteId === tpl.id ? (
                   <>
