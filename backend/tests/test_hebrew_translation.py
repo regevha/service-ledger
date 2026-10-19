@@ -690,3 +690,42 @@ def test_stub_other_maker_serial_can_come_from_the_file_name(client, run_worker)
     result = client.get(f"/extraction-jobs/{job['id']}").json()["classification"]
     assert result["instrument_serial"]["value"] == "AB12CD"
     assert result["maker_in_fleet"] is False
+
+
+def test_barcode_text_with_an_extra_leading_letter_is_not_reported_missing():
+    # Live run of 2026-10-17: the Rhenium form prints its report number
+    # SC26R006240 under the barcode as *QSC26R006240*, and the model listed
+    # the barcode text as an identifier.
+    english = "Report number SC26R006240, device BE50173"
+    check = identifier_check(["SC26R006240", "QSC26R006240", "BE50173"], english)
+    assert check == {"checked": 3, "missing": []}
+
+
+def test_barcode_echo_also_works_for_a_visual_order_remainder():
+    check = identifier_check(["Q006240R26SC"], "Report number SC26R006240")
+    assert check["missing"] == []
+
+
+@pytest.mark.parametrize(
+    "listed",
+    [
+        "QSC26R006241",  # different digits
+        "QQSC26R006240",  # two extra letters
+        "7SC26R006240",  # a digit, not a letter, in front
+        "SC26R006240X",  # trailing, not leading
+    ],
+)
+def test_other_variants_of_a_translated_identifier_are_still_reported_missing(listed):
+    check = identifier_check([listed], "Report number SC26R006240")
+    assert check["missing"] == [listed]
+
+
+def test_a_short_remainder_is_never_excused_as_a_barcode_echo():
+    check = identifier_check(["XY1033"], "Serial Y1033")
+    assert check["missing"] == ["XY1033"]
+
+
+def test_the_translation_prompt_says_to_list_a_barcode_identifier_once():
+    from app.services.translation import _PROMPT
+
+    assert "list the identifier once" in _PROMPT
