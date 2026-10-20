@@ -5,10 +5,11 @@
 #   Azure Files share for attachments, a container registry, a Container Apps
 #   environment, a one-off migration job, the API app and the worker app.
 #
-# This script only builds the infrastructure. It does NOT contain the Docker
-# image, the frontend build or the shared-password gate: those are separate
-# pieces of work. Until they exist, ingress defaults to INTERNAL (unreachable
-# from the internet), so nothing is exposed by accident.
+# The image (backend/Dockerfile) carries the API, the worker code and the built
+# frontend. The API asks for one shared password (HTTP Basic, SHARED_PASSWORD);
+# the script generates one if you do not provide it, and prints it once at the
+# end. Ingress defaults to INTERNAL (unreachable from the internet) until you
+# choose INGRESS=external.
 #
 # Usage:   ./deploy.sh <name>        e.g.  ./deploy.sh sl-test
 # Needs:   Azure CLI logged in (az login), the containerapp extension,
@@ -16,10 +17,11 @@
 # Optional environment variables (never put keys in files):
 #   LOCATION=westeurope            Azure region (decide with the project owner)
 #   ANTHROPIC_API_KEY=...          turns on live Claude (USE_LIVE_CLAUDE=true)
-#   INGRESS=external               public URL; only once the password gate exists
+#   SHARED_PASSWORD=...            at least 12 characters (generated if absent)
+#   INGRESS=external               public URL, protected by the shared password
 #   IMAGE_TAG=latest
-#   BUILD_IMAGE=1                  build the image in the registry from
-#                                  backend/Dockerfile (needs that file to exist)
+#   BUILD_IMAGE=1                  build the frontend (npm) and then the image in
+#                                  the registry from backend/Dockerfile
 set -euo pipefail
 
 NAME="${1:?usage: deploy.sh <name>   (lowercase letters, digits, hyphens; 3-14 chars)}"
@@ -41,10 +43,13 @@ ENV_NAME="cae-$NAME"
 LAW="log-$NAME"
 
 if [[ "$INGRESS" == "external" ]]; then
-  echo "WARNING: INGRESS=external makes the app reachable by anyone with the URL, and the app has no sign-in."
-  echo "         Only continue once the shared-password gate is in place."
+  echo "INGRESS=external makes the app reachable from the internet. It is protected only by one shared password"
+  echo "(no accounts, everyone who knows it can change everything)."
   read -r -p "Type 'open' to continue: " ans; [[ "$ans" == "open" ]] || exit 1
 fi
+GENERATED_PASSWORD=0
+if [[ -z "${SHARED_PASSWORD:-}" ]]; then SHARED_PASSWORD="$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)"; GENERATED_PASSWORD=1; fi
+[[ ${#SHARED_PASSWORD} -ge 12 ]] || { echo "SHARED_PASSWORD must be at least 12 characters" >&2; exit 1; }
 
 az extension add --name containerapp --upgrade -y >/dev/null
 az provider register --namespace Microsoft.App --wait >/dev/null
@@ -85,9 +90,11 @@ ACR_USER="$(az acr credential show -n "$ACR" --query username -o tsv)"
 ACR_PASS="$(az acr credential show -n "$ACR" --query 'passwords[0].value' -o tsv)"
 IMAGE="$ACR_SERVER/service-ledger:$IMAGE_TAG"
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
-  [[ -f backend/Dockerfile ]] || { echo "backend/Dockerfile does not exist yet" >&2; exit 1; }
+  [[ -f backend/Dockerfile ]] || { echo "run this from the repository root" >&2; exit 1; }
+  echo "== Building the frontend (same-origin: VITE_API_BASE_URL empty)"
+  (cd frontend && npm ci && VITE_API_BASE_URL= npm run build)
   echo "== Building the image in the registry"
-  az acr build -r "$ACR" -t "service-ledger:$IMAGE_TAG" -f backend/Dockerfile backend
+  az acr build -r "$ACR" -t "service-ledger:$IMAGE_TAG" -f backend/Dockerfile .
 else
   echo "   (BUILD_IMAGE not set: push '$IMAGE' yourself before the apps below can start)"
 fi
@@ -97,7 +104,7 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT; chmod 700 "$TMP"
 
 # One YAML per app: volumes can only be mounted through YAML, and the secret
 # values live in a temp file that is deleted when the script ends.
-write_app_yaml() {  # $1 file  $2 app name  $3 command-json  $4 ingress-yaml
+write_app_yaml() {  # $1 file  $2 app name  $3 command-json  $4 ingress-yaml  $5 extra env lines (yaml, may be empty)
 cat > "$1" <<YAML
 location: $LOCATION
 properties:
@@ -115,6 +122,8 @@ properties:
         value: "$DATABASE_URL"
       - name: anthropic-key
         value: "${ANTHROPIC_API_KEY:-unset}"
+      - name: shared-password
+        value: "$SHARED_PASSWORD"
   template:
     containers:
       - name: $2
@@ -126,6 +135,7 @@ properties:
           - { name: ANTHROPIC_API_KEY, secretRef: anthropic-key }
           - { name: USE_LIVE_CLAUDE, value: "$LIVE" }
           - { name: ATTACHMENT_STORAGE_DIR, value: /data/attachments }
+$5
         volumeMounts:
           - { volumeName: attachments, mountPath: /data }
     volumes:
@@ -146,8 +156,8 @@ echo "   (the job is created; start it with: az containerapp job start -g $RG -n
 
 echo "== API app (ingress: $INGRESS) and worker app"
 if [[ "$INGRESS" == "external" ]]; then INGRESS_YAML="ingress: { external: true, targetPort: 8000 }"; else INGRESS_YAML="ingress: { external: false, targetPort: 8000 }"; fi
-write_app_yaml "$TMP/api.yaml" "api" '["uvicorn","app.main:app","--host","0.0.0.0","--port","8000"]' "$INGRESS_YAML"
-write_app_yaml "$TMP/worker.yaml" "worker" '["python","-m","app.worker"]' "activeRevisionsMode: Single"
+write_app_yaml "$TMP/api.yaml" "api" '["python","-m","uvicorn","app.main:app","--host","0.0.0.0","--port","8000"]' "$INGRESS_YAML" "          - { name: SHARED_PASSWORD, secretRef: shared-password }"
+write_app_yaml "$TMP/worker.yaml" "worker" '["python","-m","app.worker"]' "activeRevisionsMode: Single" ""
 az containerapp create -g "$RG" -n "api-$NAME" --yaml "$TMP/api.yaml" -o none
 az containerapp create -g "$RG" -n "worker-$NAME" --yaml "$TMP/worker.yaml" -o none
 
@@ -164,3 +174,9 @@ Next:
   3. Check the API log:           az containerapp logs show -g $RG -n api-$NAME --follow
   4. Stop paying when finished:   ./deploy/azure/destroy.sh $NAME
 DONE
+if [[ "$INGRESS" == "external" ]]; then
+  echo "Address:  https://$(az containerapp show -g "$RG" -n "api-$NAME" --query properties.configuration.ingress.fqdn -o tsv)"
+fi
+if [[ "$GENERATED_PASSWORD" == "1" ]]; then
+  echo "Shared password (shown once, also stored as the 'shared-password' secret of api-$NAME): $SHARED_PASSWORD"
+fi
