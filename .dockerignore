@@ -1,0 +1,17 @@
+# Build context is the repository root:  docker build -f backend/Dockerfile .
+# (the built frontend, frontend/dist, is copied in; run `npm run build` first)
+.git
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.pytest_cache
+**/.coverage
+backend/.env
+backend/storage
+backend/tests
+backend/scripts
+docs
+deploy
+frontend/*
+!frontend/dist
