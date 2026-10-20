@@ -13,11 +13,15 @@ Everything runs on the deterministic stub reader (no API key, same result every 
 - **Worker, second terminal:** `python -m app.worker`. Without it, uploads sit at "pending" forever.
 - **Frontend:** from `frontend/`, `npm run dev` (port 5173); have `http://localhost:5173` open.
 - **Seed data:** `python -m app.seed_demo_reports` (three finalized reports, so the Reports tab is not empty) and `python -m app.seed_trend_demo` (five Aria calibration reports for the trend chart).
-- **Files to upload** (in `frontend/tests/e2e/fixtures/`): `confident-scan.pdf` and `sample-work-order.pdf`. Make three copies by renaming:
-  - `scan_R647794E6093.pdf` (Part 3: the serial in the name is what the stub "reads")
-  - `hebrew-visit.pdf` (Part 7: a name containing "hebrew" gets the translation fixture)
-  - `othermaker-ZZ1234.pdf` (Part 7: a name containing "othermaker-" is read as another company's instrument that is not in the fleet)
-  - plus any text file as `notes.txt` (Part 3)
+- **Files to upload** (in `frontend/tests/e2e/fixtures/`): `confident-scan.pdf` and `sample-work-order.pdf`. **Renaming is not enough.** The app refuses a file whose bytes it has already read (409, "This exact file is already on file"), so every copy needs one different byte at the end. From the fixtures folder:
+  ```
+  cp sample-work-order.pdf sample-work-order-2.pdf   && printf '\n%%2\n' >> sample-work-order-2.pdf
+  cp confident-scan.pdf scan_R647794E6093.pdf        && printf '\n%%3\n' >> scan_R647794E6093.pdf
+  cp confident-scan.pdf hebrew-visit.pdf             && printf '\n%%4\n' >> hebrew-visit.pdf
+  cp confident-scan.pdf othermaker-ZZ1234.pdf        && printf '\n%%5\n' >> othermaker-ZZ1234.pdf
+  echo "just notes" > notes.txt
+  ```
+  The names matter, because the stub reads them: the serial in `scan_R647794E6093.pdf` (Part 3), "hebrew" in `hebrew-visit.pdf` gets the translation fixture, and "othermaker-" in `othermaker-ZZ1234.pdf` is read as another company's instrument that is not in the fleet (Part 7).
 - **Reset between runs.** The instruments and templates you add stay in the database, and a second unit of a model changes how later uploads behave.
 
 The seeded fleet has five instruments: FACSAria III, LSRFortessa, FACSDiscover S8, Cytek Aurora and CytoFLEX S.
@@ -51,7 +55,7 @@ A real ambiguity, handled honestly instead of guessed past.
 
 1. Upload `notes.txt`. A red banner says "Unsupported file type. Upload a PDF or a PNG, JPEG, GIF or WebP image." The type comes from the file's first bytes, not its name. Limits are 20 MB for a PDF and 5 MB for an image. Click **Try again**.
 2. **Instruments** → **+ New instrument**: name "LSRFortessa Annex", model LSRFortessa, serial `R647794E6093`, manufacturer BD → **Create instrument**. There are now two LSRFortessas.
-3. Upload `sample-work-order.pdf` again. The instrument row says **Select instrument…** and **Confirm & continue** stays disabled until you choose. *Say:* "The model alone no longer says which machine, so it will not guess."
+3. Upload `sample-work-order.pdf` again: it is refused, "This exact file is already on file and has been read" (a good moment to say the app never reads the same bytes twice). Now upload `sample-work-order-2.pdf`, the same form with one byte changed. The instrument row says **Select instrument…** and **Confirm & continue** stays disabled until you choose. *Say:* "The model alone no longer says which machine, so it will not guess."
 4. Start another report and upload `scan_R647794E6093.pdf`. It goes straight to review with a blue banner: "Matched to LSRFortessa (R647794E6093) by the serial number on the document."
 5. Finalize it. You will find it under the Annex unit in Part 4.
 
@@ -59,7 +63,7 @@ A real ambiguity, handled honestly instead of guessed past.
 
 ## Part 4: Finding reports (4 min)
 
-1. **Reports** tab. Click column headers to sort (date, instrument, type, status); a second click reverses, a third clears. Open a report and come back: the sort stays.
+1. **Reports** tab. Click column headers to sort (instrument, type, lab manager, report date, status); a second click reverses, a third clears. Open a report and come back: the sort stays.
 2. Filters: instrument, report type, status, from/to dates, lab manager. They all narrow together. Pick the Annex instrument to show the report from Part 3.
 3. **Search report text**: type a word from a finalized report (for example "valve" or a part name). Results come best match first, with an excerpt, and the matched words are highlighted when you open the report. Say that search covers **finalized reports only**: choosing another status with a search shows a message, not a silent empty list.
 4. **Save this filter**: set a combination (or just a search word), click **Save this filter**, give it a name. The picker shows "1 of 5". Clear the filters, pick the saved one, and everything comes back. Mention the limit of five and that a filter whose instrument was deleted is marked as stale.
@@ -85,7 +89,7 @@ A real ambiguity, handled honestly instead of guessed past.
 
 ## Part 7: Foreign forms and Hebrew documents (4 min)
 
-1. **Another company's form.** Upload `othermaker-ZZ1234.pdf`. The confirm screen says "<maker> <model> (not in your fleet)" and offers a pre-filled add-instrument panel. Give it a name and type, add it, and the document is classified again and matched by serial.
+1. **Another company's form.** Upload `othermaker-ZZ1234.pdf`. The confirm screen says "<maker> <model> (not in your fleet)" and offers a pre-filled add-instrument panel. Check the name and the **Kind of instrument** (it can default to the wrong kind: set it to Flow cytometer), click **Add instrument & classify again**, and the document is classified again and matched by serial.
 2. **No template for the model.** If the new instrument's report type has only the generic template, the review screen shows a notice (*Create a <model> template* / *Not now*). The button opens the Templates tab with **Start from** set to the closest template. Save it and you return to the waiting report, which is read again with the new template. *Say:* "It suggests the closest existing template; a person still decides."
 3. **Hebrew.** Upload `hebrew-visit.pdf`. The review screen shows the original beside an editable English translation. Point out:
    - the **ignored pages** (the daily QC printouts, here pages 2 and 3), with **Include page 2** if wanted;
