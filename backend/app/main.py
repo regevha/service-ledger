@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 from app import schemas, seed_instruments, seed_templates
 from app.config import get_settings
 from app.db import SessionLocal
+from app.frontend_static import mount_frontend
+from app.shared_password import SharedPasswordMiddleware
 from app.services.instrument_types import ensure_default_types
 from app.routers import (
     analytics,
@@ -54,6 +56,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Added after CORS, so it is the outermost layer: nothing, not even a preflight
+# or an error page, is answered before the password check (except /health).
+app.add_middleware(SharedPasswordMiddleware)
 
 logger = logging.getLogger("app.main")
 
@@ -110,3 +116,8 @@ def get_app_config():
         classification_confidence_threshold=settings.classification_confidence_threshold,
         live_claude=settings.use_live_claude,
     )
+
+
+# Last, so the API routes above take precedence over files of the same name.
+if get_settings().frontend_dist_dir:
+    mount_frontend(app, get_settings().frontend_dist_dir)

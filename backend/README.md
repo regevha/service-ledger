@@ -20,16 +20,22 @@ SL-TDD-001 is the fuller reference if you're changing it.
 
 ## Docker image
 
-`backend/Dockerfile` builds one image for all three jobs (build from the repository root or from `backend/`):
+`backend/Dockerfile` builds one image for all the jobs. The build context is the **repository root**, and the frontend is built first so the image can carry it:
 
 ```
-docker build -t service-ledger backend
+(cd frontend && npm ci && VITE_API_BASE_URL= npm run build)     # empty value = same address as the API
+docker build -f backend/Dockerfile -t service-ledger .
 docker run --rm -e DATABASE_URL=... service-ledger alembic upgrade head      # create or update the tables
-docker run -d -p 8000:8000 -e DATABASE_URL=... -v <folder>:/data service-ledger   # the API (default command)
+docker run -d -p 8000:8000 -e DATABASE_URL=... -e SHARED_PASSWORD=... -v <folder>:/data service-ledger   # the API and the page (default command)
 docker run -d -e DATABASE_URL=... -v <folder>:/data service-ledger python -m app.worker   # the worker
 ```
 
-Settings come from environment variables only (`DATABASE_URL`, `ATTACHMENT_STORAGE_DIR`, default `/data/attachments`; `USE_LIVE_CLAUDE`, `ANTHROPIC_API_KEY`). Mount a folder at `/data` so uploaded files survive a restart; the API and the worker must share it. The process runs as user id 10001, so the mounted folder must be writable by it. The base image can be changed with `--build-arg BASE_IMAGE=...` (default `python:3.11-slim`, the version the CI uses). `requirements.txt` also lists the test tools, so the image carries them; splitting them out is a later tidy-up.
+Settings come from environment variables only: `DATABASE_URL`, `ATTACHMENT_STORAGE_DIR` (default `/data/attachments`), `USE_LIVE_CLAUDE`, `ANTHROPIC_API_KEY`, and:
+
+- `SHARED_PASSWORD`: one password in front of everything (HTTP Basic, any user name; at least 12 characters or the app refuses to start; empty means no password, as in development). `/health` stays open. It keeps strangers out; it does not identify people, and there is no lockout, so use a long one. Wrong attempts are logged.
+- `FRONTEND_DIST_DIR`: the folder with the built page. The image sets it to `/app/web`; the API then serves the page at `/` (API routes win over files of the same name) and refuses to start if the folder has no `index.html`. Unset in development, where the Vite server serves the page.
+
+Mount a folder at `/data` so uploaded files survive a restart; the API and the worker must share it. The process runs as user id 10001, so the mounted folder must be writable by it. The base image can be changed with `--build-arg BASE_IMAGE=...` (default `python:3.11-slim`, the version the CI uses). `requirements.txt` also lists the test tools, so the image carries them; splitting them out is a later tidy-up.
 
 ## What's here
 

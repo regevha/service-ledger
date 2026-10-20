@@ -7,7 +7,10 @@
 
 import type { components } from './generated/api-schema';
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') || 'http://localhost:8000';
+// Not set: the local backend. Set to an empty string: the same address the page
+// came from (the deployed image serves the built page and the API together).
+const CONFIGURED_API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
+const API_BASE = CONFIGURED_API_BASE === undefined ? 'http://localhost:8000' : CONFIGURED_API_BASE.replace(/\/+$/, '');
 
 // ---------- Shapes (mirrors app/schemas.py) ----------
 
@@ -296,7 +299,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     // ClassificationError/ExtractionError for the API's own failures — this
     // catches the layer below that: the request never reached the backend
     // at all (server not running, wrong VITE_API_BASE_URL, CORS/network).
-    throw new ApiError(0, `Could not reach the backend at ${API_BASE}. Is it running (uvicorn app.main:app), and is VITE_API_BASE_URL correct?`);
+    throw new ApiError(0, `Could not reach the backend at ${API_BASE || 'this address'}. Is it running (uvicorn app.main:app), and is VITE_API_BASE_URL correct?`);
   }
 
   if (!response.ok) {

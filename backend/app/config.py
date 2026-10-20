@@ -7,6 +7,7 @@ codebase, so §4/§12's open questions have exactly one place to answer them.
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +19,21 @@ class Settings(BaseSettings):
     )
 
     attachment_storage_dir: str = "./storage/attachments"
+
+    # One shared password in front of the whole app (HTTP Basic: any user name,
+    # this password). Empty means no gate, as in development. When it is set it
+    # must be long enough not to be guessed; see app/shared_password.py.
+    shared_password: str = ""
+    # Folder with the built frontend (npm run build -> frontend/dist). Empty
+    # means the API does not serve the page (development uses the Vite server).
+    frontend_dist_dir: str = ""
+
+    @field_validator("shared_password")
+    @classmethod
+    def _shared_password_not_trivial(cls, value: str) -> str:
+        if value and len(value) < 12:
+            raise ValueError("SHARED_PASSWORD must be at least 12 characters")
+        return value
 
     # Upload limits, checked before anything is written to disk. The Claude
     # API caps a whole request at about 32 MB and base64 adds a third on top
