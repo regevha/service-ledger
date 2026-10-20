@@ -18,6 +18,19 @@ section by section, and every non-obvious choice in the code points back to
 the section that justifies it. This README is the quickest way to run it;
 SL-TDD-001 is the fuller reference if you're changing it.
 
+## Docker image
+
+`backend/Dockerfile` builds one image for all three jobs (build from the repository root or from `backend/`):
+
+```
+docker build -t service-ledger backend
+docker run --rm -e DATABASE_URL=... service-ledger alembic upgrade head      # create or update the tables
+docker run -d -p 8000:8000 -e DATABASE_URL=... -v <folder>:/data service-ledger   # the API (default command)
+docker run -d -e DATABASE_URL=... -v <folder>:/data service-ledger python -m app.worker   # the worker
+```
+
+Settings come from environment variables only (`DATABASE_URL`, `ATTACHMENT_STORAGE_DIR`, default `/data/attachments`; `USE_LIVE_CLAUDE`, `ANTHROPIC_API_KEY`). Mount a folder at `/data` so uploaded files survive a restart; the API and the worker must share it. The process runs as user id 10001, so the mounted folder must be writable by it. The base image can be changed with `--build-arg BASE_IMAGE=...` (default `python:3.11-slim`, the version the CI uses). `requirements.txt` also lists the test tools, so the image carries them; splitting them out is a later tidy-up.
+
 ## What's here
 
 ```
