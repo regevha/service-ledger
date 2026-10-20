@@ -16,9 +16,9 @@ and it needs a first real run with the project owner watching.
 - The API app (`uvicorn app.main:app`) and the worker app (`python -m app.worker`), one replica each, always on (the worker polls)
 - Secrets (database URL, API key, registry password) as Container Apps secrets; nothing is written to a file in the repo
 
-## What it does not do (still to build)
+## What it does not do (still to build, besides the image)
 
-1. **`backend/Dockerfile`.** It must put `alembic.ini`, `alembic/` and `app/` in the working directory, because the migration job runs `alembic upgrade head` there. Then run with `BUILD_IMAGE=1`, or push the image yourself.
+1. **The image is written** (`backend/Dockerfile`, tested locally on a stand-in base, never built on the official `python:3.11-slim`). Run the script with `BUILD_IMAGE=1` to build it in the registry, or push it yourself. Still unchecked: that the container user (id 10001) can write to the mounted Azure Files share.
 2. **The built frontend**, served by the API container (same address, so no CORS question).
 3. **The shared-password gate.** Until it exists the script keeps ingress **internal** (nobody can reach the app from the internet). `INGRESS=external` asks for confirmation because the app has no sign-in.
 
