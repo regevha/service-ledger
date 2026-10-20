@@ -3,7 +3,7 @@
 # claude/proposal-azure-deployment.md). Creates, in one resource group:
 #   Azure Database for PostgreSQL (Flexible Server), a storage account with an
 #   Azure Files share for attachments, a container registry, a Container Apps
-#   environment, a one-off migration job, the API app and the worker app.
+#   environment, a one-off migration job (run and awaited before the apps are created), the API app and the worker app.
 #
 # The image (backend/Dockerfile) carries the API, the worker code and the built
 # frontend. The API asks for one shared password (HTTP Basic, SHARED_PASSWORD);
@@ -152,7 +152,22 @@ az containerapp job create -g "$RG" -n "job-migrate-$NAME" --environment "$ENV_N
   --image "$IMAGE" --registry-server "$ACR_SERVER" --registry-username "$ACR_USER" --registry-password "$ACR_PASS" \
   --secrets "database-url=$DATABASE_URL" --env-vars "DATABASE_URL=secretref:database-url" \
   --command "alembic" --args "upgrade" "head" --cpu 0.5 --memory 1Gi -o none
-echo "   (the job is created; start it with: az containerapp job start -g $RG -n job-migrate-$NAME)"
+# Run the migration now and wait for it, so the API never starts against an empty
+# database (it seeds the fleet on startup and would crash-loop without the tables).
+echo "   running the migration and waiting for it..."
+az containerapp job start -g "$RG" -n "job-migrate-$NAME" -o none
+STATUS=""
+for _ in $(seq 1 60); do
+  STATUS="$(az containerapp job execution list -g "$RG" -n "job-migrate-$NAME" --query '[0].properties.status' -o tsv 2>/dev/null || true)"
+  [[ "$STATUS" == "Succeeded" || "$STATUS" == "Failed" ]] && break
+  sleep 10
+done
+if [[ "$STATUS" != "Succeeded" ]]; then
+  echo "Migration did not succeed (status: ${STATUS:-unknown}). Nothing else was started. See the job log:" >&2
+  echo "  az containerapp job logs show -g $RG -n job-migrate-$NAME --container job-migrate-$NAME" >&2
+  exit 1
+fi
+echo "   migration succeeded"
 
 echo "== API app (ingress: $INGRESS) and worker app"
 if [[ "$INGRESS" == "external" ]]; then INGRESS_YAML="ingress: { external: true, targetPort: 8000 }"; else INGRESS_YAML="ingress: { external: false, targetPort: 8000 }"; fi
@@ -170,7 +185,8 @@ Done. Resource group: $RG
   Live Claude: $LIVE
 Next:
   1. Make sure the image exists: $IMAGE
-  2. Run the migration job once:  az containerapp job start -g $RG -n job-migrate-$NAME
+  2. (The migration already ran; run it again after a new release with:
+      az containerapp job start -g $RG -n job-migrate-$NAME)
   3. Check the API log:           az containerapp logs show -g $RG -n api-$NAME --follow
   4. Stop paying when finished:   ./deploy/azure/destroy.sh $NAME
 DONE
