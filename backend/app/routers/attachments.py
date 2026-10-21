@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import hashlib
 import uuid
 from datetime import datetime, timezone
@@ -16,6 +18,8 @@ from app.services.duplicates import find_duplicate_report_ids, find_read_copy, n
 from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
 from app.services.text_reader import extract_text, read_work_order
 from app.services.translation import translation_gate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["attachments"])
 settings = get_settings()
@@ -204,6 +208,7 @@ def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db))
     db.add(job)
     db.commit()
     db.refresh(job)
+    logger.info("Queued %s job %s for attachment %s", job.kind.value, job.id, attachment_id)
     return job
 
 
@@ -247,6 +252,7 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
     db.add(job)
     db.commit()
     db.refresh(job)
+    logger.info("Queued %s job %s for attachment %s", job.kind.value, job.id, attachment_id)
     return job
 
 
