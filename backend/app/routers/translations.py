@@ -9,6 +9,8 @@ there is deliberately no route that serves it as a file.
 """
 from __future__ import annotations
 
+import logging
+
 import uuid
 from datetime import datetime, timezone
 
@@ -18,6 +20,8 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.db import get_db
 from app.services.translation import current_translation
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["translations"])
 
@@ -68,6 +72,7 @@ def translate_attachment(
     db.add(job)
     db.commit()
     db.refresh(job)
+    logger.info("Queued %s job %s for attachment %s", job.kind.value, job.id, attachment_id)
     return job
 
 

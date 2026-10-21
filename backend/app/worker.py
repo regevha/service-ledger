@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.config import get_settings
 from app.db import SessionLocal
+from app.debug_claude_log import announce_debug_log
 from app.services.classification import classify as run_classify
 from app.services.duplicates import normalize_work_order
 from app.services.errors import ClassificationError, ExtractionError, TranslationError
@@ -39,6 +40,7 @@ from app.services.extraction import extract as run_extract
 from app.services.serial_check import correct_serial_typos
 from app.services.text_reader import extract_text
 from app.services.translation import identifier_check, translate as run_translate
+from app.trace import bound_job, configure_logging
 
 logger = logging.getLogger("app.worker")
 settings = get_settings()
@@ -308,6 +310,20 @@ def process_one_job(db: Session) -> bool:
     if job is None:
         return False
 
+    job_id, kind = job.id, job.kind
+    attachment = db.get(models.Attachment, job.attachment_id)
+    with bound_job(job_id, attachment.report_id if attachment else None, job.attachment_id):
+        _run_claimed_job(db, job, job_id, kind)
+    return True
+
+
+def _run_claimed_job(db: Session, job: models.ExtractionJob, job_id, kind) -> None:
+    """One claimed job, with its lifecycle in the log: started, then finished with
+    the outcome and the time it took. The ids are bound by the caller, so every
+    line here and below (the Claude call, a warning) carries them."""
+    started_at = time.perf_counter()
+    queued_for = (datetime.now(timezone.utc) - job.started_at).total_seconds() if job.started_at else 0.0
+    logger.info("Job %s started (kind=%s, queued %.1fs)", job_id, kind.value, queued_for)
     try:
         if job.kind == models.ExtractionJobKind.classify:
             _run_classify_job(db, job)
@@ -341,7 +357,14 @@ def process_one_job(db: Session) -> bool:
                 "in-progress until the worker restarts and _recover_orphaned_jobs picks it up.",
                 job.id,
             )
-    return True
+    outcome = "unknown"
+    try:
+        db.expire_all()
+        finished = db.get(models.ExtractionJob, job_id)
+        outcome = finished.status.value if finished is not None else "missing"
+    except Exception:  # noqa: BLE001 - the summary line must not take the worker down
+        pass
+    logger.info("Job %s finished: %s in %.1fs", job_id, outcome, time.perf_counter() - started_at)
 
 
 def _recover_orphaned_jobs(db: Session) -> int:
@@ -406,7 +429,8 @@ def run_forever() -> None:
     session per job (rather than one long-lived session for the process'
     whole life) keeps a stuck or errored job from poisoning every job after
     it with a half-open transaction."""
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s worker %(levelname)s %(message)s")
+    configure_logging("worker")
+    announce_debug_log()
     logger.info(
         "ServiceLedger worker starting (poll interval %.1fs, live_claude=%s)",
         settings.worker_poll_interval_seconds,
