@@ -8,8 +8,11 @@ from fastapi.responses import JSONResponse
 from app import schemas, seed_instruments, seed_templates
 from app.config import get_settings
 from app.db import SessionLocal
+from app.debug_claude_log import announce_debug_log
 from app.frontend_static import mount_frontend
+from app.request_trace import RequestTraceMiddleware
 from app.shared_password import SharedPasswordMiddleware
+from app.trace import configure_logging
 from app.services.instrument_types import ensure_default_types
 from app.routers import (
     analytics,
@@ -29,12 +32,15 @@ async def lifespan(app: FastAPI):
     # Convenience for a fresh dev database: seed the fixed instrument fleet
     # (§1) and the six report_templates rows (§5) if they're not there yet.
     # Idempotent — safe to run on every startup.
+    announce_debug_log()
     with SessionLocal() as db:
         ensure_default_types(db)
         seed_instruments.seed(db)
         seed_templates.seed(db)
     yield
 
+
+configure_logging("api")
 
 app = FastAPI(
     title="ServiceLedger API",
@@ -60,6 +66,8 @@ app.add_middleware(
 # Added after CORS, so it is the outermost layer: nothing, not even a preflight
 # or an error page, is answered before the password check (except /health).
 app.add_middleware(SharedPasswordMiddleware)
+# Outermost of all: every request gets an id and a log line, including a refused one.
+app.add_middleware(RequestTraceMiddleware)
 
 logger = logging.getLogger("app.main")
 
@@ -73,9 +81,10 @@ async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
     with a JSON message the screen can show, and the CORS header the browser
     needs to let the page read it. The traceback is still logged by Starlette,
     which re-raises after this handler."""
-    logger.error("Unhandled error on %s %s", request.method, request.url.path)
+    request_id = request.scope.get("request_id", "-")
+    logger.error("Unhandled error on %s %s (request %s)", request.method, request.url.path, request_id)
     origin = request.headers.get("origin")
-    headers = {}
+    headers = {"X-Request-ID": request_id}
     if "*" in CORS_ORIGINS:
         headers["Access-Control-Allow-Origin"] = "*"
     elif origin in CORS_ORIGINS:
@@ -83,7 +92,7 @@ async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
         headers["Vary"] = "Origin"
     return JSONResponse(
         status_code=500,
-        content={"detail": "Something went wrong on the server. See the server log for the cause."},
+        content={"detail": f"Something went wrong on the server. See the server log for the cause (reference {request_id})."},
         headers=headers,
     )
 

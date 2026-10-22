@@ -25,3 +25,5 @@ frontend/coverage/
 
 # e2e sign-in session (tests/e2e/auth-setup.ts)
 frontend/tests/e2e/.auth/
+
+backend/storage/debug-claude/

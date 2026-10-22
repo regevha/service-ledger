@@ -108,7 +108,7 @@ def test_a_wrong_attempt_is_logged_without_the_password(anon, gated, caplog):
     # no credentials at all is just the browser's first request, not a guess
     caplog.clear()
     anon.get("/instruments")
-    assert not caplog.records
+    assert not [r for r in caplog.records if r.name == "app.shared_password"]
 
 
 def test_the_gate_applies_to_any_app_it_wraps(monkeypatch):
