@@ -80,7 +80,7 @@ az postgres flexible-server create -g "$RG" -n "$PG" -l "$LOCATION" --version 16
   --tier Burstable --sku-name Standard_B1ms --storage-size 32 \
   --admin-user "$PG_ADMIN" --admin-password "$PG_PASSWORD" \
   --public-access 0.0.0.0 --yes -o none     # 0.0.0.0 = allow Azure services only, not the internet
-az postgres flexible-server db create -g "$RG" -s "$PG" -d "$PG_DB" -o none
+az postgres flexible-server db create -g "$RG" --server-name "$PG" --name "$PG_DB" -o none
 DATABASE_URL="postgresql+psycopg2://${PG_ADMIN}:${PG_PASSWORD}@${PG}.postgres.database.azure.com:5432/${PG_DB}?sslmode=require"
 
 echo "== Container registry"
