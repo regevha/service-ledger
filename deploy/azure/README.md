@@ -12,7 +12,7 @@ and it needs a first real run with the project owner watching.
 - PostgreSQL Flexible Server (Burstable B1ms, version 16), database `service_ledger`; reachable from Azure services only
 - Storage account with an Azure Files share, mounted at `/data` in both apps (`ATTACHMENT_STORAGE_DIR=/data/attachments`, so no code change)
 - Container registry, Container Apps environment, log workspace
-- A manual job that runs `alembic upgrade head`
+- A manual job that runs `alembic upgrade head`; the script starts it and waits for it to succeed before it creates the API and worker (after a new release, start it again by hand)
 - The API app (`uvicorn app.main:app`, serving the built frontend and asking for the shared password) and the worker app (`python -m app.worker`), one replica each, always on (the worker polls)
 - Secrets (database URL, API key, registry password) as Container Apps secrets; nothing is written to a file in the repo
 
@@ -27,7 +27,6 @@ and it needs a first real run with the project owner watching.
 ```
 az login
 ./deploy/azure/deploy.sh sl-test            # from the repository root
-az containerapp job start -g rg-sl-test -n job-migrate-sl-test
 ANTHROPIC_API_KEY=... ./deploy/azure/deploy.sh sl-test   # live Claude (environment variable only)
 ./deploy/azure/destroy.sh sl-test           # stop paying; deletes the database and attachments
 ```
