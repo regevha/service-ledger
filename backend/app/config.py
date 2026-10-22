@@ -28,6 +28,23 @@ class Settings(BaseSettings):
     # means the API does not serve the page (development uses the Vite server).
     frontend_dist_dir: str = ""
 
+    # Claude call debug log (docs: claude/proposal-debug-log.md). Off by default and
+    # switched on only by the project owner, by this environment setting (never in the
+    # app): "light" records each call without the prompt text or tool schema, "deep"
+    # adds them. Documents are never stored, only their size and SHA-256. Files older
+    # than `debug_claude_log_days` are deleted. Empty directory means a "debug-claude"
+    # folder next to the attachments folder (so on the shared /data volume in Docker).
+    debug_claude_log: str = ""
+    debug_claude_log_dir: str = ""
+    debug_claude_log_days: int = 7
+
+    @field_validator("debug_claude_log_days")
+    @classmethod
+    def _debug_days_in_range(cls, value: int) -> int:
+        if not 1 <= value <= 90:
+            raise ValueError("DEBUG_CLAUDE_LOG_DAYS must be between 1 and 90")
+        return value
+
     @field_validator("shared_password")
     @classmethod
     def _shared_password_not_trivial(cls, value: str) -> str:

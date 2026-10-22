@@ -37,6 +37,16 @@ Settings come from environment variables only: `DATABASE_URL`, `ATTACHMENT_STORA
 
 Mount a folder at `/data` so uploaded files survive a restart; the API and the worker must share it. The process runs as user id 10001, so the mounted folder must be writable by it. The base image can be changed with `--build-arg BASE_IMAGE=...` (default `python:3.11-slim`, the version the CI uses). `requirements.txt` also lists the test tools, so the image carries them; splitting them out is a later tidy-up.
 
+## Troubleshooting: the trace log and the Claude debug log
+
+**Trace log (always on).** The API and the worker write one line per event to the console (UTC, with a trailing `Z`), in the form `time level role [req=<request id> job=<job id>] logger: message`. Every response carries an `X-Request-ID` header (a caller may send its own, 64 safe characters at most); a 500 shows "(reference <id>)" so a tester can quote it. Each request logs `METHOD /path -> status in N ms` (never the query string); `/health` and successful job-status polls are debug level. Queueing a job logs `Queued <kind> job <id> for attachment <id>` under the request's id, and the worker logs `Job <id> started` and `Job <id> finished: <outcome> in <s>` with the job id on every line in between, including the Claude call line. `LOG_LEVEL` (default INFO) sets the level. See `claude/sample-trace-and-debug-log.md` in the project for a real example.
+
+**Claude debug log (off by default).** Set `DEBUG_CLAUDE_LOG=light` (or `deep`) in the environment of the API and the worker, and every Claude call (classify, extract, translate) is recorded as one JSON line in `<attachments folder>/../debug-claude/claude-calls-YYYY-MM-DD.jsonl` (`DEBUG_CLAUDE_LOG_DIR` overrides; in the container that is `/data/debug-claude`, shared by both processes). `light` holds the ids, timing, a description of each document (type, size, SHA-256, never the bytes), the raw answer, token usage and the Anthropic request id; `deep` adds the prompt text and the tool schema. The configured API key is removed from everything written. Files are private to the owner, files older than `DEBUG_CLAUDE_LOG_DAYS` (default 7) are deleted, a failure to log never fails a call, and there is no switch or endpoint in the app: only whoever runs the deployment can turn it on. It holds service-report data, so treat the folder like the database and switch it off afterwards. Read it with:
+
+```
+python -m app.tools.show_claude_log [--report ID] [--job ID] [--attachment ID] [--kind classify|extract|translate] [--errors] [--days N] [--last N] [--raw]
+```
+
 ## What's here
 
 ```

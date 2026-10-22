@@ -27,6 +27,7 @@ import anthropic
 from anthropic import Anthropic
 
 from app.config import get_settings
+from app.debug_claude_log import record_call
 from app.services.errors import LiveClaudeError
 
 settings = get_settings()
@@ -118,6 +119,8 @@ def call_claude_tool(
     try:
         response = client.messages.create(**request_kwargs)
     except anthropic.AuthenticationError as e:
+        record_call(verb=verb, request_kwargs=request_kwargs, error=e,
+                    elapsed_seconds=time.perf_counter() - call_started, attachment_path=attachment_path)
         logger.exception(
             "Claude API authentication failed %s attachment %s after %.2fs",
             gerund,
@@ -126,6 +129,8 @@ def call_claude_tool(
         )
         raise error_cls(f"Claude API authentication failed — check ANTHROPIC_API_KEY: {e}") from e
     except anthropic.APIError as e:
+        record_call(verb=verb, request_kwargs=request_kwargs, error=e,
+                    elapsed_seconds=time.perf_counter() - call_started, attachment_path=attachment_path)
         logger.exception(
             "Claude API request failed %s attachment %s after %.2fs",
             gerund,
@@ -134,14 +139,18 @@ def call_claude_tool(
         )
         raise error_cls(f"Claude API request failed during {noun}: {e}") from e
 
+    elapsed = time.perf_counter() - call_started
+    record_call(verb=verb, request_kwargs=request_kwargs, response=response,
+                elapsed_seconds=elapsed, attachment_path=attachment_path)
     usage = getattr(response, "usage", None)
     logger.info(
-        "Claude %s API call for attachment %s completed in %.2fs (input_tokens=%s, output_tokens=%s)",
+        "Claude %s API call for attachment %s completed in %.2fs (input_tokens=%s, output_tokens=%s, anthropic_request=%s)",
         verb,
         attachment_path,
-        time.perf_counter() - call_started,
+        elapsed,
         getattr(usage, "input_tokens", "?"),
         getattr(usage, "output_tokens", "?"),
+        getattr(response, "_request_id", "?"),
     )
     return response
 
