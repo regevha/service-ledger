@@ -64,6 +64,15 @@ LAW_ID="$(az monitor log-analytics workspace show -g "$RG" -n "$LAW" --query cus
 LAW_KEY="$(az monitor log-analytics workspace get-shared-keys -g "$RG" -n "$LAW" --query primarySharedKey -o tsv)"
 az containerapp env create -g "$RG" -n "$ENV_NAME" -l "$LOCATION" \
   --logs-workspace-id "$LAW_ID" --logs-workspace-key "$LAW_KEY" -o none
+# Creation continues in the background; wait until it is ready or the next steps are refused.
+echo "   waiting for the environment to be provisioned..."
+ENV_STATE=""
+for _ in $(seq 1 60); do
+  ENV_STATE="$(az containerapp env show -g "$RG" -n "$ENV_NAME" --query properties.provisioningState -o tsv 2>/dev/null || true)"
+  [[ "$ENV_STATE" == "Succeeded" || "$ENV_STATE" == "Failed" ]] && break
+  sleep 10
+done
+[[ "$ENV_STATE" == "Succeeded" ]] || { echo "Container Apps environment is not ready (state: ${ENV_STATE:-unknown}). Check: az containerapp env show -g $RG -n $ENV_NAME" >&2; exit 1; }
 
 echo "== Storage account and file share for attachments"
 az storage account create -g "$RG" -n "$STORAGE" -l "$LOCATION" --sku Standard_LRS --kind StorageV2 \
