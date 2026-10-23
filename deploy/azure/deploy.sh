@@ -170,7 +170,7 @@ fi
 echo "   migration succeeded"
 
 echo "== API app (ingress: $INGRESS) and worker app"
-if [[ "$INGRESS" == "external" ]]; then INGRESS_YAML="ingress: { external: true, targetPort: 8000 }"; else INGRESS_YAML="ingress: { external: false, targetPort: 8000 }"; fi
+if [[ "$INGRESS" == "external" ]]; then INGRESS_YAML="ingress: { external: true, targetPort: 8000, allowInsecure: false }"; else INGRESS_YAML="ingress: { external: false, targetPort: 8000, allowInsecure: false }"; fi
 write_app_yaml "$TMP/api.yaml" "api" '["python","-m","uvicorn","app.main:app","--host","0.0.0.0","--port","8000","--no-access-log"]' "$INGRESS_YAML" "          - { name: SHARED_PASSWORD, secretRef: shared-password }"
 write_app_yaml "$TMP/worker.yaml" "worker" '["python","-m","app.worker"]' "activeRevisionsMode: Single" ""
 az containerapp create -g "$RG" -n "api-$NAME" --yaml "$TMP/api.yaml" -o none
