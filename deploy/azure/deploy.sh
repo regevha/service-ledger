@@ -64,6 +64,15 @@ LAW_ID="$(az monitor log-analytics workspace show -g "$RG" -n "$LAW" --query cus
 LAW_KEY="$(az monitor log-analytics workspace get-shared-keys -g "$RG" -n "$LAW" --query primarySharedKey -o tsv)"
 az containerapp env create -g "$RG" -n "$ENV_NAME" -l "$LOCATION" \
   --logs-workspace-id "$LAW_ID" --logs-workspace-key "$LAW_KEY" -o none
+# Creation continues in the background; wait until it is ready or the next steps are refused.
+echo "   waiting for the environment to be provisioned..."
+ENV_STATE=""
+for _ in $(seq 1 60); do
+  ENV_STATE="$(az containerapp env show -g "$RG" -n "$ENV_NAME" --query properties.provisioningState -o tsv 2>/dev/null || true)"
+  [[ "$ENV_STATE" == "Succeeded" || "$ENV_STATE" == "Failed" ]] && break
+  sleep 10
+done
+[[ "$ENV_STATE" == "Succeeded" ]] || { echo "Container Apps environment is not ready (state: ${ENV_STATE:-unknown}). Check: az containerapp env show -g $RG -n $ENV_NAME" >&2; exit 1; }
 
 echo "== Storage account and file share for attachments"
 az storage account create -g "$RG" -n "$STORAGE" -l "$LOCATION" --sku Standard_LRS --kind StorageV2 \
@@ -80,7 +89,7 @@ az postgres flexible-server create -g "$RG" -n "$PG" -l "$LOCATION" --version 16
   --tier Burstable --sku-name Standard_B1ms --storage-size 32 \
   --admin-user "$PG_ADMIN" --admin-password "$PG_PASSWORD" \
   --public-access 0.0.0.0 --yes -o none     # 0.0.0.0 = allow Azure services only, not the internet
-az postgres flexible-server db create -g "$RG" -s "$PG" -d "$PG_DB" -o none
+az postgres flexible-server db create -g "$RG" --server-name "$PG" --name "$PG_DB" -o none
 DATABASE_URL="postgresql+psycopg2://${PG_ADMIN}:${PG_PASSWORD}@${PG}.postgres.database.azure.com:5432/${PG_DB}?sslmode=require"
 
 echo "== Container registry"
@@ -170,7 +179,7 @@ fi
 echo "   migration succeeded"
 
 echo "== API app (ingress: $INGRESS) and worker app"
-if [[ "$INGRESS" == "external" ]]; then INGRESS_YAML="ingress: { external: true, targetPort: 8000 }"; else INGRESS_YAML="ingress: { external: false, targetPort: 8000 }"; fi
+if [[ "$INGRESS" == "external" ]]; then INGRESS_YAML="ingress: { external: true, targetPort: 8000, allowInsecure: false }"; else INGRESS_YAML="ingress: { external: false, targetPort: 8000, allowInsecure: false }"; fi
 write_app_yaml "$TMP/api.yaml" "api" '["python","-m","uvicorn","app.main:app","--host","0.0.0.0","--port","8000","--no-access-log"]' "$INGRESS_YAML" "          - { name: SHARED_PASSWORD, secretRef: shared-password }"
 write_app_yaml "$TMP/worker.yaml" "worker" '["python","-m","app.worker"]' "activeRevisionsMode: Single" ""
 az containerapp create -g "$RG" -n "api-$NAME" --yaml "$TMP/api.yaml" -o none
