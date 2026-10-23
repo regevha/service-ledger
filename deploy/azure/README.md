@@ -44,3 +44,13 @@ Not covered: re-running over an existing deployment (create commands will report
 ```
 
 The value comes from `ANTHROPIC_API_KEY` / `SHARED_PASSWORD` if set, otherwise you type it (hidden). Nothing is written to a file or printed back, except a generated password, shown once. Each change creates a new revision, so the old value stops working a few seconds later. The password must be at least 12 characters. Not yet run against real Azure.
+
+## Updating a running environment
+
+After a code change (merged or on your branch), roll it out without recreating anything:
+
+```
+./deploy/azure/update.sh sl-test
+```
+
+It builds the frontend and a new image (tagged with the commit and the time), runs the migration with that image and waits for it, then points the API and the worker at the new image. The database, attachments, password and API key are untouched. If the migration fails, the apps keep running the old image. To go back, check out the earlier commit and run it again. Not yet run against real Azure.
