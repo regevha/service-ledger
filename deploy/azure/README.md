@@ -35,6 +35,16 @@ Optional: `LOCATION` (default `westeurope`, a decision for the project owner), `
 
 Not covered: re-running over an existing deployment (create commands will report what already exists), custom domain, backups of the file share, Key Vault (secrets are Container Apps secrets for now).
 
+## Changing the API key or the shared password
+
+```
+./deploy/azure/set-secrets.sh sl-test key        # new Anthropic key; turns live Claude on (API and worker)
+./deploy/azure/set-secrets.sh sl-test key-off    # back to stub mode, no model calls
+./deploy/azure/set-secrets.sh sl-test password   # new shared password (API); empty answer = generate one
+```
+
+The value comes from `ANTHROPIC_API_KEY` / `SHARED_PASSWORD` if set, otherwise you type it (hidden). Nothing is written to a file or printed back, except a generated password, shown once. Each change creates a new revision, so the old value stops working a few seconds later. The password must be at least 12 characters. Not yet run against real Azure.
+
 ## Updating a running environment
 
 After a code change (merged or on your branch), roll it out without recreating anything:
