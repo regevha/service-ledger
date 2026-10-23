@@ -34,3 +34,13 @@ ANTHROPIC_API_KEY=... ./deploy/azure/deploy.sh sl-test   # live Claude (environm
 Optional: `LOCATION` (default `westeurope`, a decision for the project owner), `IMAGE_TAG`, `INGRESS`, `BUILD_IMAGE`.
 
 Not covered: re-running over an existing deployment (create commands will report what already exists), custom domain, backups of the file share, Key Vault (secrets are Container Apps secrets for now).
+
+## Updating a running environment
+
+After a code change (merged or on your branch), roll it out without recreating anything:
+
+```
+./deploy/azure/update.sh sl-test
+```
+
+It builds the frontend and a new image (tagged with the commit and the time), runs the migration with that image and waits for it, then points the API and the worker at the new image. The database, attachments, password and API key are untouched. If the migration fails, the apps keep running the old image. To go back, check out the earlier commit and run it again. Not yet run against real Azure.
