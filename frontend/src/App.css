@@ -1,5 +1,5 @@
 .wrap {
-  max-width: 860px;
+  max-width: min(1400px, 96vw);
   margin: 0 auto;
   padding: 20px 16px 64px;
   text-align: left;
