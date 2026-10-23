@@ -116,7 +116,9 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   // ---- Hover near the last point shows a crosshair tooltip for every series ----
   const box = await svg.boundingBox();
   expect(box).not.toBeNull();
-  await page.mouse.move(box!.x + box!.width - 20, box!.y + box!.height / 2);
+  // The chart scales with the page, so aim in chart units (640 wide, 16 of right margin), not pixels:
+  // 4 units inside the plot's right edge, i.e. near the last point at any page width.
+  await page.mouse.move(box!.x + box!.width * ((640 - 16 - 4) / 640), box!.y + box!.height / 2);
   const tooltip = page.locator('.trend-tooltip');
   await expect(tooltip).toBeVisible();
   await expect(tooltip).toContainText('Jul 10');
