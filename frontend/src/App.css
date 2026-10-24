@@ -37,8 +37,16 @@
   display: flex;
   gap: 4px;
   margin-bottom: 12px;
+  /* Five tabs are wider than a phone: scroll them rather than widen the page. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.view-tabs::-webkit-scrollbar {
+  display: none;
 }
 .view-tab {
+  flex: none;
+  white-space: nowrap;
   font-family: var(--font-ui);
   font-size: 0.8rem;
   font-weight: 600;
@@ -133,6 +141,7 @@
 input[type='text'],
 input[type='number'],
 input[type='date'],
+input[type='search'],
 textarea,
 select {
   font-family: var(--font-ui);
@@ -503,7 +512,9 @@ textarea {
 }
 .report-row {
   display: grid;
-  grid-template-columns: 1.6fr 1.2fr 1fr 1fr auto;
+  /* A fixed last column: an "auto" one sized itself per row, so the captions
+     drifted away from the cells under them (see .template-row). */
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 96px;
   gap: 10px;
   align-items: center;
   padding: 10px 14px;
@@ -845,10 +856,17 @@ textarea {
   flex-wrap: wrap;
   justify-self: end;
 }
+/* Under its own caption, like every other cell in the row. */
+.instrument-row .template-row-actions {
+  justify-self: start;
+}
 
 .instrument-row {
   display: grid;
-  grid-template-columns: 1.3fr 0.8fr 0.8fr 1fr 1fr 1fr auto auto;
+  /* Fixed status and actions columns, for the same reason as .report-row; minmax(0, …) so a
+     long cell wraps instead of stretching its column in that row only. */
+  grid-template-columns:
+    minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 84px 148px;
   gap: 10px;
   align-items: center;
   padding: 10px 14px;
@@ -1173,7 +1191,7 @@ textarea {
 }
 .instrument-report-row {
   display: grid;
-  grid-template-columns: 1.4fr 1.2fr 1fr auto;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 1fr) 96px;
   gap: 10px;
   align-items: center;
   padding: 10px 14px;
