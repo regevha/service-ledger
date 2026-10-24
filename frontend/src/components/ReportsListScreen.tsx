@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   listReports,
   reportsExportUrl,
@@ -32,6 +32,10 @@ type ReportsScreen =
       highlight?: string;
     };
 
+function screenPath(screen: ReportsScreen): string {
+  return screen.kind === 'list' ? '' : screen.kind === 'instrument' ? `instrument/${screen.instrumentId}` : screen.item.id;
+}
+
 // Free-text search needs at least this many characters (the backend refuses less).
 const MIN_SEARCH_LENGTH = 2;
 
@@ -43,14 +47,15 @@ function isUnread(r: ReportListItem): boolean {
 export function ReportsListScreen({
   instruments,
   fieldConfidenceThreshold,
-  openReportId = null,
-  onOpenReportHandled,
+  path = '',
+  onPath,
 }: {
   instruments: Instrument[];
   fieldConfidenceThreshold: number;
-  /** A report to open straight away (e.g. the existing copy of a file that was just refused as already on file). */
-  openReportId?: string | null;
-  onOpenReportHandled?: () => void;
+  /** What the address bar says is open on this tab: '' (the list), '<report id>' or 'instrument/<id>'. */
+  path?: string;
+  /** Called when the person opens or leaves a report or instrument, so the address bar can follow. */
+  onPath?: (path: string) => void;
 }) {
   const [filters, setFilters] = useState<ReportFilters>({});
   // Lab manager is free text (§4: typed at intake, not a dropdown), so it gets
@@ -97,25 +102,46 @@ export function ReportsListScreen({
     'Could not load reports.'
   );
 
-  // Open a report handed down from elsewhere in the app. The list endpoint
-  // gives the full list item the detail screen takes; unfiltered, so the
-  // current filters can't hide it.
+  // The address bar and this screen's own nav stack follow each other: opening a report
+  // or instrument here updates the path; a path set elsewhere (the Back button, a link,
+  // the intake flow's "Open report") opens that screen.
+  const current = screenPath(screen);
+  const lastCurrent = useRef(current);
   useEffect(() => {
-    if (!openReportId) return;
+    if (path === current) return;
+    if (path === '') {
+      setScreen({ kind: 'list' });
+      return;
+    }
+    if (path.startsWith('instrument/')) {
+      setScreen({ kind: 'instrument', instrumentId: path.slice('instrument/'.length) });
+      return;
+    }
+    // The list endpoint gives the full list item the detail screen takes; unfiltered,
+    // so the current filters can't hide it.
     let cancelled = false;
     listReports({})
       .then((all) => {
-        const item = all.find((r) => r.id === openReportId);
-        if (!cancelled && item) setScreen({ kind: 'report', item, returnTo: { kind: 'list' } });
+        if (cancelled) return;
+        const item = all.find((r) => r.id === path);
+        if (item) setScreen({ kind: 'report', item, returnTo: { kind: 'list' } });
+        else onPath?.('');
       })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) onOpenReportHandled?.();
-      });
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [openReportId, onOpenReportHandled]);
+    // Only a new path from outside should open something; `current` changing is the other effect's business.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path]);
+  useEffect(() => {
+    // Only a real change of screen counts: a screen opened from a link must not be reset to the
+    // list while it is still loading (this effect also runs once on mount).
+    if (lastCurrent.current === current) return;
+    lastCurrent.current = current;
+    onPath?.(current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
 
   function leaveReport(next: ReportsScreen) {
     setRefreshNonce((n) => n + 1);
