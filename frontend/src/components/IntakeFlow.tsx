@@ -86,11 +86,13 @@ function StepBar({ phase }: { phase: Phase }) {
   // visibly jump backward from "Review & finalize" to "Classify" while a
   // save/finalize is in flight.
   const stepIndex =
-    phase.name === 'intake'
+    phase.name === 'done'
+      ? 3 // all three steps finished
+      : phase.name === 'intake'
       ? 0
       : phase.name === 'review-translation' || phase.name === 'confirm-classification' || (phase.name === 'working' && phase.label.includes('lassif'))
         ? 1
-        : phase.name === 'review' || phase.name === 'done' || (phase.name === 'working' && phase.label.includes('aving'))
+        : phase.name === 'review' || (phase.name === 'working' && phase.label.includes('aving'))
           ? 2
           : phase.name === 'working'
             ? 1
@@ -306,8 +308,7 @@ function ConfirmClassificationScreen({
     <div className="section">
       <div className="section-title">Detected from the document</div>
       <p className="hint-text">
-        The model and serial number are read separately; the serial picks the unit. Report type is the harder call — a repair, a PM visit, and a
-        calibration can share the same generic layout — so it needs your confirmation this time.
+        Check the instrument and the report type, then continue.
       </p>
 
       <div className="read-row" id="read-model">
@@ -426,18 +427,83 @@ function ConfirmClassificationScreen({
   );
 }
 
-function DoneScreen({ report, onReset }: { report: Report; onReset: () => void }) {
+/** The day, as YYYY-MM-DD in the viewer's own time zone (the form the tables use). */
+function isoDay(value: string): string {
+  const d = new Date(value);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function WorkingPanel({
+  label,
+  fileName,
+  slow,
+  onCancel,
+}: {
+  label: string;
+  fileName?: string;
+  /** True when a live model is reading the scan, which takes a while. */
+  slow: boolean;
+  onCancel?: () => void;
+}) {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const timer = setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <div className="section working-panel">
+      <div className="spinner" />
+      <div className="working-text">
+        <div>{label}</div>
+        <div className="working-detail">
+          {fileName && <span className="working-file">{fileName}</span>}
+          <span>{seconds}s</span>
+        </div>
+        {slow && seconds < 90 && <div className="working-detail">Reading a scan usually takes 10–60 seconds; a translated one takes longer.</div>}
+        {slow && seconds >= 90 && <div className="working-detail">Still working — this one is taking longer than usual.</div>}
+      </div>
+      {onCancel && (
+        <button type="button" className="btn small" onClick={onCancel}>
+          Cancel
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DoneScreen({
+  report,
+  onReset,
+  onOpenReport,
+  onViewInstrument,
+}: {
+  report: Report;
+  onReset: () => void;
+  onOpenReport?: (reportId: string) => void;
+  onViewInstrument?: (instrumentId: string) => void;
+}) {
   return (
     <div className="section success-panel">
       <div className="tick">✓</div>
       <h3>Report finalized</h3>
-      <p>
-        Report <code>{report.id.slice(0, 8)}</code> is now <b>{report.status}</b>
-        {report.finalized_at ? ` as of ${new Date(report.finalized_at).toLocaleString()}` : ''}.
-      </p>
-      <button className="btn primary" onClick={onReset}>
-        Start another report
-      </button>
+      <p>{report.finalized_at ? `Saved on ${isoDay(report.finalized_at)}.` : 'Saved.'} It is now part of the instrument's history.</p>
+      <div className="cta-row success-actions">
+        {onOpenReport && (
+          <button className="btn primary" onClick={() => onOpenReport(report.id)}>
+            Open report
+          </button>
+        )}
+        {onViewInstrument && report.instrument_id && (
+          <button className="btn" onClick={() => onViewInstrument(report.instrument_id!)}>
+            View instrument
+          </button>
+        )}
+        <button className={onOpenReport ? 'btn' : 'btn primary'} onClick={onReset}>
+          Start another report
+        </button>
+      </div>
     </div>
   );
 }
@@ -449,6 +515,8 @@ export function IntakeFlow({
   classificationConfidenceThreshold,
   liveClaude = true,
   onOpenReport,
+  onViewInstrument,
+  onCancel,
   onInstrumentAdded,
   onCreateTemplate,
   templateCreated,
@@ -460,6 +528,10 @@ export function IntakeFlow({
   liveClaude?: boolean;
   /** Open an existing report on the Reports tab (used when an upload is refused as already on file). */
   onOpenReport?: (reportId: string) => void;
+  /** Open an instrument's page (the success screen's "View instrument"). */
+  onViewInstrument?: (instrumentId: string) => void;
+  /** Abandon the work in progress and return to a clean upload screen. */
+  onCancel?: () => void;
   /** Called after an instrument is added here, so the app's fleet list reloads. */
   onInstrumentAdded?: () => Promise<void> | void;
   /** Ask the Templates tab for a template for this model and report type (prefilled, with the closest one as the start). */
@@ -856,10 +928,13 @@ export function IntakeFlow({
       )}
 
       {phase.name === 'working' && (
-        <div className="section working-panel">
-          <div className="spinner" />
-          <div>{phase.label}</div>
-        </div>
+        <WorkingPanel
+          label={phase.label}
+          fileName={file?.name}
+          // Saving happens from the review screen: no "reading" hint, and nothing to cancel back out of.
+          slow={liveClaude && !phase.label.includes('aving')}
+          onCancel={phase.label.includes('aving') ? undefined : onCancel}
+        />
       )}
 
       {serialNotice && (phase.name === 'confirm-classification' || phase.name === 'review') && (
@@ -974,7 +1049,7 @@ export function IntakeFlow({
         </div>
       )}
 
-      {phase.name === 'done' && report && <DoneScreen report={report} onReset={resetToIntake} />}
+      {phase.name === 'done' && report && <DoneScreen report={report} onReset={resetToIntake} onOpenReport={onOpenReport} onViewInstrument={onViewInstrument} />}
 
       {phase.name === 'error' && (
         <div className="section">
