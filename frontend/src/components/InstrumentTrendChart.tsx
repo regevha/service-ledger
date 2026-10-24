@@ -1,4 +1,5 @@
 import { fieldLabel } from '../fieldLabels';
+import { useElementWidth } from '../hooks/useElementWidth';
 import { useMemo, useRef, useState } from 'react';
 import { getInstrumentTrend, getInstrumentTrendFields, type InstrumentTrend, type TrendField, type TrendPoint } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
@@ -78,19 +79,27 @@ export function formatDate(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 const MARGIN = { top: 16, right: 16, bottom: 28, left: 40 };
+// The chart is drawn at the width it is shown at (so its text stays the size of the rest of the page
+// instead of growing with the window); this is only the width used before it has been measured.
 const CHART_W = 640;
+const MIN_CHART_W = 320;
 const CHART_H = 260;
-const PLOT_W = CHART_W - MARGIN.left - MARGIN.right;
+// A date label is about this wide at the axis font size; labels closer together than this are thinned out.
+const DATE_LABEL_W = 84;
 const PLOT_H = CHART_H - MARGIN.top - MARGIN.bottom;
 
 function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoint[] }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const measured = useElementWidth(cardRef, CHART_W);
+  const chartW = Math.max(MIN_CHART_W, measured);
+  const plotW = chartW - MARGIN.left - MARGIN.right;
 
   const series = useMemo(() => buildSeries(field, points), [field, points]);
   const n = points.length;
@@ -100,8 +109,11 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
   const yMax = niceCeil(rawMax * 1.15);
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => yMax * f);
 
+  // Show every k-th date so neighbouring labels never overlap; the tooltip and table carry the rest.
+  const labelEvery = n <= 1 ? 1 : Math.max(1, Math.ceil(DATE_LABEL_W / (plotW / (n - 1))));
+
   function xAt(i: number) {
-    return n <= 1 ? MARGIN.left + PLOT_W / 2 : MARGIN.left + (i / (n - 1)) * PLOT_W;
+    return n <= 1 ? MARGIN.left + plotW / 2 : MARGIN.left + (i / (n - 1)) * plotW;
   }
   function yAt(v: number) {
     return MARGIN.top + PLOT_H - (v / yMax) * PLOT_H;
@@ -129,15 +141,15 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
     const svg = svgRef.current;
     if (!svg || n === 0) return;
     const rect = svg.getBoundingClientRect();
-    const scale = CHART_W / rect.width;
+    const scale = chartW / rect.width;
     const localX = (evt.clientX - rect.left) * scale;
-    const i = Math.round(((localX - MARGIN.left) / PLOT_W) * (n - 1));
+    const i = Math.round(((localX - MARGIN.left) / plotW) * (n - 1));
     setHoverIndex(Math.max(0, Math.min(n - 1, i)));
   }
 
   const hovered = hoverIndex !== null ? points[hoverIndex] : null;
   const tooltipX = hoverIndex !== null ? xAt(hoverIndex) : 0;
-  const tooltipPct = (tooltipX / CHART_W) * 100;
+  const tooltipPct = (tooltipX / chartW) * 100;
 
   // Direct end-value label only makes sense for a single series — with
   // several, converging/diverging lines would collide (marks-and-anatomy:
@@ -147,7 +159,7 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
   const soleLastIndex = soleSeries ? soleSeries.values.findLastIndex((v) => v !== undefined) : -1;
 
   return (
-    <div className="trend-chart-card">
+    <div className="trend-chart-card" ref={cardRef}>
       <div className="trend-chart-head">
         {series.length >= 2 && (
           <div className="legend-row">
@@ -168,7 +180,7 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
         <div className="trend-chart-wrap">
           <svg
             ref={svgRef}
-            viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+            viewBox={`0 0 ${chartW} ${CHART_H}`}
             role="img"
             aria-label={`${fieldLabel(field.name, field.unit)} across ${n} report${n === 1 ? '' : 's'}`}
           >
@@ -176,7 +188,7 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
               <g key={t}>
                 <line
                   x1={MARGIN.left}
-                  x2={CHART_W - MARGIN.right}
+                  x2={chartW - MARGIN.right}
                   y1={yAt(t)}
                   y2={yAt(t)}
                   className="trend-grid"
@@ -187,11 +199,13 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
               </g>
             ))}
 
-            {points.map((p, i) => (
-              <text key={p.report_id} x={xAt(i)} y={CHART_H - 8} textAnchor="middle" className="trend-tick-label">
-                {formatDate(p.report_date)}
-              </text>
-            ))}
+            {points.map((p, i) =>
+              i % labelEvery === 0 ? (
+                <text key={p.report_id} x={xAt(i)} y={CHART_H - 8} textAnchor="middle" className="trend-tick-label">
+                  {formatDate(p.report_date)}
+                </text>
+              ) : null
+            )}
 
             {series.map((s) =>
               runsFor(s).map((run, runIdx) => (
@@ -246,7 +260,7 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
             <rect
               x={MARGIN.left}
               y={MARGIN.top}
-              width={PLOT_W}
+              width={plotW}
               height={PLOT_H}
               fill="transparent"
               onPointerMove={handlePointerMove}

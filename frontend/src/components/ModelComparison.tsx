@@ -1,5 +1,5 @@
 import { fieldLabel } from '../fieldLabels';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   getModelComparison,
   getModelTrend,
@@ -11,6 +11,7 @@ import {
   type UnitComparison,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import { useElementWidth } from '../hooks/useElementWidth';
 import { SERIES_COLORS, formatDate, formatValue, niceCeil } from './InstrumentTrendChart';
 
 /**
@@ -120,13 +121,19 @@ function mapKeys(trend: ModelTrend): string[] {
 }
 
 const MARGIN = { top: 16, right: 16, bottom: 28, left: 40 };
+// Drawn at the width it is shown at, like the single-instrument trend chart.
 const CHART_W = 640;
+const MIN_CHART_W = 320;
 const CHART_H = 260;
-const PLOT_W = CHART_W - MARGIN.left - MARGIN.right;
+const DATE_LABEL_W = 84;
 const PLOT_H = CHART_H - MARGIN.top - MARGIN.bottom;
 
 function ComparisonChart({ lines, field }: { lines: UnitLine[]; field: TrendField }) {
   const [showTable, setShowTable] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const measured = useElementWidth(cardRef, CHART_W);
+  const chartW = Math.max(MIN_CHART_W, measured);
+  const plotW = chartW - MARGIN.left - MARGIN.right;
   const all = lines.flatMap((l) => l.points);
   const undated = lines.reduce((sum, l) => sum + l.undated, 0);
 
@@ -142,15 +149,17 @@ function ComparisonChart({ lines, field }: { lines: UnitLine[]; field: TrendFiel
   const tMax = Math.max(...all.map((p) => p.t));
   const yMax = niceCeil(Math.max(...all.map((p) => p.value)) * 1.15);
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => yMax * f);
-  const xAt = (t: number) => (tMax === tMin ? MARGIN.left + PLOT_W / 2 : MARGIN.left + ((t - tMin) / (tMax - tMin)) * PLOT_W);
+  const xAt = (t: number) => (tMax === tMin ? MARGIN.left + plotW / 2 : MARGIN.left + ((t - tMin) / (tMax - tMin)) * plotW);
   const yAt = (v: number) => MARGIN.top + PLOT_H - (v / yMax) * PLOT_H;
   const xTicks = Array.from(new Set(all.map((p) => p.date))).sort();
+  // As many dates as fit without touching; beyond that, just the first and the last.
+  const maxDateLabels = Math.max(2, Math.floor(plotW / DATE_LABEL_W));
   const tableRows = lines
     .flatMap((l) => l.points.map((p) => ({ ...p, unit: l.label, color: l.color })))
     .sort((a, b) => a.t - b.t || a.unit.localeCompare(b.unit));
 
   return (
-    <div className="trend-chart-card">
+    <div className="trend-chart-card" ref={cardRef}>
       <div className="trend-chart-head">
         <div className="legend-row">
           {lines.map((l) => (
@@ -168,19 +177,19 @@ function ComparisonChart({ lines, field }: { lines: UnitLine[]; field: TrendFiel
       {!showTable ? (
         <div className="trend-chart-wrap">
           <svg
-            viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+            viewBox={`0 0 ${chartW} ${CHART_H}`}
             role="img"
             aria-label={`${fieldLabel(field.name, field.unit)} per unit over time`}
           >
             {yTicks.map((t) => (
               <g key={t}>
-                <line x1={MARGIN.left} x2={CHART_W - MARGIN.right} y1={yAt(t)} y2={yAt(t)} className="trend-grid" />
+                <line x1={MARGIN.left} x2={chartW - MARGIN.right} y1={yAt(t)} y2={yAt(t)} className="trend-grid" />
                 <text x={MARGIN.left - 8} y={yAt(t) + 3} textAnchor="end" className="trend-tick-label">
                   {t % 1 === 0 ? t : t.toFixed(1)}
                 </text>
               </g>
             ))}
-            {xTicks.length <= 8 &&
+            {xTicks.length <= maxDateLabels &&
               xTicks.map((d) => (
                 <text
                   key={d}
@@ -192,12 +201,12 @@ function ComparisonChart({ lines, field }: { lines: UnitLine[]; field: TrendFiel
                   {formatDate(d)}
                 </text>
               ))}
-            {xTicks.length > 8 && (
+            {xTicks.length > maxDateLabels && (
               <>
                 <text x={MARGIN.left} y={CHART_H - 8} textAnchor="start" className="trend-tick-label">
                   {formatDate(xTicks[0])}
                 </text>
-                <text x={CHART_W - MARGIN.right} y={CHART_H - 8} textAnchor="end" className="trend-tick-label">
+                <text x={chartW - MARGIN.right} y={CHART_H - 8} textAnchor="end" className="trend-tick-label">
                   {formatDate(xTicks[xTicks.length - 1])}
                 </text>
               </>

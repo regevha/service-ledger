@@ -56,14 +56,47 @@ function BarRow({ label, sublabel, value, maxValue, formattedValue }: {
   );
 }
 
+/** True when there are several rows and they all have the same value: bars would be identical. */
+function allSame(values: number[]): boolean {
+  return values.length > 1 && values.every((v) => v === values[0]);
+}
+
+function CountList({ rows }: { rows: { key: string; label: string; sublabel?: string; text: string }[] }) {
+  return (
+    <ul className="count-list">
+      {rows.map((r) => (
+        <li key={r.key}>
+          <span>
+            {r.label}
+            {r.sublabel && <span className="bar-sublabel">{r.sublabel}</span>}
+          </span>
+          <span className="bar-value">{r.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function PartsChart({ parts }: { parts: PartUsage[] }) {
   if (parts.length === 0) {
     return <div className="empty-hint">No parts recorded on any finalized report yet.</div>;
   }
   const top = parts.slice(0, TOP_PARTS_LIMIT);
   const maxQty = Math.max(...top.map((p) => p.total_qty));
+  const partText = (p: PartUsage) =>
+    `${p.total_qty} unit${p.total_qty === 1 ? '' : 's'} · ${p.times_replaced} report${p.times_replaced === 1 ? '' : 's'}`;
   return (
     <>
+      {allSame(top.map((p) => p.total_qty)) ? (
+        <CountList
+          rows={top.map((p) => ({
+            key: `${p.part_name}-${p.part_number ?? ''}`,
+            label: p.part_name,
+            sublabel: p.part_number ? `#${p.part_number}` : undefined,
+            text: partText(p),
+          }))}
+        />
+      ) : (
       <div className="bar-chart">
         {top.map((p) => (
           <BarRow
@@ -72,10 +105,11 @@ function PartsChart({ parts }: { parts: PartUsage[] }) {
             sublabel={p.part_number ? `#${p.part_number}` : undefined}
             value={p.total_qty}
             maxValue={maxQty}
-            formattedValue={`${p.total_qty} unit${p.total_qty === 1 ? '' : 's'} · ${p.times_replaced} report${p.times_replaced === 1 ? '' : 's'}`}
+            formattedValue={partText(p)}
           />
         ))}
       </div>
+      )}
       {parts.length > TOP_PARTS_LIMIT && (
         <div className="hint-text chart-footnote">
           Showing the top {TOP_PARTS_LIMIT} of {parts.length} distinct parts, by units replaced.
@@ -111,6 +145,9 @@ function LaborHoursByFaultCategoryChart({ byCategory }: { byCategory: Record<str
     return <div className="empty-hint">No repair reports with both labor hours and a fault category yet.</div>;
   }
   const maxHours = Math.max(...entries.map(([, hours]) => hours));
+  if (allSame(entries.map(([, hours]) => hours))) {
+    return <CountList rows={entries.map(([category, hours]) => ({ key: category, label: category, text: formatHours(hours) }))} />;
+  }
   return (
     <div className="bar-chart">
       {entries.map(([category, hours]) => (

@@ -45,7 +45,8 @@ export default defineConfig({
   // by name in the output instead of vanishing into a manual re-run. Locally
   // nothing is retried, so a flake is never hidden while developing.
   retries: process.env.CI ? 1 : 0,
-  reporter: [['list']],
+  // On CI the github reporter also turns each failure into an annotation on the check run, readable without the raw log.
+  reporter: process.env.CI ? [['list'], ['github']] : [['list']],
   timeout: 60_000,
 
   use: {
