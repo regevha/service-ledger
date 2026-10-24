@@ -13,7 +13,7 @@ import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { InstrumentDetailScreen } from './InstrumentDetailScreen';
 import { ReportDetailScreen } from './ReportDetailScreen';
 import { SavedFilters } from './SavedFilters';
-import { nextSort, SORT_LABEL, sortReports, type SortKey, type SortState } from '../reportSort';
+import { defaultOrder, nextSort, SORT_LABEL, sortReports, type SortKey, type SortState } from '../reportSort';
 
 const STATUS_OPTIONS: ReportStatus[] = ['draft', 'classified', 'extracted', 'in_review', 'finalized'];
 
@@ -34,6 +34,11 @@ type ReportsScreen =
 
 // Free-text search needs at least this many characters (the backend refuses less).
 const MIN_SEARCH_LENGTH = 2;
+
+/** An upload that was never classified: it has no instrument or type to show yet. */
+function isUnread(r: ReportListItem): boolean {
+  return r.status !== 'finalized' && !r.instrument_model && !r.report_type;
+}
 
 export function ReportsListScreen({
   instruments,
@@ -155,7 +160,8 @@ export function ReportsListScreen({
       filters.q
   );
   const searching = Boolean(filters.q);
-  const shown = sortReports(items, sort);
+  // Best match first only means something for a search; otherwise the newest report leads.
+  const shown = sort || searching ? sortReports(items, sort) : defaultOrder(items);
   const searchTooShort = searchInput.trim().length > 0 && searchInput.trim().length < MIN_SEARCH_LENGTH;
   // Search covers finalized reports only, so another status filter can only be empty.
   const statusBlocksSearch = searching && Boolean(filters.status) && filters.status !== 'finalized';
@@ -338,12 +344,15 @@ export function ReportsListScreen({
                 onClick={() => setScreen({ kind: 'report', item: r, returnTo: { kind: 'list' }, highlight: filters.q })}
               >
                 <span>
-                  {r.instrument_model ?? '—'}
+                  {r.instrument_model ?? (isUnread(r) ? 'Not read yet' : '—')}
                   {r.instrument_serial_number ? ` (${r.instrument_serial_number})` : ''}
                 </span>
                 <span>{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
                 <span>{r.technician_name ?? '—'}</span>
-                <span>{r.report_date ?? '—'}</span>
+                <span>
+                  {r.report_date ??
+                    (isUnread(r) ? <span className="muted">uploaded {r.created_at.slice(0, 10)}</span> : '—')}
+                </span>
                 <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
                 {r.snippet && r.snippet.length > 0 && (
                   <span className="report-excerpt" data-testid="excerpt">

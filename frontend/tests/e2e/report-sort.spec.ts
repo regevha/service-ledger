@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { nextSort, sortReports } from '../../src/reportSort';
+import { defaultOrder, nextSort, sortReports } from '../../src/reportSort';
 import type { ReportListItem } from '../../src/api';
 
 // The sorting rules of the Reports table (src/reportSort.ts), checked on plain
@@ -97,5 +97,20 @@ test('rows that compare equal keep the order they came in, and the input is not 
   const before = ids(rows);
   expect(ids(sortReports(rows, { key: 'lab_manager', direction: 'asc' }))).toEqual(['first', 'second', 'third']);
   expect(ids(sortReports(rows, { key: 'lab_manager', direction: 'desc' }))).toEqual(['first', 'second', 'third']);
+  expect(ids(rows)).toEqual(before);
+});
+
+test('the default order is newest report date first, undated reports by upload day, later upload first on a tie', () => {
+  const rows = [
+    row('jan', { report_date: '2026-01-12', created_at: '2026-10-24T09:00:00Z' }),
+    row('sep', { report_date: '2026-09-08', created_at: '2026-10-24T09:00:00Z' }),
+    row('draft-today', { created_at: '2026-10-24T10:00:00Z' }),
+    row('draft-old', { created_at: '2026-03-01T10:00:00Z' }),
+    row('sep-later-upload', { report_date: '2026-09-08', created_at: '2026-10-24T11:00:00Z' }),
+  ];
+  const before = ids(rows);
+  expect(ids(defaultOrder(rows))).toEqual(['draft-today', 'sep-later-upload', 'sep', 'draft-old', 'jan']);
+  // Same input in any order gives the same result, and the input is not changed.
+  expect(ids(defaultOrder([...rows].reverse()))).toEqual(['draft-today', 'sep-later-upload', 'sep', 'draft-old', 'jan']);
   expect(ids(rows)).toEqual(before);
 });
