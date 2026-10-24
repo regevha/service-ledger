@@ -1,7 +1,28 @@
+import { useRef, useState } from 'react';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { FieldControl } from './FieldEditor';
 import { REPORT_TYPE_LABEL } from '../labels';
+import { fieldLabel } from '../fieldLabels';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { ReportTemplate } from '../api';
+
+const SCAN_PREF_KEY = 'sl.review.showScan';
+
+// Per-viewer convenience only: browser storage can be empty or throw, so the page works without it.
+function readScanPref(): boolean {
+  try {
+    return localStorage.getItem(SCAN_PREF_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+function writeScanPref(on: boolean) {
+  try {
+    localStorage.setItem(SCAN_PREF_KEY, on ? 'on' : 'off');
+  } catch {
+    /* not remembered; nothing else depends on it */
+  }
+}
 
 /**
  * The field-by-field review/correction UI (§5) — shared between the live
@@ -27,6 +48,9 @@ export function ReviewScreen({
   title,
   originalScanUrl,
   pdfUrl,
+  scanInlineUrl,
+  readOnly = false,
+  onEdit,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
@@ -63,6 +87,12 @@ export function ReviewScreen({
   // originalScanUrl, this is never undefined-because-still-uploading, since
   // the review screen itself only renders once `template` exists.
   pdfUrl?: string;
+  // The same scan, for showing beside the fields on a wide screen (the attachment's inline URL).
+  // Undefined (or a narrow screen) falls back to the "View original scan" link alone.
+  scanInlineUrl?: string;
+  // A finalized report opens read-only: its fields can't be typed into until Edit is pressed.
+  readOnly?: boolean;
+  onEdit?: () => void;
 }) {
   const isFlagged = (name: string) => {
     const confidence = fieldConfidences[name];
@@ -78,20 +108,50 @@ export function ReviewScreen({
       flaggedCount === 1 ? 'needs' : 'need'
     } your attention`;
 
+  const wide = useMediaQuery('(min-width: 1100px)');
+  const [scanOpen, setScanOpen] = useState(readScanPref);
+  const showScan = Boolean(scanInlineUrl) && wide && scanOpen;
+
+  // "Next ↓" walks the fields that need attention, one press at a time, wrapping round.
+  const listRef = useRef<HTMLDivElement>(null);
+  const nextFlagged = useRef(-1);
+  function goToNextFlagged() {
+    const els = listRef.current?.querySelectorAll<HTMLElement>('.field.pending');
+    if (!els || els.length === 0) return;
+    nextFlagged.current = (nextFlagged.current + 1) % els.length;
+    const el = els[nextFlagged.current];
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.querySelector<HTMLElement>('input, textarea, select, button')?.focus({ preventScroll: true });
+  }
+
   return (
     <div className="section">
       <div className="section-title-row">
         <div className="section-title">{heading}</div>
-        {originalScanUrl && (
-          <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
-            View original scan
-          </a>
-        )}
-        {pdfUrl && (
-          <a className="btn small" href={pdfUrl}>
-            Download PDF
-          </a>
-        )}
+        <div className="section-title-actions">
+          {scanInlineUrl && wide && (
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => {
+                setScanOpen(!scanOpen);
+                writeScanPref(!scanOpen);
+              }}
+            >
+              {scanOpen ? 'Hide scan' : 'Show scan'}
+            </button>
+          )}
+          {originalScanUrl && (
+            <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
+              View original scan
+            </a>
+          )}
+          {pdfUrl && (
+            <a className="btn small" href={pdfUrl}>
+              Download PDF
+            </a>
+          )}
+        </div>
       </div>
 
       {placeholderValues && (
@@ -101,11 +161,19 @@ export function ReviewScreen({
         </div>
       )}
 
-      <div className="field-list">
+      <div className={`review-split${showScan ? ' with-scan' : ''}`}>
+        {showScan && (
+          <aside className="review-scan" aria-label="Original scan">
+            <iframe src={`${scanInlineUrl}#view=FitH`} title="Original scan" />
+          </aside>
+        )}
+        <div className="review-fields">
+      <fieldset className="review-fieldset" disabled={readOnly}>
+      <div className={`field-list${readOnly ? ' read-only' : ''}`} ref={listRef}>
         <div className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}>
           <div className="field-top">
             <label className="field-label" htmlFor="review-report-date">
-              service date
+              Service date
             </label>
             {reportDateConfidence !== undefined && (
               <ConfidenceBadge
@@ -133,7 +201,7 @@ export function ReviewScreen({
                   <span className="badge-mini" style={{ background: flagged ? 'var(--warn)' : 'var(--good)' }}>
                     {i + 1}
                   </span>{' '}
-                  {field.name.replace(/_/g, ' ')}
+                  {fieldLabel(field.name, field.unit)}
                   {field.unit && <span className="field-unit"> ({field.unit})</span>}
                 </span>
                 {confidence !== undefined && (
@@ -151,15 +219,45 @@ export function ReviewScreen({
         })}
       </div>
 
-      <div className="cta-row">
-        <button className="btn" onClick={onSave}>
-          Save corrections
-        </button>
-        {onFinalize && (
-          <button className="btn primary" onClick={onFinalize}>
-            Save &amp; finalize report
-          </button>
-        )}
+      </fieldset>
+
+      <div className="review-actions">
+        <div className="review-actions-status">
+          {readOnly ? (
+            <span>Finalized. Press Edit to change it.</span>
+          ) : flaggedCount > 0 ? (
+            <>
+              <span>
+                {flaggedCount} field{flaggedCount === 1 ? '' : 's'} need{flaggedCount === 1 ? 's' : ''} attention
+              </span>
+              <button type="button" className="btn small" onClick={goToNextFlagged}>
+                Next ↓
+              </button>
+            </>
+          ) : null}
+        </div>
+        <div className="review-actions-buttons">
+          {readOnly ? (
+            onEdit && (
+              <button className="btn" onClick={onEdit}>
+                Edit
+              </button>
+            )
+          ) : (
+            <>
+              <button className="btn" onClick={onSave}>
+                Save corrections
+              </button>
+              {onFinalize && (
+                <button className="btn primary" onClick={onFinalize}>
+                  Save &amp; finalize report
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+        </div>
       </div>
     </div>
   );

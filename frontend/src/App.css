@@ -30,7 +30,9 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: var(--shadow);
-  overflow: hidden;
+  /* clip, not hidden: it rounds the corners the same, but "hidden" would make this the scroll
+     container for position: sticky, and the review screen's action bar could not stick. */
+  overflow: clip;
 }
 
 .view-tabs {
@@ -268,6 +270,10 @@ textarea {
   margin: 16px 20px 0;
   line-height: 1.5;
 }
+/* Inside a section (which already pads its content) a banner lines up with that content. */
+.section .banner {
+  margin: 0 0 12px;
+}
 .banner-warn {
   background: var(--warn-soft);
   color: var(--warn);
@@ -361,7 +367,6 @@ textarea {
   gap: 8px;
   font-weight: 600;
   font-size: 0.86rem;
-  text-transform: capitalize;
 }
 .field-unit {
   color: var(--text-faint);
@@ -426,7 +431,7 @@ textarea {
      available. min-width: 0 on the cells is what lets that fix work: a
      grid item's automatic minimum size defaults to its content's width
      otherwise, which is what forced long values onto their own row. */
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)) auto;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)) 32px;
   gap: 8px;
   align-items: center;
 }
@@ -454,10 +459,27 @@ textarea {
   font-family: var(--font-ui);
   white-space: nowrap;
 }
+/* A round × for a row in a form: small and quiet until pointed at. */
+.row-remove.icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  color: var(--text-faint);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.row-remove.icon:hover,
+.row-remove.icon:focus-visible {
+  color: var(--crit);
+  border-color: var(--crit);
+  background: var(--crit-soft);
+}
 
 .number-map-row {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  /* A label and a number box, side by side and close: not stretched across the whole card. */
+  grid-template-columns: minmax(90px, 140px) minmax(0, 200px) 32px;
   gap: 8px;
   align-items: center;
   margin-bottom: 6px;
@@ -1505,4 +1527,143 @@ textarea {
   flex-direction: column;
   gap: 3px;
   min-width: 0;
+}
+
+/* ---------- Review screen layout ---------- */
+
+.review-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.review-split {
+  display: block;
+}
+/* The scan beside the fields, on a wide screen. */
+.review-split.with-scan {
+  display: grid;
+  grid-template-columns: minmax(340px, 5fr) minmax(0, 6fr);
+  gap: 18px;
+  align-items: start;
+}
+.review-scan {
+  position: sticky;
+  top: 12px;
+  height: calc(100vh - 24px);
+  min-height: 420px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.review-scan iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.review-fields {
+  min-width: 0;
+}
+/* A finalized report is read-only until Edit: values show as plain text, not as boxes to type in. */
+.field-list.read-only input,
+.field-list.read-only textarea,
+.field-list.read-only select {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+  opacity: 1;
+  resize: none;
+  appearance: none;
+}
+.field-list.read-only .row-remove,
+.field-list.read-only .btn,
+.field-list.read-only .tag-input input {
+  display: none;
+}
+.field-list.read-only .tag-chip button {
+  display: none;
+}
+/* The buttons stay at the bottom of the window while a long form scrolls. */
+.review-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding: 12px 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.review-actions-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--warn);
+  font-weight: 600;
+}
+.review-actions-buttons {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+@media (max-width: 620px) {
+  /* Parts and other table fields: each row becomes a small card with its own labels. */
+  .object-array-head {
+    display: none;
+  }
+  .object-array-row {
+    grid-template-columns: 1fr 32px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    row-gap: 8px;
+  }
+  .object-array-row > span[data-label] {
+    grid-column: 1;
+  }
+  .object-array-row > span[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 3px;
+  }
+  .object-array-row > .row-remove {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+  .number-map-row {
+    grid-template-columns: minmax(70px, 1fr) minmax(0, 1fr) 32px;
+  }
+}
+
+/* A banner's own buttons: small, side by side, below its text. */
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+}
+/* A button that looks like a text link: for the quiet "no thanks" next to a real button. */
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
