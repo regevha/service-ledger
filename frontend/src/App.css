@@ -451,19 +451,26 @@ textarea {
   color: var(--text-faint);
 }
 .row-remove {
+  background: none;
+  border: none;
+  color: var(--crit);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-family: var(--font-ui);
+  white-space: nowrap;
+}
+/* A round × for a row in a form: small and quiet until pointed at. */
+.row-remove.icon {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: none;
   border: 1px solid transparent;
   color: var(--text-faint);
-  cursor: pointer;
   font-size: 1.1rem;
   line-height: 1;
-  font-family: var(--font-ui);
 }
-.row-remove:hover,
-.row-remove:focus-visible {
+.row-remove.icon:hover,
+.row-remove.icon:focus-visible {
   color: var(--crit);
   border-color: var(--crit);
   background: var(--crit-soft);

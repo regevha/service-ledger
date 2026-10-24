@@ -142,7 +142,7 @@ function ObjectArrayInput({
                   {leafInput(row[c.name], c.type as LeafType, (v) => updateRow(i, c.name, v))}
                 </span>
               ))}
-              <button type="button" className="row-remove" onClick={() => removeRow(i)} aria-label="Remove row" title="Remove row">
+              <button type="button" className="row-remove icon" onClick={() => removeRow(i)} aria-label="Remove row" title="Remove row">
                 ×
               </button>
             </div>
@@ -178,7 +178,7 @@ function NumberMapInput({ value, onChange }: { value: Record<string, number>; on
         <div className="number-map-row" key={key}>
           <span className="number-map-key">{key}</span>
           <input type="number" value={v} aria-label={key} onChange={(e) => updateKey(key, e.target.value)} />
-          <button type="button" className="row-remove" onClick={() => removeKey(key)} aria-label={`Remove ${key}`} title={`Remove ${key}`}>
+          <button type="button" className="row-remove icon" onClick={() => removeKey(key)} aria-label={`Remove ${key}`} title={`Remove ${key}`}>
             ×
           </button>
         </div>
