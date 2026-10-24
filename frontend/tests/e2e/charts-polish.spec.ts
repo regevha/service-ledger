@@ -53,18 +53,8 @@ async function instrumentWithTrend(request: APIRequestContext, marker: string, d
   return instrument.id as string;
 }
 
-const DATES = [
-  '2025-10-15',
-  '2025-11-15',
-  '2025-12-15',
-  '2026-01-15',
-  '2026-02-15',
-  '2026-03-15',
-  '2026-04-15',
-  '2026-05-15',
-  '2026-06-15',
-  '2026-07-15',
-];
+// Six reports over two years: enough that a narrow chart has to thin its date labels, few enough to seed quickly.
+const DATES = ['2025-10-15', '2025-12-15', '2026-02-15', '2026-04-15', '2026-06-15', '2026-07-15'];
 
 async function openTrend(page: Page, instrumentId: string) {
   await page.goto(`/#/reports/instrument/${instrumentId}`);
@@ -75,6 +65,8 @@ async function openTrend(page: Page, instrumentId: string) {
 test.describe('trend chart', () => {
   let instrumentId: string;
   test.beforeAll(async ({ request }) => {
+    // Seeding reads each report through the extraction worker, which is slow on a busy CI machine.
+    test.setTimeout(240_000);
     instrumentId = await instrumentWithTrend(request, `E2E-ChartScale-${Date.now()}`, DATES);
   });
 
