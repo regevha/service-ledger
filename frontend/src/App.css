@@ -38,7 +38,13 @@
 .view-tabs {
   display: flex;
   gap: 4px;
-  margin-bottom: 12px;
+  /* The strip sits right on the card (its last pixel overlaps the card's top border), so the
+     active tab, whose bottom edge is the card's colour, reads as part of the card. The 1px
+     of padding keeps that last pixel from being clipped by the strip's own scrolling. */
+  margin-bottom: -1px;
+  padding-bottom: 1px;
+  position: relative;
+  z-index: 1;
   /* Five tabs are wider than a phone: scroll them rather than widen the page. */
   overflow-x: auto;
   scrollbar-width: none;
@@ -718,16 +724,18 @@ textarea {
   margin: 8px 0 0;
 }
 
-.bar-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.bar-row {
+.bar-chart,
+.stack-chart {
+  /* One grid for the whole chart: every row's label, bar and value share the same three
+     columns, so the bars all start and end in the same place. */
   display: grid;
-  grid-template-columns: minmax(120px, 0.9fr) 2fr auto;
+  grid-template-columns: minmax(120px, 0.9fr) minmax(0, 2fr) max-content;
   align-items: center;
   gap: 10px;
+}
+.bar-row,
+.stack-row {
+  display: contents;
 }
 .bar-row-label {
   display: flex;
@@ -794,17 +802,7 @@ textarea {
   background: var(--border-strong);
 }
 
-.stack-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.stack-row {
-  display: grid;
-  grid-template-columns: minmax(120px, 0.9fr) 2fr auto;
-  align-items: center;
-  gap: 10px;
-}
+
 .stack-track {
   display: flex;
   gap: 2px;
@@ -827,8 +825,13 @@ textarea {
 }
 
 @media (max-width: 620px) {
+  .bar-chart,
+  .stack-chart {
+    grid-template-columns: 1fr;
+  }
   .bar-row,
   .stack-row {
+    display: grid;
     grid-template-columns: 1fr;
     gap: 4px;
   }
@@ -1906,4 +1909,25 @@ textarea {
   .instrument-row .template-row-actions {
     grid-column: 1 / -1;
   }
+}
+
+/* When every bar would be the same length, the bars say nothing: a plain list of the counts instead. */
+.count-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.count-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.count-list li:last-child {
+  border-bottom: none;
+}
+.count-list .bar-sublabel {
+  margin-left: 8px;
 }
