@@ -18,6 +18,8 @@ import {
   type TemplateUsage,
 } from '../api';
 import { EnumArrayInput } from './FieldEditor';
+import { RowMenu } from './RowMenu';
+import { fieldLabel } from '../fieldLabels';
 import { FieldAliasManagerScreen } from './FieldAliasManager';
 import { TemplateCompareScreen } from './TemplateCompare';
 import { REPORT_TYPE_LABEL } from '../labels';
@@ -213,44 +215,62 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
                 ↓
               </button>
             </div>
-            <input
-              type="text"
-              className="text-input"
-              placeholder="field_name"
-              aria-label="Field name"
-              value={field.name}
-              onChange={(e) => updateField(i, { name: e.target.value })}
-            />
-            <select value={field.type} onChange={(e) => changeType(i, e.target.value as FieldType)} aria-label="Field type">
-              {FIELD_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <label className="schema-field-input">
+              <span className="schema-field-caption">Field name</span>
+              <input
+                type="text"
+                className="text-input"
+                placeholder="field_name"
+                aria-label="Field name"
+                value={field.name}
+                onChange={(e) => updateField(i, { name: e.target.value })}
+              />
+            </label>
+            <label className="schema-field-input">
+              <span className="schema-field-caption">Type</span>
+              <select value={field.type} onChange={(e) => changeType(i, e.target.value as FieldType)} aria-label="Field type">
+                {FIELD_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button type="button" className="row-remove" onClick={() => removeField(i)}>
               Remove
             </button>
           </div>
 
           <div className="schema-field-meta">
-            <input
-              type="text"
-              className="text-input"
-              placeholder="Unit (optional, e.g. psi)"
-              aria-label="Unit"
-              value={field.unit ?? ''}
-              onChange={(e) => updateField(i, { unit: e.target.value || null })}
-            />
-            <input
-              type="text"
-              className="text-input"
-              placeholder="Notes for the lab manager (optional)"
-              aria-label="Notes"
-              value={field.notes ?? ''}
-              onChange={(e) => updateField(i, { notes: e.target.value || null })}
-            />
+            <label className="schema-field-input">
+              <span className="schema-field-caption">Unit (optional)</span>
+              <input
+                type="text"
+                className="text-input"
+                placeholder="e.g. psi"
+                aria-label="Unit"
+                value={field.unit ?? ''}
+                onChange={(e) => updateField(i, { unit: e.target.value || null })}
+              />
+            </label>
+            <label className="schema-field-input">
+              <span className="schema-field-caption">Notes for the lab manager (optional)</span>
+              <input
+                type="text"
+                className="text-input"
+                placeholder="Shown with the field on the review screen"
+                aria-label="Notes"
+                value={field.notes ?? ''}
+                onChange={(e) => updateField(i, { notes: e.target.value || null })}
+              />
+            </label>
           </div>
+          {field.name.trim() !== '' && (
+            <div className="schema-field-preview">
+              Shown as <b>{fieldLabel(field.name, field.unit ?? undefined)}</b>
+              {field.unit ? ` (${field.unit})` : ''}
+            </div>
+          )}
 
           {(field.type === 'enum' || field.type === 'enum[]') && (
             <div className="schema-field-extra">
@@ -782,28 +802,22 @@ export function TemplateManagerScreen({
           </div>
           {templates.map((tpl) => (
             <div className="template-row template-row-body" key={tpl.id}>
-              <span>{REPORT_TYPE_LABEL[tpl.report_type]}</span>
-              <span>
+              <span data-label="Report type">{REPORT_TYPE_LABEL[tpl.report_type]}</span>
+              <span data-label="Model">
                 {tpl.model ?? '(any model)'}
                 <small className="muted"> · {typeNames[tpl.instrument_type] ?? tpl.instrument_type}</small>
               </span>
-              <span>{tpl.field_schema.fields.length}</span>
-              <span className="template-usage">
+              <span data-label="Fields">{tpl.field_schema.fields.length}</span>
+              <span className="template-usage" data-label="Reports">
                 {usage[tpl.id] ? `${usage[tpl.id].report_count} (${usage[tpl.id].finalized_count} finalized)` : '0'}
               </span>
               <span className="template-row-actions">
                 <button type="button" className="btn small" onClick={() => setMode({ kind: 'edit', template: tpl })}>
                   Edit
                 </button>
-                <button type="button" className="btn small" onClick={() => setMode({ kind: 'copy', template: tpl })}>
-                  Duplicate
-                </button>
-                <button type="button" className="btn small" onClick={() => setMode({ kind: 'compare', left: tpl })}>
-                  Compare
-                </button>
                 {confirmDeleteId === tpl.id ? (
                   <>
-                    <button type="button" className="btn small" onClick={() => void handleDelete(tpl.id)}>
+                    <button type="button" className="btn small danger solid" onClick={() => void handleDelete(tpl.id)}>
                       Confirm delete
                     </button>
                     <button type="button" className="btn small" onClick={() => setConfirmDeleteId(null)}>
@@ -811,15 +825,20 @@ export function TemplateManagerScreen({
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    className="btn small"
-                    disabled={Boolean(usage[tpl.id])}
-                    title={usage[tpl.id] ? `${usage[tpl.id].report_count} report(s) use this template, so it cannot be deleted.` : undefined}
-                    onClick={() => setConfirmDeleteId(tpl.id)}
-                  >
-                    Delete
-                  </button>
+                  <RowMenu
+                    label={`More actions for ${REPORT_TYPE_LABEL[tpl.report_type]} template`}
+                    items={[
+                      { label: 'Duplicate', onSelect: () => setMode({ kind: 'copy', template: tpl }) },
+                      { label: 'Compare', onSelect: () => setMode({ kind: 'compare', left: tpl }) },
+                      {
+                        label: 'Delete',
+                        danger: true,
+                        disabled: Boolean(usage[tpl.id]),
+                        title: usage[tpl.id] ? `${usage[tpl.id].report_count} report(s) use this template, so it cannot be deleted.` : undefined,
+                        onSelect: () => setConfirmDeleteId(tpl.id),
+                      },
+                    ]}
+                  />
                 )}
               </span>
             </div>

@@ -1,5 +1,6 @@
 import type { ItemSchemaColumn, TemplateField } from '../api';
 import { fieldLabel } from '../fieldLabels';
+import { DateInput } from './DateInput';
 
 /**
  * Renders one editable control per template field type (SL-ARCH-001 §5's
@@ -34,7 +35,7 @@ function leafInput(value: unknown, type: string, onChange: (v: unknown) => void)
     );
   }
   if (type === 'date') {
-    return <input type="date" value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} />;
+    return <DateInput value={typeof value === 'string' ? value : ''} onChange={onChange} />;
   }
   return <input type="text" value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} />;
 }

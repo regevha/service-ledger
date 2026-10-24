@@ -94,11 +94,13 @@ test('create, edit, and delete a report template through the structured field ed
   await page.click('button:has-text("Cancel")');
 
   // ---- Delete: two-step confirm, cancel first to check it's a no-op ----
-  await updatedRow.locator('button:has-text("Delete")').click();
+  await updatedRow.getByRole('button', { name: /More actions/ }).click();
+  await updatedRow.getByRole('menuitem', { name: 'Delete' }).click();
   await updatedRow.locator('button:has-text("Cancel")').click();
   await expect(page.locator('.template-row-body', { hasText: uniqueModel })).toBeVisible();
 
-  await updatedRow.locator('button:has-text("Delete")').click();
+  await updatedRow.getByRole('button', { name: /More actions/ }).click();
+  await updatedRow.getByRole('menuitem', { name: 'Delete' }).click();
   await updatedRow.locator('button:has-text("Confirm delete")').click();
   await expect(page.locator('.template-row-body', { hasText: uniqueModel })).toHaveCount(0);
 });
