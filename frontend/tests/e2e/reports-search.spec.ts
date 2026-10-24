@@ -134,6 +134,9 @@ test.describe('reports search screen', () => {
 
     await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('.section-title')).toContainText('Finalized');
+    // A finalized report opens read-only: Edit unlocks it, and only then is there anything to save.
+    await expect(page.locator('button:has-text("Save corrections")')).toHaveCount(0);
+    await page.click('.review-actions button:has-text("Edit")');
     await expect(page.locator('button:has-text("Save corrections")')).toBeVisible();
     // finalize_report (backend §9) 409s outside extracted/in_review — the
     // button is withheld rather than surfacing that error after the click.

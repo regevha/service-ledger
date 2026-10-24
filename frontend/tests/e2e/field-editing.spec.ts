@@ -89,14 +89,14 @@ test('editing a number[detector] field (per-detector add/edit/remove) persists t
 
   await openReport(page, marker);
 
-  const field = page.locator('.field', { hasText: 'baseline cv percent' });
+  const field = page.locator('.field', { hasText: 'baseline cv' });
   await expect(field.locator('.number-map-row')).toHaveCount(3);
 
   // Edit an existing detector's value.
   await field.locator('.number-map-row', { hasText: 'detector_1' }).locator('input[type="number"]').fill('9.99');
 
   // Remove a detector entirely.
-  await field.locator('.number-map-row', { hasText: 'detector_3' }).locator('button:has-text("Remove")').click();
+  await field.locator('.number-map-row', { hasText: 'detector_3' }).locator('button[aria-label="Remove detector_3"]').click();
   await expect(field.locator('.number-map-row')).toHaveCount(2);
 
   // Add a brand new key via the "+ Add" control (NumberMapInput.addKey — the
@@ -130,7 +130,7 @@ test('editing an object[] field (add/edit/remove rows) persists through Save cor
 
   await openReport(page, marker);
 
-  const field = page.locator('.field', { hasText: 'components replaced' });
+  const field = page.locator('.field', { hasText: 'Components replaced' });
   const dataRows = field.locator('.object-array-row:not(.object-array-head)');
   await expect(dataRows).toHaveCount(1);
 
@@ -156,15 +156,15 @@ test('editing an object[] field (add/edit/remove rows) persists through Save cor
   // seed_templates.py declares them (part_name, part_number, qty) rather
   // than Postgres's old shortest-key-first reordering (qty, part_name,
   // part_number).
-  expect(headings).toEqual(['part name', 'part number', 'qty']);
+  expect(headings).toEqual(['Part name', 'Part number', 'Qty']);
   const colIndex = (label: string) => {
     const i = headings.findIndex((h) => h.trim() === label);
     if (i === -1) throw new Error(`column "${label}" not found among ${JSON.stringify(headings)}`);
     return i;
   };
-  const partNameCol = colIndex('part name');
-  const partNumberCol = colIndex('part number');
-  const qtyCol = colIndex('qty');
+  const partNameCol = colIndex('Part name');
+  const partNumberCol = colIndex('Part number');
+  const qtyCol = colIndex('Qty');
 
   // Edit the stub-filled row in place (ObjectArrayInput.updateRow).
   await dataRows.nth(0).locator('input').nth(partNameCol).fill('Sample injector O-ring');

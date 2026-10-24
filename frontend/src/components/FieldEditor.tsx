@@ -1,4 +1,5 @@
 import type { ItemSchemaColumn, TemplateField } from '../api';
+import { fieldLabel } from '../fieldLabels';
 
 /**
  * Renders one editable control per template field type (SL-ARCH-001 §5's
@@ -120,7 +121,9 @@ function ObjectArrayInput({
   // its header. minmax(0, ...) lets the track shrink below its content's
   // natural width, and the input/textarea inside truncates or wraps in its
   // own column instead of blowing out the whole row.
-  const rowGridStyle = { gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr)) auto` };
+  // (The count goes through a CSS variable rather than an inline grid-template-columns, so the
+  // phone layout in App.css can restack each row into a labelled card.)
+  const rowGridStyle = { ['--cols' as string]: columns.length } as React.CSSProperties;
 
   return (
     <div className="object-array">
@@ -128,17 +131,19 @@ function ObjectArrayInput({
         <div className="object-array-table">
           <div className="object-array-row object-array-head" style={rowGridStyle}>
             {columns.map((c) => (
-              <span key={c.name}>{c.name.replace(/_/g, ' ')}</span>
+              <span key={c.name}>{fieldLabel(c.name)}</span>
             ))}
             <span />
           </div>
           {rows.map((row, i) => (
             <div className="object-array-row" key={i} style={rowGridStyle}>
               {columns.map((c) => (
-                <span key={c.name}>{leafInput(row[c.name], c.type as LeafType, (v) => updateRow(i, c.name, v))}</span>
+                <span key={c.name} data-label={fieldLabel(c.name)}>
+                  {leafInput(row[c.name], c.type as LeafType, (v) => updateRow(i, c.name, v))}
+                </span>
               ))}
-              <button type="button" className="row-remove" onClick={() => removeRow(i)} aria-label="Remove row">
-                Remove
+              <button type="button" className="row-remove icon" onClick={() => removeRow(i)} aria-label="Remove row" title="Remove row">
+                ×
               </button>
             </div>
           ))}
@@ -172,9 +177,9 @@ function NumberMapInput({ value, onChange }: { value: Record<string, number>; on
       {entries.map(([key, v]) => (
         <div className="number-map-row" key={key}>
           <span className="number-map-key">{key}</span>
-          <input type="number" value={v} onChange={(e) => updateKey(key, e.target.value)} />
-          <button type="button" className="row-remove" onClick={() => removeKey(key)}>
-            Remove
+          <input type="number" value={v} aria-label={key} onChange={(e) => updateKey(key, e.target.value)} />
+          <button type="button" className="row-remove icon" onClick={() => removeKey(key)} aria-label={`Remove ${key}`} title={`Remove ${key}`}>
+            ×
           </button>
         </div>
       ))}

@@ -24,11 +24,11 @@ test('a technician can confirm a report as an installation / upgrade and review 
 
   const fields = page.locator('.field-list');
   await expect(fields).toBeVisible({ timeout: 30_000 });
-  await expect(fields).toContainText('service description');
-  await expect(fields).toContainText('parts used');
-  await expect(fields).toContainText('verification result');
+  await expect(fields).toContainText('Service description');
+  await expect(fields).toContainText('Parts used');
+  await expect(fields).toContainText('Verification result');
   // The repair template's fields are not on this report.
-  await expect(fields).not.toContainText('fault category');
+  await expect(fields).not.toContainText('Fault category');
 
   await page.click('button:has-text("Save & finalize report")');
   await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
