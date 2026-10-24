@@ -1900,10 +1900,14 @@ textarea {
 }
 
 /* "+ Add a type" sits level with the select beside it, same height. */
+/* The same fixed height on both, so it does not depend on the font's own metrics. */
+.schema-form-row > .btn.small,
+.schema-form-row select {
+  box-sizing: border-box;
+  height: 38px;
+}
 .schema-form-row > .btn.small {
   align-self: flex-end;
-  padding-top: 9px;
-  padding-bottom: 9px;
 }
 @media (max-width: 620px) {
   .instrument-row .template-row-actions {
