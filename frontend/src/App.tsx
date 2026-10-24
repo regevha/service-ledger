@@ -81,6 +81,22 @@ export default function App() {
       .catch(() => undefined);
   }, []);
 
+  // A file dropped anywhere that is not the upload box would make the browser open it
+  // in this tab and leave the app, losing a report that is half reviewed. Cancel that;
+  // the upload box handles its own drops.
+  useEffect(() => {
+    const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+    const block = (e: DragEvent) => {
+      if (hasFiles(e)) e.preventDefault();
+    };
+    window.addEventListener('dragover', block);
+    window.addEventListener('drop', block);
+    return () => {
+      window.removeEventListener('dragover', block);
+      window.removeEventListener('drop', block);
+    };
+  }, []);
+
   return (
     <div className="wrap">
       <div className="masthead">
