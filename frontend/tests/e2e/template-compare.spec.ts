@@ -43,7 +43,8 @@ async function createTemplate(request: APIRequestContext, data: Record<string, u
 
 test('the Compare action on a row starts with that template and lists the closest ones first', async ({ page }) => {
   await openTemplates(page);
-  await row(page, 'Malfunction / repair', '(any model)').getByRole('button', { name: 'Compare', exact: true }).click();
+  await row(page, 'Malfunction / repair', '(any model)').getByRole('button', { name: /More actions/ }).click();
+  await row(page, 'Malfunction / repair', '(any model)').getByRole('menuitem', { name: 'Compare' }).click();
 
   await expect(page.locator('#compare-left option:checked')).toHaveText(new RegExp(`^${GENERIC_REPAIR.replace(/[()/]/g, '\\$&')}`));
   // Nothing is compared until a second template is chosen.
@@ -177,7 +178,8 @@ test('only templates of the same instrument type can be compared', async ({ page
   });
   try {
     await openTemplates(page);
-    await row(page, 'Malfunction / repair', typeName).getByRole('button', { name: 'Compare', exact: true }).click();
+    await row(page, 'Malfunction / repair', typeName).getByRole('button', { name: /More actions/ }).click();
+    await row(page, 'Malfunction / repair', typeName).getByRole('menuitem', { name: 'Compare' }).click();
 
     // It is the only template of its type: the second picker has nothing to offer.
     await expect(page.getByText(`There is no other ${typeName} template to compare this one with.`)).toBeVisible();

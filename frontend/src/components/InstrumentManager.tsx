@@ -110,12 +110,13 @@ function InstrumentFormScreen({
     }
   }
 
-  const canSave =
-    name.trim().length > 0 &&
-    model.trim().length > 0 &&
-    serialNumber.trim().length > 0 &&
-    (existing !== undefined || manufacturer.trim().length > 0) &&
-    !saving;
+  const missing = [
+    name.trim().length === 0 ? 'name' : null,
+    model.trim().length === 0 ? 'model' : null,
+    existing === undefined && manufacturer.trim().length === 0 ? 'manufacturer' : null,
+    serialNumber.trim().length === 0 ? 'serial number' : null,
+  ].filter((m): m is string => m !== null);
+  const canSave = missing.length === 0 && !saving;
 
   return (
     <div className="section">
@@ -171,7 +172,7 @@ function InstrumentFormScreen({
 
       <div className="schema-form-row">
         <label className="schema-form-label">
-          Name
+          <span>Name <Required /></span>
           <input
             type="text"
             className="text-input"
@@ -181,7 +182,7 @@ function InstrumentFormScreen({
           />
         </label>
         <label className="schema-form-label">
-          Model
+          <span>Model <Required /></span>
           <input
             type="text"
             className="text-input"
@@ -194,17 +195,17 @@ function InstrumentFormScreen({
 
       <div className="schema-form-row">
         <label className="schema-form-label">
-          Manufacturer
+          <span>Manufacturer {!existing && <Required />}</span>
           <input
             type="text"
             className="text-input"
-            placeholder={existing ? "e.g. BD" : "e.g. BD (required)"}
+            placeholder="e.g. BD"
             value={manufacturer}
             onChange={(e) => setManufacturer(e.target.value)}
           />
         </label>
         <label className="schema-form-label">
-          Serial number
+          <span>Serial number <Required /></span>
           <input type="text" className="text-input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} />
         </label>
       </div>
@@ -258,11 +259,25 @@ function InstrumentFormScreen({
           {saving ? 'Saving…' : existing ? 'Save changes' : 'Create instrument'}
         </button>
       </div>
+      {missing.length > 0 && !saving && (
+        <p className="form-missing" id="instrument-missing">
+          Still needed: {missing.join(', ')}.
+        </p>
+      )}
     </div>
   );
 }
 
 type ManagerMode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; instrument: Instrument };
+
+/** The mark next to a field the form cannot be saved without. */
+function Required() {
+  return (
+    <span className="required-mark" aria-label="required" title="Required">
+      *
+    </span>
+  );
+}
 
 export function InstrumentManagerScreen({
   instruments,
@@ -361,7 +376,7 @@ export function InstrumentManagerScreen({
                 } and their scans.`}{' '}
             This cannot be undone.
           </div>
-          <button type="button" className="btn small" onClick={() => void handleDelete()} disabled={deleting}>
+          <button type="button" className="btn small danger solid" onClick={() => void handleDelete()} disabled={deleting}>
             Confirm delete
           </button>{' '}
           <button type="button" className="btn small" onClick={() => setPendingDelete(null)} disabled={deleting}>
@@ -391,16 +406,16 @@ export function InstrumentManagerScreen({
           </div>
           {instruments.map((inst) => (
             <div className="instrument-row template-row-body" key={inst.id}>
-              <span>{inst.name}</span>
-              <span>{inst.manufacturer ?? '—'}</span>
-              <span>{inst.distributor ?? '—'}</span>
-              <span>
+              <span data-label="Name">{inst.name}</span>
+              <span data-label="Manufacturer">{inst.manufacturer ?? '—'}</span>
+              <span data-label="Distributor">{inst.distributor ?? '—'}</span>
+              <span data-label="Model">
                 {inst.model}
                 <small className="muted"> · {typeNames[inst.instrument_type] ?? inst.instrument_type}</small>
               </span>
-              <span>{inst.serial_number}</span>
-              <span>{inst.location ?? '—'}</span>
-              <span>
+              <span data-label="Serial number">{inst.serial_number}</span>
+              <span data-label="Room name">{inst.location ?? '—'}</span>
+              <span data-label="Status">
                 <span className={`status-pill instrument-status-${inst.status}`}>
                   {INSTRUMENT_STATUS_LABEL[inst.status]}
                 </span>
@@ -409,7 +424,7 @@ export function InstrumentManagerScreen({
                 <button type="button" className="btn small" onClick={() => setMode({ kind: 'edit', instrument: inst })}>
                   Edit
                 </button>
-                <button type="button" className="btn small" onClick={() => void askToDelete(inst)}>
+                <button type="button" className="btn small danger" onClick={() => void askToDelete(inst)}>
                   Delete
                 </button>
               </span>

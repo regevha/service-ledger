@@ -11,6 +11,7 @@ import {
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
+import { DateInput } from './DateInput';
 import { ModelComparisonSection } from './ModelComparison';
 
 /**
@@ -238,18 +239,16 @@ function FilterBar({ filters, instruments, onChange }: {
         ))}
       </select>
 
-      <input
-        type="date"
-        aria-label="From date"
+      <DateInput
+        ariaLabel="From date"
         value={filters.date_from ?? ''}
-        onChange={(e) => onChange({ ...filters, date_from: e.target.value || undefined })}
+        onChange={(v) => onChange({ ...filters, date_from: v || undefined })}
       />
       <span className="filter-sep">to</span>
-      <input
-        type="date"
-        aria-label="To date"
+      <DateInput
+        ariaLabel="To date"
         value={filters.date_to ?? ''}
-        onChange={(e) => onChange({ ...filters, date_to: e.target.value || undefined })}
+        onChange={(v) => onChange({ ...filters, date_to: v || undefined })}
       />
 
       {active && (

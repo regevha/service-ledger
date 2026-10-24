@@ -12,6 +12,7 @@ import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { InstrumentDetailScreen } from './InstrumentDetailScreen';
 import { ReportDetailScreen } from './ReportDetailScreen';
+import { DateInput } from './DateInput';
 import { SavedFilters } from './SavedFilters';
 import { defaultOrder, nextSort, SORT_LABEL, sortReports, type SortKey, type SortState } from '../reportSort';
 
@@ -261,18 +262,16 @@ export function ReportsListScreen({
           ))}
         </select>
 
-        <input
-          type="date"
-          aria-label="From date"
+        <DateInput
+          ariaLabel="From date"
           value={filters.date_from ?? ''}
-          onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value || undefined }))}
+          onChange={(v) => setFilters((f) => ({ ...f, date_from: v || undefined }))}
         />
         <span className="filter-sep">to</span>
-        <input
-          type="date"
-          aria-label="To date"
+        <DateInput
+          ariaLabel="To date"
           value={filters.date_to ?? ''}
-          onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value || undefined }))}
+          onChange={(v) => setFilters((f) => ({ ...f, date_to: v || undefined }))}
         />
 
         <input
@@ -369,17 +368,19 @@ export function ReportsListScreen({
                 key={r.id}
                 onClick={() => setScreen({ kind: 'report', item: r, returnTo: { kind: 'list' }, highlight: filters.q })}
               >
-                <span>
+                <span data-label="Instrument">
                   {r.instrument_model ?? (isUnread(r) ? 'Not read yet' : '—')}
                   {r.instrument_serial_number ? ` (${r.instrument_serial_number})` : ''}
                 </span>
-                <span>{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
-                <span>{r.technician_name ?? '—'}</span>
-                <span>
+                <span data-label="Report type">{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
+                <span data-label="Lab manager">{r.technician_name ?? '—'}</span>
+                <span data-label="Report date">
                   {r.report_date ??
                     (isUnread(r) ? <span className="muted">uploaded {r.created_at.slice(0, 10)}</span> : '—')}
                 </span>
-                <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                <span data-label="Status">
+                  <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                </span>
                 {r.snippet && r.snippet.length > 0 && (
                   <span className="report-excerpt" data-testid="excerpt">
                     {r.matched_field && <span className="excerpt-field">{r.matched_field}: </span>}

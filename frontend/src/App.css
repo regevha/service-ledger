@@ -1689,3 +1689,221 @@ textarea {
   justify-content: center;
   margin-top: 14px;
 }
+
+/* ---------- Destructive actions ---------- */
+
+.btn.danger {
+  color: var(--crit);
+  border-color: color-mix(in srgb, var(--crit) 45%, var(--border-strong));
+}
+.btn.danger:hover:not(:disabled) {
+  background: var(--crit-soft);
+}
+.btn.danger.solid {
+  background: var(--crit);
+  border-color: var(--crit);
+  color: #fff;
+}
+.btn.danger.solid:hover:not(:disabled) {
+  background: var(--crit);
+  filter: brightness(1.08);
+}
+.btn.danger:disabled {
+  color: var(--text-faint);
+  border-color: var(--border);
+}
+
+/* The report toolbar: where to go on the left, the one destructive action alone on the right. */
+.detail-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Row menu ("⋯") ---------- */
+
+.row-menu {
+  position: relative;
+  display: inline-flex;
+}
+.row-menu-button {
+  padding: 6px 10px;
+  letter-spacing: 0.1em;
+}
+.row-menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.14);
+}
+.row-menu-item {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  text-align: left;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+.row-menu-item:hover:not(:disabled),
+.row-menu-item:focus-visible {
+  background: var(--surface-2);
+}
+.row-menu-item.danger {
+  color: var(--crit);
+}
+.row-menu-item:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+/* The template rows no longer need a wide actions column. */
+@media (min-width: 621px) {
+  .template-row {
+    grid-template-columns: 1.4fr 1.4fr 0.6fr 0.9fr 140px;
+  }
+}
+.template-row .template-row-actions {
+  flex-wrap: nowrap;
+}
+
+/* ---------- Template editor captions ---------- */
+
+.schema-field-input {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.schema-field-caption {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-faint);
+}
+.schema-field-main {
+  align-items: end;
+}
+.schema-field-preview {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Required fields ---------- */
+
+.required-mark {
+  color: var(--crit);
+  font-weight: 700;
+}
+.form-missing {
+  margin: 8px 0 0;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Date input (always YYYY-MM-DD) ---------- */
+
+.date-input {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  max-width: 190px;
+}
+.date-input > input[type='text'] {
+  width: 100%;
+  padding-right: 34px;
+  font-variant-numeric: tabular-nums;
+}
+.date-input > input[aria-invalid='true'] {
+  border-color: var(--crit);
+}
+.date-input-pick {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  padding: 5px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.date-input-pick:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+/* The browser's own picker, opened from the button; the box itself stays hidden. */
+.date-input-native {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
+}
+.filter-row .date-input {
+  width: auto;
+  flex: none;
+}
+
+/* ---------- Phone: every value in a stacked card says what it is ---------- */
+
+@media (max-width: 620px) {
+  .report-row-body > span[data-label]::before,
+  .instrument-row.template-row-body > span[data-label]::before,
+  .template-row-body > span[data-label]::before,
+  .instrument-report-row-body > span[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 1px;
+  }
+  /* The sort buttons stay, introduced as what they are instead of a squeezed run of column names. */
+  .report-row-head::before {
+    content: 'Sort by';
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .template-row .template-row-actions {
+    grid-column: 1 / -1;
+  }
+  .date-input {
+    max-width: none;
+  }
+}
+
+/* "+ Add a type" sits level with the select beside it, same height. */
+.schema-form-row > .btn.small {
+  align-self: flex-end;
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+@media (max-width: 620px) {
+  .instrument-row .template-row-actions {
+    grid-column: 1 / -1;
+  }
+}
