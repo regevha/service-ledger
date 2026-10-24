@@ -38,11 +38,19 @@ export function InstrumentDetailScreen({
     "Could not load this instrument's reports."
   );
 
-  // search_reports (GET /reports, §7) orders by created_at desc, so items[0]
-  // is the most recently touched report regardless of status — a draft
-  // someone just started is still "recent activity" worth surfacing here,
-  // not just the most recently finalized one.
-  const mostRecent = items[0];
+  // The tile shows the report's own date (falling back to the day it was
+  // uploaded), so "most recent" has to be picked by that same date. The list
+  // comes back ordered by upload time, which is not the same thing: reports
+  // are often uploaded out of order, or in one batch, and then items[0] shows
+  // an old service date. A draft someone just started still counts as recent
+  // activity (it falls back to its upload day); ties go to the later upload.
+  const activityDate = (r: ReportListItem) => r.report_date ?? r.created_at.slice(0, 10);
+  const mostRecent = items.reduce<ReportListItem | undefined>((best, r) => {
+    if (!best) return r;
+    const a = activityDate(r);
+    const b = activityDate(best);
+    return a > b || (a === b && r.created_at > best.created_at) ? r : best;
+  }, undefined);
   const finalizedCount = items.filter((r) => r.status === 'finalized').length;
 
   return (

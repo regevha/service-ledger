@@ -51,6 +51,23 @@ export function nextSort(current: SortState | null, key: SortKey): SortState | n
 }
 
 /**
+ * The order the list shows when nothing is sorted and nothing was searched:
+ * newest report date first, a report with no date (a draft, or a form that
+ * carries none) by the day it was uploaded, and the later upload first on a tie.
+ * Without this the order was whatever the server returned, which is arbitrary
+ * for reports uploaded together (seeded or batch uploads share one timestamp).
+ */
+export function defaultOrder(items: ReportListItem[]): ReportListItem[] {
+  const day = (r: ReportListItem) => r.report_date ?? r.created_at.slice(0, 10);
+  return [...items].sort((a, b) => {
+    const d = day(b).localeCompare(day(a));
+    if (d !== 0) return d;
+    const c = b.created_at.localeCompare(a.created_at);
+    return c !== 0 ? c : a.id.localeCompare(b.id);
+  });
+}
+
+/**
  * A sorted copy of `items`. Empty cells always go last, in either direction;
  * rows that compare equal keep the order they came in. With no sort the list is
  * returned as it is.

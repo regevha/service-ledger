@@ -16,8 +16,18 @@ from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.models import Report, ReportTemplate, ReportType
 
+LASER_WAVELENGTHS = ["355nm", "405nm", "488nm", "561nm", "640nm"]
+
 CST_CALIBRATION_FIELDS = [
-    {"name": "laser_configuration", "type": "enum[]", "unit": None, "notes": "e.g. 405nm, 488nm, 640nm"},
+    {
+        "name": "laser_configuration",
+        "type": "enum[]",
+        "unit": None,
+        "notes": "e.g. 405nm, 488nm, 640nm",
+        # The template editor refuses a choice field with no options, so a
+        # seeded row without them could never be saved after an unrelated edit.
+        "options": LASER_WAVELENGTHS,
+    },
     {"name": "cst_beads_lot", "type": "text", "unit": None, "notes": "lot number, for traceability"},
     {"name": "baseline_cv_percent", "type": "number[detector]", "unit": "%", "notes": "per-detector, flag if > 5%"},
     {"name": "pmt_voltages", "type": "number[detector]", "unit": "V", "notes": "volts"},
@@ -31,6 +41,7 @@ SPECTRAL_CALIBRATION_FIELDS = [
         "type": "enum[]",
         "unit": None,
         "notes": "e.g. 355nm, 405nm, 488nm, 561nm, 640nm",
+        "options": LASER_WAVELENGTHS,
     },
     {"name": "spectral_qc_beads_lot", "type": "text", "unit": None, "notes": "lot number, for traceability"},
     {
