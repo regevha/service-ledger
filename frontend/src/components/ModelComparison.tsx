@@ -1,3 +1,4 @@
+import { fieldLabel } from '../fieldLabels';
 import { useMemo, useState } from 'react';
 import {
   getModelComparison,
@@ -169,7 +170,7 @@ function ComparisonChart({ lines, field }: { lines: UnitLine[]; field: TrendFiel
           <svg
             viewBox={`0 0 ${CHART_W} ${CHART_H}`}
             role="img"
-            aria-label={`${field.name.replace(/_/g, ' ')} per unit over time`}
+            aria-label={`${fieldLabel(field.name, field.unit)} per unit over time`}
           >
             {yTicks.map((t) => (
               <g key={t}>
@@ -229,7 +230,7 @@ function ComparisonChart({ lines, field }: { lines: UnitLine[]; field: TrendFiel
               <tr>
                 <th>Date</th>
                 <th>Unit</th>
-                <th>{field.name.replace(/_/g, ' ')}</th>
+                <th>{fieldLabel(field.name, field.unit)}</th>
               </tr>
             </thead>
             <tbody>
@@ -286,7 +287,7 @@ function ModelTrendSection({ group, filters }: { group: ModelComparison; filters
         <select value={field?.name ?? ''} onChange={(e) => setFieldName(e.target.value)} aria-label="Field to compare">
           {group.trend_fields.map((f) => (
             <option key={f.name} value={f.name}>
-              {f.name.replace(/_/g, ' ')}
+              {fieldLabel(f.name, f.unit)}
               {f.unit ? ` (${f.unit})` : ''}
             </option>
           ))}
@@ -295,7 +296,7 @@ function ModelTrendSection({ group, filters }: { group: ModelComparison; filters
           <select value={activeKey ?? ''} onChange={(e) => setValueKey(e.target.value)} aria-label="Detector or laser to compare">
             {keys.map((k) => (
               <option key={k} value={k}>
-                {k.replace(/_/g, ' ')}
+                {fieldLabel(k)}
               </option>
             ))}
           </select>

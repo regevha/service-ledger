@@ -98,8 +98,8 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   // ---- Field picker ----
   const picker = page.locator('[aria-label="Field to chart"]');
   await expect(picker).toBeVisible();
-  await expect(picker.locator('option', { hasText: 'baseline cv percent (%)' })).toHaveCount(1);
-  await expect(picker.locator('option', { hasText: 'fluidics pressure psi (psi)' })).toHaveCount(1);
+  await expect(picker.locator('option', { hasText: 'Baseline CV (%)' })).toHaveCount(1);
+  await expect(picker.locator('option', { hasText: 'Fluidics pressure (psi)' })).toHaveCount(1);
   // Alphabetically first trendable field ("baseline_cv_percent") is selected by default.
   await expect(picker).toHaveValue('baseline_cv_percent');
 
@@ -111,7 +111,7 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   await expect(legend.locator('.legend-item', { hasText: 'detector 3' })).toBeVisible();
 
   const svg = page.locator('.trend-chart-wrap svg');
-  await expect(svg).toHaveAttribute('aria-label', 'baseline cv percent across 4 reports');
+  await expect(svg).toHaveAttribute('aria-label', 'Baseline CV across 4 reports');
 
   // ---- Hover near the last point shows a crosshair tooltip for every series ----
   const box = await svg.boundingBox();
@@ -139,7 +139,7 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   // ---- Switching to a flat "number" field: single series, no legend, a direct end-value label ----
   await picker.selectOption('fluidics_pressure_psi');
   await expect(page.locator('.legend-row')).toHaveCount(0);
-  await expect(svg).toHaveAttribute('aria-label', 'fluidics pressure psi across 4 reports');
+  await expect(svg).toHaveAttribute('aria-label', 'Fluidics pressure across 4 reports');
   await expect(page.locator('.trend-end-label')).toContainText('5.2 psi');
 
   // Regression check: a whole-number reading (5.0) must not lose its

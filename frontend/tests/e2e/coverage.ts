@@ -8,7 +8,23 @@ import path from 'node:path';
  * counters the instrumented app keeps in `window.__coverage__` from every page
  * the test opened, and writes them to .nyc_output/ for `nyc report` to merge.
  */
-export const test = base.extend<{ _coverage: void }>({
+export const test = base.extend<{ _coverage: void; _scanPaneOff: void }>({
+  // Headless Chromium has no PDF viewer, so an inline scan <iframe> is a download in flight that can
+  // interrupt typing in the form beside it. Tests start with the scan pane hidden (the per-viewer
+  // "Hide scan" preference); the specs that exercise the pane turn it back on with showScanPane().
+  _scanPaneOff: [
+    async ({ context }, use) => {
+      await context.addInitScript(() => {
+        try {
+          if (localStorage.getItem('sl.review.showScan') === null) localStorage.setItem('sl.review.showScan', 'off');
+        } catch {
+          /* storage unavailable: nothing to preset */
+        }
+      });
+      await use();
+    },
+    { auto: true },
+  ],
   _coverage: [
     async ({ context }, use, testInfo) => {
       await use();
