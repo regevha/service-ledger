@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { ConfidenceBadge } from './ConfidenceBadge';
+import { DateInput } from './DateInput';
 import { FieldControl } from './FieldEditor';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
@@ -183,12 +184,7 @@ export function ReviewScreen({
               />
             )}
           </div>
-          <input
-            id="review-report-date"
-            type="date"
-            value={reportDate ?? ''}
-            onChange={(e) => onReportDateChange(e.target.value || null)}
-          />
+          <DateInput id="review-report-date" value={reportDate ?? ''} onChange={(v) => onReportDateChange(v || null)} />
           <div className="field-note">The date the service visit was carried out.</div>
         </div>
         {template.field_schema.fields.map((field, i) => {

@@ -157,16 +157,18 @@ export function ReportDetailScreen({
   return (
     <div className="section">
       <div className="detail-nav-row">
-        <button className="btn small back-link" onClick={onBack}>
-          ← Back to reports
-        </button>
-        {instrument && (
-          <button className="btn small" onClick={() => onViewInstrument(instrument.id)}>
-            View instrument: {instrument.model} ({instrument.serial_number}) →
+        <div className="detail-nav-links">
+          <button className="btn small back-link" onClick={onBack}>
+            ← Back to reports
           </button>
-        )}
+          {instrument && (
+            <button className="btn small" onClick={() => onViewInstrument(instrument.id)}>
+              View instrument: {instrument.model} ({instrument.serial_number}) →
+            </button>
+          )}
+        </div>
         {report && !confirmingDelete && (
-          <button className="btn small" onClick={() => setConfirmingDelete(true)}>
+          <button className="btn small danger" onClick={() => setConfirmingDelete(true)}>
             Delete report
           </button>
         )}
@@ -180,7 +182,7 @@ export function ReportDetailScreen({
               : 'Delete this report and its scan permanently?'}{' '}
             This cannot be undone.
           </div>
-          <button className="btn small" onClick={() => void handleDelete()}>
+          <button className="btn small danger solid" onClick={() => void handleDelete()}>
             Confirm delete
           </button>{' '}
           <button className="btn small" onClick={() => setConfirmingDelete(false)}>

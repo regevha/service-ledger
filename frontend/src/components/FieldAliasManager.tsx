@@ -213,7 +213,7 @@ export function FieldAliasManagerScreen({ onBack }: { onBack: () => void }) {
                 </button>
                 {confirmDeleteId === g.id ? (
                   <>
-                    <button type="button" className="btn small" onClick={() => void remove(g.id)}>
+                    <button type="button" className="btn small danger solid" onClick={() => void remove(g.id)}>
                       Confirm delete
                     </button>
                     <button type="button" className="btn small" onClick={() => setConfirmDeleteId(null)}>
@@ -221,7 +221,7 @@ export function FieldAliasManagerScreen({ onBack }: { onBack: () => void }) {
                     </button>
                   </>
                 ) : (
-                  <button type="button" className="btn small" onClick={() => setConfirmDeleteId(g.id)}>
+                  <button type="button" className="btn small danger" onClick={() => setConfirmDeleteId(g.id)}>
                     Delete
                   </button>
                 )}

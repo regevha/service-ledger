@@ -94,7 +94,8 @@ test('the Templates tab lets a template be created for another instrument type',
 
   const row = page.locator('.template-row-body', { hasText: model });
   await expect(row).toContainText(typeName);
-  await row.locator('button:has-text("Delete")').click();
+  await row.getByRole('button', { name: /More actions/ }).click();
+  await row.getByRole('menuitem', { name: 'Delete' }).click();
   await row.locator('button:has-text("Confirm delete")').click();
   await expect(row).toHaveCount(0);
 });
