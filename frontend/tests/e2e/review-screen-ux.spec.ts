@@ -211,3 +211,15 @@ test('the per-detector rows stay compact and each can be removed by name', async
   expect(remove!.x + remove!.width - label!.x).toBeLessThanOrEqual(420);
   await expect(row.locator('button[aria-label^="Remove detector"]')).toBeVisible();
 });
+
+test('text "Remove" buttons in the template editor stay inside their card', async ({ page }) => {
+  await page.setViewportSize({ width: 1300, height: 900 });
+  await page.goto('/');
+  await page.click('.view-tab:has-text("Templates")');
+  await page.locator('.template-row-body', { hasText: 'Calibration' }).first().locator('button:has-text("Edit")').click();
+  const row = page.locator('.schema-field-row').first();
+  await expect(row).toBeVisible();
+  const [card, remove] = await Promise.all([row.boundingBox(), row.locator('.row-remove').first().boundingBox()]);
+  expect(remove!.x + remove!.width).toBeLessThanOrEqual(card!.x + card!.width);
+  expect(remove!.width).toBeGreaterThan(40); // the word, not a 28px circle
+});
