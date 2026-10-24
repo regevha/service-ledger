@@ -852,6 +852,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/onboarding/sample-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sample Report
+         * @description A new sample service report every call (different work-order number, so
+         *     different bytes: the app refuses a file already on file).
+         */
+        get: operations["sample_report_onboarding_sample_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/onboarding/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_onboarding_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/onboarding/demo-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Load Demo Data
+         * @description Load the demo reports: three finalized reports (repair and preventive
+         *     maintenance) and a five-point calibration series for the FACSAria III, so
+         *     the Reports, Analytics and instrument trend screens have something to show.
+         *     Loading twice adds nothing the second time.
+         */
+        post: operations["load_demo_data_onboarding_demo_data_post"];
+        /**
+         * Remove Demo Data
+         * @description Remove the demo reports again, and the reports made from the sample report.
+         */
+        delete: operations["remove_demo_data_onboarding_demo_data_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -960,6 +1025,24 @@ export interface components {
         Body_upload_attachment_reports__report_id__attachments_post: {
             /** File */
             file: string;
+        };
+        /**
+         * DemoDataOut
+         * @description The result of loading or removing the demo reports.
+         */
+        DemoDataOut: {
+            /**
+             * Reports Added
+             * @default 0
+             */
+            reports_added: number;
+            /**
+             * Reports Removed
+             * @default 0
+             */
+            reports_removed: number;
+            /** Demo Reports */
+            demo_reports: number;
         };
         /**
          * DuplicateReportOut
@@ -1290,6 +1373,25 @@ export interface components {
             serial_number: string;
             /** Points */
             points: components["schemas"]["TrendPointOut"][];
+        };
+        /**
+         * OnboardingStatusOut
+         * @description GET /onboarding/status: what the first-run screens need to decide what
+         *     to offer, and whether the background worker is keeping up.
+         */
+        OnboardingStatusOut: {
+            /** Instruments */
+            instruments: number;
+            /** Reports */
+            reports: number;
+            /** Finalized Reports */
+            finalized_reports: number;
+            /** Demo Reports */
+            demo_reports: number;
+            /** Pending Jobs */
+            pending_jobs: number;
+            /** Oldest Pending Seconds */
+            oldest_pending_seconds?: number | null;
         };
         /**
          * PartUsageOut
@@ -3403,6 +3505,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sample_report_onboarding_sample_report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
+                };
+            };
+        };
+    };
+    status_onboarding_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingStatusOut"];
+                };
+            };
+        };
+    };
+    load_demo_data_onboarding_demo_data_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoDataOut"];
+                };
+            };
+        };
+    };
+    remove_demo_data_onboarding_demo_data_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoDataOut"];
                 };
             };
         };

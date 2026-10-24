@@ -19,6 +19,7 @@ from app.routers import (
     attachments,
     instrument_types,
     instruments,
+    onboarding,
     report_templates,
     reports,
     saved_filters,
@@ -106,6 +107,7 @@ app.include_router(field_aliases.router)
 app.include_router(attachments.router)
 app.include_router(translations.router)
 app.include_router(analytics.router)
+app.include_router(onboarding.router)
 
 
 @app.get("/health", tags=["meta"])

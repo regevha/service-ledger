@@ -12,6 +12,7 @@ import {
   type InstrumentType,
 } from '../api';
 import { INSTRUMENT_STATUS_LABEL } from '../labels';
+import { EmptyState } from './FirstRun';
 
 /**
  * The Instruments tab: create/edit for the fleet, replacing "POST
@@ -391,7 +392,10 @@ export function InstrumentManagerScreen({
           <div>Loading instruments…</div>
         </div>
       ) : instruments.length === 0 ? (
-        <div className="empty-hint">No instruments yet.</div>
+        <EmptyState title="No instruments yet" upload={false} demo={false}>
+          Add the instruments you service with "+ New instrument" above. A report is matched to its instrument by the serial
+          number printed on the form, so add each one with the serial number it carries.
+        </EmptyState>
       ) : (
         <div className="template-table">
           <div className="instrument-row template-row-head">

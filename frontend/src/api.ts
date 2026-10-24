@@ -340,6 +340,53 @@ export function getAppConfig(): Promise<AppConfig> {
   return apiFetch('/config');
 }
 
+// ---------- First run (backend/app/routers/onboarding.py) ----------
+
+// GET /onboarding/status: what the empty-state prompts need, and whether the
+// background worker is keeping up (a job that waits long means it is not running).
+export interface OnboardingStatus {
+  instruments: number;
+  reports: number;
+  finalized_reports: number;
+  /** Reports loaded by "Load demo data" or made from the sample report. */
+  demo_reports: number;
+  pending_jobs: number;
+  oldest_pending_seconds: number | null;
+}
+
+export interface DemoDataResult {
+  reports_added: number;
+  reports_removed: number;
+  demo_reports: number;
+}
+
+export function getOnboardingStatus(): Promise<OnboardingStatus> {
+  return apiFetch('/onboarding/status');
+}
+
+export function loadDemoData(): Promise<DemoDataResult> {
+  return apiFetch('/onboarding/demo-data', { method: 'POST' });
+}
+
+export function removeDemoData(): Promise<DemoDataResult> {
+  return apiFetch('/onboarding/demo-data', { method: 'DELETE' });
+}
+
+/** The name the sample report is uploaded under: the backend recognises it so the demo data can be removed again. */
+export const SAMPLE_REPORT_FILE_NAME = 'sample-service-report.pdf';
+
+/** A fresh sample service report (different every call) as a file, ready for the upload step. */
+export async function fetchSampleReport(): Promise<File> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/onboarding/sample-report`);
+  } catch {
+    throw new ApiError(0, `Could not reach the backend at ${API_BASE || 'this address'}. Is it running (uvicorn app.main:app)?`);
+  }
+  if (!response.ok) throw new ApiError(response.status, 'Could not load the sample report.');
+  return new File([await response.blob()], SAMPLE_REPORT_FILE_NAME, { type: 'application/pdf' });
+}
+
 // ---------- Instruments ----------
 
 export function listInstruments(): Promise<Instrument[]> {

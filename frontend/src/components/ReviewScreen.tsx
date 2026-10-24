@@ -8,6 +8,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { ReportTemplate } from '../api';
 
 const SCAN_PREF_KEY = 'sl.review.showScan';
+const NONE_CHECKED: ReadonlySet<string> = new Set();
 
 // Per-viewer convenience only: browser storage can be empty or throw, so the page works without it.
 function readScanPref(): boolean {
@@ -99,10 +100,24 @@ export function ReviewScreen({
     const confidence = fieldConfidences[name];
     return confidence !== undefined && confidence < fieldConfidenceThreshold;
   };
+  // A flagged field stops needing attention once the reviewer has changed it or said it is right.
+  // The set belongs to one reading of the report: when the confidences change (the report was read
+  // again) it no longer applies and everything starts over.
+  const confidenceKey = JSON.stringify(fieldConfidences);
+  const [checkedState, setCheckedState] = useState<{ key: string; names: ReadonlySet<string> }>({ key: '', names: NONE_CHECKED });
+  const checked = checkedState.key === confidenceKey ? checkedState.names : NONE_CHECKED;
+  const isPending = (name: string) => isFlagged(name) && !checked.has(name);
+  const markChecked = (name: string) => {
+    if (isPending(name)) setCheckedState({ key: confidenceKey, names: new Set(checked).add(name) });
+  };
+  // Opt-in: show only the fields that still need a look, and fold the rest into one line.
+  const [onlyPending, setOnlyPending] = useState(false);
   const reportDateConfidence = fieldConfidences.report_date;
-  const reportDateFlagged = isFlagged('report_date');
+  const reportDateFlagged = isPending('report_date');
   const flaggedCount =
-    template.field_schema.fields.filter((f) => isFlagged(f.name)).length + (reportDateFlagged ? 1 : 0);
+    template.field_schema.fields.filter((f) => isPending(f.name)).length + (reportDateFlagged ? 1 : 0);
+  const foldAway = onlyPending && !readOnly;
+  const foldedCount = foldAway ? template.field_schema.fields.filter((f) => !isPending(f.name)).length + (reportDateFlagged ? 0 : 1) : 0;
   const heading =
     title ??
     `${REPORT_TYPE_LABEL[template.report_type]} — ${flaggedCount} field${flaggedCount === 1 ? '' : 's'} ${
@@ -171,6 +186,7 @@ export function ReviewScreen({
         <div className="review-fields">
       <fieldset className="review-fieldset" disabled={readOnly}>
       <div className={`field-list${readOnly ? ' read-only' : ''}`} ref={listRef}>
+        {!(foldAway && !reportDateFlagged) && (
         <div className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}>
           <div className="field-top">
             <label className="field-label" htmlFor="review-report-date">
@@ -183,13 +199,27 @@ export function ReviewScreen({
                 label={placeholderValues ? 'placeholder' : undefined}
               />
             )}
+            {!readOnly && reportDateFlagged && (
+              <button type="button" className="link-button" onClick={() => markChecked('report_date')}>
+                Looks right
+              </button>
+            )}
           </div>
-          <DateInput id="review-report-date" value={reportDate ?? ''} onChange={(v) => onReportDateChange(v || null)} />
+          <DateInput
+            id="review-report-date"
+            value={reportDate ?? ''}
+            onChange={(v) => {
+              markChecked('report_date');
+              onReportDateChange(v || null);
+            }}
+          />
           <div className="field-note">The date the service visit was carried out.</div>
         </div>
+        )}
         {template.field_schema.fields.map((field, i) => {
           const confidence = fieldConfidences[field.name];
-          const flagged = isFlagged(field.name);
+          const flagged = isPending(field.name);
+          if (foldAway && !flagged) return null;
           return (
             <div className={`field ${flagged ? 'pending' : 'ok'}`} key={field.name}>
               <div className="field-top">
@@ -207,12 +237,34 @@ export function ReviewScreen({
                     label={placeholderValues ? 'placeholder' : undefined}
                   />
                 )}
+                {!readOnly && flagged && (
+                  <button type="button" className="link-button" onClick={() => markChecked(field.name)}>
+                    Looks right
+                  </button>
+                )}
               </div>
-              <FieldControl field={field} value={fields[field.name]} onChange={(v) => onChange(field.name, v)} />
+              <FieldControl
+                field={field}
+                value={fields[field.name]}
+                onChange={(v) => {
+                  markChecked(field.name);
+                  onChange(field.name, v);
+                }}
+              />
               {field.notes && <div className="field-note">{field.notes}</div>}
             </div>
           );
         })}
+        {foldAway && (
+          <div className="field-note focus-summary" data-testid="focus-summary">
+            {foldedCount === 0
+              ? 'Nothing is hidden.'
+              : `${foldedCount} other field${foldedCount === 1 ? '' : 's'} look${foldedCount === 1 ? 's' : ''} right and ${foldedCount === 1 ? 'is' : 'are'} hidden.`}{' '}
+            <button type="button" className="link-button" onClick={() => setOnlyPending(false)}>
+              Show all fields
+            </button>
+          </div>
+        )}
       </div>
 
       </fieldset>
@@ -229,7 +281,14 @@ export function ReviewScreen({
               <button type="button" className="btn small" onClick={goToNextFlagged}>
                 Next ↓
               </button>
+              {!onlyPending && (
+                <button type="button" className="btn small" onClick={() => setOnlyPending(true)}>
+                  Show only these
+                </button>
+              )}
             </>
+          ) : checked.size > 0 ? (
+            <span>All flagged fields checked ✓</span>
           ) : null}
         </div>
         <div className="review-actions-buttons">
@@ -246,7 +305,7 @@ export function ReviewScreen({
               </button>
               {onFinalize && (
                 <button className="btn primary" onClick={onFinalize}>
-                  Save &amp; finalize report
+                  {foldAway && flaggedCount === 0 ? 'Accept the rest & finalize report' : 'Save & finalize report'}
                 </button>
               )}
             </>

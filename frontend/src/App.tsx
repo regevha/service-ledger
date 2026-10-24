@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, getAppConfig, listInstruments, type AppConfig, type Instrument, type ReportTemplate } from './api';
+import {
+  ApiError,
+  getAppConfig,
+  getOnboardingStatus,
+  listInstruments,
+  loadDemoData,
+  removeDemoData,
+  type AppConfig,
+  type Instrument,
+  type OnboardingStatus,
+  type ReportTemplate,
+} from './api';
 import { AnalyticsScreen } from './components/AnalyticsScreen';
+import { FirstRunBanners } from './components/FirstRun';
+import { FirstRunProvider, type FirstRun } from './firstRun';
 import { InstrumentManagerScreen } from './components/InstrumentManager';
 import { IntakeFlow } from './components/IntakeFlow';
 import { ReportsListScreen } from './components/ReportsListScreen';
@@ -48,6 +61,12 @@ export default function App() {
   const [instrumentsLoading, setInstrumentsLoading] = useState(true);
   const [instrumentsError, setInstrumentsError] = useState<string | null>(null);
   const [config, setConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
+  // First-run help (GET /onboarding/status): what the empty screens offer, whether demo
+  // data is on screen, and whether the background worker is keeping up.
+  const [status, setStatus] = useState<OnboardingStatus | null>(null);
+  // Bumped when the data changes under the screens (demo data loaded or removed): the
+  // screens that list it are remounted with this as their key, so they load it again.
+  const [dataVersion, setDataVersion] = useState(0);
 
   // Independent of IntakeFlow's own internal phase state (upload → classify
   // → review → done) — `view` just switches which top-level screen is
@@ -114,6 +133,42 @@ export default function App() {
       .catch(() => undefined);
   }, []);
 
+  const refreshStatus = useCallback(() => {
+    // Advisory only: when it fails the notices simply stay as they were.
+    return getOnboardingStatus()
+      .then(setStatus)
+      .catch(() => undefined);
+  }, []);
+
+  // Polled, because the worker can stop (or start) at any time and a demo can be loaded
+  // from another tab. A hidden tab does not ask.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshStatus();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [refreshStatus]);
+
+  // Also when moving between screens: finalizing a sample report changes the counts.
+  useEffect(() => {
+    void refreshStatus();
+  }, [view, refreshStatus]);
+
+  const firstRun: FirstRun = {
+    status,
+    goTo: (next) => navigate(next),
+    loadDemo: async () => {
+      await loadDemoData();
+      setDataVersion((v) => v + 1);
+      await Promise.all([refreshStatus(), refreshInstruments()]);
+    },
+    removeDemo: async () => {
+      await removeDemoData();
+      setDataVersion((v) => v + 1);
+      await refreshStatus();
+    },
+  };
+
   // A file dropped anywhere that is not the upload box would make the browser open it
   // in this tab and leave the app, losing a report that is half reviewed. Cancel that;
   // the upload box handles its own drops.
@@ -146,71 +201,84 @@ export default function App() {
         <button className={`view-tab ${view === 'analytics' ? 'active' : ''}`} onClick={() => selectView('analytics')}>
           Analytics
         </button>
-        <button className={`view-tab ${view === 'templates' ? 'active' : ''}`} onClick={() => selectView('templates')}>
-          Templates
-        </button>
-        <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} onClick={() => selectView('instruments')}>
-          Instruments
-        </button>
+        {/* Templates and Instruments are set up once and then rarely touched, so they sit apart,
+            under their own label, instead of looking like three more things to do before the first report. */}
+        <div className="view-tab-setup" role="group" aria-label="Setup">
+          <span className="view-tab-setup-label" aria-hidden="true">
+            Setup
+          </span>
+          <button className={`view-tab ${view === 'templates' ? 'active' : ''}`} onClick={() => selectView('templates')}>
+            Templates
+          </button>
+          <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} onClick={() => selectView('instruments')}>
+            Instruments
+          </button>
+        </div>
       </div>
 
-      <div className="app-shell">
-        {/* The intake flow is rendered (hidden) while the Templates tab shows a
-            request made from it, so the waiting report is still there when the
-            template is saved; in every other case it is only mounted on its own
-            tab, as before. */}
-        {(view === 'new' || templateRequest !== null) && (
-          <div hidden={view !== 'new'}>
-            <IntakeFlow
-              key={intakeKey}
-              instruments={instruments}
-              instrumentsError={instrumentsError}
-              fieldConfidenceThreshold={config.field_confidence_threshold}
-              classificationConfidenceThreshold={config.classification_confidence_threshold}
-              liveClaude={config.live_claude !== false}
-              onInstrumentAdded={refreshInstruments}
-              templateCreated={templateCreated}
-              onCreateTemplate={(request) => {
-                setTemplateRequest(request);
-                navigate('templates');
+      <FirstRunProvider value={firstRun}>
+        <FirstRunBanners />
+
+        <div className="app-shell">
+          {/* The intake flow is rendered (hidden) while the Templates tab shows a
+              request made from it, so the waiting report is still there when the
+              template is saved; in every other case it is only mounted on its own
+              tab, as before. */}
+          {(view === 'new' || templateRequest !== null) && (
+            <div hidden={view !== 'new'}>
+              <IntakeFlow
+                key={intakeKey}
+                instruments={instruments}
+                instrumentsError={instrumentsError}
+                fieldConfidenceThreshold={config.field_confidence_threshold}
+                classificationConfidenceThreshold={config.classification_confidence_threshold}
+                liveClaude={config.live_claude !== false}
+                onInstrumentAdded={refreshInstruments}
+                templateCreated={templateCreated}
+                onCreateTemplate={(request) => {
+                  setTemplateRequest(request);
+                  navigate('templates');
+                }}
+                onOpenReport={(reportId) => navigate('reports', reportId)}
+                onViewInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
+                onCancel={() => setIntakeKey((k) => k + 1)}
+              />
+            </div>
+          )}
+          {view === 'analytics' && <AnalyticsScreen key={dataVersion} />}
+          {view === 'templates' && (
+            <TemplateManagerScreen
+              knownModels={[...new Set(instruments.map((i) => i.model))].sort()}
+              request={templateRequest}
+              onRequestClose={(saved) => {
+                setTemplateRequest(null);
+                // Saved or cancelled, the waiting report is on the New report tab:
+                // after a save it reads itself again with the new template.
+                if (saved) setTemplateCreated({ template: saved, nonce: Date.now() });
+                navigate('new');
               }}
-              onOpenReport={(reportId) => navigate('reports', reportId)}
-              onViewInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
-              onCancel={() => setIntakeKey((k) => k + 1)}
             />
-          </div>
-        )}
-        {view === 'analytics' && <AnalyticsScreen />}
-        {view === 'templates' && (
-          <TemplateManagerScreen
-            knownModels={[...new Set(instruments.map((i) => i.model))].sort()}
-            request={templateRequest}
-            onRequestClose={(saved) => {
-              setTemplateRequest(null);
-              // Saved or cancelled, the waiting report is on the New report tab:
-              // after a save it reads itself again with the new template.
-              if (saved) setTemplateCreated({ template: saved, nonce: Date.now() });
-              navigate('new');
-            }}
-          />
-        )}
-        {view === 'instruments' && (
-          <InstrumentManagerScreen
-            instruments={instruments}
-            loading={instrumentsLoading}
-            error={instrumentsError}
-            onRefresh={refreshInstruments}
-          />
-        )}
-        {view === 'reports' && (
-          <ReportsListScreen
-            instruments={instruments}
-            fieldConfidenceThreshold={config.field_confidence_threshold}
-            path={route.sub}
-            onPath={(sub) => navigate('reports', sub)}
-          />
-        )}
-      </div>
+          )}
+          {view === 'instruments' && (
+            <InstrumentManagerScreen
+              key={dataVersion}
+              instruments={instruments}
+              loading={instrumentsLoading}
+              error={instrumentsError}
+              onRefresh={refreshInstruments}
+            />
+          )}
+          {view === 'reports' && (
+            <ReportsListScreen
+              key={dataVersion}
+              instruments={instruments}
+              fieldConfidenceThreshold={config.field_confidence_threshold}
+              path={route.sub}
+              onPath={(sub) => navigate('reports', sub)}
+            />
+          )}
+        </div>
+      </FirstRunProvider>
     </div>
   );
 }

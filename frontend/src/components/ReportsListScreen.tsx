@@ -13,6 +13,7 @@ import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { InstrumentDetailScreen } from './InstrumentDetailScreen';
 import { ReportDetailScreen } from './ReportDetailScreen';
 import { DateInput } from './DateInput';
+import { EmptyState } from './FirstRun';
 import { SavedFilters } from './SavedFilters';
 import { defaultOrder, nextSort, SORT_LABEL, sortReports, type SortKey, type SortState } from '../reportSort';
 
@@ -313,6 +314,11 @@ export function ReportsListScreen({
           <div className="spinner" />
           <div>Loading reports…</div>
         </div>
+      ) : items.length === 0 && !hasFilters ? (
+        <EmptyState title="No reports yet">
+          Every service report you file is kept here, searchable and ready to export. Upload a scanned report and it is
+          classified, read and filed for you, or load demo data to look around first.
+        </EmptyState>
       ) : items.length === 0 ? (
         <div className="empty-hint" data-testid="empty-hint">
           {statusBlocksSearch

@@ -9,14 +9,18 @@ import {
   createReport,
   discardTranslation,
   extractAttachment,
+  fetchSampleReport,
   findTemplate,
   listInstrumentTypes,
   finalizeReport,
+  getInstrumentTrendFields,
   getReport,
   getReportTemplate,
   getTranslation,
+  listReports,
   pollExtractionJob,
   reportPdfUrl,
+  reportsExportUrl,
   translateAttachment,
   updateReportFields,
   uploadAttachment,
@@ -30,9 +34,11 @@ import {
 } from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { ACCEPTED_TYPES, dropProblem } from '../uploadFiles';
+import { useFirstRun } from '../firstRun';
 import type { TemplateRequest } from '../templateRequest';
 import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
 import { AddInstrumentPanel } from './AddInstrumentPanel';
+
 import { ReviewScreen } from './ReviewScreen';
 import { TranslationReview } from './TranslationReview';
 
@@ -76,6 +82,28 @@ function templateApplies(template: ReportTemplate, waiting: WaitingForTemplate):
   );
 }
 
+// The name typed in the "Lab manager" box is remembered in this browser, so a person who files
+// reports all day does not retype it. Per-viewer convenience only: storage can be empty or throw.
+const NAME_KEY = 'sl.intake.technician';
+function readRememberedName(): string {
+  try {
+    return localStorage.getItem(NAME_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+function rememberName(name: string) {
+  try {
+    if (name.trim()) localStorage.setItem(NAME_KEY, name.trim());
+  } catch {
+    /* not remembered; nothing else depends on it */
+  }
+}
+
+// A report made from the sample is filed under this name, which is how the app tells it
+// from a real one (and "Remove demo data" can take it away again).
+const SAMPLE_TECHNICIAN = 'Demo - sample report';
+
 function StepBar({ phase }: { phase: Phase }) {
   // Every "working" phase before the review screen (upload, classify,
   // resolve-template, extract) counts as step 1 ("Classify") below — there's
@@ -115,12 +143,15 @@ function IntakeScreen({
   file,
   setFile,
   onStart,
+  onTrySample,
 }: {
   technicianName: string;
   setTechnicianName: (v: string) => void;
   file: File | null;
   setFile: (f: File | null) => void;
   onStart: () => void;
+  /** Fetch a sample report and run it through the whole flow. */
+  onTrySample: () => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
@@ -129,18 +160,7 @@ function IntakeScreen({
 
   return (
     <div className="section">
-      <div className="section-title">Lab manager</div>
-      <input
-        type="text"
-        className="text-input"
-        placeholder="Your name (optional)"
-        value={technicianName}
-        onChange={(e) => setTechnicianName(e.target.value)}
-      />
-
-      <div className="section-title" style={{ marginTop: 18 }}>
-        Scanned original
-      </div>
+      <div className="section-title">Scanned original</div>
       <label
         className={`dropzone${dragging ? ' dragging' : ''}`}
         onDragEnter={(e) => {
@@ -189,6 +209,27 @@ function IntakeScreen({
           {dropError}
         </div>
       )}
+
+      <div className="sample-offer" data-testid="sample-offer">
+        <div>
+          <strong>No scan handy?</strong> Run a sample report through every step (classify, review, finalize) without
+          uploading anything. It uses made-up data and can be removed again.
+        </div>
+        <button type="button" className="btn" onClick={onTrySample}>
+          Try a sample report
+        </button>
+      </div>
+
+      <div className="section-title" style={{ marginTop: 18 }}>
+        Lab manager
+      </div>
+      <input
+        type="text"
+        className="text-input"
+        placeholder="Your name (optional)"
+        value={technicianName}
+        onChange={(e) => setTechnicianName(e.target.value)}
+      />
 
       <div className="cta-row">
         <button className="btn primary" disabled={!file} onClick={onStart}>
@@ -302,8 +343,19 @@ function ConfirmClassificationScreen({
   const noteType = classification.report_type_note as ReportType | null | undefined;
   return (
     <>
-    {classification.maker_in_fleet === false && (
+    {classification.maker_in_fleet === false ? (
       <AddInstrumentPanel classification={classification} busy={busy} onAdded={onInstrumentAdded} />
+    ) : (
+      match === 'not_found' &&
+      serial && (
+        <AddInstrumentPanel
+          variant="serial"
+          classification={classification}
+          busy={busy}
+          onAdded={onInstrumentAdded}
+          similar={instruments.find((inst) => inst.model === classification.instrument.value)}
+        />
+      )
     )}
     <div className="section">
       <div className="section-title">Detected from the document</div>
@@ -438,12 +490,15 @@ function WorkingPanel({
   label,
   fileName,
   slow,
+  progress = [],
   onCancel,
 }: {
   label: string;
   fileName?: string;
   /** True when a live model is reading the scan, which takes a while. */
   slow: boolean;
+  /** What has been found out so far, oldest first: shown as it arrives instead of a bare spinner. */
+  progress?: string[];
   onCancel?: () => void;
 }) {
   const [seconds, setSeconds] = useState(0);
@@ -463,6 +518,18 @@ function WorkingPanel({
         </div>
         {slow && seconds < 90 && <div className="working-detail">Reading a scan usually takes 10–60 seconds; a translated one takes longer.</div>}
         {slow && seconds >= 90 && <div className="working-detail">Still working — this one is taking longer than usual.</div>}
+        {progress.length > 0 && (
+          <ul className="working-progress" data-testid="working-progress" aria-label="Found so far">
+            {progress.map((line) => (
+              <li key={line}>
+                <span className="working-progress-tick" aria-hidden="true">
+                  ✓
+                </span>{' '}
+                {line}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       {onCancel && (
         <button type="button" className="btn small" onClick={onCancel}>
@@ -475,15 +542,37 @@ function WorkingPanel({
 
 function DoneScreen({
   report,
+  instrumentLabel,
   onReset,
   onOpenReport,
   onViewInstrument,
 }: {
   report: Report;
+  /** "Model (serial)" of the report's instrument, when it has one. */
+  instrumentLabel?: string;
   onReset: () => void;
   onOpenReport?: (reportId: string) => void;
   onViewInstrument?: (instrumentId: string) => void;
 }) {
+  const { goTo } = useFirstRun();
+  // What the instrument's history looks like now, to say what finalizing unlocked.
+  // Best effort: the screen is complete without it.
+  const [history, setHistory] = useState<{ finalized: number; trendable: boolean } | null>(null);
+  useEffect(() => {
+    const instrumentId = report.instrument_id;
+    if (!instrumentId) return;
+    let cancelled = false;
+    Promise.all([listReports({ instrument_id: instrumentId, status: 'finalized' }), getInstrumentTrendFields(instrumentId)])
+      .then(([finalized, fields]) => {
+        if (!cancelled) setHistory({ finalized: finalized.length, trendable: fields.length > 0 });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [report.id, report.instrument_id]);
+
+  const trendReady = history !== null && history.finalized >= 2 && history.trendable;
   return (
     <div className="section success-panel">
       <div className="tick">✓</div>
@@ -503,6 +592,41 @@ function DoneScreen({
         <button className={onOpenReport ? 'btn' : 'btn primary'} onClick={onReset}>
           Start another report
         </button>
+      </div>
+
+      <div className="whats-next" data-testid="whats-next">
+        <div className="whats-next-title">What you can do now</div>
+        <ul>
+          {history !== null && (
+            <li id="whats-next-history">
+              {instrumentLabel ?? 'This instrument'} now has {history.finalized} finalized report{history.finalized === 1 ? '' : 's'}.{' '}
+              {trendReady ? (
+                onViewInstrument && report.instrument_id ? (
+                  <button type="button" className="link-button" onClick={() => onViewInstrument(report.instrument_id!)}>
+                    See its trend chart
+                  </button>
+                ) : (
+                  'Its trend chart is ready on the instrument page.'
+                )
+              ) : history.finalized < 2 ? (
+                'One more finalized report unlocks its trend chart.'
+              ) : (
+                'None of its fields have numbers to chart yet.'
+              )}
+            </li>
+          )}
+          <li>
+            The fleet totals now include it.{' '}
+            <button type="button" className="link-button" onClick={() => goTo('analytics')}>
+              See analytics
+            </button>
+          </li>
+          <li>
+            <a className="link-button" href={reportsExportUrl({ status: 'finalized' })}>
+              Export your finalized reports as CSV
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
   );
@@ -548,8 +672,14 @@ export function IntakeFlow({
   const [translation, setTranslation] = useState<Translation | null>(null);
   const [translationBusy, setTranslationBusy] = useState(false);
 
-  const [technicianName, setTechnicianName] = useState('');
+  const { goTo } = useFirstRun();
+  const [technicianName, setTechnicianName] = useState(readRememberedName);
   const [file, setFile] = useState<File | null>(null);
+  // True for a report made from the "Try a sample report" button (made-up data).
+  const [isSample, setIsSample] = useState(false);
+  // What has been found out so far, shown on the working panel as it arrives.
+  const [progress, setProgress] = useState<string[]>([]);
+  const noteProgress = (line: string) => setProgress((prev) => (prev.includes(line) ? prev : [...prev, line]));
 
   const [report, setReport] = useState<Report | null>(null);
   const [classification, setClassification] = useState<ClassificationResult | null>(null);
@@ -596,8 +726,10 @@ export function IntakeFlow({
 
   function resetToIntake() {
     setPhase({ name: 'intake' });
-    setTechnicianName('');
+    setTechnicianName(readRememberedName());
     setFile(null);
+    setIsSample(false);
+    setProgress([]);
     setReport(null);
     setClassification(null);
     setTranslation(null);
@@ -725,6 +857,7 @@ export function IntakeFlow({
         const updated = await confirmTemplate(reportId, instrumentId, tpl.id);
         setReport(updated);
         setTemplate(tpl);
+        noteProgress(`Using the ${tpl.model ?? 'generic'} ${REPORT_TYPE_LABEL[tpl.report_type]} template`);
         await runExtraction(attId, reportId, tpl);
       }
     );
@@ -752,6 +885,7 @@ export function IntakeFlow({
         setPhase({ name: 'review-translation' });
         return;
       }
+      noteProgress('Checked the language: no translation needed');
       await runClassification(attId, reportId);
     });
   }
@@ -801,14 +935,32 @@ export function IntakeFlow({
       const submitted = await classifyAttachment(attId);
       const job = await pollExtractionJob(submitted.id);
       if (job.status === 'failed') {
+        const message = job.error_message || 'Classification failed for an unknown reason.';
         failPhase(
-          job.error_message || 'Classification failed for an unknown reason.',
-          () => void runClassification(attId, reportId)
+          message,
+          () => void runClassification(attId, reportId),
+          // The one failure with an obvious next step: there is nothing to match the report to yet.
+          message.startsWith('No instruments registered')
+            ? { label: 'Add an instrument', run: () => goTo('instruments') }
+            : undefined
         );
         return;
       }
       const result = job.classification as unknown as ClassificationResult;
       setClassification(result);
+      noteProgress(
+        [
+          `Read ${result.instrument.value || 'an instrument'}`,
+          result.instrument_serial?.value ? `serial ${result.instrument_serial.value}` : null,
+          REPORT_TYPE_LABEL[result.report_type.value as ReportType] ?? null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      );
+      const matched = result.resolved_instrument_id
+        ? instrumentsRef.current.find((inst) => inst.id === result.resolved_instrument_id)
+        : undefined;
+      if (matched) noteProgress(`Matched to ${matched.model} (${matched.serial_number})`);
       noteDuplicates(result.duplicate_report_ids);
       setSerialNotice(
         describeSerialMatch(
@@ -856,13 +1008,25 @@ export function IntakeFlow({
   // re-ran createReport too — leaving the first report behind as an empty
   // draft in the reports list and instrument history, with no way to delete
   // it (§10). Now a retry after the report exists re-runs only the upload.
-  async function handleStart() {
-    if (!file) return;
+  async function handleStart(scan: File | null = file, sample = false) {
+    if (!scan) return;
     setPhase({ name: 'working', label: 'Creating report…' });
-    await attempt('Could not create the report.', () => void handleStart(), async () => {
-      const newReport = await createReport({ technician_name: technicianName || null });
+    await attempt('Could not create the report.', () => void handleStart(scan, sample), async () => {
+      if (!sample) rememberName(technicianName);
+      const newReport = await createReport({ technician_name: (sample ? SAMPLE_TECHNICIAN : technicianName) || null });
       setReport(newReport);
-      await uploadScan(newReport.id, file);
+      await uploadScan(newReport.id, scan);
+    });
+  }
+
+  // "Try a sample report": fetch a made-up report and run it through the same steps as an upload.
+  async function handleTrySample() {
+    setPhase({ name: 'working', label: 'Getting a sample report…' });
+    await attempt('Could not load the sample report.', () => void handleTrySample(), async () => {
+      const sample = await fetchSampleReport();
+      setFile(sample);
+      setIsSample(true);
+      await handleStart(sample, true);
     });
   }
 
@@ -885,6 +1049,7 @@ export function IntakeFlow({
         throw e;
       }
       setAttachmentId(attachment.id);
+      noteProgress(`Uploaded ${scan.name}`);
       noteDuplicates(attachment.duplicate_report_ids);
       await runTranslation(attachment.id, reportId);
     });
@@ -924,6 +1089,7 @@ export function IntakeFlow({
           file={file}
           setFile={setFile}
           onStart={() => void handleStart()}
+          onTrySample={() => void handleTrySample()}
         />
       )}
 
@@ -931,6 +1097,7 @@ export function IntakeFlow({
         <WorkingPanel
           label={phase.label}
           fileName={file?.name}
+          progress={progress}
           // Saving happens from the review screen: no "reading" hint, and nothing to cancel back out of.
           slow={liveClaude && !phase.label.includes('aving')}
           onCancel={phase.label.includes('aving') ? undefined : onCancel}
@@ -974,6 +1141,13 @@ export function IntakeFlow({
           onInstrumentAdded={() => void handleInstrumentAdded()}
           busy={false}
         />
+      )}
+
+      {phase.name === 'review' && isSample && (
+        <div className="banner banner-info" id="sample-notice">
+          This is a sample report with made-up data, so you can see the whole flow. Finalizing it adds it to your ledger as demo
+          data; "Remove demo data" takes it away again.
+        </div>
       )}
 
       {phase.name === 'review' && templateNote && (
@@ -1049,7 +1223,15 @@ export function IntakeFlow({
         </div>
       )}
 
-      {phase.name === 'done' && report && <DoneScreen report={report} onReset={resetToIntake} onOpenReport={onOpenReport} onViewInstrument={onViewInstrument} />}
+      {phase.name === 'done' && report && (
+        <DoneScreen
+          report={report}
+          instrumentLabel={reviewInstrument ? `${reviewInstrument.model} (${reviewInstrument.serial_number})` : undefined}
+          onReset={resetToIntake}
+          onOpenReport={onOpenReport}
+          onViewInstrument={onViewInstrument}
+        />
+      )}
 
       {phase.name === 'error' && (
         <div className="section">

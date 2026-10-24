@@ -124,7 +124,10 @@ test.describe('intake flow', () => {
     await finalizeOne(page, marker);
     const panel = page.locator('.success-panel');
     await expect(panel.locator('code')).toHaveCount(0);
-    await expect(panel).not.toContainText(/[0-9a-f]{8}\b.*finalized/);
+    // No internal id, whole ("1a2b3c4d-...") or shortened ("Report 1a2b3c4d finalized"). The panel does name the
+    // instrument, whose own name can end in digits, so a bare run of hex characters is not an id.
+    await expect(panel).not.toContainText(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}/);
+    await expect(panel).not.toContainText(/Report [0-9a-f]{8}\b/);
     await expect(panel).toContainText(/Saved on \d{4}-\d{2}-\d{2}/);
     await expect(page.locator('.steps .step.done')).toHaveCount(3);
     await expect(page.locator('.steps .step.active')).toHaveCount(0);

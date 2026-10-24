@@ -13,25 +13,38 @@ import {
  * the fleet (ClassificationResult.maker_in_fleet === false). The technician
  * adds it right here, with what the document says already filled in, and the
  * document is classified again against the new fleet.
+ *
+ * The `serial` variant is for a known model with a serial number that is not
+ * in the fleet yet (a second unit, or one that was never added): `similar` is
+ * a unit of that model, and its maker, kind and distributor start the form, so
+ * adding the unit is one field and a click instead of a trip to the
+ * Instruments tab.
  */
 export function AddInstrumentPanel({
   classification,
   busy,
   onAdded,
+  variant = 'maker',
+  similar,
 }: {
   classification: ClassificationResult;
   busy: boolean;
   /** Called with the new instrument; the caller classifies the document again. */
   onAdded: (instrument: Instrument) => void;
+  variant?: 'maker' | 'serial';
+  /** A fleet instrument of the same model, to copy the details that do not change between units. */
+  similar?: Instrument;
 }) {
+  const preferredType = similar?.instrument_type;
+  const startModel = classification.detected_model ?? (variant === 'serial' ? classification.instrument.value : '');
   const [types, setTypes] = useState<InstrumentType[]>([]);
   const [typeKey, setTypeKey] = useState('');
-  const [model, setModel] = useState(classification.detected_model ?? '');
-  const [name, setName] = useState(classification.detected_model ?? '');
-  const [manufacturer, setManufacturer] = useState(classification.detected_manufacturer ?? '');
+  const [model, setModel] = useState(startModel);
+  const [name, setName] = useState(startModel);
+  const [manufacturer, setManufacturer] = useState(classification.detected_manufacturer ?? similar?.manufacturer ?? '');
   // The form's issuer is usually the company that sold or services the
   // instrument, not its maker, so it goes in the distributor field.
-  const [distributor, setDistributor] = useState(classification.issuer ?? '');
+  const [distributor, setDistributor] = useState(classification.issuer ?? similar?.distributor ?? '');
   const [serial, setSerial] = useState(classification.instrument_serial?.value ?? '');
   const [room, setRoom] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -41,10 +54,10 @@ export function AddInstrumentPanel({
     listInstrumentTypes()
       .then((list) => {
         setTypes(list);
-        setTypeKey((current) => current || list[0]?.key || '');
+        setTypeKey((current) => current || (list.find((t) => t.key === preferredType)?.key ?? list[0]?.key ?? ''));
       })
       .catch(() => setError('Could not load the instrument types.'));
-  }, []);
+  }, [preferredType]);
 
   const ready = [name, model, manufacturer, serial].every((v) => v.trim() !== '') && typeKey !== '';
 
@@ -72,13 +85,26 @@ export function AddInstrumentPanel({
   const disabled = busy || saving;
   return (
     <div className="section add-instrument-panel" id="add-instrument-panel">
-      <div className="section-title">This instrument is not in your fleet</div>
-      <p className="hint-text">
-        The document looks like {classification.detected_manufacturer ? `a ${classification.detected_manufacturer} ` : 'an '}
-        {classification.detected_model ?? 'instrument'} that has not been added yet
-        {classification.issuer ? `, on a form from ${classification.issuer}` : ''}. Add it here, check the details, and the document is classified
-        again.
-      </p>
+      {variant === 'serial' ? (
+        <>
+          <div className="section-title">This serial number is not in your fleet yet</div>
+          <p className="hint-text">
+            The document is from {startModel || 'an instrument'} with serial {classification.instrument_serial?.value}, which is not on the
+            Instruments tab. Add it here (the details of your other {startModel || 'units'} are filled in) and the document is classified
+            again, this time matched to it.
+          </p>
+        </>
+      ) : (
+        <>
+          <div className="section-title">This instrument is not in your fleet</div>
+          <p className="hint-text">
+            The document looks like {classification.detected_manufacturer ? `a ${classification.detected_manufacturer} ` : 'an '}
+            {classification.detected_model ?? 'instrument'} that has not been added yet
+            {classification.issuer ? `, on a form from ${classification.issuer}` : ''}. Add it here, check the details, and the document is classified
+            again.
+          </p>
+        </>
+      )}
       <div className="add-instrument-grid">
         <label>
           <span className="clabel">Name</span>

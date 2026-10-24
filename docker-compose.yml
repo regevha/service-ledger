@@ -1,0 +1,84 @@
+# Everything ServiceLedger needs, with one command:
+#
+#     docker compose up --build
+#
+# then open http://localhost:8000. It starts Postgres, applies the migrations,
+# and runs the API (which also serves the page) and the background worker. The
+# worker is what reads uploaded scans: without it an upload waits forever, which
+# is the usual first-run surprise when starting the pieces by hand.
+#
+# With no API key the app reads a document's own text and fills the rest with
+# placeholders, which is enough to try the whole flow ("Try a sample report" on
+# the first screen). To read scans with Claude, set these in your shell or in a
+# .env file next to this one:
+#
+#     USE_LIVE_CLAUDE=true
+#     ANTHROPIC_API_KEY=sk-ant-...
+#
+# Optional: SHARED_PASSWORD (12 or more characters) puts one password in front of
+# the whole app. Data lives in two named volumes (pgdata, attachments);
+# `docker compose down -v` deletes it.
+#
+# This is for trying the app and for a single user's machine. The shared
+# deployment is described in deploy/azure/README.md.
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: docker/demo.Dockerfile
+  image: service-ledger
+  environment: &app-env
+    DATABASE_URL: postgresql+psycopg2://service_ledger:service_ledger@db:5432/service_ledger
+    ATTACHMENT_STORAGE_DIR: /data/attachments
+    USE_LIVE_CLAUDE: ${USE_LIVE_CLAUDE:-false}
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    SHARED_PASSWORD: ${SHARED_PASSWORD:-}
+  volumes:
+    - attachments:/data
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: service_ledger
+      POSTGRES_PASSWORD: service_ledger
+      POSTGRES_DB: service_ledger
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U service_ledger -d service_ledger"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Creates or updates the tables, once, then exits. The API and the worker wait for it.
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *app
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "app.worker"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  attachments:

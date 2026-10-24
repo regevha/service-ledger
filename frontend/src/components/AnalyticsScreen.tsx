@@ -12,6 +12,7 @@ import {
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { DateInput } from './DateInput';
+import { EmptyState } from './FirstRun';
 import { ModelComparisonSection } from './ModelComparison';
 
 /**
@@ -347,6 +348,14 @@ export function AnalyticsScreen() {
         <div className="empty-hint">No finalized reports match these filters.</div>
       )}
 
+      {!loading && data.finalized_report_count === 0 && !filtered ? (
+        <EmptyState title="Nothing to chart yet">
+          Analytics are built from finalized reports: the parts you replace most, labor hours by instrument and fault,
+          pass and fail rates, and how units of one model compare. Finalize your first report, or load demo data to see
+          it filled in.
+        </EmptyState>
+      ) : (
+      <>
       <div className="stat-row">
         <div className="stat-tile">
           <span className="stat-value">{formatHours(data.total_labor_hours)}</span>
@@ -383,6 +392,8 @@ export function AnalyticsScreen() {
       </div>
 
       <ModelComparisonSection filters={filters} />
+      </>
+      )}
     </div>
   );
 }

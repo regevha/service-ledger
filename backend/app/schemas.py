@@ -954,3 +954,29 @@ class SavedFilterOut(BaseModel):
 class SavedFilterListOut(BaseModel):
     items: list[SavedFilterOut]
     cap: int
+
+
+# ---------- Onboarding ----------
+
+
+class OnboardingStatusOut(BaseModel):
+    """GET /onboarding/status: what the first-run screens need to decide what
+    to offer, and whether the background worker is keeping up."""
+
+    instruments: int
+    reports: int
+    finalized_reports: int
+    # Reports loaded by POST /onboarding/demo-data (they can be removed again).
+    demo_reports: int
+    # Jobs waiting for the worker, and how long the oldest has waited. A job
+    # that waits longer than a few seconds means the worker is not running.
+    pending_jobs: int
+    oldest_pending_seconds: float | None = None
+
+
+class DemoDataOut(BaseModel):
+    """The result of loading or removing the demo reports."""
+
+    reports_added: int = 0
+    reports_removed: int = 0
+    demo_reports: int

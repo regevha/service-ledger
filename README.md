@@ -35,6 +35,22 @@ Each half has its own README with full setup and run instructions:
 
 ## Quick start
 
+### With Docker (one command)
+
+```bash
+docker compose up --build       # → http://localhost:8000
+```
+
+This starts Postgres, applies the migrations, and runs the API (which also
+serves the page) and the background worker, all from one image
+(`docker/demo.Dockerfile`; see `docker-compose.yml` for the settings, including
+how to turn on live Claude with an API key). Then press **Try a sample report**
+on the first screen to run a made-up report through the whole flow, or
+**Load demo data** on any empty screen to see the Reports, Analytics and trend
+screens filled in. Both can be removed again with **Remove demo data**.
+
+### By hand
+
 Requires Postgres, Python 3, and Node.
 
 ```bash

@@ -1907,3 +1907,139 @@ textarea {
     grid-column: 1 / -1;
   }
 }
+
+/* ---------- First run ---------- */
+
+/* Templates and Instruments are set up once, so they sit apart under their own label. */
+.view-tab-setup {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  margin-left: auto;
+  padding-left: 16px;
+}
+.view-tab-setup-label {
+  align-self: center;
+  font-family: var(--font-ui);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding-right: 4px;
+}
+.view-tab-setup .view-tab {
+  font-weight: 500;
+}
+
+/* A screen with nothing on it yet: says what is missing, and how to fix that. */
+.empty-hint.empty-state {
+  padding: 22px 20px;
+  margin: 4px 0 8px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-2);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+.empty-state-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.empty-state p {
+  max-width: 52ch;
+  margin: 0 auto;
+  line-height: 1.55;
+}
+.empty-state .cta-row {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.empty-state .banner {
+  margin: 12px auto 0;
+  max-width: 52ch;
+  text-align: left;
+}
+
+/* "Try a sample report", under the upload box. */
+.sample-offer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.sample-offer .btn {
+  flex: none;
+}
+@media (max-width: 620px) {
+  .sample-offer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* What the app has found out so far, while it is still working. */
+.working-progress {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.working-progress li {
+  margin: 3px 0;
+}
+.working-progress-tick {
+  color: var(--good);
+  font-weight: 700;
+}
+
+/* The success screen's "what next" list. */
+.whats-next {
+  margin: 22px auto 0;
+  padding: 14px 16px;
+  max-width: 560px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  text-align: left;
+}
+.whats-next-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.whats-next ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+.whats-next .link-button {
+  font-size: inherit;
+}
+
+/* The review screen with only the fields that need a look. */
+.focus-summary {
+  padding: 8px 0;
+}
+.banner code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}

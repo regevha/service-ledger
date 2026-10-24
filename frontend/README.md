@@ -89,8 +89,13 @@ resolving to the one whose serial the document actually names, see
 `serial-matching.spec.ts`), the extracted service date shown on review and
 correctable before finalize (`service-date.spec.ts`), the persistent duplicate banner on a saved report (same work order on
 the same instrument; not on another unit — `saved-duplicates.spec.ts`, whose
-test PDFs come from `text-pdf.ts` so the backend reads a real text layer), and the app's error
-states (an unreachable backend, a failed classification call).
+test PDFs come from `text-pdf.ts` so the backend reads a real text layer), the app's error
+states (an unreachable backend, a failed classification call), and what a first-time visitor
+sees (`first-run.spec.ts`): the one-click sample report with its progress list and "what next"
+screen, demo data loaded and removed, empty screens that say what to do (reached by answering
+the one list request with nothing, since the shared test database is never empty), the Setup
+grouping of the Templates and Instruments tabs, the "worker is not running" notice, the
+review screen's "show only these" mode, and adding an unknown serial number on the spot.
 
 ### Instrument detail page
 
