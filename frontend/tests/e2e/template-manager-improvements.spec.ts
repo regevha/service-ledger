@@ -81,7 +81,8 @@ test.describe('duplicating a template', () => {
     await createTemplate(request, source);
     await openTemplates(page);
 
-    await rowFor(page, source).locator('button:has-text("Duplicate")').click();
+    await rowFor(page, source).getByRole('button', { name: /More actions/ }).click();
+    await rowFor(page, source).getByRole('menuitem', { name: 'Duplicate' }).click();
     await expect(page.locator('.section-title').first()).toContainText('New template');
     await expect(page.locator('#copy-notice')).toContainText('choose a different model');
     await expect(page.locator('.schema-field-row')).toHaveCount(2);
@@ -113,8 +114,10 @@ test.describe('a template that reports use', () => {
       await openTemplates(page);
       const row = rowFor(page, model);
       await expect(row.locator('.template-usage')).toHaveText('1 (0 finalized)');
-      await expect(row.locator('button:has-text("Delete")')).toBeDisabled();
-      await expect(row.locator('button:has-text("Delete")')).toHaveAttribute('title', /1 report\(s\) use this template/);
+      await row.getByRole('button', { name: /More actions/ }).click();
+      await expect(row.getByRole('menuitem', { name: 'Delete' })).toBeDisabled();
+      await expect(row.getByRole('menuitem', { name: 'Delete' })).toHaveAttribute('title', /1 report\(s\) use this template/);
+      await page.keyboard.press('Escape');
 
       await row.locator('button:has-text("Edit")').click();
       await expect(page.locator('#template-in-use-notice')).toContainText('1 report uses this template (0 finalized)');
@@ -161,7 +164,8 @@ test.describe('a template that reports use', () => {
     await page.click('button:has-text("Save changes")');
     await expect(page.getByRole('alertdialog')).toHaveCount(0);
 
-    await rowFor(page, model).locator('button:has-text("Delete")').click();
+    await rowFor(page, model).getByRole('button', { name: /More actions/ }).click();
+    await rowFor(page, model).getByRole('menuitem', { name: 'Delete' }).click();
     await rowFor(page, model).locator('button:has-text("Confirm delete")').click();
     await expect(rowFor(page, model)).toHaveCount(0);
   });
@@ -171,7 +175,8 @@ test.describe('a template that reports use', () => {
     const template = await createTemplate(request, model);
     await openTemplates(page);
     const row = rowFor(page, model);
-    await row.locator('button:has-text("Delete")').click(); // enabled: nothing used it when the list loaded
+    await row.getByRole('button', { name: /More actions/ }).click();
+    await row.getByRole('menuitem', { name: 'Delete' }).click(); // enabled: nothing used it when the list loaded
 
     const reportId = await useTemplate(request, template.id); // …until now
     try {

@@ -119,10 +119,12 @@ export function InstrumentDetailScreen({
               </div>
               {items.map((r) => (
                 <button className="instrument-report-row instrument-report-row-body" key={r.id} onClick={() => onOpenReport(r)}>
-                  <span>{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
-                  <span>{r.technician_name ?? '—'}</span>
-                  <span>{r.report_date ?? '—'}</span>
-                  <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                  <span data-label="Type">{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
+                  <span data-label="Lab manager">{r.technician_name ?? '—'}</span>
+                  <span data-label="Report date">{r.report_date ?? '—'}</span>
+                  <span data-label="Status">
+                    <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                  </span>
                 </button>
               ))}
             </div>
