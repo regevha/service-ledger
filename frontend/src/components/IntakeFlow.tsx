@@ -29,6 +29,7 @@ import {
   type Translation,
 } from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
+import { ACCEPTED_TYPES, dropProblem } from '../uploadFiles';
 import type { TemplateRequest } from '../templateRequest';
 import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
 import { AddInstrumentPanel } from './AddInstrumentPanel';
@@ -119,6 +120,11 @@ function IntakeScreen({
   setFile: (f: File | null) => void;
   onStart: () => void;
 }) {
+  const [dragging, setDragging] = useState(false);
+  const [dropError, setDropError] = useState<string | null>(null);
+
+  const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes('Files');
+
   return (
     <div className="section">
       <div className="section-title">Lab manager</div>
@@ -133,12 +139,54 @@ function IntakeScreen({
       <div className="section-title" style={{ marginTop: 18 }}>
         Scanned original
       </div>
-      <label className="dropzone">
+      <label
+        className={`dropzone${dragging ? ' dragging' : ''}`}
+        onDragEnter={(e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragOver={(e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault(); // without this the browser refuses the drop
+          e.dataTransfer.dropEffect = 'copy';
+          setDragging(true);
+        }}
+        onDragLeave={(e) => {
+          // Moving over the icon or text inside the box also fires this; only a real exit counts.
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+        }}
+        onDrop={(e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          setDragging(false);
+          const files = Array.from(e.dataTransfer.files);
+          const problem = dropProblem(files);
+          // A refused drop leaves the file already chosen in place; say so, so it is not a surprise.
+          setDropError(problem && file ? `${problem} Keeping ${file.name}.` : problem);
+          if (!problem) setFile(files[0]);
+        }}
+      >
         <div className="icon">📄</div>
-        <div className="primary">{file ? file.name : 'Click to choose a scan or PDF'}</div>
+        <div className="primary">
+          {dragging ? 'Drop the file here' : file ? file.name : 'Click to choose a scan or PDF, or drop it here'}
+        </div>
         <div className="secondary">Printed BD service forms as a PDF or a PNG, JPEG, GIF or WebP image — one file per report, any instrument, any report type</div>
-        <input type="file" accept="application/pdf,image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <input
+          type="file"
+          accept={ACCEPTED_TYPES.join(',')}
+          hidden
+          onChange={(e) => {
+            setDropError(null);
+            setFile(e.target.files?.[0] ?? null);
+          }}
+        />
       </label>
+      {dropError && (
+        <div className="drop-error" role="alert">
+          {dropError}
+        </div>
+      )}
 
       <div className="cta-row">
         <button className="btn primary" disabled={!file} onClick={onStart}>

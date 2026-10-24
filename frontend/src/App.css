@@ -158,9 +158,25 @@ textarea {
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
-.dropzone:hover {
+.dropzone:hover,
+.dropzone.dragging {
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+.dropzone.dragging {
+  border-style: solid;
+}
+/* The icon and text must not become the drag target, or leaving them flickers the highlight. */
+.dropzone.dragging * {
+  pointer-events: none;
+}
+.drop-error {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: var(--crit-soft);
+  color: var(--crit);
+  font-size: 0.84rem;
 }
 .dropzone .icon {
   font-size: 1.6rem;
