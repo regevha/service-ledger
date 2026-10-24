@@ -1,3 +1,4 @@
+import { fieldLabel } from '../fieldLabels';
 import { useMemo, useRef, useState } from 'react';
 import { getInstrumentTrend, getInstrumentTrendFields, type InstrumentTrend, type TrendField, type TrendPoint } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
@@ -33,7 +34,7 @@ function buildSeries(field: TrendField, points: TrendPoint[]): Series[] {
     return [
       {
         key: field.name,
-        label: field.name.replace(/_/g, ' '),
+        label: fieldLabel(field.name, field.unit),
         color: SERIES_COLORS[0],
         values: points.map((p) => (typeof p.value === 'number' ? p.value : undefined)),
       },
@@ -48,7 +49,7 @@ function buildSeries(field: TrendField, points: TrendPoint[]): Series[] {
   ).sort();
   return keys.map((key, i) => ({
     key,
-    label: key.replace(/_/g, ' '),
+    label: fieldLabel(key),
     color: SERIES_COLORS[i % SERIES_COLORS.length],
     values: points.map((p) => (typeof p.value === 'object' && p.value ? p.value[key] : undefined)),
   }));
@@ -169,7 +170,7 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
             ref={svgRef}
             viewBox={`0 0 ${CHART_W} ${CHART_H}`}
             role="img"
-            aria-label={`${field.name.replace(/_/g, ' ')} across ${n} report${n === 1 ? '' : 's'}`}
+            aria-label={`${fieldLabel(field.name, field.unit)} across ${n} report${n === 1 ? '' : 's'}`}
           >
             {yTicks.map((t) => (
               <g key={t}>
@@ -355,7 +356,7 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
         <select value={selectedField} onChange={(e) => setSelectedField(e.target.value)} aria-label="Field to chart">
           {fields.map((f) => (
             <option key={f.name} value={f.name}>
-              {f.name.replace(/_/g, ' ')}
+              {fieldLabel(f.name, f.unit)}
               {f.unit ? ` (${f.unit})` : ''}
             </option>
           ))}

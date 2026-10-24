@@ -69,6 +69,8 @@ export function ReportDetailScreen({
   const [duplicates, setDuplicates] = useState<ReportDuplicate[]>([]);
   const [duplicatesNonce, setDuplicatesNonce] = useState(0);
   const [highlightOn, setHighlightOn] = useState(true);
+  // A finalized report opens read-only; Edit unlocks it, and saving locks it again.
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,6 +125,7 @@ export function ReportDetailScreen({
       const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
       const final = finalize ? await finalizeReport(report.id) : updated;
       setReport(final);
+      setEditing(false);
       setDuplicatesNonce((n) => n + 1); // a save can change what matches
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Saving failed unexpectedly.');
@@ -243,7 +246,10 @@ export function ReportDetailScreen({
           // §4: "one file per report" for MVP, so the first (only) attachment
           // is the original this report's fields came from.
           originalScanUrl={report.attachments[0] ? attachmentFileUrl(report.attachments[0].id) : undefined}
+          scanInlineUrl={report.attachments[0] ? attachmentFileUrl(report.attachments[0].id, { inline: true }) : undefined}
           pdfUrl={reportPdfUrl(report.id)}
+          readOnly={report.status === 'finalized' && !editing}
+          onEdit={() => setEditing(true)}
         />
         </>
       ) : report ? (

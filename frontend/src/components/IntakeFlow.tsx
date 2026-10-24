@@ -911,20 +911,20 @@ export function IntakeFlow({
         <div className="banner banner-info" id="generic-template-notice">
           <div>
             This report used the generic {REPORT_TYPE_LABEL[template.report_type]} template for {reviewInstrument.model}. A template made for{' '}
-            {reviewInstrument.model} can ask for the fields its forms carry. When you save it, this report is read again with it and what is
-            on screen is replaced.
+            {reviewInstrument.model} can ask for the fields its forms carry; saving one reads this report again and replaces what is on
+            screen, so make corrections after, not before.
           </div>
-          <div className="cta-row">
+          <div className="banner-actions">
             <button
               type="button"
-              className="btn small primary"
+              className="btn small"
               onClick={() =>
                 requestTemplate({ reportId: report.id, attachmentId, instrument: reviewInstrument, reportType: template.report_type })
               }
             >
               Create a {reviewInstrument.model} template
             </button>{' '}
-            <button type="button" className="btn small" onClick={() => setGenericNoticeDismissed(true)}>
+            <button type="button" className="link-button" onClick={() => setGenericNoticeDismissed(true)}>
               Not now
             </button>
           </div>
@@ -944,6 +944,7 @@ export function IntakeFlow({
           onSave={() => void handleSaveFields(false)}
           onFinalize={() => void handleSaveFields(true)}
           originalScanUrl={attachmentId ? attachmentFileUrl(attachmentId) : undefined}
+          scanInlineUrl={attachmentId ? attachmentFileUrl(attachmentId, { inline: true }) : undefined}
           pdfUrl={report ? reportPdfUrl(report.id) : undefined}
         />
       )}
