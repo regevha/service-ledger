@@ -1660,3 +1660,25 @@ textarea {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* Processing panel: what is being read, how long it has taken, and a way out. */
+.working-text {
+  flex: 1;
+  min-width: 0;
+}
+.working-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.working-file {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+.success-actions {
+  justify-content: center;
+  margin-top: 14px;
+}
