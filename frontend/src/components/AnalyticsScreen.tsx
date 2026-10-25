@@ -217,6 +217,7 @@ function FilterBar({ filters, setFilters, instruments }: {
       filters={filters}
       setFilters={setFilters}
       instruments={instruments}
+      summaryExtra={filters.manufacturer ? [filters.manufacturer] : []}
       instrumentFilter={(inst) => !filters.manufacturer || (inst.manufacturer?.trim() ?? '') === filters.manufacturer}
       leading={
         <select
