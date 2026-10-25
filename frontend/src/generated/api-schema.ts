@@ -1130,6 +1130,7 @@ export interface components {
             manufacturer: string;
             /** Distributor */
             distributor?: string | null;
+            institution?: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -1152,6 +1153,7 @@ export interface components {
             manufacturer: string | null;
             /** Distributor */
             distributor: string | null;
+            institution: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
@@ -1226,6 +1228,7 @@ export interface components {
             manufacturer?: string | null;
             /** Distributor */
             distributor?: string | null;
+            institution?: string | null;
             /** Serial Number */
             serial_number?: string | null;
             /** Location */

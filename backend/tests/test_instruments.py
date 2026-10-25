@@ -393,3 +393,28 @@ def test_update_distributor_sets_changes_and_clears_it(client):
     assert client.patch(f"/instruments/{created['id']}", json={"distributor": None}).json()["distributor"] is None
     client.patch(f"/instruments/{created['id']}", json={"distributor": "Rhenium"})
     assert client.patch(f"/instruments/{created['id']}", json={"distributor": " "}).json()["distributor"] is None
+
+
+# ---------- institution ----------
+
+
+def test_institution_is_optional_trimmed_returned_and_editable(client):
+    plain = client.post(
+        "/instruments", json={"name": "No Inst", "model": "I1", "manufacturer": "Cytek", "serial_number": "INST-0001"}
+    ).json()
+    assert plain["institution"] is None
+
+    made = client.post(
+        "/instruments",
+        json={"name": "With Inst", "model": "I2", "manufacturer": "BD", "serial_number": "INST-0002", "institution": "  Bar-Ilan University "},
+    ).json()
+    assert made["institution"] == "Bar-Ilan University"
+    assert client.get(f"/instruments/{made['id']}").json()["institution"] == "Bar-Ilan University"
+    listed = {i["serial_number"]: i for i in client.get("/instruments").json()}
+    assert listed["INST-0002"]["institution"] == "Bar-Ilan University"
+    assert listed["INST-0001"]["institution"] is None
+
+    # Edits: set, leave alone on other edits, blank clears it.
+    assert client.patch(f"/instruments/{plain['id']}", json={"institution": "Tel Aviv University"}).json()["institution"] == "Tel Aviv University"
+    assert client.patch(f"/instruments/{plain['id']}", json={"location": "Room 9"}).json()["institution"] == "Tel Aviv University"
+    assert client.patch(f"/instruments/{plain['id']}", json={"institution": "  "}).json()["institution"] is None

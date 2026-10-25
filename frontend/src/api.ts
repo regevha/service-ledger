@@ -43,6 +43,8 @@ export interface Instrument {
   manufacturer: string | null;
   /** The local seller / service company when it is not the maker (e.g. "Rhenium"). */
   distributor: string | null;
+  /** The university or company the unit belongs to (e.g. "Bar-Ilan University"). */
+  institution: string | null;
   serial_number: string;
   location: string | null;
   status: InstrumentStatus;
@@ -59,6 +61,8 @@ export interface InstrumentCreatePayload {
   manufacturer: string;
   /** Optional: the local seller / service company, if it is not the maker. */
   distributor?: string | null;
+  /** Optional: the university or company the unit belongs to. */
+  institution?: string | null;
   serial_number: string;
   location?: string | null;
 }
@@ -76,6 +80,7 @@ export interface InstrumentUpdatePayload {
   model?: string;
   manufacturer?: string | null;
   distributor?: string | null;
+  institution?: string | null;
   serial_number?: string;
   location?: string | null;
   status?: InstrumentStatus;
@@ -252,6 +257,7 @@ export interface InstrumentRollup {
   instrument_id: string;
   name: string;
   model: string;
+  institution?: string | null;
   serial_number: string;
   report_count: number;
   total_labor_hours: number;
@@ -269,6 +275,8 @@ export interface FleetAnalytics {
   parts_replaced: PartUsage[];
   total_labor_hours: number;
   labor_hours_by_instrument: InstrumentRollup[];
+  /** Finalized repair/PM reports that added no hours (no number in the labor field, or no instrument). */
+  reports_without_labor_hours?: number;
   labor_hours_by_fault_category: Record<string, number>;
   pass_fail_by_report_type: Record<string, PassFailBreakdown>;
 }

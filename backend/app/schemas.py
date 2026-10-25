@@ -81,6 +81,8 @@ class InstrumentCreate(BaseModel):
     manufacturer: str
     # Optional: the local seller / service company when it is not the maker.
     distributor: str | None = None
+    # Optional: the university or company the unit belongs to ("Bar-Ilan University").
+    institution: str | None = None
     serial_number: str
     location: str | None = None
 
@@ -114,6 +116,12 @@ class InstrumentCreate(BaseModel):
         """Free text, trimmed; blank means "none / not recorded"."""
         return (value.strip() or None) if isinstance(value, str) else value
 
+    @field_validator("institution")
+    @classmethod
+    def _blank_institution_is_none(cls, value: str | None) -> str | None:
+        """Free text, trimmed; blank means "not recorded"."""
+        return (value.strip() or None) if isinstance(value, str) else value
+
 
 class InstrumentUpdate(BaseModel):
     """PATCH /instruments/{id} — every field optional so a caller only sends
@@ -129,6 +137,7 @@ class InstrumentUpdate(BaseModel):
     model: str | None = None
     manufacturer: str | None = None
     distributor: str | None = None
+    institution: str | None = None
     serial_number: str | None = None
     location: str | None = None
     status: InstrumentStatus | None = None
@@ -160,6 +169,12 @@ class InstrumentUpdate(BaseModel):
         """Free text, trimmed; a blank value means "none / not recorded"."""
         return (value.strip() or None) if isinstance(value, str) else value
 
+    @field_validator("institution")
+    @classmethod
+    def _blank_institution_is_none(cls, value: str | None) -> str | None:
+        """Free text, trimmed; blank means "not recorded"."""
+        return (value.strip() or None) if isinstance(value, str) else value
+
 
 class InstrumentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -170,6 +185,7 @@ class InstrumentOut(BaseModel):
     model: str
     manufacturer: str | None
     distributor: str | None
+    institution: str | None
     serial_number: str
     location: str | None
     status: InstrumentStatus
@@ -757,6 +773,7 @@ class InstrumentRollupOut(BaseModel):
     instrument_id: uuid.UUID
     name: str
     model: str
+    institution: str | None = None
     serial_number: str
     # Finalized repair/preventive_maintenance reports with a numeric
     # labor_hours value — calibration reports never carry labor_hours
@@ -790,6 +807,9 @@ class FleetAnalyticsOut(BaseModel):
     parts_replaced: list[PartUsageOut]
     total_labor_hours: float
     labor_hours_by_instrument: list[InstrumentRollupOut]
+    # Finalized repair/preventive_maintenance reports that added no hours above: no
+    # number in the labor field, or no instrument on the report. The page says so.
+    reports_without_labor_hours: int = 0
     # Keyed by whatever fault_category values actually appear in the data
     # (repair only — seed_templates.py's REPAIR_FIELDS) rather than a
     # hardcoded copy of that enum's options, so this can't silently drift

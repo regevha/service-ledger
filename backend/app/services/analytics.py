@@ -44,6 +44,34 @@ def _as_number(value: object) -> float | None:
     return float(value) if isinstance(value, (int, float)) else None
 
 
+def _labor_hours_of(fields: dict) -> float | None:
+    """The hours recorded on a report. The standard field is `labor_hours`; a template a
+    lab edited may call it something else ("Labor time", "labour_hours"), so when that
+    one is absent the first field with "labor"/"labour" in its name is used. A number
+    that was saved as text ("3.5") still counts; anything else is "not recorded"."""
+
+    def lenient(value: object) -> float | None:
+        number = _as_number(value)
+        if number is not None:
+            return number
+        if isinstance(value, str):
+            try:
+                return float(value.strip().replace(",", "."))
+            except ValueError:
+                return None
+        return None
+
+    if "labor_hours" in fields:
+        return lenient(fields["labor_hours"])
+    for name, value in fields.items():
+        lowered = str(name).lower()
+        if "labor" in lowered or "labour" in lowered:
+            found = lenient(value)
+            if found is not None:
+                return found
+    return None
+
+
 def _result_field_for(report_type: models.ReportType) -> str | None:
     if report_type is models.ReportType.repair:
         return "retest_result"
@@ -115,6 +143,8 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
     parts: dict[tuple[str, str | None], dict[str, float]] = {}
     labor_by_instrument: dict[uuid.UUID, float] = {}
     reports_by_instrument: dict[uuid.UUID, int] = {}
+    # Finalized repair/PM reports that added nothing to the hours: no hours recorded, or no instrument.
+    reports_without_hours = 0
     labor_by_fault_category: dict[str, float] = {}
     pass_fail: dict[str, dict[str, int]] = {rt.value: {"pass": 0, "fail": 0, "other": 0} for rt in _LABOR_TRACKING_REPORT_TYPES}
 
@@ -154,7 +184,9 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
                 bucket["total_qty"] += qty
 
         if report_type in _LABOR_TRACKING_REPORT_TYPES:
-            labor_hours = _as_number(fields.get("labor_hours"))
+            labor_hours = _labor_hours_of(fields)
+            if labor_hours is None or report.instrument_id is None:
+                reports_without_hours += 1
             if labor_hours is not None:
                 if report.instrument_id is not None:
                     labor_by_instrument[report.instrument_id] = labor_by_instrument.get(report.instrument_id, 0.0) + labor_hours
@@ -178,6 +210,7 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
             instrument_id=instrument.id,
             name=instrument.name,
             model=instrument.model,
+            institution=instrument.institution,
             serial_number=instrument.serial_number,
             report_count=reports_by_instrument.get(instrument.id, 0),
             total_labor_hours=labor_by_instrument.get(instrument.id, 0.0),
@@ -204,6 +237,7 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         parts_replaced=parts_replaced,
         total_labor_hours=sum(labor_by_instrument.values()),
         labor_hours_by_instrument=labor_hours_by_instrument,
+        reports_without_labor_hours=reports_without_hours,
         labor_hours_by_fault_category=labor_by_fault_category,
         pass_fail_by_report_type={
             report_type: schemas.PassFailBreakdownOut(
