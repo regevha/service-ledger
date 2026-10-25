@@ -1935,3 +1935,13 @@ textarea {
 .count-list .bar-sublabel {
   margin-left: 8px;
 }
+
+/* The institution sits under the instrument's name, smaller and muted. */
+.instrument-institution {
+  display: block;
+}
+.chart-note {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}

@@ -252,3 +252,43 @@ def test_non_numeric_and_boolean_labor_hours_and_qty_are_ignored_not_miscounted(
     weird_part = next(p for p in body["parts_replaced"] if p["part_name"] == "Weird Qty Part")
     assert weird_part["times_replaced"] == 1
     assert weird_part["total_qty"] == 0.0  # the boolean qty didn't count, but the part still shows up
+
+
+def test_labor_hours_tolerate_text_numbers_and_a_renamed_labor_field(client, seeded):
+    # "3.5" saved as text, and a template whose labor field is called something else.
+    _make_report(
+        seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={"labor_hours": "3.5"}
+    )
+    _make_report(
+        seeded,
+        model="LSRFortessa",
+        report_type=ReportType.preventive_maintenance,
+        extracted_fields={"Labor time (hours)": 2},
+    )
+    body = client.get("/analytics/fleet").json()
+    assert body["total_labor_hours"] == 5.5
+    by_model = {row["model"]: row for row in body["labor_hours_by_instrument"]}
+    assert by_model["FACSAria III"]["total_labor_hours"] == 3.5
+    assert by_model["LSRFortessa"]["total_labor_hours"] == 2.0
+    assert body["reports_without_labor_hours"] == 0
+
+
+def test_reports_that_add_no_hours_are_counted_so_the_page_can_say_so(client, seeded):
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={"labor_hours": 2})
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={"labor_hours": "n/a"})
+    _make_report(seeded, model="LSRFortessa", report_type=ReportType.preventive_maintenance, extracted_fields={})
+    # Calibration never counts for hours and is not "missing" them either.
+    _make_report(seeded, model="CytoFLEX S", report_type=ReportType.calibration, extracted_fields={})
+    body = client.get("/analytics/fleet").json()
+    assert body["total_labor_hours"] == 2.0
+    assert body["reports_without_labor_hours"] == 2
+
+
+def test_the_instrument_rollup_carries_the_institution(client, seeded):
+    inst = seeded.query(Instrument).filter(Instrument.model == "FACSAria III").one()
+    inst.institution = "Bar-Ilan University"
+    seeded.commit()
+    body = client.get("/analytics/fleet").json()
+    by_model = {row["model"]: row for row in body["labor_hours_by_instrument"]}
+    assert by_model["FACSAria III"]["institution"] == "Bar-Ilan University"
+    assert by_model["LSRFortessa"]["institution"] is None

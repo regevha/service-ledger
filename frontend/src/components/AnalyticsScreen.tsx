@@ -119,23 +119,45 @@ function PartsChart({ parts }: { parts: PartUsage[] }) {
   );
 }
 
-function LaborHoursByInstrumentChart({ rows }: { rows: InstrumentRollup[] }) {
-  const maxHours = Math.max(...rows.map((r) => r.total_labor_hours), 0);
+function LaborHoursByInstrumentChart({ rows, withoutHours }: { rows: InstrumentRollup[]; withoutHours: number }) {
+  // Most hours first; instruments with none keep their alphabetical order at the bottom.
+  const sorted = [...rows].sort((a, b) => b.total_labor_hours - a.total_labor_hours || a.name.localeCompare(b.name));
+  const maxHours = Math.max(...sorted.map((r) => r.total_labor_hours), 0);
+  const anyHours = maxHours > 0;
   return (
-    <div className="bar-chart">
-      {rows.map((r) => (
-        <BarRow
-          key={r.instrument_id}
-          label={r.model}
-          sublabel={r.serial_number}
-          value={r.total_labor_hours}
-          maxValue={maxHours}
-          formattedValue={
-            r.report_count === 0 ? 'No repair/PM reports yet' : `${formatHours(r.total_labor_hours)} · ${r.report_count} report${r.report_count === 1 ? '' : 's'}`
-          }
-        />
-      ))}
-    </div>
+    <>
+      <p className="chart-note">
+        Hours recorded on finalized repair and preventive maintenance reports, added up per instrument.
+      </p>
+      {!anyHours && (
+        <div className="empty-hint">
+          No hours to show yet. A bar appears once a finalized repair or preventive maintenance report has a number in its
+          labor field.
+        </div>
+      )}
+      <div className="bar-chart">
+        {sorted.map((r) => (
+          <BarRow
+            key={r.instrument_id}
+            label={r.name}
+            sublabel={[r.model, r.institution, r.serial_number].filter(Boolean).join(' · ')}
+            value={r.total_labor_hours}
+            maxValue={maxHours}
+            formattedValue={
+              r.report_count === 0
+                ? 'No hours recorded'
+                : `${formatHours(r.total_labor_hours)} · ${r.report_count} report${r.report_count === 1 ? '' : 's'}`
+            }
+          />
+        ))}
+      </div>
+      {withoutHours > 0 && (
+        <p className="chart-note">
+          {withoutHours} finalized repair or preventive maintenance report{withoutHours === 1 ? ' was' : 's were'} not counted:
+          no number in the labor field, or no instrument on the report.
+        </p>
+      )}
+    </>
   );
 }
 
@@ -406,7 +428,10 @@ export function AnalyticsScreen() {
 
       <div className="chart-section">
         <div className="chart-title">Labor hours by instrument</div>
-        <LaborHoursByInstrumentChart rows={data.labor_hours_by_instrument} />
+        <LaborHoursByInstrumentChart
+          rows={data.labor_hours_by_instrument}
+          withoutHours={data.reports_without_labor_hours ?? 0}
+        />
       </div>
 
       <div className="chart-section">
