@@ -8,7 +8,9 @@
 # Usage:   ./deploy/azure/update.sh <name>      e.g.  ./deploy/azure/update.sh sl-test
 # Needs:   Azure CLI logged in (az login), the containerapp extension, npm.
 #          Run from the repository root, on the branch you want to release.
-# Optional: IMAGE_TAG=...   (default: <git short hash>-<UTC timestamp>, always new,
+# Optional: BACKUP_FIRST=1  take a backup (backup.sh) before anything changes; do this before a
+#                            release with a migration that deletes or rewrites data
+#           IMAGE_TAG=...   (default: <git short hash>-<UTC timestamp>, always new,
 #                            so the apps really roll to a fresh revision)
 set -euo pipefail
 
@@ -30,6 +32,11 @@ for app in "api-$NAME" "worker-$NAME"; do
 done
 if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
   echo "Note: you have uncommitted changes; the image is built from the files on disk, not from commit $GIT_REV."
+fi
+
+if [[ "${BACKUP_FIRST:-0}" == "1" ]]; then
+  echo "== Backup before the release"
+  "$(dirname "${BASH_SOURCE[0]}")/backup.sh" "$NAME"
 fi
 
 ACR_SERVER="$(az acr show -g "$RG" -n "$ACR" --query loginServer -o tsv)"
