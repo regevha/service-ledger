@@ -47,9 +47,8 @@ test('Analytics hours chart: the bar is labelled with the instrument name and sh
   await page.goto('/#/analytics');
   const section = page.locator('.chart-section', { hasText: 'Labor hours by instrument' });
   await expect(section.locator('.chart-note').first()).toContainText('repair and preventive maintenance reports');
-  const bar = section.locator('.labor-bar', { has: page.locator('title', { hasText: name }) });
-  // Long names are cut in the picture; the full name is in the bar's tooltip.
-  await expect(bar.locator('title')).toContainText(name);
-  await expect(bar.locator('.labor-bar-sub')).toContainText('Bar-Ilan');
-  await expect(bar.locator('.labor-bar-none')).toHaveText('none');
+  const bar = section.locator('.labor-bar', { hasText: name });
+  await expect(bar.locator('.bar-label')).toHaveText(name);
+  await expect(bar.locator('.bar-sublabel')).toContainText('Bar-Ilan University');
+  await expect(bar.locator('.bar-value')).toHaveText('none');
 });

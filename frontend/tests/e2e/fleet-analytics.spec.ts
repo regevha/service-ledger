@@ -104,7 +104,7 @@ test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail 
   // made it into the rollup; check it doesn't show the no-hours label.
   const ariaBar = page.locator('.labor-bar', { hasText: 'FACSAria III' });
   await expect(ariaBar).toBeVisible();
-  await expect(ariaBar.locator('.labor-bar-value')).toBeVisible();
+  await expect(ariaBar.locator('.bar-value')).not.toHaveText('none');
 
   // Pass/fail section shows both report types this run touched.
   await expect(page.locator('.stack-row', { hasText: 'Malfunction / repair' })).toBeVisible();
