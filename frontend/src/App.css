@@ -1546,7 +1546,7 @@ textarea {
 /* The scan beside the fields, on a wide screen. */
 .review-split.with-scan {
   display: grid;
-  grid-template-columns: minmax(340px, 5fr) minmax(0, 6fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
@@ -1961,4 +1961,90 @@ textarea {
   font-size: 13px;
   color: var(--muted, #667);
   overflow-wrap: anywhere;
+}
+
+/* ---------- Phones and small tablets (Galaxy A55, iPad mini) ---------- */
+
+/* Long values wrap inside their column instead of running into the next one. */
+.instrument-row > *,
+.template-row > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Column captions never break in the middle of a word. */
+.instrument-row.template-row-head > * {
+  overflow-wrap: normal;
+}
+@media (min-width: 901px) {
+  .instrument-row {
+    grid-template-columns:
+      minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 84px 148px;
+  }
+}
+
+/* All five tabs fit a phone's width, with no hidden ones to scroll to. */
+@media (max-width: 480px) {
+  .view-tabs {
+    gap: 2px;
+  }
+  .view-tab {
+    font-size: 0.7rem;
+    padding: 7px 6px;
+  }
+}
+
+/* Filters: one control per line, full width, on a phone. */
+@media (max-width: 620px) {
+  .filter-row select,
+  .filter-row input,
+  .filter-row .date-input {
+    width: 100%;
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  .filter-row .filter-sep {
+    display: none;
+  }
+}
+
+/* The Instruments table has eight columns; on a portrait tablet it becomes cards, as on a phone. */
+@media (max-width: 900px) {
+  .instrument-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 6px;
+  }
+  .instrument-row.template-row-head {
+    display: none;
+  }
+  .instrument-row.template-row-body > span[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 1px;
+  }
+  .instrument-row .template-row-actions {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 620px) {
+  .instrument-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* A section inside a section (the review form inside a report's page) does not pad twice,
+   and a phone gives the content more of its width. */
+.section .section {
+  padding-left: 0;
+  padding-right: 0;
+}
+@media (max-width: 620px) {
+  .section {
+    padding: 14px;
+  }
 }
