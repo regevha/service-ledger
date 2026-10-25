@@ -252,3 +252,97 @@ def test_non_numeric_and_boolean_labor_hours_and_qty_are_ignored_not_miscounted(
     weird_part = next(p for p in body["parts_replaced"] if p["part_name"] == "Weird Qty Part")
     assert weird_part["times_replaced"] == 1
     assert weird_part["total_qty"] == 0.0  # the boolean qty didn't count, but the part still shows up
+
+
+def test_labor_hours_tolerate_text_numbers_and_a_renamed_labor_field(client, seeded):
+    # "3.5" saved as text, and a template whose labor field is called something else.
+    _make_report(
+        seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={"labor_hours": "3.5"}
+    )
+    _make_report(
+        seeded,
+        model="LSRFortessa",
+        report_type=ReportType.preventive_maintenance,
+        extracted_fields={"Labor time (hours)": 2},
+    )
+    body = client.get("/analytics/fleet").json()
+    assert body["total_labor_hours"] == 5.5
+    by_model = {row["model"]: row for row in body["labor_hours_by_instrument"]}
+    assert by_model["FACSAria III"]["total_labor_hours"] == 3.5
+    assert by_model["LSRFortessa"]["total_labor_hours"] == 2.0
+    assert body["reports_without_labor_hours"] == 0
+
+
+def test_reports_that_add_no_hours_are_counted_so_the_page_can_say_so(client, seeded):
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={"labor_hours": 2})
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={"labor_hours": "n/a"})
+    _make_report(seeded, model="LSRFortessa", report_type=ReportType.preventive_maintenance, extracted_fields={})
+    # Calibration never counts for hours and is not "missing" them either.
+    _make_report(seeded, model="CytoFLEX S", report_type=ReportType.calibration, extracted_fields={})
+    body = client.get("/analytics/fleet").json()
+    assert body["total_labor_hours"] == 2.0
+    assert body["reports_without_labor_hours"] == 2
+
+
+def test_the_instrument_rollup_carries_the_institution(client, seeded):
+    inst = seeded.query(Instrument).filter(Instrument.model == "FACSAria III").one()
+    inst.institution = "Bar-Ilan University"
+    seeded.commit()
+    body = client.get("/analytics/fleet").json()
+    by_model = {row["model"]: row for row in body["labor_hours_by_instrument"]}
+    assert by_model["FACSAria III"]["institution"] == "Bar-Ilan University"
+    assert by_model["LSRFortessa"]["institution"] is None
+
+
+# ---------- the Reports-tab filters on analytics: status, lab manager, search ----------
+
+
+def _tech_report(db, tech, status, fields=None):
+    r = _make_report(db, model="FACSAria III", report_type=ReportType.repair, status=status, extracted_fields=fields or {"labor_hours": 2})
+    r.technician_name = tech
+    db.commit()
+    return r
+
+
+def test_status_filter_defaults_to_finalized_and_can_include_drafts(client, seeded):
+    _tech_report(seeded, "Dana", ReportStatus.finalized, {"labor_hours": 2})
+    _tech_report(seeded, "Dana", ReportStatus.in_review, {"labor_hours": 5})
+    assert client.get("/analytics/fleet").json()["total_labor_hours"] == 2.0
+    assert client.get("/analytics/fleet", params={"status": "all"}).json()["total_labor_hours"] == 7.0
+    assert client.get("/analytics/fleet", params={"status": "in_review"}).json()["total_labor_hours"] == 5.0
+    assert client.get("/analytics/fleet", params={"status": "bogus"}).status_code == 422
+
+
+def test_lab_manager_filter_is_a_case_insensitive_partial_match(client, seeded):
+    _tech_report(seeded, "Dana Levi", ReportStatus.finalized, {"labor_hours": 2})
+    _tech_report(seeded, "Avi Cohen", ReportStatus.finalized, {"labor_hours": 3})
+    assert client.get("/analytics/fleet", params={"technician": "levi"}).json()["total_labor_hours"] == 2.0
+    assert client.get("/analytics/fleet", params={"technician": " "}).json()["total_labor_hours"] == 5.0
+
+
+def test_text_search_filter_narrows_the_analytics_like_the_reports_list(client, seeded):
+    _tech_report(seeded, "A", ReportStatus.finalized, {"labor_hours": 2, "fault_description": "replaced the flow cell"})
+    _tech_report(seeded, "B", ReportStatus.finalized, {"labor_hours": 3, "fault_description": "swapped the laser"})
+    assert client.get("/analytics/fleet", params={"q": "laser"}).json()["total_labor_hours"] == 3.0
+    # Search covers finalized reports only, so a draft status leaves nothing.
+    assert client.get("/analytics/fleet", params={"q": "laser", "status": "in_review"}).json()["total_labor_hours"] == 0.0
+    assert client.get("/analytics/fleet", params={"q": "x"}).status_code == 422
+
+
+def test_report_counts_per_instrument_and_per_model(client, seeded):
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={"labor_hours": 1})
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.preventive_maintenance, extracted_fields={})
+    _make_report(seeded, model="LSRFortessa", report_type=ReportType.repair, extracted_fields={})
+    _make_report(seeded, model="LSRFortessa", report_type=ReportType.repair, status=ReportStatus.in_review, extracted_fields={})
+    body = client.get("/analytics/fleet").json()
+    per_unit = {r["model"]: r["report_count"] for r in body["report_counts_by_instrument"]}
+    assert per_unit["FACSAria III"] == 2 and per_unit["LSRFortessa"] == 1  # the draft is not counted
+    assert per_unit["CytoFLEX S"] == 0  # every instrument is listed
+    per_model = {r["model"]: r for r in body["report_counts_by_model"]}
+    assert per_model["FACSAria III"]["report_count"] == 2 and per_model["FACSAria III"]["unit_count"] == 1
+    assert [r["report_count"] for r in body["report_counts_by_model"]] == sorted(
+        (r["report_count"] for r in body["report_counts_by_model"]), reverse=True
+    )
+    assert client.get("/analytics/fleet", params={"status": "all"}).json()["report_counts_by_instrument"]
+    allrows = {r["model"]: r["report_count"] for r in client.get("/analytics/fleet", params={"status": "all"}).json()["report_counts_by_instrument"]}
+    assert allrows["LSRFortessa"] == 2

@@ -70,6 +70,7 @@ export function InstrumentDetailScreen({
               <div className="section-title">{instrument.name}</div>
               <div className="instrument-meta">
                 {instrument.manufacturer ? `${instrument.manufacturer} ` : ''}{instrument.model} · S/N {instrument.serial_number}
+                {instrument.institution ? ` · ${instrument.institution}` : ''}
                 {instrument.location ? ` · ${instrument.location}` : ''}
                 {instrument.distributor ? ` · Distributor: ${instrument.distributor}` : ''}
               </div>

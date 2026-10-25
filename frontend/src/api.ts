@@ -43,6 +43,8 @@ export interface Instrument {
   manufacturer: string | null;
   /** The local seller / service company when it is not the maker (e.g. "Rhenium"). */
   distributor: string | null;
+  /** The university or company the unit belongs to (e.g. "Bar-Ilan University"). */
+  institution: string | null;
   serial_number: string;
   location: string | null;
   status: InstrumentStatus;
@@ -59,6 +61,8 @@ export interface InstrumentCreatePayload {
   manufacturer: string;
   /** Optional: the local seller / service company, if it is not the maker. */
   distributor?: string | null;
+  /** Optional: the university or company the unit belongs to. */
+  institution?: string | null;
   serial_number: string;
   location?: string | null;
 }
@@ -76,6 +80,7 @@ export interface InstrumentUpdatePayload {
   model?: string;
   manufacturer?: string | null;
   distributor?: string | null;
+  institution?: string | null;
   serial_number?: string;
   location?: string | null;
   status?: InstrumentStatus;
@@ -252,9 +257,27 @@ export interface InstrumentRollup {
   instrument_id: string;
   name: string;
   model: string;
+  institution?: string | null;
   serial_number: string;
   report_count: number;
   total_labor_hours: number;
+}
+
+/** Reports that matched the filters (finalized unless the status filter says otherwise), per instrument. */
+export interface ReportCountByInstrument {
+  instrument_id: string;
+  name: string;
+  model: string;
+  institution?: string | null;
+  serial_number: string;
+  report_count: number;
+}
+
+/** The same counts added up per instrument model. */
+export interface ReportCountByModel {
+  model: string;
+  unit_count: number;
+  report_count: number;
 }
 
 export interface PassFailBreakdown {
@@ -269,6 +292,10 @@ export interface FleetAnalytics {
   parts_replaced: PartUsage[];
   total_labor_hours: number;
   labor_hours_by_instrument: InstrumentRollup[];
+  /** Finalized repair/PM reports that added no hours (no number in the labor field, or no instrument). */
+  reports_without_labor_hours?: number;
+  report_counts_by_instrument?: ReportCountByInstrument[];
+  report_counts_by_model?: ReportCountByModel[];
   labor_hours_by_fault_category: Record<string, number>;
   pass_fail_by_report_type: Record<string, PassFailBreakdown>;
 }
@@ -448,6 +475,12 @@ export interface AnalyticsFilters {
   report_type?: ReportType;
   date_from?: string;
   date_to?: string;
+  /** Omitted: finalized reports only. 'all': every status. Otherwise that one status. */
+  status?: string;
+  /** Lab manager contains this text. */
+  technician?: string;
+  /** Free-text search over finalized reports (two or more characters). */
+  q?: string;
 }
 
 function analyticsParams(filters: AnalyticsFilters, extra: Record<string, string> = {}): string {

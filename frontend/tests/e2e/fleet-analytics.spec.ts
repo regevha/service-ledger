@@ -101,10 +101,10 @@ test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail 
   // row itself is always present (one per seeded instrument, regardless of
   // data — see AnalyticsScreen.tsx's LaborHoursByInstrumentChart), so
   // checking visibility alone would pass even if this report's hours never
-  // made it into the rollup; check it doesn't show the zero-reports label.
-  const ariaRow = page.locator('.bar-row', { hasText: 'FACSAria III' });
-  await expect(ariaRow).toBeVisible();
-  await expect(ariaRow.locator('.bar-value')).not.toHaveText('No repair/PM reports yet');
+  // made it into the rollup; check it doesn't show the no-hours label.
+  const ariaBar = page.locator('.labor-bar', { hasText: 'FACSAria III' });
+  await expect(ariaBar).toBeVisible();
+  await expect(ariaBar.locator('.bar-value')).not.toHaveText('none');
 
   // Pass/fail section shows both report types this run touched.
   await expect(page.locator('.stack-row', { hasText: 'Malfunction / repair' })).toBeVisible();

@@ -26,6 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Query, Session, joinedload
 
 from app import models, schemas
+from app.services.report_filters import apply_report_filters
 from app.models import report_chronological_order
 
 # Both report types that carry labor_hours/components_replaced/pass-fail
@@ -42,6 +43,34 @@ def _as_number(value: object) -> float | None:
     if isinstance(value, bool):
         return None
     return float(value) if isinstance(value, (int, float)) else None
+
+
+def _labor_hours_of(fields: dict) -> float | None:
+    """The hours recorded on a report. The standard field is `labor_hours`; a template a
+    lab edited may call it something else ("Labor time", "labour_hours"), so when that
+    one is absent the first field with "labor"/"labour" in its name is used. A number
+    that was saved as text ("3.5") still counts; anything else is "not recorded"."""
+
+    def lenient(value: object) -> float | None:
+        number = _as_number(value)
+        if number is not None:
+            return number
+        if isinstance(value, str):
+            try:
+                return float(value.strip().replace(",", "."))
+            except ValueError:
+                return None
+        return None
+
+    if "labor_hours" in fields:
+        return lenient(fields["labor_hours"])
+    for name, value in fields.items():
+        lowered = str(name).lower()
+        if "labor" in lowered or "labour" in lowered:
+            found = lenient(value)
+            if found is not None:
+                return found
+    return None
 
 
 def _result_field_for(report_type: models.ReportType) -> str | None:
@@ -68,6 +97,11 @@ class AnalyticsFilters:
     report_type: models.ReportType | None = None
     date_from: date | None = None
     date_to: date | None = None
+    # Same meaning as on the Reports list. `status` None means finalized only (what
+    # the analytics always used); "all" means every status; otherwise that one status.
+    status: str | None = None
+    technician: str | None = None
+    q: str | None = None
 
 
 def _apply_unit_filters(query: Query, filters: AnalyticsFilters) -> Query:
@@ -84,21 +118,29 @@ def _same_manufacturer(name: str):
 
 
 def _apply_filters(query: Query, filters: AnalyticsFilters) -> Query:
-    if filters.instrument_id:
-        query = query.filter(models.Report.instrument_id == filters.instrument_id)
+    """The Reports-list filters (shared code, services/report_filters.py) plus the analytics-only
+    manufacturer. `status` None means finalized only, which is what the analytics always used;
+    "all" means every status."""
     if filters.manufacturer:
         query = query.filter(
             models.Report.instrument_id.in_(select(models.Instrument.id).where(_same_manufacturer(filters.manufacturer)))
         )
-    if filters.report_type:
-        query = query.join(models.ReportTemplate, models.Report.template_id == models.ReportTemplate.id).filter(
-            models.ReportTemplate.report_type == filters.report_type
-        )
-    if filters.date_from:
-        query = query.filter(models.Report.report_date >= filters.date_from)
-    if filters.date_to:
-        query = query.filter(models.Report.report_date <= filters.date_to)
-    return query
+    if filters.status is None:
+        status = models.ReportStatus.finalized
+    elif filters.status == "all":
+        status = None
+    else:
+        status = models.ReportStatus(filters.status)
+    return apply_report_filters(
+        query,
+        instrument_id=filters.instrument_id,
+        report_type=filters.report_type,
+        date_from=filters.date_from,
+        date_to=filters.date_to,
+        status=status,
+        technician=filters.technician,
+        q=filters.q,
+    )
 
 
 def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None) -> schemas.FleetAnalyticsOut:
@@ -106,8 +148,7 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
     reports = (
         _apply_filters(
             db.query(models.Report)
-            .options(joinedload(models.Report.instrument), joinedload(models.Report.template))
-            .filter(models.Report.status == models.ReportStatus.finalized),
+            .options(joinedload(models.Report.instrument), joinedload(models.Report.template)),
             filters,
         ).all()
     )
@@ -115,10 +156,17 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
     parts: dict[tuple[str, str | None], dict[str, float]] = {}
     labor_by_instrument: dict[uuid.UUID, float] = {}
     reports_by_instrument: dict[uuid.UUID, int] = {}
+    # Every report that matched the filters (finalized unless the status filter says otherwise),
+    # whatever its type, per instrument.
+    report_count_by_instrument: dict[uuid.UUID, int] = {}
+    # Finalized repair/PM reports that added nothing to the hours: no hours recorded, or no instrument.
+    reports_without_hours = 0
     labor_by_fault_category: dict[str, float] = {}
     pass_fail: dict[str, dict[str, int]] = {rt.value: {"pass": 0, "fail": 0, "other": 0} for rt in _LABOR_TRACKING_REPORT_TYPES}
 
     for report in reports:
+        if report.instrument_id is not None:
+            report_count_by_instrument[report.instrument_id] = report_count_by_instrument.get(report.instrument_id, 0) + 1
         if report.template is None:
             # Shouldn't happen for a finalized report (confirm_template is a
             # prerequisite of extraction, which is a prerequisite of
@@ -154,7 +202,9 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
                 bucket["total_qty"] += qty
 
         if report_type in _LABOR_TRACKING_REPORT_TYPES:
-            labor_hours = _as_number(fields.get("labor_hours"))
+            labor_hours = _labor_hours_of(fields)
+            if labor_hours is None or report.instrument_id is None:
+                reports_without_hours += 1
             if labor_hours is not None:
                 if report.instrument_id is not None:
                     labor_by_instrument[report.instrument_id] = labor_by_instrument.get(report.instrument_id, 0.0) + labor_hours
@@ -178,12 +228,31 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
             instrument_id=instrument.id,
             name=instrument.name,
             model=instrument.model,
+            institution=instrument.institution,
             serial_number=instrument.serial_number,
             report_count=reports_by_instrument.get(instrument.id, 0),
             total_labor_hours=labor_by_instrument.get(instrument.id, 0.0),
         )
         for instrument in instruments
     ]
+
+    report_counts_by_instrument = [
+        schemas.ReportCountByInstrumentOut(
+            instrument_id=instrument.id,
+            name=instrument.name,
+            model=instrument.model,
+            institution=instrument.institution,
+            serial_number=instrument.serial_number,
+            report_count=report_count_by_instrument.get(instrument.id, 0),
+        )
+        for instrument in instruments
+    ]
+    by_model: dict[str, schemas.ReportCountByModelOut] = {}
+    for row in report_counts_by_instrument:
+        entry = by_model.setdefault(row.model, schemas.ReportCountByModelOut(model=row.model, unit_count=0, report_count=0))
+        entry.unit_count += 1
+        entry.report_count += row.report_count
+    report_counts_by_model = sorted(by_model.values(), key=lambda m: (-m.report_count, m.model))
 
     parts_replaced = sorted(
         (
@@ -204,6 +273,9 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         parts_replaced=parts_replaced,
         total_labor_hours=sum(labor_by_instrument.values()),
         labor_hours_by_instrument=labor_hours_by_instrument,
+        reports_without_labor_hours=reports_without_hours,
+        report_counts_by_instrument=report_counts_by_instrument,
+        report_counts_by_model=report_counts_by_model,
         labor_hours_by_fault_category=labor_by_fault_category,
         pass_fail_by_report_type={
             report_type: schemas.PassFailBreakdownOut(
@@ -266,7 +338,7 @@ def _finalized_reports_by_instrument(
         _apply_filters(
             db.query(models.Report)
             .options(joinedload(models.Report.template))
-            .filter(models.Report.status == models.ReportStatus.finalized, models.Report.instrument_id.isnot(None)),
+            .filter(models.Report.instrument_id.isnot(None)),
             filters or AnalyticsFilters(),
         )
         .order_by(*report_chronological_order())
