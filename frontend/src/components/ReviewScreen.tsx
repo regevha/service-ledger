@@ -109,7 +109,7 @@ export function ReviewScreen({
       flaggedCount === 1 ? 'needs' : 'need'
     } your attention`;
 
-  const wide = useMediaQuery('(min-width: 1100px)');
+  const wide = useMediaQuery('(min-width: 900px)');
   const [scanOpen, setScanOpen] = useState(readScanPref);
   const showScan = Boolean(scanInlineUrl) && wide && scanOpen;
 
