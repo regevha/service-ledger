@@ -52,7 +52,7 @@ export function ColumnChart({
   wholeNumbers = false,
   ariaLabel,
   testId,
-  barClass = 'column-bar',
+  barClass = '',
 }: {
   items: ColumnItem[];
   /** How a value reads on the axis and above a column ("12.5h", "7"). */
@@ -92,7 +92,7 @@ export function ColumnChart({
           const cx = MARGIN.left + slot * i + slot / 2;
           const h = (item.value / yMax) * PLOT_H;
           return (
-            <g className={`labor-bar ${barClass}`} key={item.key} data-key={item.key}>
+            <g className={`column-bar ${barClass}`} key={item.key} data-key={item.key}>
               <title>{item.title}</title>
               {item.value > 0 ? (
                 <>
