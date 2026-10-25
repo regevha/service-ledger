@@ -14,14 +14,16 @@ const MARGIN = { top: 22, right: 12, bottom: 58, left: 42 };
 const PLOT_H = 220;
 const MIN_COLUMN = 64;
 const MAX_BAR = 64;
-const NAME_CHARS = 11;
+const CHAR_W = 6.6; // average width of a label character at 11.5px, for fitting names under a column
 
 function hoursText(hours: number): string {
   return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}h`;
 }
 
-function clip(text: string): string {
-  return text.length > NAME_CHARS ? `${text.slice(0, NAME_CHARS - 1)}…` : text;
+/** The text cut to what fits in `room` pixels, with an ellipsis; the full text stays in the tooltip. */
+function clip(text: string, room: number): string {
+  const chars = Math.max(4, Math.floor(room / CHAR_W));
+  return text.length > chars ? `${text.slice(0, chars - 1)}…` : text;
 }
 
 export function LaborHoursChart({ rows }: { rows: InstrumentRollup[] }) {
@@ -84,10 +86,10 @@ export function LaborHoursChart({ rows }: { rows: InstrumentRollup[] }) {
                 </text>
               )}
               <text className="labor-bar-name" x={cx} y={MARGIN.top + PLOT_H + 16} textAnchor="middle">
-                {clip(r.name)}
+                {clip(r.name, slot - 6)}
               </text>
               <text className="labor-bar-sub" x={cx} y={MARGIN.top + PLOT_H + 30} textAnchor="middle">
-                {clip(r.institution ?? r.model)}
+                {clip(r.institution ?? (r.model !== r.name ? r.model : ''), slot - 6)}
               </text>
             </g>
           );

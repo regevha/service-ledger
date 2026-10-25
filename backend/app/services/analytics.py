@@ -26,6 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Query, Session, joinedload
 
 from app import models, schemas
+from app.services.report_filters import apply_report_filters
 from app.models import report_chronological_order
 
 # Both report types that carry labor_hours/components_replaced/pass-fail
@@ -96,6 +97,11 @@ class AnalyticsFilters:
     report_type: models.ReportType | None = None
     date_from: date | None = None
     date_to: date | None = None
+    # Same meaning as on the Reports list. `status` None means finalized only (what
+    # the analytics always used); "all" means every status; otherwise that one status.
+    status: str | None = None
+    technician: str | None = None
+    q: str | None = None
 
 
 def _apply_unit_filters(query: Query, filters: AnalyticsFilters) -> Query:
@@ -112,21 +118,29 @@ def _same_manufacturer(name: str):
 
 
 def _apply_filters(query: Query, filters: AnalyticsFilters) -> Query:
-    if filters.instrument_id:
-        query = query.filter(models.Report.instrument_id == filters.instrument_id)
+    """The Reports-list filters (shared code, services/report_filters.py) plus the analytics-only
+    manufacturer. `status` None means finalized only, which is what the analytics always used;
+    "all" means every status."""
     if filters.manufacturer:
         query = query.filter(
             models.Report.instrument_id.in_(select(models.Instrument.id).where(_same_manufacturer(filters.manufacturer)))
         )
-    if filters.report_type:
-        query = query.join(models.ReportTemplate, models.Report.template_id == models.ReportTemplate.id).filter(
-            models.ReportTemplate.report_type == filters.report_type
-        )
-    if filters.date_from:
-        query = query.filter(models.Report.report_date >= filters.date_from)
-    if filters.date_to:
-        query = query.filter(models.Report.report_date <= filters.date_to)
-    return query
+    if filters.status is None:
+        status = models.ReportStatus.finalized
+    elif filters.status == "all":
+        status = None
+    else:
+        status = models.ReportStatus(filters.status)
+    return apply_report_filters(
+        query,
+        instrument_id=filters.instrument_id,
+        report_type=filters.report_type,
+        date_from=filters.date_from,
+        date_to=filters.date_to,
+        status=status,
+        technician=filters.technician,
+        q=filters.q,
+    )
 
 
 def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None) -> schemas.FleetAnalyticsOut:
@@ -134,8 +148,7 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
     reports = (
         _apply_filters(
             db.query(models.Report)
-            .options(joinedload(models.Report.instrument), joinedload(models.Report.template))
-            .filter(models.Report.status == models.ReportStatus.finalized),
+            .options(joinedload(models.Report.instrument), joinedload(models.Report.template)),
             filters,
         ).all()
     )
@@ -300,7 +313,7 @@ def _finalized_reports_by_instrument(
         _apply_filters(
             db.query(models.Report)
             .options(joinedload(models.Report.template))
-            .filter(models.Report.status == models.ReportStatus.finalized, models.Report.instrument_id.isnot(None)),
+            .filter(models.Report.instrument_id.isnot(None)),
             filters or AnalyticsFilters(),
         )
         .order_by(*report_chronological_order())
