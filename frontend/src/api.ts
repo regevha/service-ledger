@@ -456,6 +456,12 @@ export interface AnalyticsFilters {
   report_type?: ReportType;
   date_from?: string;
   date_to?: string;
+  /** Omitted: finalized reports only. 'all': every status. Otherwise that one status. */
+  status?: string;
+  /** Lab manager contains this text. */
+  technician?: string;
+  /** Free-text search over finalized reports (two or more characters). */
+  q?: string;
 }
 
 function analyticsParams(filters: AnalyticsFilters, extra: Record<string, string> = {}): string {

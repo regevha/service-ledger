@@ -292,3 +292,38 @@ def test_the_instrument_rollup_carries_the_institution(client, seeded):
     by_model = {row["model"]: row for row in body["labor_hours_by_instrument"]}
     assert by_model["FACSAria III"]["institution"] == "Bar-Ilan University"
     assert by_model["LSRFortessa"]["institution"] is None
+
+
+# ---------- the Reports-tab filters on analytics: status, lab manager, search ----------
+
+
+def _tech_report(db, tech, status, fields=None):
+    r = _make_report(db, model="FACSAria III", report_type=ReportType.repair, status=status, extracted_fields=fields or {"labor_hours": 2})
+    r.technician_name = tech
+    db.commit()
+    return r
+
+
+def test_status_filter_defaults_to_finalized_and_can_include_drafts(client, seeded):
+    _tech_report(seeded, "Dana", ReportStatus.finalized, {"labor_hours": 2})
+    _tech_report(seeded, "Dana", ReportStatus.in_review, {"labor_hours": 5})
+    assert client.get("/analytics/fleet").json()["total_labor_hours"] == 2.0
+    assert client.get("/analytics/fleet", params={"status": "all"}).json()["total_labor_hours"] == 7.0
+    assert client.get("/analytics/fleet", params={"status": "in_review"}).json()["total_labor_hours"] == 5.0
+    assert client.get("/analytics/fleet", params={"status": "bogus"}).status_code == 422
+
+
+def test_lab_manager_filter_is_a_case_insensitive_partial_match(client, seeded):
+    _tech_report(seeded, "Dana Levi", ReportStatus.finalized, {"labor_hours": 2})
+    _tech_report(seeded, "Avi Cohen", ReportStatus.finalized, {"labor_hours": 3})
+    assert client.get("/analytics/fleet", params={"technician": "levi"}).json()["total_labor_hours"] == 2.0
+    assert client.get("/analytics/fleet", params={"technician": " "}).json()["total_labor_hours"] == 5.0
+
+
+def test_text_search_filter_narrows_the_analytics_like_the_reports_list(client, seeded):
+    _tech_report(seeded, "A", ReportStatus.finalized, {"labor_hours": 2, "fault_description": "replaced the flow cell"})
+    _tech_report(seeded, "B", ReportStatus.finalized, {"labor_hours": 3, "fault_description": "swapped the laser"})
+    assert client.get("/analytics/fleet", params={"q": "laser"}).json()["total_labor_hours"] == 3.0
+    # Search covers finalized reports only, so a draft status leaves nothing.
+    assert client.get("/analytics/fleet", params={"q": "laser", "status": "in_review"}).json()["total_labor_hours"] == 0.0
+    assert client.get("/analytics/fleet", params={"q": "x"}).status_code == 422
