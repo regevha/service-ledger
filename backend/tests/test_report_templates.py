@@ -35,10 +35,10 @@ def test_create_report_template_defaults_model_to_any(client):
     client.post("/instrument-types", json={"display_name": "other"})
     # No `model` key at all — distinct from the empty-string/whitespace case
     # below, which is normalized to the same None. A non-"facs" instrument
-    # type sidesteps seed_templates.py's own None-model calibration row,
+    # type sidesteps seed_templates.py's own None-model installation_upgrade row,
     # which would otherwise collide on the "any model" slot this is testing.
     resp = client.post(
-        "/report-templates", json={"instrument_type": "other", "report_type": "calibration", "fields": MIN_FIELDS}
+        "/report-templates", json={"instrument_type": "other", "report_type": "installation_upgrade", "fields": MIN_FIELDS}
     )
     assert resp.status_code == 201
     assert resp.json()["model"] is None
@@ -48,7 +48,7 @@ def test_create_report_template_blank_model_normalizes_to_any(client):
     client.post("/instrument-types", json={"display_name": "other"})
     resp = client.post(
         "/report-templates",
-        json={"instrument_type": "other", "report_type": "calibration", "model": "   ", "fields": MIN_FIELDS},
+        json={"instrument_type": "other", "report_type": "installation_upgrade", "model": "   ", "fields": MIN_FIELDS},
     )
     assert resp.status_code == 201
     assert resp.json()["model"] is None
@@ -220,10 +220,10 @@ def test_create_report_template_conflicts_on_duplicate_type_model(client):
 
 
 def test_create_report_template_conflicts_on_duplicate_null_model(client, seeded):
-    # seed_templates.py already seeded a model=None calibration row — a
+    # seed_templates.py already seeded a model=None installation row — a
     # second one for the same (instrument_type, report_type) must collide
     # too, since resolve_template()'s NULL-model fallback has to be unique.
-    resp = client.post("/report-templates", json={"report_type": "calibration", "fields": MIN_FIELDS})
+    resp = client.post("/report-templates", json={"report_type": "installation_upgrade", "fields": MIN_FIELDS})
     assert resp.status_code == 409
 
 
@@ -232,7 +232,7 @@ def test_database_itself_rejects_duplicate_null_model_rows(seeded):
     # migration 6b5fc4e1c3ca's unique index — not just routers/
     # report_templates.py's own check — is what actually closes the
     # concurrent-request race window.
-    dup = ReportTemplate(instrument_type="facs", report_type=ReportType.calibration, model=None, field_schema={"fields": MIN_FIELDS})
+    dup = ReportTemplate(instrument_type="facs", report_type=ReportType.installation_upgrade, model=None, field_schema={"fields": MIN_FIELDS})
     seeded.add(dup)
     try:
         seeded.commit()
@@ -242,13 +242,13 @@ def test_database_itself_rejects_duplicate_null_model_rows(seeded):
 
 
 def test_list_all_report_templates_returns_every_row_unresolved(client, seeded):
-    # seed_templates.py seeds 8 rows (§5, v0.12 + installation_upgrade, plus three
+    # seed_templates.py seeds 6 rows (§5, v0.12 + installation_upgrade, plus three
     # model-specific rows for the Cytek Aurora and CytoFLEX S) — unlike GET
     # /report-templates (resolve_template()'s one-per-report_type pick),
     # /all must return every one of them.
     resp = client.get("/report-templates/all")
     assert resp.status_code == 200
-    assert len(resp.json()) == 8
+    assert len(resp.json()) == 6
 
 
 def test_get_report_template_by_id(client):

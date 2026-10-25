@@ -25,9 +25,3 @@ def test_every_seeded_choice_field_has_options():
     missing = [f"{n}.{f['name']}" for n, f in choice if not f.get("options")]
     assert missing == []
 
-
-def test_laser_configuration_offers_every_wavelength_the_notes_mention():
-    lasers = [f for _, f in _all_seeded_fields() if f["name"] == "laser_configuration"]
-    assert len(lasers) == 2
-    for f in lasers:
-        assert f["options"] == ["355nm", "405nm", "488nm", "561nm", "640nm"]

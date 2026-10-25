@@ -123,7 +123,7 @@ test('search says it covers finalized reports only when the status filter is som
   await expect(page.locator('.report-row-body')).toHaveCount(1);
 
   // Another filter that excludes it gives the plain no-match message.
-  await page.selectOption('.filter-row select >> nth=1', 'calibration');
+  await page.selectOption('.filter-row select >> nth=1', 'installation_upgrade');
   await expect(page.locator('[data-testid="empty-hint"]')).toContainText(`No finalized reports contain “${word}”`);
 });
 
