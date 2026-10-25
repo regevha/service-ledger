@@ -111,7 +111,7 @@ def suggest_templates(
     (instrument_type, report_type, model).
 
     Required: same instrument type and same report type, so a repair template
-    is never offered for a calibration report. Then, strongest first: the same
+    is never offered for a PM report. Then, strongest first: the same
     model written differently, a model of the same family (shared leading
     words), the "any model" template, any other model. Ties go to the template
     with more fields (a fuller starting point), then the older one, so the

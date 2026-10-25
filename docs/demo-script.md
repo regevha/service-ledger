@@ -12,7 +12,7 @@ Everything runs on the deterministic stub reader (no API key, same result every 
 - **Backend:** from `backend/`, `uvicorn app.main:app` (port 8000). On start it seeds the fleet and templates. If you have run the app before, run `alembic upgrade head` first.
 - **Worker, second terminal:** `python -m app.worker`. Without it, uploads sit at "pending" forever.
 - **Frontend:** from `frontend/`, `npm run dev` (port 5173); have `http://localhost:5173` open.
-- **Seed data:** `python -m app.seed_demo_reports` (three finalized reports, so the Reports tab is not empty) and `python -m app.seed_trend_demo` (five Aria calibration reports for the trend chart).
+- **Seed data:** `python -m app.seed_demo_reports` (three finalized reports, so the Reports tab is not empty) and `python -m app.seed_trend_demo` (five Aria PM reports for the trend chart).
 - **Files to upload** (in `frontend/tests/e2e/fixtures/`): `confident-scan.pdf` and `sample-work-order.pdf`. **Renaming is not enough.** The app refuses a file whose bytes it has already read (409, "This exact file is already on file"), so every copy needs one different byte at the end. From the fixtures folder:
   ```
   cp sample-work-order.pdf sample-work-order-2.pdf   && printf '\n%%2\n' >> sample-work-order-2.pdf
@@ -44,7 +44,7 @@ A real ambiguity, handled honestly instead of guessed past.
 
 1. Upload `sample-work-order.pdf`, **Upload & classify**.
 2. Before extraction, rows appear: the model and serial the document shows (each with a badge), the **Instrument** it resolves to, and the **Report type**. The report type has an amber badge.
-3. *Say:* "Repair, preventive maintenance and calibration look almost the same on this vendor's forms, so the system says it is unsure instead of picking silently."
+3. *Say:* "Repair, preventive maintenance and installation look almost the same on this vendor's forms, so the system says it is unsure instead of picking silently."
 4. **Confirm & continue**. (The same button lets you override a confident wrong guess.)
 5. On the review screen: **fault category** is filled from the text, **work performed** is a full paragraph, and **root cause** is blank with a highlighted "pending" state. It is not on the document, and the model declined to invent it.
 6. Type a root cause yourself, then **Save & finalize report**.
@@ -74,7 +74,7 @@ A real ambiguity, handled honestly instead of guessed past.
 1. **Analytics** tab. The note says only finalized repair and preventive maintenance reports are counted, and a line shows "Based on N finalized reports".
 2. Stat tiles: total labor hours, units replaced, reports counted. Below: most replaced parts, labor hours by instrument, labor hours by fault category, pass/fail rate.
 3. **Filters on top** apply to the whole page: manufacturer, instrument, report type, from/to dates. Pick a manufacturer: the instrument list narrows to that maker's units and the basis line updates. Enter a "from" date after the "to" date to show the explanation.
-4. **Same-model comparison**: for a model with several units, the units side by side. Open an instrument (Reports → **View instrument details**, FACSAria III) for the **Trend** chart: `baseline_cv_percent` as three detector lines with a tooltip, **View as table**, and the `fluidics_pressure_psi` single line. The list of chartable fields comes from the data, not a fixed list.
+4. **Same-model comparison**: for a model with several units, the units side by side. Open an instrument (Reports → **View instrument details**, FACSAria III) for the **Trend** chart: `labor_hours` as a line with a tooltip and **View as table**. The list of chartable fields comes from the data, not a fixed list.
 
 ## Part 6: Templates, and comparing them (5 min)
 

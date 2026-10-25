@@ -32,7 +32,6 @@ from app import models
 from app.schemas import TemplateFieldType
 
 _REPORT_TYPE_LABEL = {
-    models.ReportType.calibration: "Calibration",
     models.ReportType.repair: "Malfunction / repair",
     models.ReportType.preventive_maintenance: "Preventive maintenance",
     models.ReportType.installation_upgrade: "Installation / upgrade",

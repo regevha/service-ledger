@@ -5,7 +5,6 @@ import type { FieldType, InstrumentStatus, ReportStatus, ReportType } from './ap
 // circular import (e.g. App.tsx renders AnalyticsScreen, which needs this
 // label map back).
 export const REPORT_TYPE_LABEL: Record<ReportType, string> = {
-  calibration: 'Calibration',
   repair: 'Malfunction / repair',
   preventive_maintenance: 'Preventive maintenance',
   installation_upgrade: 'Installation / upgrade',

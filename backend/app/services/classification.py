@@ -10,7 +10,7 @@ The stub is deterministic (seeded from the attachment's id/path) rather than
 randomly noisy, so a demo run is reproducible. It also special-cases the real
 sample BD Care Work Order used throughout the spec: that document genuinely
 has a confident instrument read and a borderline report-type read (§4's
-"same generic layout for a repair, a PM visit, or a calibration" point), so
+"same generic layout for a repair or a PM visit" point), so
 the stub reproduces that exact asymmetry rather than pretending every
 document is easy.
 """
@@ -66,8 +66,8 @@ Only choose from the allowed options.
 Task Code" field: a code starting T113 ("Repair / Troubleshooting Visit") means \
 repair; a code starting T111 ("Preventive Maintenance") means preventive_maintenance; \
 a code starting T107 ("Install: Options, Upgrades, S/W") means installation_upgrade; \
-anything referencing CS&T/QC calibration with no fault or PM-kit language means \
-calibration. Repair, PM, installation and calibration visits otherwise share the same generic \
+anything referencing CS&T/QC calibration with no fault or PM-kit language is a \
+routine check, so choose preventive_maintenance. Repair, PM and installation visits otherwise share the same generic \
 form layout, so this is a genuinely harder call than #1 — give it a lower confidence \
 when the task code is unclear or missing rather than guessing high. Separately, copy \
 the Work Order Task Code exactly as printed (e.g. "T113") into `task_code` with a \
@@ -539,7 +539,7 @@ def _stub_classify(
     if _is_sample_document(attachment.file_path):
         # Reproduces the real BD Care EU Work Order Service Report case
         # discussed in spec §4: instrument ID is a confident read, report
-        # type is the harder call because repair/PM/calibration share one
+        # type is the harder call because repair/PM share one
         # generic layout.
         instrument = next((i for i in instruments if i.model == "LSRFortessa"), instruments[0])
         instrument_guess = ClassificationGuess(value=instrument.model, confidence=0.96)
