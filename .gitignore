@@ -27,3 +27,6 @@ frontend/coverage/
 frontend/tests/e2e/.auth/
 
 backend/storage/debug-claude/
+
+# Backups taken by deploy/azure/backup.sh: real lab data, never commit
+/backups/
