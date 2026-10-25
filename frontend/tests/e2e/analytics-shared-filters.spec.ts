@@ -44,3 +44,18 @@ test('Analytics: lab manager, search and status narrow the numbers', async ({ pa
   await bar.getByLabel('Status').selectOption('all');
   await expect(basis).toContainText('matching the filters');
 });
+
+test('Analytics shows reports per instrument and per instrument model as column charts', async ({ page }) => {
+  await page.goto('/#/analytics');
+  const perInstrument = page.locator('.chart-section', { hasText: 'Finalized reports per instrument' }).first();
+  await expect(page.getByTestId('reports-per-instrument-chart')).toBeVisible({ timeout: 15_000 });
+  // One column per instrument (the seeded fleet has at least five), none of them cut off the page.
+  expect(await page.locator('[data-testid="reports-per-instrument-chart"] .count-bar').count()).toBeGreaterThanOrEqual(5);
+  await expect(page.getByTestId('reports-per-model-chart')).toBeVisible();
+  await expect(page.locator('.chart-title', { hasText: 'Finalized reports per instrument model' })).toBeVisible();
+  await expect(perInstrument).toBeVisible();
+
+  // With the status filter changed, the titles stop saying "Finalized".
+  await page.getByTestId('analytics-filters').getByLabel('Status').selectOption('all');
+  await expect(page.locator('.chart-title', { hasText: /^Reports per instrument$/ })).toBeVisible();
+});

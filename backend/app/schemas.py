@@ -782,6 +782,27 @@ class InstrumentRollupOut(BaseModel):
     total_labor_hours: float
 
 
+class ReportCountByInstrumentOut(BaseModel):
+    """One row of GET /analytics/fleet's report_counts_by_instrument: how many reports matched the
+    filters (finalized unless the status filter says otherwise, any report type) for one instrument.
+    Every instrument that passes the unit filters appears, including one with none."""
+
+    instrument_id: uuid.UUID
+    name: str
+    model: str
+    institution: str | None = None
+    serial_number: str
+    report_count: int
+
+
+class ReportCountByModelOut(BaseModel):
+    """The same counts added up per instrument model, with how many units of the model are listed."""
+
+    model: str
+    unit_count: int
+    report_count: int
+
+
 class PassFailBreakdownOut(BaseModel):
     """retest_result (repair) / verification_result (preventive_maintenance)
     tallied across every finalized report of that type. other_count covers
@@ -810,6 +831,8 @@ class FleetAnalyticsOut(BaseModel):
     # Finalized repair/preventive_maintenance reports that added no hours above: no
     # number in the labor field, or no instrument on the report. The page says so.
     reports_without_labor_hours: int = 0
+    report_counts_by_instrument: list[ReportCountByInstrumentOut] = []
+    report_counts_by_model: list[ReportCountByModelOut] = []
     # Keyed by whatever fault_category values actually appear in the data
     # (repair only — seed_templates.py's REPAIR_FIELDS) rather than a
     # hardcoded copy of that enum's options, so this can't silently drift

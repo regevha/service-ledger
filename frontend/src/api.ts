@@ -263,6 +263,23 @@ export interface InstrumentRollup {
   total_labor_hours: number;
 }
 
+/** Reports that matched the filters (finalized unless the status filter says otherwise), per instrument. */
+export interface ReportCountByInstrument {
+  instrument_id: string;
+  name: string;
+  model: string;
+  institution?: string | null;
+  serial_number: string;
+  report_count: number;
+}
+
+/** The same counts added up per instrument model. */
+export interface ReportCountByModel {
+  model: string;
+  unit_count: number;
+  report_count: number;
+}
+
 export interface PassFailBreakdown {
   pass_count: number;
   fail_count: number;
@@ -277,6 +294,8 @@ export interface FleetAnalytics {
   labor_hours_by_instrument: InstrumentRollup[];
   /** Finalized repair/PM reports that added no hours (no number in the labor field, or no instrument). */
   reports_without_labor_hours?: number;
+  report_counts_by_instrument?: ReportCountByInstrument[];
+  report_counts_by_model?: ReportCountByModel[];
   labor_hours_by_fault_category: Record<string, number>;
   pass_fail_by_report_type: Record<string, PassFailBreakdown>;
 }

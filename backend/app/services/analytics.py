@@ -156,12 +156,17 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
     parts: dict[tuple[str, str | None], dict[str, float]] = {}
     labor_by_instrument: dict[uuid.UUID, float] = {}
     reports_by_instrument: dict[uuid.UUID, int] = {}
+    # Every report that matched the filters (finalized unless the status filter says otherwise),
+    # whatever its type, per instrument.
+    report_count_by_instrument: dict[uuid.UUID, int] = {}
     # Finalized repair/PM reports that added nothing to the hours: no hours recorded, or no instrument.
     reports_without_hours = 0
     labor_by_fault_category: dict[str, float] = {}
     pass_fail: dict[str, dict[str, int]] = {rt.value: {"pass": 0, "fail": 0, "other": 0} for rt in _LABOR_TRACKING_REPORT_TYPES}
 
     for report in reports:
+        if report.instrument_id is not None:
+            report_count_by_instrument[report.instrument_id] = report_count_by_instrument.get(report.instrument_id, 0) + 1
         if report.template is None:
             # Shouldn't happen for a finalized report (confirm_template is a
             # prerequisite of extraction, which is a prerequisite of
@@ -231,6 +236,24 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         for instrument in instruments
     ]
 
+    report_counts_by_instrument = [
+        schemas.ReportCountByInstrumentOut(
+            instrument_id=instrument.id,
+            name=instrument.name,
+            model=instrument.model,
+            institution=instrument.institution,
+            serial_number=instrument.serial_number,
+            report_count=report_count_by_instrument.get(instrument.id, 0),
+        )
+        for instrument in instruments
+    ]
+    by_model: dict[str, schemas.ReportCountByModelOut] = {}
+    for row in report_counts_by_instrument:
+        entry = by_model.setdefault(row.model, schemas.ReportCountByModelOut(model=row.model, unit_count=0, report_count=0))
+        entry.unit_count += 1
+        entry.report_count += row.report_count
+    report_counts_by_model = sorted(by_model.values(), key=lambda m: (-m.report_count, m.model))
+
     parts_replaced = sorted(
         (
             schemas.PartUsageOut(
@@ -251,6 +274,8 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         total_labor_hours=sum(labor_by_instrument.values()),
         labor_hours_by_instrument=labor_hours_by_instrument,
         reports_without_labor_hours=reports_without_hours,
+        report_counts_by_instrument=report_counts_by_instrument,
+        report_counts_by_model=report_counts_by_model,
         labor_hours_by_fault_category=labor_by_fault_category,
         pass_fail_by_report_type={
             report_type: schemas.PassFailBreakdownOut(
