@@ -82,10 +82,9 @@ test('the type column sorts by the label people see', () => {
   const rows = [
     row('pm', { report_type: 'preventive_maintenance' }), // Preventive maintenance
     row('rep', { report_type: 'repair' }), // Malfunction / repair
-    row('cal', { report_type: 'calibration' }), // Calibration
     row('inst', { report_type: 'installation_upgrade' }), // Installation / upgrade
   ];
-  expect(ids(sortReports(rows, { key: 'type', direction: 'asc' }))).toEqual(['cal', 'inst', 'rep', 'pm']);
+  expect(ids(sortReports(rows, { key: 'type', direction: 'asc' }))).toEqual(['inst', 'rep', 'pm']);
 });
 
 test('rows that compare equal keep the order they came in, and the input is not changed', () => {

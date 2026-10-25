@@ -63,31 +63,31 @@ def test_search_filters_by_report_type_and_status_and_date_range(client, seeded)
         report_date=date(2026, 3, 1),
         technician="R. Tester",
     )
-    calibration = _make_report(
+    installation = _make_report(
         seeded,
         model="FACSDiscover S8",
-        report_type=ReportType.calibration,
+        report_type=ReportType.installation_upgrade,
         status=ReportStatus.in_review,
         report_date=date(2026, 6, 15),
         technician="A. Tech",
     )
 
     all_reports = client.get("/reports").json()
-    assert {r["id"] for r in all_reports} == {str(repair.id), str(calibration.id)}
+    assert {r["id"] for r in all_reports} == {str(repair.id), str(installation.id)}
     # Denormalized display fields (§7) resolved from the relationships, not raw ids.
     by_id = {r["id"]: r for r in all_reports}
     assert by_id[str(repair.id)]["instrument_model"] == "LSRFortessa"
     assert by_id[str(repair.id)]["instrument_serial_number"] == "R647794E6092"
     assert by_id[str(repair.id)]["report_type"] == "repair"
 
-    by_type = client.get("/reports", params={"report_type": "calibration"}).json()
-    assert [r["id"] for r in by_type] == [str(calibration.id)]
+    by_type = client.get("/reports", params={"report_type": "installation_upgrade"}).json()
+    assert [r["id"] for r in by_type] == [str(installation.id)]
 
     by_status = client.get("/reports", params={"status": "finalized"}).json()
     assert [r["id"] for r in by_status] == [str(repair.id)]
 
     by_date_range = client.get("/reports", params={"date_from": "2026-05-01", "date_to": "2026-07-01"}).json()
-    assert [r["id"] for r in by_date_range] == [str(calibration.id)]
+    assert [r["id"] for r in by_date_range] == [str(installation.id)]
 
     by_date_excludes_both = client.get("/reports", params={"date_to": "2026-01-01"}).json()
     assert by_date_excludes_both == []
@@ -109,10 +109,10 @@ def test_search_filters_by_technician_case_insensitive_partial_match(client, see
         report_date=date(2026, 3, 1),
         technician="R. Tester",
     )
-    calibration = _make_report(
+    installation = _make_report(
         seeded,
         model="FACSDiscover S8",
-        report_type=ReportType.calibration,
+        report_type=ReportType.installation_upgrade,
         status=ReportStatus.in_review,
         report_date=date(2026, 6, 15),
         technician="A. Tech",
@@ -122,7 +122,7 @@ def test_search_filters_by_technician_case_insensitive_partial_match(client, see
     assert [r["id"] for r in by_partial] == [str(repair.id)]
 
     by_different_case = client.get("/reports", params={"technician": "A. TECH"}).json()
-    assert [r["id"] for r in by_different_case] == [str(calibration.id)]
+    assert [r["id"] for r in by_different_case] == [str(installation.id)]
 
     by_no_match = client.get("/reports", params={"technician": "nonexistent"}).json()
     assert by_no_match == []
@@ -140,7 +140,7 @@ def test_export_csv_applies_the_same_filters_as_search(client, seeded):
     _make_report(
         seeded,
         model="FACSDiscover S8",
-        report_type=ReportType.calibration,
+        report_type=ReportType.installation_upgrade,
         status=ReportStatus.in_review,
         report_date=date(2026, 6, 15),
         technician="A. Tech",
@@ -172,11 +172,11 @@ def test_export_csv_applies_the_same_filters_as_search(client, seeded):
     assert [r["id"] for r in csv.DictReader(io.StringIO(by_instrument.text))] == [str(repair.id)]
 
     # date_from=2026-04-01 excludes the repair report (2026-03-01) but keeps
-    # the calibration one (2026-06-15).
+    # the installation one (2026-06-15).
     by_date_from = client.get("/reports/export", params={"date_from": "2026-04-01"})
     rows_by_date_from = list(csv.DictReader(io.StringIO(by_date_from.text)))
     assert len(rows_by_date_from) == 1
-    assert rows_by_date_from[0]["report_type"] == "calibration"
+    assert rows_by_date_from[0]["report_type"] == "installation_upgrade"
 
     by_status = client.get("/reports/export", params={"status": "in_review"})
     rows_by_status = list(csv.DictReader(io.StringIO(by_status.text)))

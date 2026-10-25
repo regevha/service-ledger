@@ -164,7 +164,7 @@ def test_combines_with_the_other_filters(client, db_session):
     assert set(_search(client, "pump")) == {str(fort.id), str(aria.id)}
     assert _search(client, "pump", instrument_id=str(inst.id)) == [str(fort.id)]
     assert _search(client, "pump", report_type="repair", technician="lab man") != []
-    assert _search(client, "pump", report_type="calibration") == []
+    assert _search(client, "pump", report_type="preventive_maintenance") == []
 
 
 def test_best_match_comes_first(client, db_session):

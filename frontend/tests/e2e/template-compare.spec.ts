@@ -98,7 +98,7 @@ test('the Compare templates button needs both templates chosen, and identical te
   await expect(page.locator('#compare-identical')).toContainText('identical fields');
 
   // Changing the first template clears the second choice and the result.
-  await choose(page, '#compare-left', /Calibration · \(any model\)/);
+  await choose(page, '#compare-left', /Installation \/ upgrade · \(any model\)/);
   await expect(page.locator('#compare-right')).toHaveValue('');
   await expect(page.locator('#compare-summary')).toHaveCount(0);
 });
@@ -186,7 +186,7 @@ test('only templates of the same instrument type can be compared', async ({ page
     await expect(page.locator('#compare-right option')).toHaveCount(1);
 
     // Switching to a flow cytometer template lists those, and not this one.
-    await choose(page, '#compare-left', /Calibration · \(any model\) \(Flow cytometer\)/);
+    await choose(page, '#compare-left', /Installation \/ upgrade · \(any model\) \(Flow cytometer\)/);
     await expect(page.locator('#compare-right option', { hasText: 'Malfunction / repair · (any model)' })).toHaveCount(1);
     await expect(page.locator('#compare-right option')).not.toHaveCount(1);
     const offered = await page.locator('#compare-right option').allTextContents();

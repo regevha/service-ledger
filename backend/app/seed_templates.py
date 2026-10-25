@@ -5,7 +5,7 @@ CytoFLEX S.
 Field lists are transcribed field-for-field from the spec's tables — see
 SL-ARCH-001 §5 for the unit notes and the rationale behind each template's
 shape (why repair and, as of v0.12, preventive_maintenance both stay one
-shared row while calibration still splits by model, why JSONB over a wide
+shared row, why JSONB over a wide
 table, etc). This module only encodes the already-decided shape; run it once
 against a fresh database via `python -m app.seed_templates`.
 """
@@ -15,50 +15,6 @@ from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
 from app.models import Report, ReportTemplate, ReportType
-
-LASER_WAVELENGTHS = ["355nm", "405nm", "488nm", "561nm", "640nm"]
-
-CST_CALIBRATION_FIELDS = [
-    {
-        "name": "laser_configuration",
-        "type": "enum[]",
-        "unit": None,
-        "notes": "e.g. 405nm, 488nm, 640nm",
-        # The template editor refuses a choice field with no options, so a
-        # seeded row without them could never be saved after an unrelated edit.
-        "options": LASER_WAVELENGTHS,
-    },
-    {"name": "cst_beads_lot", "type": "text", "unit": None, "notes": "lot number, for traceability"},
-    {"name": "baseline_cv_percent", "type": "number[detector]", "unit": "%", "notes": "per-detector, flag if > 5%"},
-    {"name": "pmt_voltages", "type": "number[detector]", "unit": "V", "notes": "volts"},
-    {"name": "fluidics_pressure_psi", "type": "number", "unit": "psi", "notes": None},
-    {"name": "compensation_matrix_updated", "type": "boolean", "unit": None, "notes": None},
-]
-
-SPECTRAL_CALIBRATION_FIELDS = [
-    {
-        "name": "laser_configuration",
-        "type": "enum[]",
-        "unit": None,
-        "notes": "e.g. 355nm, 405nm, 488nm, 561nm, 640nm",
-        "options": LASER_WAVELENGTHS,
-    },
-    {"name": "spectral_qc_beads_lot", "type": "text", "unit": None, "notes": "lot number, for traceability"},
-    {
-        "name": "reference_controls_acquired",
-        "type": "boolean",
-        "unit": None,
-        "notes": "single-stain controls run for unmixing",
-    },
-    {
-        "name": "unmixing_error_percent",
-        "type": "number",
-        "unit": "%",
-        "notes": "flag if above the instrument's threshold",
-    },
-    {"name": "autofluorescence_extraction_verified", "type": "boolean", "unit": None, "notes": None},
-    {"name": "imaging_focus_calibration_passed", "type": "boolean", "unit": None, "notes": "S8-specific imaging module"},
-]
 
 # Checked against four real BD Care EU Work Order Service Reports — two
 # LSRFortessa repairs, a FACSAria III repair, and a FACSDiscover S8 repair —
@@ -343,13 +299,11 @@ CYTOFLEX_S_REPAIR_FIELDS = [
 
 # (report_type, model) -> field list. model=None means the NULL-model
 # fallback row (§2, §5): applies to every model of the instrument_type unless
-# a model-specific row exists for the same report_type. As of v0.12, only
-# calibration still has a model-specific row (FACSDiscover S8's spectral
-# variant) — repair (v0.9) and preventive_maintenance (v0.12) both collapsed
-# to a single shared row once checked against real documents.
+# a model-specific row exists for the same report_type. Repair (v0.9) and
+# preventive_maintenance (v0.12) both collapsed to a single shared row once
+# checked against real documents. There is no calibration type any more: lab
+# users asked for it to be removed (migration a8b9c0d1e2f3).
 TEMPLATE_ROWS: list[tuple[ReportType, str | None, list[dict]]] = [
-    (ReportType.calibration, None, CST_CALIBRATION_FIELDS),
-    (ReportType.calibration, "FACSDiscover S8", SPECTRAL_CALIBRATION_FIELDS),
     (ReportType.repair, None, REPAIR_FIELDS),
     (ReportType.preventive_maintenance, None, PM_FIELDS),
     (ReportType.installation_upgrade, None, INSTALL_UPGRADE_FIELDS),

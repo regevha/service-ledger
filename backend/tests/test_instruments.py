@@ -90,14 +90,31 @@ def test_instrument_trend_excludes_booleans(client, seeded):
     assert resp.status_code == 200
     assert resp.json()["points"] == []
 
+def _numeric_template(db):
+    """A template with numeric fields of both kinds — the seeded templates only have labor_hours."""
+    template = ReportTemplate(
+        instrument_type="facs",
+        report_type=ReportType.repair,
+        model="Trend test model",
+        field_schema={
+            "fields": [
+                {"name": "baseline_cv_percent", "type": "number[detector]", "unit": "%", "notes": None},
+                {"name": "pmt_voltages", "type": "number[detector]", "unit": "V", "notes": None},
+                {"name": "fluidics_pressure_psi", "type": "number", "unit": "psi", "notes": None},
+                {"name": "compensation_matrix_updated", "type": "boolean", "unit": None, "notes": None},
+                {"name": "cst_beads_lot", "type": "text", "unit": None, "notes": None},
+            ]
+        },
+    )
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return template
+
 
 def test_instrument_trend_supports_number_detector_maps(client, seeded):
-    # baseline_cv_percent is CST_CALIBRATION_FIELDS' own number[detector]
-    # field (seed_templates.py) — real fixture data, not a hand-rolled one.
     instrument = seeded.query(Instrument).filter(Instrument.model == "FACSAria III").one()
-    template = seeded.query(ReportTemplate).filter(
-        ReportTemplate.report_type == ReportType.calibration, ReportTemplate.model.is_(None)
-    ).one()
+    template = _numeric_template(seeded)
 
     def make(extracted_fields, report_date):
         report = Report(
@@ -140,19 +157,15 @@ def test_instrument_trend_fields_is_empty_with_no_finalized_reports(client, seed
 
 
 def test_instrument_trend_fields_derives_from_real_templates_only(client, seeded):
-    # Only the calibration fallback template's numeric fields
-    # (baseline_cv_percent, pmt_voltages: number[detector];
-    # fluidics_pressure_psi: number) should show up — not
-    # compensation_matrix_updated (boolean), cst_beads_lot (text), or
-    # laser_configuration (enum[]), and not any field from a template this
-    # instrument's reports never actually used.
+    # Only the used template's numeric fields (baseline_cv_percent, pmt_voltages:
+    # number[detector]; fluidics_pressure_psi: number) should show up — not
+    # compensation_matrix_updated (boolean) or cst_beads_lot (text), and not
+    # any field from a template this instrument's reports never actually used.
     instrument = seeded.query(Instrument).filter(Instrument.model == "FACSAria III").one()
-    calibration_template = seeded.query(ReportTemplate).filter(
-        ReportTemplate.report_type == ReportType.calibration, ReportTemplate.model.is_(None)
-    ).one()
+    template = _numeric_template(seeded)
     report = Report(
         instrument_id=instrument.id,
-        template_id=calibration_template.id,
+        template_id=template.id,
         status=ReportStatus.finalized,
         extracted_fields={"fluidics_pressure_psi": 4.9},
         report_date=date(2026, 1, 1),
@@ -173,13 +186,11 @@ def test_instrument_trend_fields_derives_from_real_templates_only(client, seeded
 
 def test_instrument_trend_fields_ignores_non_finalized_and_templateless_reports(client, seeded):
     instrument = seeded.query(Instrument).filter(Instrument.model == "FACSAria III").one()
-    calibration_template = seeded.query(ReportTemplate).filter(
-        ReportTemplate.report_type == ReportType.calibration, ReportTemplate.model.is_(None)
-    ).one()
+    template = _numeric_template(seeded)
     seeded.add(
         Report(
             instrument_id=instrument.id,
-            template_id=calibration_template.id,
+            template_id=template.id,
             status=ReportStatus.in_review,
             extracted_fields={"fluidics_pressure_psi": 4.9},
         )

@@ -29,10 +29,9 @@ from app import models, schemas
 from app.services.report_filters import apply_report_filters
 from app.models import report_chronological_order
 
-# Both report types that carry labor_hours/components_replaced/pass-fail
-# fields at all (seed_templates.py) — calibration's template has neither, so
-# it never contributes to any of this and is deliberately left out rather
-# than appearing as an always-zero row.
+# The report types that carry labor_hours/components_replaced/pass-fail
+# fields (seed_templates.py). Installation/upgrade reports are left out
+# rather than appearing as an always-zero row.
 _LABOR_TRACKING_REPORT_TYPES = (models.ReportType.repair, models.ReportType.preventive_maintenance)
 
 

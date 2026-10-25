@@ -135,13 +135,12 @@ def test_labor_hours_rolled_up_by_instrument_and_fault_category(client, seeded):
         report_type=ReportType.preventive_maintenance,
         extracted_fields={"labor_hours": 4},  # PM has no fault_category at all
     )
-    # calibration never carries labor_hours (seed_templates.py) — even if a
-    # stray value showed up here, it must not be counted, since nothing
-    # downstream should ever see a calibration report contribute hours.
+    # Installation/upgrade reports are not labor-tracked — even if a stray
+    # labor_hours value showed up here, it must not be counted.
     _make_report(
         seeded,
         model="FACSDiscover S8",
-        report_type=ReportType.calibration,
+        report_type=ReportType.installation_upgrade,
         extracted_fields={"labor_hours": 999},
     )
 
@@ -277,8 +276,8 @@ def test_reports_that_add_no_hours_are_counted_so_the_page_can_say_so(client, se
     _make_report(seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={"labor_hours": 2})
     _make_report(seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={"labor_hours": "n/a"})
     _make_report(seeded, model="LSRFortessa", report_type=ReportType.preventive_maintenance, extracted_fields={})
-    # Calibration never counts for hours and is not "missing" them either.
-    _make_report(seeded, model="CytoFLEX S", report_type=ReportType.calibration, extracted_fields={})
+    # Installation/upgrade never counts for hours and is not "missing" them either.
+    _make_report(seeded, model="CytoFLEX S", report_type=ReportType.installation_upgrade, extracted_fields={})
     body = client.get("/analytics/fleet").json()
     assert body["total_labor_hours"] == 2.0
     assert body["reports_without_labor_hours"] == 2

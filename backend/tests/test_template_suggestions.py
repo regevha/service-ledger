@@ -44,7 +44,7 @@ def _suggest(db, model, report_type="repair", instrument_type="lab", limit=3):
 
 
 def test_other_report_types_are_never_offered(db_session):
-    _add(db_session, "FACSAria III", report_type=ReportType.calibration)
+    _add(db_session, "FACSAria III", report_type=ReportType.installation_upgrade)
     _add(db_session, None, report_type=ReportType.preventive_maintenance)
     assert _suggest(db_session, "FACSAria Fusion") == []
 
@@ -165,7 +165,7 @@ def test_endpoint_returns_ranked_suggestions(client):
 
 
 def test_endpoint_is_not_swallowed_by_the_template_id_route(client):
-    resp = client.get("/report-templates/suggestions", params={"report_type": "calibration"})
+    resp = client.get("/report-templates/suggestions", params={"report_type": "installation_upgrade"})
     assert resp.status_code == 200
 
 

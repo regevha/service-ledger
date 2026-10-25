@@ -5,6 +5,7 @@ import { test, expect } from './coverage';
 import { uniqueFixture, uniquePdf } from './unique-upload';
 import { fieldLabel } from '../../src/fieldLabels';
 import { BACKEND_PORT } from '../../playwright.config';
+import { createNumericModel } from './numeric-fixture';
 
 // The review screen as the 2026-10-24 UI review asked for it: the scan beside the fields, an action
 // bar that stays in view, readable field names, a finalized report that is read-only until Edit,
@@ -64,7 +65,8 @@ test('fieldLabel: readable names, abbreviations in capitals, no unit said twice'
 
 test('field names read as words, not as stored names', async ({ page, request }) => {
   const marker = `E2E-Labels-${Date.now()}`;
-  await seedReport(request, { model: 'LSRFortessa', reportType: 'calibration', technician: marker });
+  const model = await createNumericModel(request, 'E2E-Labels');
+  await seedReport(request, { model, reportType: 'installation_upgrade', technician: marker });
   await openFromList(page, marker);
   const list = page.locator('.field-list');
   await expect(list).toContainText('CST beads lot');
@@ -200,7 +202,8 @@ test('phone: each part is a small labelled card, not a row of squeezed boxes', a
 
 test('the per-detector rows stay compact and each can be removed by name', async ({ page, request }) => {
   const marker = `E2E-Detectors-${Date.now()}`;
-  await seedReport(request, { model: 'LSRFortessa', reportType: 'calibration', technician: marker });
+  const model = await createNumericModel(request, 'E2E-Detectors');
+  await seedReport(request, { model, reportType: 'installation_upgrade', technician: marker });
   await page.setViewportSize({ width: 1400, height: 900 });
   await openFromList(page, marker);
   const row = page.locator('.field', { hasText: 'Baseline CV' }).locator('.number-map-row').first();
@@ -219,7 +222,7 @@ test('text "Remove" buttons in the template editor stay inside their card', asyn
   await page.setViewportSize({ width: 1300, height: 900 });
   await page.goto('/');
   await page.click('.view-tab:has-text("Templates")');
-  await page.locator('.template-row-body', { hasText: 'Calibration' }).first().locator('button:has-text("Edit")').click();
+  await page.locator('.template-row-body', { hasText: 'Preventive maintenance' }).first().locator('button:has-text("Edit")').click();
   const row = page.locator('.schema-field-row').first();
   await expect(row).toBeVisible();
   const [card, remove] = await Promise.all([row.boundingBox(), row.locator('.row-remove').first().boundingBox()]);

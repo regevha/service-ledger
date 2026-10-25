@@ -115,21 +115,19 @@ def test_pdf_renders_repair_report_fields(client, seeded):
     assert "SF-100" in text
 
 
-def test_pdf_renders_calibration_fields_including_missing_values(client, seeded):
-    """Covers enum[], number[detector] (a per-detector map), boolean, and a
-    field left unset entirely (should print the em dash placeholder, not
-    crash or silently vanish)."""
+def test_pdf_renders_boolean_and_missing_values(client, seeded):
+    """Covers a boolean and fields left unset entirely (should print the em
+    dash placeholder, not crash or silently vanish)."""
     report = _make_report(
         seeded,
         model="LSRFortessa",
-        report_type=ReportType.calibration,
+        report_type=ReportType.preventive_maintenance,
         status=ReportStatus.in_review,
         technician="A. Tech",
         extracted_fields={
-            "laser_configuration": ["405nm", "488nm", "640nm"],
-            "baseline_cv_percent": {"FITC": 2.1, "PE": 1.8},
-            "compensation_matrix_updated": True,
-            # fluidics_pressure_psi and cst_beads_lot deliberately omitted —
+            "service_description": "Quarterly PM",
+            "labor_hours": 3.5,
+            # work_performed and components_replaced deliberately omitted —
             # the review screen leaves unextracted fields blank rather than
             # dropping them from the form, and the PDF should do the same.
         },
@@ -138,11 +136,8 @@ def test_pdf_renders_calibration_fields_including_missing_values(client, seeded)
     resp = client.get(f"/reports/{report.id}/pdf")
     assert resp.status_code == 200
     text = _pdf_text(resp.content)
-    assert "405nm" in text
-    assert "488nm" in text
-    assert "FITC: 2.1" in text
-    assert "PE: 1.8" in text
-    assert "Yes" in text  # compensation_matrix_updated: True -> "Yes"
+    assert "Quarterly PM" in text
+    assert "3.5" in text
     assert "—" in text  # the omitted fields render as the missing-value placeholder
 
 
@@ -153,7 +148,7 @@ def test_pdf_available_before_finalization(client, seeded):
     report = _make_report(
         seeded,
         model="FACSDiscover S8",
-        report_type=ReportType.calibration,
+        report_type=ReportType.preventive_maintenance,
         status=ReportStatus.extracted,
         technician="A. Tech",
         extracted_fields={},

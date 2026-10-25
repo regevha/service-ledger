@@ -2,6 +2,7 @@ import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { createNumericTemplate } from './numeric-fixture';
 
 // The instrument detail page's trend chart (InstrumentTrendChart.tsx) — the
 // real, generalized version of docs/instrument-timeline-demo.html's
@@ -20,13 +21,13 @@ import { BACKEND_PORT } from '../../playwright.config';
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
-async function seedCalibrationReport(
+async function seedNumericReport(
   request: APIRequestContext,
   opts: { instrumentId: string; model: string; extractedFields: Record<string, unknown>; reportDate: string }
 ): Promise<void> {
   const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
   const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'calibration', model: opts.model } })
+    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model: opts.model } })
   ).json();
   await request.patch(`${API_BASE}/reports/${report.id}/template`, {
     data: { instrument_id: opts.instrumentId, template_id: templates[0].id },
@@ -54,6 +55,7 @@ async function createInstrument(request: APIRequestContext, marker: string): Pro
       data: { name: marker, model: marker, manufacturer: 'E2E Maker', serial_number: `SN-${marker}` },
     })
   ).json();
+  await createNumericTemplate(request, marker);
   return { id: instrument.id as string, name: instrument.name as string };
 }
 
@@ -71,7 +73,7 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
 }) => {
   // Its own brand-new instrument (like the two tests below): the stub
   // classifier gives every other spec's upload a hash-picked instrument and
-  // report type, so some run can finalize a calibration on FACSAria III and
+  // report type, so some run can finalize a report on FACSAria III and
   // an exact point count there is not guaranteed.
   const marker = `E2E-Trend-Multi-${Date.now()}`;
   const facsAria = await createInstrument(request, marker);
@@ -82,7 +84,7 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   const pressure = [4.9, 5.0, 5.1, 5.2]; // 5.0 is the regression case: must render "5.0 psi", not "5 psi"
 
   for (let i = 0; i < dates.length; i++) {
-    await seedCalibrationReport(request, {
+    await seedNumericReport(request, {
       instrumentId: facsAria.id,
       model: marker,
       reportDate: dates[i],
@@ -156,7 +158,7 @@ test('trend chart: a single finalized report shows the "needs at least two" fall
 }) => {
   const marker = `E2E-Trend-Single-${Date.now()}`;
   const instrument = await createInstrument(request, marker);
-  await seedCalibrationReport(request, {
+  await seedNumericReport(request, {
     instrumentId: instrument.id,
     model: marker,
     reportDate: '2026-06-01',

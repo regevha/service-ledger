@@ -2,19 +2,20 @@ import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { createNumericTemplate } from './numeric-fixture';
 
 // UI review items #26-#28: charts drawn at the size they are shown (so their text matches the page)
 // with years on the date axis, Analytics bars that line up, and the active tab joined to its card.
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
-async function seedCalibrationReport(
+async function seedNumericReport(
   request: APIRequestContext,
   opts: { instrumentId: string; model: string; extractedFields: Record<string, unknown>; reportDate: string }
 ): Promise<void> {
   const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
   const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'calibration', model: opts.model } })
+    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model: opts.model } })
   ).json();
   await request.patch(`${API_BASE}/reports/${report.id}/template`, {
     data: { instrument_id: opts.instrumentId, template_id: templates[0].id },
@@ -42,8 +43,9 @@ async function instrumentWithTrend(request: APIRequestContext, marker: string, d
       data: { name: marker, model: marker, manufacturer: 'E2E Maker', serial_number: `SN-${marker}` },
     })
   ).json();
+  await createNumericTemplate(request, marker);
   for (let i = 0; i < dates.length; i++) {
-    await seedCalibrationReport(request, {
+    await seedNumericReport(request, {
       instrumentId: instrument.id,
       model: marker,
       reportDate: dates[i],

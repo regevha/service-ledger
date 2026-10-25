@@ -98,7 +98,7 @@ test.describe('templates table actions', () => {
 
 test('template editor: every box has a caption, and the field name shows how it will read', async ({ page }) => {
   await page.goto('/#/templates');
-  const row = page.locator('.template-row-body', { hasText: 'Calibration' }).first();
+  const row = page.locator('.template-row-body', { hasText: 'Preventive maintenance' }).first();
   await row.getByRole('button', { name: 'Edit' }).click();
   const first = page.locator('.schema-field-row').first();
   await expect(first).toBeVisible();

@@ -216,14 +216,6 @@ def test_endpoint_shows_generic_and_cytek_pm_with_fields_on_both_sides(client):
     ]
 
 
-def test_endpoint_calibration_templates_share_almost_nothing(client):
-    generic = _seeded(client, "calibration", None)
-    spectral = _seeded(client, "calibration", "FACSDiscover S8")
-    summary = _compare(client, generic, spectral).json()["summary"]
-    assert summary["shared"] == 1
-    assert summary["only_left"] == summary["only_right"] == 5
-
-
 def test_endpoint_summary_counts_add_up(client):
     generic = _seeded(client, "repair", None)
     cytoflex = _seeded(client, "repair", "CytoFLEX S")
