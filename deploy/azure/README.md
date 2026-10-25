@@ -33,7 +33,7 @@ ANTHROPIC_API_KEY=... ./deploy/azure/deploy.sh sl-test   # live Claude (environm
 
 Optional: `LOCATION` (default `westeurope`, a decision for the project owner), `IMAGE_TAG`, `INGRESS`, `BUILD_IMAGE`.
 
-Not covered: re-running over an existing deployment (create commands will report what already exists), custom domain, backups of the file share, Key Vault (secrets are Container Apps secrets for now).
+Not covered: re-running over an existing deployment (create commands will report what already exists), custom domain, automatic backups of the file share (use `backup.sh` below), Key Vault (secrets are Container Apps secrets for now).
 
 ## Changing the API key or the shared password
 
@@ -54,3 +54,17 @@ After a code change (merged or on your branch), roll it out without recreating a
 ```
 
 It builds the frontend and a new image (tagged with the commit and the time), runs the migration with that image and waits for it, then points the API and the worker at the new image. The database, attachments, password and API key are untouched. If the migration fails, the apps keep running the old image. To go back, check out the earlier commit and run it again. Not yet run against real Azure.
+
+## Backing up and restoring
+
+```
+./deploy/azure/backup.sh sl-test                         # -> backups/sl-test-<UTC time>/
+./deploy/azure/restore.sh sl-test backups/sl-test-20261025-203000Z
+BACKUP_FIRST=1 ./deploy/azure/update.sh sl-test          # backup, then release
+```
+
+`backup.sh` writes a folder with `database.dump` (the whole database), `attachments/` (every scanned file from the share), `MANIFEST.txt` (migration version and row counts) and `SHA256SUMS`. Keep the folder together: the database stores only the paths of the scans. The database allows Azure services only, so the script opens it to this machine's address for the length of the run and closes it again. It needs the Azure CLI, `pg_dump`/`pg_restore`/`psql` version 16 or newer, and `curl`. `NO_FILES=1` skips the scans.
+
+`restore.sh` checks the checksums, shows the manifest, asks you to type the environment name, takes a safety backup of the current state (`backups/<name>-before-restore-...`), stops the API and worker, replaces the database in one transaction (a failure leaves it as it was), copies the scans back, and starts the apps again. Anything saved after the backup is lost. If the backup is older than the deployed code, run `update.sh` afterwards so the migration brings the schema up to date.
+
+The dump is **not encrypted** and holds real lab data; `backups/` is ignored by git, but store the folder somewhere private. Azure also keeps its own automatic database backups (7 days by default; raise with `az postgres flexible-server update --backup-retention 35`). Not yet run against real Azure; the dump and restore commands were tried against a local PostgreSQL.
