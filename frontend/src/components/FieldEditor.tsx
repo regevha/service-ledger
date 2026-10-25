@@ -8,7 +8,7 @@ import { DateInput } from './DateInput';
  * matching what PATCH /reports/{id}/fields expects in extracted_fields.
  *
  * This is deliberately generic rather than one component per template
- * (repair vs. preventive_maintenance vs. calibration): the whole point of
+ * (repair vs. preventive_maintenance): the whole point of
  * JSONB templates (§5) is that the field set varies by report type, so the
  * review screen has to render from field_schema rather than hardcode a
  * layout per type.

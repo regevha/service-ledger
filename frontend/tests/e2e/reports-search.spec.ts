@@ -64,7 +64,7 @@ async function waitForJob(request: APIRequestContext, jobId: string, timeoutMs =
 test.describe('reports search screen', () => {
   test('filters by report type and status, and shows an empty state', async ({ page, request }) => {
     const marker = `E2E-Search-${Date.now()}`;
-    await seedReport(request, { model: 'FACSDiscover S8', reportType: 'calibration', technician: marker, finalize: true });
+    await seedReport(request, { model: 'FACSDiscover S8', reportType: 'installation_upgrade', technician: marker, finalize: true });
 
     await page.goto('/');
     await page.click('.view-tab:has-text("Reports")');
@@ -74,7 +74,7 @@ test.describe('reports search screen', () => {
     await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
 
     // Matching filters keep it.
-    await page.selectOption('.filter-row select >> nth=1', 'calibration');
+    await page.selectOption('.filter-row select >> nth=1', 'installation_upgrade');
     await page.selectOption('.filter-row select >> nth=2', 'finalized');
     await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
 
@@ -102,7 +102,7 @@ test.describe('reports search screen', () => {
     // (§7) narrows the list rather than just happening to include both.
     const marker = `E2E-Tech-Match-${Date.now()}`;
     const otherMarker = `E2E-Tech-Other-${Date.now()}`;
-    await seedReport(request, { model: 'FACSDiscover S8', reportType: 'calibration', technician: marker, finalize: true });
+    await seedReport(request, { model: 'FACSDiscover S8', reportType: 'installation_upgrade', technician: marker, finalize: true });
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: otherMarker, finalize: true });
 
     await page.goto('/');

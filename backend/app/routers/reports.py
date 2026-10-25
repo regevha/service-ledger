@@ -201,7 +201,7 @@ def export_reports(
                 # repr syntax (True/None/single-quoted strings), which looks
                 # like JSON but isn't: json.loads() on it throws for any
                 # report with a boolean, null, or nested field (e.g.
-                # CST_CALIBRATION_FIELDS' compensation_matrix_updated), even
+                # a boolean field), even
                 # though this column is named/documented as JSON. default=str
                 # is a defensive backstop, not a real dependency — every
                 # value here already comes from JSON-schema-typed fields

@@ -26,6 +26,7 @@ def _make_report(db_session, instrument, report_type, fields, *, status=ReportSt
         db_session.query(ReportTemplate)
         .filter(ReportTemplate.report_type == report_type)
         .filter((ReportTemplate.model == instrument.model) | (ReportTemplate.model.is_(None)))
+        .order_by(ReportTemplate.model.is_(None))  # a model-specific template wins over the generic one
         .first()
     )
     report = Report(
@@ -38,6 +39,24 @@ def _make_report(db_session, instrument, report_type, fields, *, status=ReportSt
     db_session.add(report)
     db_session.commit()
     return report
+
+
+def _add_numeric_template(db_session):
+    """The seeded templates only have labor_hours, so give LSRFortessa a template with the other numeric kinds."""
+    db_session.add(
+        ReportTemplate(
+            instrument_type="facs",
+            report_type=ReportType.installation_upgrade,
+            model="LSRFortessa",
+            field_schema={
+                "fields": [
+                    {"name": "baseline_cv_percent", "type": "number[detector]", "unit": "%", "notes": None},
+                    {"name": "fluidics_pressure_psi", "type": "number", "unit": "psi", "notes": None},
+                ]
+            },
+        )
+    )
+    db_session.commit()
 
 
 def _unit(body, model, serial):
@@ -97,9 +116,10 @@ def test_units_of_different_models_are_never_mixed(client, db_session):
 
 
 def test_trend_fields_are_the_numeric_fields_the_models_reports_carry(client, db_session):
+    _add_numeric_template(db_session)
     _second_fortessa(client)
     a, b = _fortessas(db_session)
-    _make_report(db_session, a, ReportType.calibration, {"fluidics_pressure_psi": 12.5})
+    _make_report(db_session, a, ReportType.installation_upgrade, {"fluidics_pressure_psi": 12.5})
 
     fortessa = next(m for m in client.get("/analytics/models").json() if m["model"] == "LSRFortessa")
 
@@ -109,12 +129,13 @@ def test_trend_fields_are_the_numeric_fields_the_models_reports_carry(client, db
 
 
 def test_model_trend_returns_one_series_per_unit_finalized_only(client, db_session):
+    _add_numeric_template(db_session)
     _second_fortessa(client)
     a, b = _fortessas(db_session)
-    _make_report(db_session, a, ReportType.calibration, {"fluidics_pressure_psi": 12.5}, when=date(2026, 1, 1))
-    _make_report(db_session, a, ReportType.calibration, {"fluidics_pressure_psi": 13.0}, when=date(2026, 2, 1))
-    _make_report(db_session, b, ReportType.calibration, {"fluidics_pressure_psi": 11.0}, when=date(2026, 1, 15))
-    _make_report(db_session, b, ReportType.calibration, {"fluidics_pressure_psi": 50.0}, status=ReportStatus.in_review)
+    _make_report(db_session, a, ReportType.installation_upgrade, {"fluidics_pressure_psi": 12.5}, when=date(2026, 1, 1))
+    _make_report(db_session, a, ReportType.installation_upgrade, {"fluidics_pressure_psi": 13.0}, when=date(2026, 2, 1))
+    _make_report(db_session, b, ReportType.installation_upgrade, {"fluidics_pressure_psi": 11.0}, when=date(2026, 1, 15))
+    _make_report(db_session, b, ReportType.installation_upgrade, {"fluidics_pressure_psi": 50.0}, status=ReportStatus.in_review)
 
     resp = client.get("/analytics/models/trend", params={"model": "LSRFortessa", "field": "fluidics_pressure_psi"})
 
@@ -126,8 +147,9 @@ def test_model_trend_returns_one_series_per_unit_finalized_only(client, db_sessi
 
 
 def test_model_trend_supports_detector_maps(client, db_session):
+    _add_numeric_template(db_session)
     a, = _fortessas(db_session)
-    _make_report(db_session, a, ReportType.calibration, {"baseline_cv_percent": {"violet": 3.1, "blue": 2.0}})
+    _make_report(db_session, a, ReportType.installation_upgrade, {"baseline_cv_percent": {"violet": 3.1, "blue": 2.0}})
 
     body = client.get("/analytics/models/trend", params={"model": "LSRFortessa", "field": "baseline_cv_percent"}).json()
 

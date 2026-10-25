@@ -165,7 +165,7 @@ def instrument_trend(
     entry per detector/laser) for a number[detector]/number[laser] field.
     Only reports that actually have that key in extracted_fields, as a real
     number or a dict containing at least one real number, contribute a
-    point — a calibration-only field on a repair-heavy instrument just
+    point — a field only some report types carry on a repair-heavy instrument just
     yields a short series, not an error."""
     instrument = db.get(models.Instrument, instrument_id)
     if not instrument:

@@ -44,7 +44,6 @@ class ReportStatus(str, enum.Enum):
 
 
 class ReportType(str, enum.Enum):
-    calibration = "calibration"
     repair = "repair"
     preventive_maintenance = "preventive_maintenance"
     # Installing options or hardware, or upgrading software/firmware (BD task

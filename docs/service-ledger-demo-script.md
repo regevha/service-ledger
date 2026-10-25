@@ -22,7 +22,7 @@ Everything in this walkthrough runs against a deterministic stub classifier/extr
 - **Worker running, in a second terminal:** `python -m app.worker`. Without this, "Upload & classify" and extraction enqueue a job and sit at `pending` forever — nothing else calls `classify()`/`extract()`.
 - **Frontend running:** `npm run dev` (Vite, port 5173) — have `http://localhost:5173` already open in a browser tab.
 - **Fleet + templates seeded** (idempotent, safe to re-run): `python -m app.seed_instruments && python -m app.seed_templates`.
-- **Trend chart data seeded ahead of time**, so Part 8 doesn't depend on live uploads mid-demo: `python -m app.seed_trend_demo` — 5 synthetic FACSAria III calibration reports, two months apart.
+- **Trend chart data seeded ahead of time**, so Part 8 doesn't depend on live uploads mid-demo: `python -m app.seed_trend_demo` — 5 synthetic FACSAria III preventive-maintenance reports, two months apart.
 - **Optional:** `python -m app.seed_demo_reports` — 3 more finalized reports (real extraction results) so the Reports tab isn't showing only what you upload live.
 - **Two fixture files ready to upload**, both already in the repo at `frontend/tests/e2e/fixtures/`: `confident-scan.pdf` (Part 1) and `sample-work-order.pdf` (Part 2 — the centerpiece).
 - **Two more files for Part 3**, made from the first: a copy of `confident-scan.pdf` renamed `scan_R647794E6093.pdf`, and any text file (e.g. `notes.txt`). In stub mode the "reader" finds a serial number when the uploaded file's *name* contains one (the real app reads it off the page), so renaming the file is how you choose what the scan "says."
@@ -53,7 +53,7 @@ This is the case worth slowing down for: a real ambiguity in the source document
 4. Four rows appear this time, before extraction runs: the model and the serial number the document shows (read-only, each with its own badge), then the **Instrument** unit it resolves to, then the report type:
    - **Instrument model** — green badge, "demo value" (a live key shows "96% confident"). The sample has no serial, so the **Serial number** row says "not found" and the unit below is only "suggested".
    - **Report type** — amber badge, "demo value" (a live key shows "58% needs review").
-   - *Say:* "This filename reproduces a real document from the spec — an actual BD Care EU work order. The serial number is a clean read, so the instrument guess is confident. But repair, preventive maintenance, and calibration reports share almost the same layout on this vendor's forms, so which one this is is a genuinely harder call — and the system says so instead of picking one silently."
+   - *Say:* "This filename reproduces a real document from the spec — an actual BD Care EU work order. The serial number is a clean read, so the instrument guess is confident. But repair, preventive maintenance and installation reports share almost the same layout on this vendor's forms, so which one this is is a genuinely harder call — and the system says so instead of picking one silently."
 5. Click **Confirm & continue**. (Note in passing: this is the same button that would let you *override* an incorrect confident guess — it's not only for the low-confidence case.)
 6. Extraction runs against the resolved template. On the review screen, point at three fields:
    - **fault category** — already set to "fluidics" from the extracted text.
@@ -135,7 +135,7 @@ What the app does with a real BD work order when there is no API key. About five
 
 This screen replaces "edit a Python literal and re-run a seed script" as the only way to change what fields a report type asks for.
 
-1. Click the **Templates** tab — "Report templates," with the existing calibration/repair/preventive\_maintenance/installation\_upgrade rows and their field counts.
+1. Click the **Templates** tab — "Report templates," with the existing repair/preventive\_maintenance/installation\_upgrade rows and their field counts.
 2. Click **+ New template**, fill in a model name.
 3. Click **+ Add field** for a plain text field — name it anything.
 4. Click **+ Add field** again, switch its type to **enum**, and demonstrate the tag-input: type a value, press Enter, repeat — each becomes a removable chip.
@@ -160,14 +160,14 @@ Replaces "`POST /instruments` from a script, then edit the row by hand for anyth
 
 ## Part 8: Instrument detail page and the trend chart
 
-**Ahead of time** (see the prep checklist): run `python -m app.seed_trend_demo` once before the demo — it drops 5 synthetic finalized calibration reports on the FACSAria III, two months apart, so this section has a real multi-point line to show instead of the "only one report" fallback.
+**Ahead of time** (see the prep checklist): run `python -m app.seed_trend_demo` once before the demo — it drops 5 synthetic finalized preventive-maintenance reports on the FACSAria III, two months apart, so this section has a real multi-point line to show instead of the "only one report" fallback.
 
 1. From the **Reports** tab, select **FACSAria III** in the instrument filter, then click **View instrument details** (or open any of its reports and click **View instrument: FACSAria III** from the review screen).
 2. Point out the header: instrument name, model/serial in the meta line, its status pill, then two stat tiles — reports on file, most recent activity.
-3. Below that, the **Trend** section — the field picker defaults to `baseline_cv_percent`, a per-detector field, rendering as three lines (detector 1/2/3) with a legend, because it's a `number[detector]` field, not a flat number.
-4. Hover near the right edge of the chart — a crosshair and tooltip appear with one row per detector for that date.
+3. Below that, the **Trend** section — the field picker defaults to `labor_hours`, a flat number field, rendering as a single line with a direct end-value label on the last point.
+4. Hover near the right edge of the chart — a crosshair and tooltip appear with the value for that date.
 5. Click **View as table** — the same data, every point readable without hovering, for anyone in the room who wants exact numbers rather than reading a line.
-6. Switch the field picker to `fluidics_pressure_psi` — a flat number field, so it collapses to a single line, no legend, with a direct end-value label on the last point.
+6. Custom templates can add more numeric fields (including per-detector ones); each shows up in the picker automatically once a finalized report carries it.
 7. Scroll down to **Report history** — every finalized report for this instrument, in one table, reachable without leaving the page.
 
 **Talking point:** the list of chartable fields isn't hardcoded either — `GET /instruments/{id}/trend-fields` derives it from whatever numeric fields this instrument's own finalized reports actually resolved to, so a new template's numeric fields show up automatically and a never-used field never appears as a dead end.

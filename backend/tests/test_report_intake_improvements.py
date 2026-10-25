@@ -82,7 +82,7 @@ def _live(tmp_path, monkeypatch, **overrides):
     answer = {
         "instrument_model": "LSRFortessa",
         "instrument_confidence": 0.95,
-        "report_type": "calibration",
+        "report_type": "preventive_maintenance",
         "report_type_confidence": 0.55,
         **overrides,
     }
@@ -126,7 +126,7 @@ def test_agreement_keeps_the_higher_of_the_two_confidences(tmp_path, monkeypatch
 )
 def test_without_a_usable_task_code_the_models_guess_stands(tmp_path, monkeypatch, fields):
     read, _ = _live(tmp_path, monkeypatch, **fields)
-    assert (read.report_type.value, read.report_type.confidence) == ("calibration", 0.55)
+    assert (read.report_type.value, read.report_type.confidence) == ("preventive_maintenance", 0.55)
     assert read.report_type_source == "model"
 
 

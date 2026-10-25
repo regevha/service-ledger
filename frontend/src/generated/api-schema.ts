@@ -123,7 +123,7 @@ export interface paths {
          *     entry per detector/laser) for a number[detector]/number[laser] field.
          *     Only reports that actually have that key in extracted_fields, as a real
          *     number or a dict containing at least one real number, contribute a
-         *     point — a calibration-only field on a repair-heavy instrument just
+         *     point — a field only some report types carry on a repair-heavy instrument just
          *     yields a short series, not an error.
          */
         get: operations["instrument_trend_instruments__instrument_id__trend_get"];
@@ -1471,7 +1471,7 @@ export interface components {
          * ReportType
          * @enum {string}
          */
-        ReportType: "calibration" | "repair" | "preventive_maintenance" | "installation_upgrade";
+        ReportType: "repair" | "preventive_maintenance" | "installation_upgrade";
         /** SavedFilterCreate */
         SavedFilterCreate: {
             /** Name */

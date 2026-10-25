@@ -62,7 +62,7 @@ backend/
     seed_instruments.py      The fixed fleet (§1): three BD instruments, a Cytek Aurora and a CytoFLEX S
     seed_templates.py        The report_templates rows (§5), plus three model-specific rows for the Cytek Aurora and CytoFLEX S
     seed_demo_reports.py     3 real finalized demo reports for the Reports screen — optional, manual only
-    seed_trend_demo.py       5 synthetic calibration reports for the FACSAria III, for the trend chart — optional, manual only
+    seed_trend_demo.py       5 synthetic PM reports for the FACSAria III, for the trend chart — optional, manual only
     routers/
       instrument_types.py    GET/POST /instrument-types — the managed list of kinds of instrument (migration `a7c4e1f2b836`). Seeded: Flow cytometer (`facs`), Electron microscope, ImageStream, Mass spectrometer, PCR machine (`ensure_default_types`, run by the seeds and at startup; never renames or removes a type); more are added in the app
       instruments.py         POST/GET/PATCH/DELETE /instruments (DELETE also deletes the instrument's reports; PATCH backs the Instruments tab's create/edit UI —
@@ -136,10 +136,9 @@ python -m app.seed_templates
 # see the module docstring for why (it would pollute the test/e2e databases).
 python -m app.seed_demo_reports
 
-# optional — 5 synthetic calibration reports for the FACSAria III, spaced
-# two months apart, so the instrument detail page's trend chart has a real
-# multi-point line (a multi-series number[detector] field plus a flat
-# number field) instead of the single-report fallback. Also NOT auto-run,
+# optional — 5 synthetic preventive-maintenance reports for the FACSAria III,
+# spaced two months apart, so the instrument detail page's trend chart has a
+# real multi-point line (labor_hours) instead of the single-report fallback. Also NOT auto-run,
 # same reason as seed_demo_reports above.
 python -m app.seed_trend_demo
 
@@ -422,21 +421,12 @@ record, not just an error response nobody saw. `tests/test_live_claude_failures.
 covers both paths by monkeypatching `classify`/`extract` to raise — the
 suite doesn't and shouldn't call the real API (see `tests/conftest.py`).
 
-One schema path — `number[detector]`/`number[laser]`, used only by the
-`calibration` templates (`app/seed_templates.py::CST_CALIBRATION_FIELDS`) —
-had never been exercised at all, live or otherwise: none of the 6 real
-sample documents used to validate this wiring are calibration visits.
-`tests/test_extraction_schema.py` at least proves the JSON-schema
-construction for that type doesn't break, and a one-off live smoke test
-(feeding a real, wrong-type document through the calibration template's
-tool schema) confirmed the shape round-trips correctly through a real model
-call — per-detector fields came back as empty objects with low confidence
-rather than the flattened/stringified failure mode found earlier, which is
-the correct answer when the source document has no calibration data to
-report. That derisks the schema shape; it can't confirm extraction
-*accuracy* on this field type without a real calibration document, which
-SL-ARCH-001 §12 already lists as still needed for the FACSDiscover S8
-spectral fields.
+One schema path — `number[detector]`/`number[laser]` — was only ever used by
+the `calibration` templates, which have since been removed (lab users asked
+for the report type to go). The field types are still available to custom
+templates, and `tests/test_extraction_schema.py` still proves the JSON-schema
+construction for them doesn't break, but no seeded template uses them and
+they have never been checked against a real document.
 
 ### Confirming the live path actually ran
 
@@ -505,9 +495,6 @@ PDFs for exactly this kind of check — see their docstrings.
   "Swapping in the real Claude API" above), which is why the schema is flat
   today. Reintroducing `source_snippet` means solving that schema problem
   first, not just wiring up an existing field.
-- **The FACSDiscover S8 spectral calibration field list is still a guess** —
-  unlike `repair` and `preventive_maintenance`, no real S8 document has been
-  checked against it yet (§12).
 - **`preventive_maintenance` is now grounded in two real documents, not
   zero** (v0.12) — an LSRFortessa visit and a FACSDiscover S8 visit, neither
   carrying any model-specific field. Only a FACSAria III PM report remains

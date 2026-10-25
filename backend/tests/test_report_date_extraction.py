@@ -66,7 +66,7 @@ def test_template_fields_cannot_be_named_report_date(client):
         "/report-templates",
         json={
             "instrument_type": "facs",
-            "report_type": "calibration",
+            "report_type": "preventive_maintenance",
             "model": "ReservedNameModel",
             "fields": [{"name": "report_date", "type": "date"}],
         },

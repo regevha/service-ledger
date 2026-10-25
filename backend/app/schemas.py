@@ -776,7 +776,7 @@ class InstrumentRollupOut(BaseModel):
     institution: str | None = None
     serial_number: str
     # Finalized repair/preventive_maintenance reports with a numeric
-    # labor_hours value — calibration reports never carry labor_hours
+    # labor_hours value; other report types never carry labor_hours
     # (seed_templates.py), so they never contribute here.
     report_count: int
     total_labor_hours: float
@@ -885,7 +885,7 @@ class UnitComparisonOut(BaseModel):
     name: str
     serial_number: str
     status: InstrumentStatus
-    # All finalized reports for the unit, any type (calibrations included).
+    # All finalized reports for the unit, any type.
     finalized_report_count: int
     last_report_date: date | None
     # Finalized repair/preventive_maintenance reports with a numeric labor_hours.
