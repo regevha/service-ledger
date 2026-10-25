@@ -5,6 +5,23 @@ import { DateInput } from './DateInput';
 import { SavedFilters } from './SavedFilters';
 
 const MIN_SEARCH_LENGTH = 2;
+const COLLAPSE_KEY = 'sl.filters.collapsed';
+
+// Per-viewer convenience only (shared by both tabs): browser storage can be empty or throw.
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === 'yes';
+  } catch {
+    return false;
+  }
+}
+function writeCollapsed(collapsed: boolean) {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, collapsed ? 'yes' : 'no');
+  } catch {
+    /* not remembered; nothing else depends on it */
+  }
+}
 const STATUS_OPTIONS: ReportStatus[] = ['draft', 'classified', 'extracted', 'in_review', 'finalized'];
 
 /** The filters this bar edits: the Reports list's, with a status that may also be 'all' (Analytics). */
@@ -30,6 +47,7 @@ export function ReportFilterBar<F extends BarFilters>({
   leading,
   extra,
   instrumentFilter,
+  summaryExtra = [],
   testId,
   onClear,
 }: {
@@ -40,12 +58,20 @@ export function ReportFilterBar<F extends BarFilters>({
   leading?: ReactNode;
   extra?: ReactNode;
   instrumentFilter?: (instrument: Instrument) => boolean;
+  /** Summary entries for the controls only this tab has (e.g. "Manufacturer: BD"). */
+  summaryExtra?: string[];
   testId?: string;
   /** Extra clean-up when "Clear filters" is pressed (the bar already resets what it owns). */
   onClear?: () => void;
 }) {
   const [technicianInput, setTechnicianInput] = useState(filters.technician ?? '');
   const [searchInput, setSearchInput] = useState(filters.q ?? '');
+  // The filters can be folded away to leave room for the list; a one-line summary stays in their place.
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  function toggleCollapsed() {
+    setCollapsed(!collapsed);
+    writeCollapsed(!collapsed);
+  }
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -67,8 +93,65 @@ export function ReportFilterBar<F extends BarFilters>({
   const shownInstruments = instrumentFilter ? instruments.filter(instrumentFilter) : instruments;
   const statuses = analytics ? STATUS_OPTIONS.filter((s) => s !== 'finalized') : STATUS_OPTIONS;
 
+  const instrument = instruments.find((i) => i.id === filters.instrument_id);
+  const statusText = filters.status === 'all' ? 'All statuses' : filters.status ? STATUS_LABEL[filters.status as ReportStatus] : '';
+  const dates =
+    filters.date_from && filters.date_to
+      ? `${filters.date_from} to ${filters.date_to}`
+      : filters.date_from
+        ? `from ${filters.date_from}`
+        : filters.date_to
+          ? `until ${filters.date_to}`
+          : '';
+  const summary = [
+    filters.q ? `“${filters.q}”` : '',
+    ...summaryExtra,
+    instrument ? `${instrument.model} (${instrument.serial_number})` : '',
+    filters.report_type ? REPORT_TYPE_LABEL[filters.report_type] : '',
+    statusText,
+    dates,
+    filters.technician ? `Lab manager: ${filters.technician}` : '',
+  ].filter(Boolean);
+
+  const toggle = (
+    <button
+      type="button"
+      className="btn small filters-toggle"
+      aria-expanded={!collapsed}
+      onClick={toggleCollapsed}
+    >
+      {collapsed ? 'Show filters ▾' : 'Hide filters ▴'}
+    </button>
+  );
+
+  if (collapsed) {
+    return (
+      <div className="filters-summary" data-testid={testId ? `${testId}-summary` : undefined}>
+        {toggle}
+        <span className="filters-summary-text">
+          {summary.length > 0 ? summary.join(' · ') : 'No filters'}
+        </span>
+        {hasFilters && (
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => {
+              setFilters({} as F);
+              setTechnicianInput('');
+              setSearchInput('');
+              onClear?.();
+            }}
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
+      <div className="filters-summary">{toggle}</div>
       <SavedFilters
         filters={filters as ReportFilters}
         onApply={(applied) => {

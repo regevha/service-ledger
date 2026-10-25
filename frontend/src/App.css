@@ -1946,3 +1946,19 @@ textarea {
   color: var(--text-muted);
 }
 
+
+/* Folding the filters away leaves a one-line summary in their place. */
+.filters-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.filters-summary-text {
+  flex: 1 1 200px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--muted, #667);
+  overflow-wrap: anywhere;
+}
