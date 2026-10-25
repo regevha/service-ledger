@@ -7,7 +7,6 @@ import {
   type Instrument,
   type InstrumentRollup,
   type PartUsage,
-  type ReportType,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
