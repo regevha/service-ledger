@@ -327,3 +327,22 @@ def test_text_search_filter_narrows_the_analytics_like_the_reports_list(client, 
     # Search covers finalized reports only, so a draft status leaves nothing.
     assert client.get("/analytics/fleet", params={"q": "laser", "status": "in_review"}).json()["total_labor_hours"] == 0.0
     assert client.get("/analytics/fleet", params={"q": "x"}).status_code == 422
+
+
+def test_report_counts_per_instrument_and_per_model(client, seeded):
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={"labor_hours": 1})
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.preventive_maintenance, extracted_fields={})
+    _make_report(seeded, model="LSRFortessa", report_type=ReportType.repair, extracted_fields={})
+    _make_report(seeded, model="LSRFortessa", report_type=ReportType.repair, status=ReportStatus.in_review, extracted_fields={})
+    body = client.get("/analytics/fleet").json()
+    per_unit = {r["model"]: r["report_count"] for r in body["report_counts_by_instrument"]}
+    assert per_unit["FACSAria III"] == 2 and per_unit["LSRFortessa"] == 1  # the draft is not counted
+    assert per_unit["CytoFLEX S"] == 0  # every instrument is listed
+    per_model = {r["model"]: r for r in body["report_counts_by_model"]}
+    assert per_model["FACSAria III"]["report_count"] == 2 and per_model["FACSAria III"]["unit_count"] == 1
+    assert [r["report_count"] for r in body["report_counts_by_model"]] == sorted(
+        (r["report_count"] for r in body["report_counts_by_model"]), reverse=True
+    )
+    assert client.get("/analytics/fleet", params={"status": "all"}).json()["report_counts_by_instrument"]
+    allrows = {r["model"]: r["report_count"] for r in client.get("/analytics/fleet", params={"status": "all"}).json()["report_counts_by_instrument"]}
+    assert allrows["LSRFortessa"] == 2

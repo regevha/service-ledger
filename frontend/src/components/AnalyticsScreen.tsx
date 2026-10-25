@@ -12,6 +12,7 @@ import {
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { LaborHoursChart } from './LaborHoursChart';
+import { ReportsPerInstrumentChart, ReportsPerModelChart } from './ReportCountCharts';
 import { ReportFilterBar } from './ReportFilterBar';
 import { ModelComparisonSection } from './ModelComparison';
 
@@ -378,6 +379,16 @@ export function AnalyticsScreen() {
           rows={data.labor_hours_by_instrument}
           withoutHours={data.reports_without_labor_hours ?? 0}
         />
+      </div>
+
+      <div className="chart-section">
+        <div className="chart-title">{filters.status ? 'Reports' : 'Finalized reports'} per instrument</div>
+        <ReportsPerInstrumentChart rows={data.report_counts_by_instrument ?? []} />
+      </div>
+
+      <div className="chart-section">
+        <div className="chart-title">{filters.status ? 'Reports' : 'Finalized reports'} per instrument model</div>
+        <ReportsPerModelChart rows={data.report_counts_by_model ?? []} />
       </div>
 
       <div className="chart-section">
