@@ -2,6 +2,7 @@ import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { createNumericModel } from './numeric-fixture';
 
 // FieldEditor.tsx renders one interactive control per field_schema type
 // (§5), but until now no e2e spec ever touched the array/map controls'
@@ -12,7 +13,7 @@ import { BACKEND_PORT } from '../../playwright.config';
 // add/remove-key buttons have never been driven by a test — a regression in
 // any of them (e.g. "+ Add row" silently doing nothing) would ship
 // undetected. This file exercises the two array-shaped controls used by the
-// seeded templates: NumberMapInput (calibration's per-detector fields) and
+// seeded templates: NumberMapInput (per-detector fields of a custom template) and
 // ObjectArrayInput (repair's components_replaced table).
 //
 // Report rows are seeded directly against the API and forced to a known
@@ -76,9 +77,10 @@ test('editing a number[detector] field (per-detector add/edit/remove) persists t
   request,
 }) => {
   const marker = `E2E-NumberMap-${Date.now()}`;
+  const model = await createNumericModel(request, 'E2E-NumMap');
   const { reportId, extractedFields } = await seedReport(request, {
-    model: 'LSRFortessa',
-    reportType: 'calibration',
+    model,
+    reportType: 'installation_upgrade',
     technician: marker,
   });
   // The stub always fills exactly 3 detectors for a number[detector] field

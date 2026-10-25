@@ -1,6 +1,7 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { BACKEND_PORT } from '../../playwright.config';
+import { createNumericTemplate } from './numeric-fixture';
 
 // "Compare units of the same model" on the Analytics tab: the side-by-side
 // table of every serial of a model and the one-line-per-unit trend chart.
@@ -16,13 +17,13 @@ async function createUnit(request: APIRequestContext, model: string, serial: str
   return (await res.json()).id as string;
 }
 
-async function finalizedCalibration(
+async function finalizedReading(
   request: APIRequestContext,
   opts: { instrumentId: string; model: string; pressure: number; reportDate: string },
 ) {
   const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
   const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'calibration', model: opts.model } })
+    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model: opts.model } })
   ).json();
   await request.patch(`${API_BASE}/reports/${report.id}/template`, {
     data: { instrument_id: opts.instrumentId, template_id: templates[0].id },
@@ -60,11 +61,12 @@ async function openComparison(page: Page, model: string) {
 
 test('two units of one model are compared in a table and on one chart', async ({ page, request }) => {
   const model = `CMP-${Date.now()}`;
+  await createNumericTemplate(request, model);
   const a = await createUnit(request, model, `${model}-A`, 'Unit A');
   const b = await createUnit(request, model, `${model}-B`, 'Unit B');
-  await finalizedCalibration(request, { instrumentId: a, model, pressure: 12, reportDate: '2026-01-10' });
-  await finalizedCalibration(request, { instrumentId: a, model, pressure: 14, reportDate: '2026-02-10' });
-  await finalizedCalibration(request, { instrumentId: b, model, pressure: 9, reportDate: '2026-01-20' });
+  await finalizedReading(request, { instrumentId: a, model, pressure: 12, reportDate: '2026-01-10' });
+  await finalizedReading(request, { instrumentId: a, model, pressure: 14, reportDate: '2026-02-10' });
+  await finalizedReading(request, { instrumentId: b, model, pressure: 9, reportDate: '2026-01-20' });
 
   await openComparison(page, model);
 

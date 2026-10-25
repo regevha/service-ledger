@@ -2,7 +2,7 @@
 Options, Upgrades, S/W").
 
 Added after a real FACSDiscover S8 software-upgrade report fit none of
-repair / preventive_maintenance / calibration: its task code is T107, so the
+repair / preventive_maintenance: its task code is T107, so the
 type used to come from the model alone, with low confidence, and every such
 report fell to the manual pick. It now has a type, a shared template and a
 task-code mapping like the others.
@@ -139,7 +139,7 @@ def test_a_confident_t107_report_resolves_extracts_and_finalizes(client, run_wor
 
 
 def test_an_installation_report_is_left_out_of_the_fleet_analytics_figures(client, run_worker, monkeypatch):
-    """Labor and pass/fail analytics cover repair and PM only (calibration is
+    """Labor and pass/fail analytics cover repair and PM only (installation is
     likewise left out); a new type must not appear as a row or break the endpoint."""
     monkeypatch.setattr(
         "app.services.classification._stub_classify",

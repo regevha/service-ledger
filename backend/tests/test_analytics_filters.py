@@ -46,12 +46,12 @@ def _report(db, serial, report_type, *, when, labor=None, parts=(), status=Repor
 
 
 def _data(db):
-    """Six finalized reports (one undated, one calibration) and a draft that never counts."""
+    """Six finalized reports (one undated, one installation) and a draft that never counts."""
     _report(db, FORTESSA, ReportType.repair, when=date(2026, 1, 10), labor=2, parts=[("Lens", 1)])
     _report(db, FORTESSA, ReportType.preventive_maintenance, when=date(2026, 3, 15), labor=3, parts=[("Filter", 2)])
     _report(db, ARIA, ReportType.repair, when=date(2026, 6, 20), labor=5, parts=[("Lens", 4)])
     _report(db, ARIA, ReportType.repair, when=None, labor=7)  # no report date
-    _report(db, FORTESSA, ReportType.calibration, when=date(2026, 2, 20))
+    _report(db, FORTESSA, ReportType.installation_upgrade, when=date(2026, 2, 20))
     _report(db, FORTESSA, ReportType.repair, when=date(2026, 2, 1), labor=100, status=ReportStatus.draft)
 
 
@@ -81,15 +81,15 @@ def test_the_report_type_filter_keeps_only_that_type(client, db_session):
     assert _parts(repair) == {"Lens": 5.0}
     assert repair["pass_fail_by_report_type"]["preventive_maintenance"]["total"] == 0
 
-    calibration = _fleet(client, report_type="calibration")
-    assert calibration["finalized_report_count"] == 1
-    assert calibration["total_labor_hours"] == 0.0
+    installation = _fleet(client, report_type="installation_upgrade")
+    assert installation["finalized_report_count"] == 1
+    assert installation["total_labor_hours"] == 0.0
 
 
 def test_the_date_range_is_inclusive_and_leaves_out_reports_with_no_date(client, db_session):
     _data(db_session)
     q1 = _fleet(client, date_from="2026-01-01", date_to="2026-03-31")
-    assert q1["finalized_report_count"] == 3  # Jan repair, Feb calibration, Mar PM; not the undated one
+    assert q1["finalized_report_count"] == 3  # Jan repair, Feb installation, Mar PM; not the undated one
     assert q1["total_labor_hours"] == 5.0
 
     assert _fleet(client, date_from="2026-03-15")["total_labor_hours"] == 8.0  # the PM on the day itself, and June
@@ -102,7 +102,7 @@ def test_the_instrument_filter_keeps_one_unit_and_lists_only_it(client, db_sessi
     _data(db_session)
     fortessa = _unit(db_session, FORTESSA)
     body = _fleet(client, instrument_id=str(fortessa.id))
-    assert body["finalized_report_count"] == 3  # repair, PM, calibration
+    assert body["finalized_report_count"] == 3  # repair, PM, installation
     assert body["total_labor_hours"] == 5.0
     assert [row["serial_number"] for row in body["labor_hours_by_instrument"]] == [FORTESSA]
     assert body["labor_hours_by_instrument"][0]["total_labor_hours"] == 5.0
@@ -180,7 +180,7 @@ def test_the_comparison_follows_the_type_and_date_filters_and_keeps_every_unit(c
     assert _comparison_unit(repair, "LSRFortessa", "R647794E6099")["finalized_report_count"] == 0
 
     early = client.get("/analytics/models", params={"date_to": "2026-02-28"}).json()
-    assert _comparison_unit(early, "LSRFortessa", FORTESSA)["finalized_report_count"] == 2  # Jan repair, Feb calibration
+    assert _comparison_unit(early, "LSRFortessa", FORTESSA)["finalized_report_count"] == 2  # Jan repair, Feb installation
 
 
 def test_the_instrument_filter_leaves_only_that_unit_in_the_comparison(client, db_session):
