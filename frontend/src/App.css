@@ -2009,3 +2009,15 @@ textarea {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* A section inside a section (the review form inside a report's page) does not pad twice,
+   and a phone gives the content more of its width. */
+.section .section {
+  padding-left: 0;
+  padding-right: 0;
+}
+@media (max-width: 620px) {
+  .section {
+    padding: 14px;
+  }
+}
