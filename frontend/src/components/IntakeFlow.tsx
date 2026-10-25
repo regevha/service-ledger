@@ -173,7 +173,7 @@ function IntakeScreen({
         <div className="primary">
           {dragging ? 'Drop the file here' : file ? file.name : 'Click to choose a scan or PDF, or drop it here'}
         </div>
-        <div className="secondary">Printed BD service forms as a PDF or a PNG, JPEG, GIF or WebP image — one file per report, any instrument, any report type</div>
+        <div className="secondary">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one file per report, any instrument, any report type</div>
         <input
           type="file"
           accept={ACCEPTED_TYPES.join(',')}

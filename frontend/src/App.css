@@ -1936,6 +1936,17 @@ textarea {
   margin-left: 8px;
 }
 
+/* The institution sits under the instrument's name, smaller and muted. */
+.instrument-institution {
+  display: block;
+}
+.chart-note {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+
 /* ---------- Phones and small tablets (Galaxy A55, iPad mini) ---------- */
 
 /* Long values wrap inside their column instead of running into the next one. */

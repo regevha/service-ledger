@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.db import get_db
 from app.services.duplicates import find_saved_duplicates
-from app.services import report_search
+from app.services import report_filters, report_search
 from app.services.pdf_report import render_report_pdf
 from app.services.report_deletion import count_in_flight_jobs, remove_report_files
 
@@ -25,7 +25,7 @@ def _search_text_param(q: str | None) -> str | None:
     """The free-text query, trimmed; None when blank. Too short or too long is
     a 422 with a message the screen can show."""
     try:
-        return report_search.normalize_query(q)
+        return report_filters.normalized_search_text(q)
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
 
@@ -47,26 +47,16 @@ def _filtered_reports_query(
     remembering to edit both call sites identically. `technician` is a
     case-insensitive partial match (ILIKE), not equality like the other
     filters — see search_reports' docstring for why."""
-    query = db.query(models.Report)
-    if instrument_id:
-        query = query.filter(models.Report.instrument_id == instrument_id)
-    if report_type:
-        query = query.join(models.ReportTemplate).filter(models.ReportTemplate.report_type == report_type)
-    if date_from:
-        query = query.filter(models.Report.report_date >= date_from)
-    if date_to:
-        query = query.filter(models.Report.report_date <= date_to)
-    if status:
-        query = query.filter(models.Report.status == status)
-    if technician:
-        query = query.filter(models.Report.technician_name.ilike(f"%{technician}%"))
-    if q:
-        # Free-text search covers finalized reports only (services/
-        # report_search.py). Combined with a status filter other than
-        # "finalized" this is simply empty — the caller says why.
-        match, _rank = report_search.match_expressions(q)
-        query = query.filter(report_search.finalized_only(), match)
-    return query
+    return report_filters.apply_report_filters(
+        db.query(models.Report),
+        instrument_id=instrument_id,
+        report_type=report_type,
+        date_from=date_from,
+        date_to=date_to,
+        status=status,
+        technician=technician,
+        q=q,
+    )
 
 
 def _list_item(r: models.Report) -> schemas.ReportListItemOut:

@@ -171,8 +171,10 @@ test.describe('analytics bars', () => {
     await expect(list.locator('li')).toHaveCount(3);
     await expect(list).toContainText('Sheath filter');
     await expect(list).toContainText('1 unit · 1 report');
-    // The parts section has no bars; other charts still do.
-    await expect(page.locator('.bar-chart .bar-track')).toHaveCount(5); // 3 instruments + 2 fault categories
+    // The parts section has no bars; the fault categories still do, and so do the instrument charts.
+    const faults = page.locator('.chart-section', { hasText: 'Labor hours by fault category' });
+    await expect(faults.locator('.bar-track')).toHaveCount(2);
+    await expect(page.locator('[data-testid="labor-chart"] .labor-bar')).toHaveCount(3);
   });
 
   test('a single part still gets a bar', async ({ page }) => {

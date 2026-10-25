@@ -99,7 +99,7 @@ test('the filters narrow the whole Analytics page and can be cleared', async ({ 
   await filters.getByLabel('Report type').selectOption({ label: 'Malfunction / repair' });
   await expect(part(repairPart)).toBeVisible();
   await expect(part(pmPart)).toHaveCount(0);
-  await expect(page.locator('.bar-row', { hasText: 'FACSAria III' }).first()).toBeVisible();
+  await expect(page.locator('.labor-bar', { hasText: 'FACSAria III' }).first()).toBeVisible();
 
   // Dates the wrong way round are explained instead of sent to the server.
   await filters.getByLabel('From date').fill('2002-01-01');
@@ -150,7 +150,7 @@ test('the manufacturer filter limits the page to that maker and the instrument l
   // Only that maker's units are listed in the labor-by-instrument chart...
   await expect(page.getByTestId('analytics-basis')).toContainText('matching the filters');
   const section = page.locator('.chart-section', { hasText: 'Labor hours by instrument' });
-  await expect(section.locator('.bar-row')).toHaveCount(ofMaker.length);
+  await expect(section.locator('.labor-bar')).toHaveCount(ofMaker.length);
   // ...and in the instrument dropdown (plus its "All" entry).
   await expect(filters.getByLabel('Instrument').locator('option')).toHaveCount(ofMaker.length + 1);
 

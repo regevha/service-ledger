@@ -5,18 +5,13 @@ import {
   type Instrument,
   type ReportFilters,
   type ReportListItem,
-  type ReportStatus,
-  type ReportType,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { InstrumentDetailScreen } from './InstrumentDetailScreen';
 import { ReportDetailScreen } from './ReportDetailScreen';
-import { DateInput } from './DateInput';
-import { SavedFilters } from './SavedFilters';
+import { ReportFilterBar } from './ReportFilterBar';
 import { defaultOrder, nextSort, SORT_LABEL, sortReports, type SortKey, type SortState } from '../reportSort';
-
-const STATUS_OPTIONS: ReportStatus[] = ['draft', 'classified', 'extracted', 'in_review', 'finalized'];
 
 // The reports list, one report's detail, and one instrument's detail are
 // three screens sharing this one tab — a small nav stack (rather than three
@@ -38,7 +33,6 @@ function screenPath(screen: ReportsScreen): string {
 }
 
 // Free-text search needs at least this many characters (the backend refuses less).
-const MIN_SEARCH_LENGTH = 2;
 
 /** An upload that was never classified: it has no instrument or type to show yet. */
 function isUnread(r: ReportListItem): boolean {
@@ -59,13 +53,6 @@ export function ReportsListScreen({
   onPath?: (path: string) => void;
 }) {
   const [filters, setFilters] = useState<ReportFilters>({});
-  // Lab manager is free text (§4: typed at intake, not a dropdown), so it gets
-  // its own local state that updates on every keystroke for a responsive
-  // input, debounced into `filters` — the actual fetch trigger below — so
-  // "Jane Smith" doesn't fire nine separate /reports requests as it's typed.
-  const [technicianInput, setTechnicianInput] = useState(filters.technician ?? '');
-  // Free-text search: same debounce idea, and only sent once it is long enough.
-  const [searchInput, setSearchInput] = useState(filters.q ?? '');
   const [items, setItems] = useState<ReportListItem[]>([]);
   // Column the table is sorted by (null: the server's order). Sorting is done here, on the rows already loaded.
   const [sort, setSort] = useState<SortState | null>(null);
@@ -78,21 +65,6 @@ export function ReportsListScreen({
   // pre-save one. InstrumentDetailScreen needs nothing extra: it's unmounted
   // while a report is open and fetches fresh when it mounts again.
   const [refreshNonce, setRefreshNonce] = useState(0);
-
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      setFilters((f) => ({ ...f, technician: technicianInput || undefined }));
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [technicianInput]);
-
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      const q = searchInput.trim();
-      setFilters((f) => ({ ...f, q: q.length >= MIN_SEARCH_LENGTH ? q : undefined }));
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [searchInput]);
 
   const { loading, error } = useAsyncEffect(
     async (isCancelled) => {
@@ -177,19 +149,9 @@ export function ReportsListScreen({
     );
   }
 
-  const hasFilters = Boolean(
-    filters.instrument_id ||
-      filters.report_type ||
-      filters.status ||
-      filters.date_from ||
-      filters.date_to ||
-      filters.technician ||
-      filters.q
-  );
   const searching = Boolean(filters.q);
   // Best match first only means something for a search; otherwise the newest report leads.
   const shown = sort || searching ? sortReports(items, sort) : defaultOrder(items);
-  const searchTooShort = searchInput.trim().length > 0 && searchInput.trim().length < MIN_SEARCH_LENGTH;
   // Search covers finalized reports only, so another status filter can only be empty.
   const statusBlocksSearch = searching && Boolean(filters.status) && filters.status !== 'finalized';
 
@@ -197,115 +159,21 @@ export function ReportsListScreen({
     <div className="section">
       <div className="section-title">Reports</div>
 
-      <SavedFilters
+      <ReportFilterBar
         filters={filters}
-        onApply={(applied) => {
-          setFilters(applied);
-          setTechnicianInput(applied.technician ?? '');
-          // A saved search refills the search box too (and an empty one clears it).
-          setSearchInput(applied.q ?? '');
-        }}
-      />
-
-      <div className="filter-row">
-        <span className="search-box">
-          <input
-            type="search"
-            aria-label="Search reports"
-            placeholder="Search report text…"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            title='Finds finalized reports containing all the words. Use "quotes" for an exact phrase and a minus sign to leave a word out. Numbers are not searched.'
-          />
-          {searchInput && (
-            <button type="button" className="btn small" aria-label="Clear search" onClick={() => setSearchInput('')}>
-              ×
+        setFilters={setFilters}
+        instruments={instruments}
+        extra={
+          filters.instrument_id && (
+            <button
+              className="btn small"
+              onClick={() => setScreen({ kind: 'instrument', instrumentId: filters.instrument_id! })}
+            >
+              View instrument details →
             </button>
-          )}
-        </span>
-
-        <select
-          value={filters.instrument_id ?? ''}
-          onChange={(e) => setFilters((f) => ({ ...f, instrument_id: e.target.value || undefined }))}
-        >
-          <option value="">All instruments</option>
-          {instruments.map((inst) => (
-            <option key={inst.id} value={inst.id}>
-              {inst.model} ({inst.serial_number})
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={filters.report_type ?? ''}
-          onChange={(e) =>
-            setFilters((f) => ({ ...f, report_type: (e.target.value || undefined) as ReportType | undefined }))
-          }
-        >
-          <option value="">All report types</option>
-          {(Object.keys(REPORT_TYPE_LABEL) as ReportType[]).map((rt) => (
-            <option key={rt} value={rt}>
-              {REPORT_TYPE_LABEL[rt]}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={filters.status ?? ''}
-          onChange={(e) => setFilters((f) => ({ ...f, status: (e.target.value || undefined) as ReportStatus | undefined }))}
-        >
-          <option value="">All statuses</option>
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABEL[s]}
-            </option>
-          ))}
-        </select>
-
-        <DateInput
-          ariaLabel="From date"
-          value={filters.date_from ?? ''}
-          onChange={(v) => setFilters((f) => ({ ...f, date_from: v || undefined }))}
-        />
-        <span className="filter-sep">to</span>
-        <DateInput
-          ariaLabel="To date"
-          value={filters.date_to ?? ''}
-          onChange={(v) => setFilters((f) => ({ ...f, date_to: v || undefined }))}
-        />
-
-        <input
-          type="text"
-          aria-label="Lab manager"
-          placeholder="Lab manager"
-          value={technicianInput}
-          onChange={(e) => setTechnicianInput(e.target.value)}
-        />
-
-        {filters.instrument_id && (
-          <button
-            className="btn small"
-            onClick={() => setScreen({ kind: 'instrument', instrumentId: filters.instrument_id! })}
-          >
-            View instrument details →
-          </button>
-        )}
-
-        {hasFilters && (
-          <button
-            className="btn small"
-            onClick={() => {
-              setFilters({});
-              setTechnicianInput('');
-              setSearchInput('');
-            }}
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
-
-      {searchTooShort && <div className="muted search-hint">Type at least {MIN_SEARCH_LENGTH} characters to search.</div>}
+          )
+        }
+      />
       {error && <div className="banner banner-warn">{error}</div>}
 
       {loading ? (

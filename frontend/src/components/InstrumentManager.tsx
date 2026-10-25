@@ -48,6 +48,7 @@ function InstrumentFormScreen({
   const [model, setModel] = useState(existing?.model ?? '');
   const [manufacturer, setManufacturer] = useState(existing?.manufacturer ?? '');
   const [distributor, setDistributor] = useState(existing?.distributor ?? '');
+  const [institution, setInstitution] = useState(existing?.institution ?? '');
   const [serialNumber, setSerialNumber] = useState(existing?.serial_number ?? '');
   const [location, setLocation] = useState(existing?.location ?? '');
   const [status, setStatus] = useState<InstrumentStatus>(existing?.status ?? 'active');
@@ -87,6 +88,7 @@ function InstrumentFormScreen({
           model: model.trim(),
           manufacturer: manufacturer.trim() || null,
           distributor: distributor.trim() || null,
+          institution: institution.trim() || null,
           serial_number: serialNumber.trim(),
           location: trimmedLocation,
           status,
@@ -98,6 +100,7 @@ function InstrumentFormScreen({
           instrument_type: typeKey,
           manufacturer: manufacturer.trim(),
           distributor: distributor.trim() || null,
+          institution: institution.trim() || null,
           serial_number: serialNumber.trim(),
           location: trimmedLocation,
         });
@@ -219,6 +222,16 @@ function InstrumentFormScreen({
             placeholder="e.g. Core Lab"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
+          />
+        </label>
+        <label className="schema-form-label">
+          Institution
+          <input
+            type="text"
+            className="text-input"
+            placeholder="e.g. Bar-Ilan University (optional)"
+            value={institution}
+            onChange={(e) => setInstitution(e.target.value)}
           />
         </label>
         <label className="schema-form-label">
@@ -406,7 +419,10 @@ export function InstrumentManagerScreen({
           </div>
           {instruments.map((inst) => (
             <div className="instrument-row template-row-body" key={inst.id}>
-              <span data-label="Name">{inst.name}</span>
+              <span data-label="Name">
+                {inst.name}
+                {inst.institution && <small className="muted instrument-institution">{inst.institution}</small>}
+              </span>
               <span data-label="Manufacturer">{inst.manufacturer ?? '—'}</span>
               <span data-label="Distributor">{inst.distributor ?? '—'}</span>
               <span data-label="Model">

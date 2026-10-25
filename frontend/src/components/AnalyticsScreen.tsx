@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import {
   getFleetAnalytics,
   listInstruments,
@@ -7,11 +7,13 @@ import {
   type Instrument,
   type InstrumentRollup,
   type PartUsage,
-  type ReportType,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
-import { DateInput } from './DateInput';
+import { BarRow } from './BarRow';
+import { LaborHoursChart } from './LaborHoursChart';
+import { ReportsPerInstrumentChart, ReportsPerModelChart } from './ReportCountCharts';
+import { ReportFilterBar } from './ReportFilterBar';
 import { ModelComparisonSection } from './ModelComparison';
 
 /**
@@ -32,28 +34,6 @@ const TOP_PARTS_LIMIT = 8;
 
 function formatHours(hours: number): string {
   return `${hours % 1 === 0 ? hours : hours.toFixed(1)}h`;
-}
-
-function BarRow({ label, sublabel, value, maxValue, formattedValue }: {
-  label: string;
-  sublabel?: string;
-  value: number;
-  maxValue: number;
-  formattedValue: string;
-}) {
-  const pct = maxValue > 0 ? Math.max((value / maxValue) * 100, value > 0 ? 2 : 0) : 0;
-  return (
-    <div className="bar-row">
-      <div className="bar-row-label">
-        <span className="bar-label">{label}</span>
-        {sublabel && <span className="bar-sublabel">{sublabel}</span>}
-      </div>
-      <div className="bar-track" title={`${label}: ${formattedValue}`}>
-        <div className="bar-fill" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="bar-value">{formattedValue}</span>
-    </div>
-  );
 }
 
 /** True when there are several rows and they all have the same value: bars would be identical. */
@@ -119,23 +99,26 @@ function PartsChart({ parts }: { parts: PartUsage[] }) {
   );
 }
 
-function LaborHoursByInstrumentChart({ rows }: { rows: InstrumentRollup[] }) {
-  const maxHours = Math.max(...rows.map((r) => r.total_labor_hours), 0);
+function LaborHoursByInstrumentChart({ rows, withoutHours }: { rows: InstrumentRollup[]; withoutHours: number }) {
+  const anyHours = rows.some((r) => r.total_labor_hours > 0);
   return (
-    <div className="bar-chart">
-      {rows.map((r) => (
-        <BarRow
-          key={r.instrument_id}
-          label={r.model}
-          sublabel={r.serial_number}
-          value={r.total_labor_hours}
-          maxValue={maxHours}
-          formattedValue={
-            r.report_count === 0 ? 'No repair/PM reports yet' : `${formatHours(r.total_labor_hours)} · ${r.report_count} report${r.report_count === 1 ? '' : 's'}`
-          }
-        />
-      ))}
-    </div>
+    <>
+      <p className="chart-note">
+        Hours recorded on repair and preventive maintenance reports, added up per instrument.
+      </p>
+      {!anyHours && (
+        <div className="empty-hint">
+          No hours to show yet. A column appears once a report has a number in its labor field.
+        </div>
+      )}
+      <LaborHoursChart rows={rows} />
+      {withoutHours > 0 && (
+        <p className="chart-note">
+          {withoutHours} repair or preventive maintenance report{withoutHours === 1 ? ' was' : 's were'} not counted:
+          no number in the labor field, or no instrument on the report.
+        </p>
+      )}
+    </>
   );
 }
 
@@ -218,82 +201,46 @@ function PassFailSection({ byReportType }: { byReportType: FleetAnalytics['pass_
   );
 }
 
-function FilterBar({ filters, instruments, onChange }: {
+function FilterBar({ filters, setFilters, instruments }: {
   filters: AnalyticsFilters;
+  setFilters: Dispatch<SetStateAction<AnalyticsFilters>>;
   instruments: Instrument[];
-  onChange: (next: AnalyticsFilters) => void;
 }) {
-  const active = Object.values(filters).some(Boolean);
   const manufacturers = Array.from(
     new Set(instruments.map((i) => i.manufacturer?.trim()).filter((m): m is string => Boolean(m)))
   ).sort((a, b) => a.localeCompare(b));
+  // The same bar as the Reports tab (ReportFilterBar), plus the maker, which only Analytics has.
   return (
-    <div className="filter-row" data-testid="analytics-filters">
-      <select
-        aria-label="Manufacturer"
-        value={filters.manufacturer ?? ''}
-        onChange={(e) => {
-          const manufacturer = e.target.value || undefined;
-          // Drop a chosen instrument that is not from this maker, so the two never contradict.
-          const kept = instruments.find((i) => i.id === filters.instrument_id);
-          const clash = manufacturer && kept && (kept.manufacturer?.trim() ?? '') !== manufacturer;
-          onChange({ ...filters, manufacturer, instrument_id: clash ? undefined : filters.instrument_id });
-        }}
-      >
-        <option value="">All manufacturers</option>
-        {manufacturers.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
-      </select>
-
-      <select
-        aria-label="Instrument"
-        value={filters.instrument_id ?? ''}
-        onChange={(e) => onChange({ ...filters, instrument_id: e.target.value || undefined })}
-      >
-        <option value="">All instruments</option>
-        {instruments
-          .filter((inst) => !filters.manufacturer || (inst.manufacturer?.trim() ?? '') === filters.manufacturer)
-          .map((inst) => (
-          <option key={inst.id} value={inst.id}>
-            {inst.model} ({inst.serial_number})
-          </option>
-        ))}
-      </select>
-
-      <select
-        aria-label="Report type"
-        value={filters.report_type ?? ''}
-        onChange={(e) => onChange({ ...filters, report_type: (e.target.value || undefined) as ReportType | undefined })}
-      >
-        <option value="">All report types</option>
-        {(Object.keys(REPORT_TYPE_LABEL) as ReportType[]).map((rt) => (
-          <option key={rt} value={rt}>
-            {REPORT_TYPE_LABEL[rt]}
-          </option>
-        ))}
-      </select>
-
-      <DateInput
-        ariaLabel="From date"
-        value={filters.date_from ?? ''}
-        onChange={(v) => onChange({ ...filters, date_from: v || undefined })}
-      />
-      <span className="filter-sep">to</span>
-      <DateInput
-        ariaLabel="To date"
-        value={filters.date_to ?? ''}
-        onChange={(v) => onChange({ ...filters, date_to: v || undefined })}
-      />
-
-      {active && (
-        <button type="button" className="btn small" onClick={() => onChange({})}>
-          Clear filters
-        </button>
-      )}
-    </div>
+    <ReportFilterBar
+      testId="analytics-filters"
+      analytics
+      filters={filters}
+      setFilters={setFilters}
+      instruments={instruments}
+      instrumentFilter={(inst) => !filters.manufacturer || (inst.manufacturer?.trim() ?? '') === filters.manufacturer}
+      leading={
+        <select
+          aria-label="Manufacturer"
+          value={filters.manufacturer ?? ''}
+          onChange={(e) => {
+            const manufacturer = e.target.value || undefined;
+            // Drop a chosen instrument that is not from this maker, so the two never contradict.
+            setFilters((f) => {
+              const kept = instruments.find((i) => i.id === f.instrument_id);
+              const clash = manufacturer && kept && (kept.manufacturer?.trim() ?? '') !== manufacturer;
+              return { ...f, manufacturer, instrument_id: clash ? undefined : f.instrument_id };
+            });
+          }}
+        >
+          <option value="">All manufacturers</option>
+          {manufacturers.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+      }
+    />
   );
 }
 
@@ -329,7 +276,7 @@ export function AnalyticsScreen() {
     'Could not load fleet analytics.'
   );
 
-  const filterBar = <FilterBar filters={filters} instruments={instruments} onChange={setFilters} />;
+  const filterBar = <FilterBar filters={filters} setFilters={setFilters} instruments={instruments} />;
 
   if (backwards) {
     return (
@@ -406,7 +353,20 @@ export function AnalyticsScreen() {
 
       <div className="chart-section">
         <div className="chart-title">Labor hours by instrument</div>
-        <LaborHoursByInstrumentChart rows={data.labor_hours_by_instrument} />
+        <LaborHoursByInstrumentChart
+          rows={data.labor_hours_by_instrument}
+          withoutHours={data.reports_without_labor_hours ?? 0}
+        />
+      </div>
+
+      <div className="chart-section">
+        <div className="chart-title">{filters.status ? 'Reports' : 'Finalized reports'} per instrument</div>
+        <ReportsPerInstrumentChart rows={data.report_counts_by_instrument ?? []} />
+      </div>
+
+      <div className="chart-section">
+        <div className="chart-title">{filters.status ? 'Reports' : 'Finalized reports'} per instrument model</div>
+        <ReportsPerModelChart rows={data.report_counts_by_model ?? []} />
       </div>
 
       <div className="chart-section">
