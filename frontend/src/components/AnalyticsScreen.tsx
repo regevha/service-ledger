@@ -7,7 +7,6 @@ import {
   type Instrument,
   type InstrumentRollup,
   type PartUsage,
-  type ReportType,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
@@ -218,6 +217,7 @@ function FilterBar({ filters, setFilters, instruments }: {
       filters={filters}
       setFilters={setFilters}
       instruments={instruments}
+      summaryExtra={filters.manufacturer ? [filters.manufacturer] : []}
       instrumentFilter={(inst) => !filters.manufacturer || (inst.manufacturer?.trim() ?? '') === filters.manufacturer}
       leading={
         <select
