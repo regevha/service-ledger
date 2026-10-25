@@ -11,6 +11,7 @@ import {
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
+import { BarRow } from './BarRow';
 import { LaborHoursChart } from './LaborHoursChart';
 import { ReportsPerInstrumentChart, ReportsPerModelChart } from './ReportCountCharts';
 import { ReportFilterBar } from './ReportFilterBar';
@@ -34,28 +35,6 @@ const TOP_PARTS_LIMIT = 8;
 
 function formatHours(hours: number): string {
   return `${hours % 1 === 0 ? hours : hours.toFixed(1)}h`;
-}
-
-function BarRow({ label, sublabel, value, maxValue, formattedValue }: {
-  label: string;
-  sublabel?: string;
-  value: number;
-  maxValue: number;
-  formattedValue: string;
-}) {
-  const pct = maxValue > 0 ? Math.max((value / maxValue) * 100, value > 0 ? 2 : 0) : 0;
-  return (
-    <div className="bar-row">
-      <div className="bar-row-label">
-        <span className="bar-label">{label}</span>
-        {sublabel && <span className="bar-sublabel">{sublabel}</span>}
-      </div>
-      <div className="bar-track" title={`${label}: ${formattedValue}`}>
-        <div className="bar-fill" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="bar-value">{formattedValue}</span>
-    </div>
-  );
 }
 
 /** True when there are several rows and they all have the same value: bars would be identical. */

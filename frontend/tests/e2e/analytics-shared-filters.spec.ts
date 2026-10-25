@@ -45,11 +45,11 @@ test('Analytics: lab manager, search and status narrow the numbers', async ({ pa
   await expect(basis).toContainText('matching the filters');
 });
 
-test('Analytics shows reports per instrument and per instrument model as column charts', async ({ page }) => {
+test('Analytics shows reports per instrument and per instrument model as horizontal bar charts', async ({ page }) => {
   await page.goto('/#/analytics');
   const perInstrument = page.locator('.chart-section', { hasText: 'Finalized reports per instrument' }).first();
   await expect(page.getByTestId('reports-per-instrument-chart')).toBeVisible({ timeout: 15_000 });
-  // One column per instrument (the seeded fleet has at least five), none of them cut off the page.
+  // One horizontal bar per instrument (the seeded fleet has at least five).
   expect(await page.locator('[data-testid="reports-per-instrument-chart"] .count-bar').count()).toBeGreaterThanOrEqual(5);
   await expect(page.getByTestId('reports-per-model-chart')).toBeVisible();
   await expect(page.locator('.chart-title', { hasText: 'Finalized reports per instrument model' })).toBeVisible();

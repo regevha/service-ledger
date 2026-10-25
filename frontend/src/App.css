@@ -1946,38 +1946,3 @@ textarea {
   color: var(--text-muted);
 }
 
-/* The hours-per-instrument column chart. */
-.labor-chart-wrap {
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-.labor-chart-wrap svg {
-  display: block;
-}
-.labor-bar-fill {
-  fill: var(--accent);
-}
-.column-bar:hover .labor-bar-fill {
-  opacity: 0.85;
-}
-.labor-bar-value {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  fill: var(--text);
-}
-.labor-bar-none {
-  font-size: 10px;
-  fill: var(--text-faint);
-}
-.labor-bar-name {
-  font-family: var(--font-ui);
-  font-size: 11.5px;
-  font-weight: 600;
-  fill: var(--text);
-}
-.labor-bar-sub {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  fill: var(--text-faint);
-}
