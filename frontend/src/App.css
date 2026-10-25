@@ -1957,7 +1957,7 @@ textarea {
 .labor-bar-fill {
   fill: var(--accent);
 }
-.labor-bar:hover .labor-bar-fill {
+.column-bar:hover .labor-bar-fill {
   opacity: 0.85;
 }
 .labor-bar-value {

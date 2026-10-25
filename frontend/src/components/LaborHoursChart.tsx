@@ -12,6 +12,7 @@ export function LaborHoursChart({ rows }: { rows: InstrumentRollup[] }) {
   return (
     <ColumnChart
       testId="labor-chart"
+      barClass="labor-bar"
       ariaLabel={`Work hours per instrument: ${sorted.map((r) => `${r.name} ${hoursText(r.total_labor_hours)}`).join(', ')}`}
       format={hoursText}
       items={sorted.map((r) => ({
