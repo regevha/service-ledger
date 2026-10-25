@@ -92,6 +92,9 @@ test.describe('scan beside the fields', () => {
     await expect(scan.locator('iframe')).toHaveAttribute('src', /\/attachments\/.+\/file\?inline=1/);
     const [scanBox, listBox] = await Promise.all([scan.boundingBox(), page.locator('.field-list').boundingBox()]);
     expect(scanBox!.x + scanBox!.width).toBeLessThanOrEqual(listBox!.x);
+    // The scan takes the left half: it is as wide as the fields column (within a pixel or two).
+    const fieldsBox = await page.locator('.review-fields').boundingBox();
+    expect(Math.abs(scanBox!.width - fieldsBox!.width)).toBeLessThanOrEqual(2);
 
     await page.click('button:has-text("Hide scan")');
     await expect(scan).toHaveCount(0);
@@ -107,7 +110,7 @@ test.describe('scan beside the fields', () => {
   test('narrow screen: no scan pane, just the link', async ({ page, request }) => {
     const marker = `E2E-ScanNarrow-${Date.now()}`;
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker });
-    await page.setViewportSize({ width: 900, height: 900 });
+    await page.setViewportSize({ width: 800, height: 900 });
     await openFromList(page, marker);
     await expect(page.locator('.review-scan')).toHaveCount(0);
     await expect(page.locator('a:has-text("View original scan")')).toBeVisible();
@@ -166,8 +169,8 @@ test('a finalized report is read-only until Edit, and locks again after saving',
 });
 
 test('the banner lines up with the fields instead of being inset twice', async ({ page }) => {
-  // Below 1100px the scan pane is gone and the fields use the full width, so the two edges compare directly.
-  await page.setViewportSize({ width: 900, height: 900 });
+  // Below 900px the scan pane is gone and the fields use the full width, so the two edges compare directly.
+  await page.setViewportSize({ width: 800, height: 900 });
   await page.goto('/');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
   await page.click('button:has-text("Upload & classify")');
