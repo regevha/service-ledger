@@ -2455,7 +2455,8 @@ textarea {
   .detail-nav-links > .back-link {
     order: 1;
   }
-  .detail-nav-row > .btn.danger {
+  .detail-nav-row > .btn.danger,
+  .detail-nav-row > .row-menu {
     order: 2;
     margin-left: auto;
   }

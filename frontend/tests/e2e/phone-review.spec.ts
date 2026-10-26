@@ -92,10 +92,10 @@ test.describe('on a phone', () => {
     }
   });
 
-  test('a saved report: Back and Delete share a row, View instrument is below, the heading says what it is', async ({ page, request }) => {
+  test('a saved report: Back and the ⋯ menu share a row, View instrument is below, the heading says what it is', async ({ page, request }) => {
     const { reportId, instrumentName } = await seedFinalized(request, `E2E-Phone-Head-${Date.now()}`);
     await page.goto(`/#/reports/${reportId}`);
-    const del = page.locator('.detail-nav-row button:has-text("Delete report")');
+    const del = page.locator('.detail-nav-row').getByRole('button', { name: 'Report actions' });
     await expect(del).toBeVisible({ timeout: 15_000 });
     const [back, delBox, view] = await Promise.all([
       page.locator('.detail-nav-row .back-link').boundingBox(),
