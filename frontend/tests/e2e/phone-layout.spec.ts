@@ -133,8 +133,13 @@ test.describe('the instrument page on a phone', () => {
     await openInstrument(page, instrumentId);
     const tile = page.locator('.stat-tile', { hasText: 'Most recent activity' }).locator('.stat-value');
     await expect(tile).toContainText('2026-10-25');
-    const height = (await tile.boundingBox())!.height;
-    expect(height).toBeLessThan(30);
+    // One line, whatever the font: all the text's pieces share the same top edge.
+    const lines = await tile.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+    });
+    expect(lines).toBe(1);
   });
 });
 
