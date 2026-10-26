@@ -13,3 +13,5 @@ httpx==0.28.1
 anthropic==1.13.0
 reportlab==5.0.1
 pypdf==6.20.1  # reads the text layer of uploaded PDFs (services/text_reader.py); tests also use it to verify generated PDFs
+pypdfium2==5.14.0  # renders PDF pages to PNG for the phone's scan view (routers/attachments.py); Android Chrome cannot show a PDF in an <iframe>
+Pillow==13.0.0  # PNG encoding for those page renders (also a reportlab dependency)

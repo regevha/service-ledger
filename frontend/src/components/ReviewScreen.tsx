@@ -3,6 +3,7 @@ import { ConfidenceBadge } from './ConfidenceBadge';
 import { DateInput } from './DateInput';
 import { Notice } from './Notice';
 import { FieldControl } from './FieldEditor';
+import { ScanPages } from './ScanPages';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -52,8 +53,10 @@ export function ReviewScreen({
   originalScanUrl,
   pdfUrl,
   scanInlineUrl,
+  scanAttachmentId,
   readOnly = false,
   onEdit,
+  linksInMenu = false,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
@@ -95,9 +98,13 @@ export function ReviewScreen({
   // The same scan, for showing beside the fields on a wide screen (the attachment's inline URL).
   // Undefined (or a narrow screen) falls back to the "View original scan" link alone.
   scanInlineUrl?: string;
+  // The scan's attachment id, for the phone's Fields | Scan switch (page images).
+  scanAttachmentId?: string;
   // A finalized report opens read-only: its fields can't be typed into until Edit is pressed.
   readOnly?: boolean;
   onEdit?: () => void;
+  // On a phone the report screen's "⋯" menu carries these two links instead.
+  linksInMenu?: boolean;
 }) {
   const isFlagged = (name: string) => {
     const confidence = fieldConfidences[name];
@@ -116,6 +123,9 @@ export function ReviewScreen({
   const wide = useMediaQuery('(min-width: 900px)');
   const [scanOpen, setScanOpen] = useState(readScanPref);
   const showScan = Boolean(scanInlineUrl) && wide && scanOpen;
+  const phone = useMediaQuery('(max-width: 620px)');
+  const [phoneView, setPhoneView] = useState<'fields' | 'scan'>('fields');
+  const phoneScan = phone && Boolean(scanAttachmentId);
 
   // "Next ↓" walks the fields that need attention, one press at a time, wrapping round.
   const listRef = useRef<HTMLDivElement>(null);
@@ -149,12 +159,12 @@ export function ReviewScreen({
               {scanOpen ? 'Hide scan' : 'Show scan'}
             </button>
           )}
-          {originalScanUrl && (
+          {originalScanUrl && !(linksInMenu && phone) && (
             <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
               View original scan
             </a>
           )}
-          {pdfUrl && (
+          {pdfUrl && !(linksInMenu && phone) && (
             <a className="btn small" href={pdfUrl}>
               Download PDF
             </a>
@@ -169,7 +179,25 @@ export function ReviewScreen({
         </Notice>
       )}
 
-      <div className={`review-split${showScan ? ' with-scan' : ''}`}>
+      {phoneScan && (
+        <div className="view-switch" role="tablist" aria-label="Show fields or scan">
+          {(['fields', 'scan'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="tab"
+              aria-selected={phoneView === v}
+              className={`view-switch-button${phoneView === v ? ' active' : ''}`}
+              onClick={() => setPhoneView(v)}
+            >
+              {v === 'fields' ? 'Fields' : 'Scan'}
+            </button>
+          ))}
+        </div>
+      )}
+      {phoneScan && phoneView === 'scan' && scanAttachmentId && <ScanPages attachmentId={scanAttachmentId} />}
+
+      <div className={`review-split${showScan ? ' with-scan' : ''}`} hidden={phoneScan && phoneView === 'scan'}>
         {showScan && (
           <aside className="review-scan" aria-label="Original scan">
             <iframe src={`${scanInlineUrl}#view=FitH`} title="Original scan" />

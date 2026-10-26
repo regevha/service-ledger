@@ -1026,6 +1026,7 @@ export function IntakeFlow({
           onFinalize={() => void handleSaveFields(true)}
           originalScanUrl={attachmentId ? attachmentFileUrl(attachmentId) : undefined}
           scanInlineUrl={attachmentId ? attachmentFileUrl(attachmentId, { inline: true }) : undefined}
+          scanAttachmentId={attachmentId ?? undefined}
           pdfUrl={report ? reportPdfUrl(report.id) : undefined}
         />
       )}
