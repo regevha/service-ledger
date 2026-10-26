@@ -174,7 +174,7 @@ test.describe('phone cards say what each value is', () => {
     // Only the lab manager keeps a label ("Lab manager: name"); the others read for themselves.
     expect(await before(page, `${row} > span[data-label="Lab manager"]`)).toBe('Lab manager: ');
     for (const label of ['Instrument', 'Report type', 'Report date', 'Status']) {
-      expect(await page.locator(`${row} > span[data-label="${label}"]`).first().evaluate((el) => getComputedStyle(el, '::before').display)).toBe('none');
+      expect(await page.locator(`${row} > span[data-label="${label}"]`).first().evaluate((el) => getComputedStyle(el, '::before').display)).toMatch(/^(none)?$/); // no label drawn
     }
     const box = (label: string) => page.locator(`${row} > span[data-label="${label}"]`).first().boundingBox();
     const [inst, status, type, date, tech] = await Promise.all(

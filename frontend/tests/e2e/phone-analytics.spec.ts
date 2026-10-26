@@ -27,9 +27,13 @@ test.describe('on a phone', () => {
     await expect(toggles.nth(1)).toHaveAttribute('aria-expanded', 'false');
     expect((await second.boundingBox())!.height).toBeLessThan(60);
 
-    // The whole page is much shorter than the one long scroll it replaces.
-    const total = await page.evaluate(() => document.documentElement.scrollHeight);
-    expect(total).toBeLessThan(2200);
+    // The page is much shorter than the one long scroll it replaces: opening every section makes it clearly longer.
+    // (Compared with itself, not a fixed height, since the filters above vary with the data in the database.)
+    const folded = await page.evaluate(() => document.documentElement.scrollHeight);
+    const count = await toggles.count();
+    for (let i = 1; i < count; i++) await toggles.nth(i).click();
+    const open = await page.evaluate(() => document.documentElement.scrollHeight);
+    expect(open).toBeGreaterThan(folded + 400);
   });
 
   test('every folding heading is a 44px-high button', async ({ page }) => {
