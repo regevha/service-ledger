@@ -166,7 +166,7 @@ export function ReportDetailScreen({
           <button className="btn small back-link" onClick={onBack}>
             ← Back to reports
           </button>
-          {instrument && (
+          {instrument && !phone && (
             <button className="btn small" onClick={() => onViewInstrument(instrument.id)}>
               View instrument: {instrument.model} ({instrument.serial_number}) →
             </button>
@@ -262,7 +262,19 @@ export function ReportDetailScreen({
             report.status === 'extracted' || report.status === 'in_review' ? () => void handleSave(true) : undefined
           }
           title={`${REPORT_TYPE_LABEL[template.report_type]}${instrument ? ` · ${instrument.name}` : ''}`}
-          titleMeta={`${report.report_date ?? 'No report date'} · ${STATUS_LABEL[report.status]}`}
+          titleMeta={
+            <>
+              {`${report.report_date ?? 'No report date'} · ${STATUS_LABEL[report.status]}`}
+              {instrument && phone && (
+                <>
+                  {' · '}
+                  <button type="button" className="link-button" onClick={() => onViewInstrument(instrument.id)}>
+                    {`${instrument.model} (${instrument.serial_number}) →`}
+                  </button>
+                </>
+              )}
+            </>
+          }
           // §4: "one file per report" for MVP, so the first (only) attachment
           // is the original this report's fields came from.
           originalScanUrl={report.attachments[0] ? attachmentFileUrl(report.attachments[0].id) : undefined}

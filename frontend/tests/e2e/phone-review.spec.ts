@@ -92,20 +92,18 @@ test.describe('on a phone', () => {
     }
   });
 
-  test('a saved report: Back and the ⋯ menu share a row, View instrument is below, the heading says what it is', async ({ page, request }) => {
+  test('a saved report: Back and the ⋯ menu share a row, the instrument is a link in the heading, the heading says what it is', async ({ page, request }) => {
     const { reportId, instrumentName } = await seedFinalized(request, `E2E-Phone-Head-${Date.now()}`);
     await page.goto(`/#/reports/${reportId}`);
     const del = page.locator('.detail-nav-row').getByRole('button', { name: 'Report actions' });
     await expect(del).toBeVisible({ timeout: 15_000 });
-    const [back, delBox, view] = await Promise.all([
-      page.locator('.detail-nav-row .back-link').boundingBox(),
-      del.boundingBox(),
-      page.locator('.detail-nav-row button:has-text("View instrument")').boundingBox(),
-    ]);
+    const [back, delBox] = await Promise.all([page.locator('.detail-nav-row .back-link').boundingBox(), del.boundingBox()]);
     expect(Math.abs(back!.y - delBox!.y)).toBeLessThan(3);
-    expect(view!.y).toBeGreaterThan(back!.y + back!.height - 1);
+    // No full-width button any more: the instrument is a link on the line under the heading.
+    await expect(page.locator('.detail-nav-row button:has-text("View instrument")')).toHaveCount(0);
+    await expect(page.locator('.report-heading-meta .link-button')).toBeVisible();
     await expect(page.locator('.report-heading')).toContainText(instrumentName);
-    await expect(page.locator('.report-heading-meta')).toHaveText('2026-09-08 · Finalized');
+    await expect(page.locator('.report-heading-meta')).toContainText('2026-09-08 · Finalized');
   });
 });
 

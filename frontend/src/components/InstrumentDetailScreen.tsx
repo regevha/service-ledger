@@ -67,7 +67,7 @@ export function InstrumentDetailScreen({
         <>
           <div className="instrument-header">
             <div>
-              <div className="section-title">{instrument.name}</div>
+              <div className="section-title report-heading">{instrument.name}</div>
               <div className="instrument-meta">
                 {instrument.manufacturer ? `${instrument.manufacturer} ` : ''}{instrument.model} · S/N {instrument.serial_number}
                 {instrument.institution ? ` · ${instrument.institution}` : ''}
@@ -91,7 +91,7 @@ export function InstrumentDetailScreen({
               </span>
               <span className="stat-label">
                 {mostRecent
-                  ? `Most recent activity — ${mostRecent.report_type ? REPORT_TYPE_LABEL[mostRecent.report_type] : 'report'}`
+                  ? `Most recent activity${mostRecent.report_date ? '' : ' (uploaded)'} — ${mostRecent.report_type ? REPORT_TYPE_LABEL[mostRecent.report_type] : 'report'}`
                   : 'No reports on file yet'}
               </span>
             </div>

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { createContext, useContext, useLayoutEffect, useRef } from 'react';
 import type { ItemSchemaColumn, TemplateField } from '../api';
 import { fieldLabel } from '../fieldLabels';
 import { DateInput } from './DateInput';
@@ -21,7 +21,11 @@ type LeafType = 'text' | 'number' | 'boolean' | 'date';
  * A text box. In a finalized report (read-only) it grows to show all of its text, so a long
  * narrative can be read without pressing Edit; while editing it keeps its normal size.
  */
+/** True inside a finalized report that is not being edited: empty values then read as a dash, not a blank box. */
+export const ReadOnlyContext = createContext(false);
+
 function AutoGrowTextarea({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const readOnly = useContext(ReadOnlyContext);
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -34,7 +38,19 @@ function AutoGrowTextarea({ value, onChange }: { value: string; onChange: (v: st
       el.style.height = '';
     }
   });
-  return <textarea ref={ref} value={value} onChange={(e) => onChange(e.target.value)} />;
+  return <textarea ref={ref} value={value} placeholder={readOnly ? '—' : undefined} onChange={(e) => onChange(e.target.value)} />;
+}
+
+function NumberInput({ value, onChange }: { value: unknown; onChange: (v: unknown) => void }) {
+  const readOnly = useContext(ReadOnlyContext);
+  return (
+    <input
+      type="number"
+      placeholder={readOnly ? '—' : undefined}
+      value={typeof value === 'number' ? value : ''}
+      onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+    />
+  );
 }
 
 function leafInput(value: unknown, type: string, onChange: (v: unknown) => void) {
@@ -47,13 +63,7 @@ function leafInput(value: unknown, type: string, onChange: (v: unknown) => void)
     );
   }
   if (type === 'number') {
-    return (
-      <input
-        type="number"
-        value={typeof value === 'number' ? value : ''}
-        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-      />
-    );
+    return <NumberInput value={value} onChange={onChange} />;
   }
   if (type === 'date') {
     return <DateInput value={typeof value === 'string' ? value : ''} onChange={onChange} />;
@@ -222,6 +232,11 @@ function NumberMapInput({ value, onChange }: { value: Record<string, number>; on
   );
 }
 
+function TextInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const readOnly = useContext(ReadOnlyContext);
+  return <input type="text" value={value} placeholder={readOnly ? '—' : undefined} onChange={(e) => onChange(e.target.value)} />;
+}
+
 export function FieldControl({
   field,
   value,
@@ -265,6 +280,6 @@ export function FieldControl({
     case 'number[laser]':
       return <NumberMapInput value={(value as Record<string, number>) ?? {}} onChange={onChange} />;
     default:
-      return <input type="text" value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} />;
+      return <TextInput value={typeof value === 'string' ? value : ''} onChange={onChange} />;
   }
 }
