@@ -10,6 +10,7 @@ import {
   type InstrumentModel,
   type InstrumentType,
 } from '../api';
+import { ModelPage } from './ModelPage';
 import { RowMenu } from './RowMenu';
 import { showToast } from '../toast';
 
@@ -152,7 +153,7 @@ function ModelForm({
   );
 }
 
-type Mode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; model: InstrumentModel };
+type Mode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; model: InstrumentModel } | { kind: 'page'; model: InstrumentModel };
 type Pending = { kind: 'delete'; model: InstrumentModel } | { kind: 'merge'; model: InstrumentModel; intoId: string };
 
 export function ModelsManager({ onChanged }: { onChanged: () => void }) {
@@ -211,6 +212,16 @@ export function ModelsManager({ onChanged }: { onChanged: () => void }) {
     onChanged();
   }
 
+  if (mode.kind === 'page') {
+    return (
+      <ModelPage
+        modelId={mode.model.id}
+        typeName={typeName}
+        onBack={() => setMode({ kind: 'list' })}
+        onEdit={() => setMode({ kind: 'edit', model: mode.model })}
+      />
+    );
+  }
   if (mode.kind !== 'list') {
     return <ModelForm existing={mode.kind === 'edit' ? mode.model : undefined} types={types} onCancel={() => setMode({ kind: 'list' })} onSaved={afterSave} />;
   }
@@ -302,7 +313,9 @@ export function ModelsManager({ onChanged }: { onChanged: () => void }) {
             return (
               <div className="instrument-row model-row template-row-body" key={m.id}>
                 <span data-label="Model">
-                  <span className="model-name">{m.name}</span>
+                  <button type="button" className="link-button model-name" onClick={() => setMode({ kind: 'page', model: m })}>
+                    {m.name}
+                  </button>
                   {m.similar_to.length > 0 && (
                     <small className="muted model-similar">May be the same as {m.similar_to.map((s) => `“${s}”`).join(', ')}</small>
                   )}

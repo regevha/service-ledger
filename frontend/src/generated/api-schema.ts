@@ -52,7 +52,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get Instrument Model
+         * @description A model's page: the record, each of its instruments with last service
+         *     date and report counts, and its newest reports.
+         */
+        get: operations["get_instrument_model_instrument_models__model_id__get"];
         put?: never;
         post?: never;
         /**
@@ -1273,6 +1278,39 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** InstrumentModelDetailOut */
+        InstrumentModelDetailOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Service Interval Months */
+            service_interval_months: number | null;
+            /** Notes */
+            notes: string | null;
+            /** Unit Count */
+            unit_count: number;
+            /** Template Count */
+            template_count: number;
+            /**
+             * Similar To
+             * @default []
+             */
+            similar_to: string[];
+            /** Units */
+            units: components["schemas"]["InstrumentModelUnitOut"][];
+            /** Reports */
+            reports: components["schemas"]["ReportListItemOut"][];
+            /** Report Total */
+            report_total: number;
+        };
         /** InstrumentModelMerge */
         InstrumentModelMerge: {
             /**
@@ -1316,6 +1354,34 @@ export interface components {
              * @default []
              */
             similar_to: string[];
+        };
+        /**
+         * InstrumentModelUnitOut
+         * @description One instrument on a model's page, with what its reports say.
+         */
+        InstrumentModelUnitOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Serial Number */
+            serial_number: string;
+            status: components["schemas"]["InstrumentStatus"];
+            /** Institution */
+            institution: string | null;
+            /** Location */
+            location: string | null;
+            /** Last Service Date */
+            last_service_date: string | null;
+            /** Report Count */
+            report_count: number;
+            /** Repair Count */
+            repair_count: number;
+            /** Draft Count */
+            draft_count: number;
         };
         /** InstrumentModelUpdate */
         InstrumentModelUpdate: {
@@ -2213,6 +2279,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstrumentModelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_instrument_model_instrument_models__model_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentModelDetailOut"];
                 };
             };
             /** @description Validation Error */
