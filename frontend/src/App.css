@@ -2124,7 +2124,7 @@ textarea {
   gap: 4px;
   margin: 8px 0;
   padding: 4px;
-  background: var(--panel-2, #eef0f3);
+  background: var(--surface-2);
   border-radius: 10px;
 }
 .view-switch-button {
@@ -2138,7 +2138,7 @@ textarea {
   color: inherit;
 }
 .view-switch-button.active {
-  background: var(--panel, #fff);
+  background: var(--surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 .scan-zoom-bar {
@@ -2159,7 +2159,7 @@ textarea {
 .scan-pane {
   overflow: auto;
   max-height: 70vh;
-  border: 1px solid var(--line, #d7dbe0);
+  border: 1px solid var(--border);
   border-radius: 8px;
   touch-action: pan-x pan-y;
   background: #888;
@@ -2263,8 +2263,10 @@ textarea {
   .review-actions {
     bottom: calc(56px + env(safe-area-inset-bottom));
   }
+  /* At the top: the bottom of the screen already holds the save bar and the tab bar. */
   .toast-region {
-    bottom: calc(72px + env(safe-area-inset-bottom));
+    top: calc(12px + env(safe-area-inset-top));
+    bottom: auto;
   }
 }
 
@@ -2356,7 +2358,8 @@ textarea {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       'type status'
-      'date tech';
+      'date date'
+      'tech tech';
     gap: 3px 12px;
     padding: 12px 14px;
   }
@@ -2372,12 +2375,15 @@ textarea {
     grid-area: date;
     color: var(--text-muted);
     font-size: 0.82rem;
+    white-space: nowrap;
   }
   .instrument-report-row-body > span[data-label='Lab manager'] {
     grid-area: tech;
-    justify-self: end;
     color: var(--text-faint);
     font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .instrument-report-row-body > span[data-label]::before {
     display: none;
@@ -2465,4 +2471,19 @@ textarea {
     flex: 1 1 100%;
     justify-content: flex-start;
   }
+}
+
+/* A finalized report reads as text: no calendar button, no hint notes meant for the extraction. */
+.field-list.read-only .date-input-pick,
+.field-list.read-only .field-note {
+  display: none;
+}
+.field-list.read-only select {
+  background-image: none;
+}
+.review-cancel-edit {
+  margin-right: 8px;
+}
+.field-list.read-only select:has(option[value='']:checked) {
+  color: var(--text-faint);
 }
