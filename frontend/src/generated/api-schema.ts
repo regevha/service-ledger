@@ -27,6 +27,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instrument-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Instrument Models */
+        get: operations["list_instrument_models_instrument_models_get"];
+        put?: never;
+        /** Create Instrument Model */
+        post: operations["create_instrument_model_instrument_models_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instrument-models/{model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Instrument Model
+         * @description Removes a model record that no instrument uses. Report templates written
+         *     for the model's name are left alone.
+         */
+        delete: operations["delete_instrument_model_instrument_models__model_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Instrument Model */
+        patch: operations["update_instrument_model_instrument_models__model_id__patch"];
+        trace?: never;
+    };
+    "/instrument-models/{model_id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Instrument Model
+         * @description Moves every instrument of this model (and the templates written for its
+         *     name) to another model of the same instrument type, then removes this one.
+         *     Only a person asks for this; the app never merges by guess.
+         */
+        post: operations["merge_instrument_model_instrument_models__model_id__merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/instruments": {
         parameters: {
             query?: never;
@@ -608,6 +670,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/attachments/{attachment_id}/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Attachment Pages
+         * @description How many viewable pages the stored scan has (an image is one page).
+         *     The phone's Scan view lists these and fetches each as a PNG, because
+         *     Android Chrome cannot show a PDF inside an <iframe>.
+         */
+        get: operations["get_attachment_pages_attachments__attachment_id__pages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachment_id}/pages/{page}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Attachment Page Image
+         * @description One page of the stored scan as a PNG `width` pixels wide (1-based).
+         *     A raster image scan is returned as stored.
+         */
+        get: operations["get_attachment_page_image_attachments__attachment_id__pages__page__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/attachments/{attachment_id}/classify": {
         parameters: {
             query?: never;
@@ -1101,6 +1206,21 @@ export interface components {
             total_labor_hours: number;
             /** Labor Hours By Instrument */
             labor_hours_by_instrument: components["schemas"]["InstrumentRollupOut"][];
+            /**
+             * Reports Without Labor Hours
+             * @default 0
+             */
+            reports_without_labor_hours: number;
+            /**
+             * Report Counts By Instrument
+             * @default []
+             */
+            report_counts_by_instrument: components["schemas"]["ReportCountByInstrumentOut"][];
+            /**
+             * Report Counts By Model
+             * @default []
+             */
+            report_counts_by_model: components["schemas"]["ReportCountByModelOut"][];
             /** Labor Hours By Fault Category */
             labor_hours_by_fault_category: {
                 [key: string]: number;
@@ -1130,11 +1250,85 @@ export interface components {
             manufacturer: string;
             /** Distributor */
             distributor?: string | null;
+            /** Institution */
             institution?: string | null;
             /** Serial Number */
             serial_number: string;
             /** Location */
             location?: string | null;
+        };
+        /** InstrumentModelCreate */
+        InstrumentModelCreate: {
+            /** Name */
+            name: string;
+            /** Manufacturer */
+            manufacturer?: string | null;
+            /**
+             * Instrument Type
+             * @default facs
+             */
+            instrument_type: string;
+            /** Service Interval Months */
+            service_interval_months?: number | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** InstrumentModelMerge */
+        InstrumentModelMerge: {
+            /**
+             * Into Id
+             * Format: uuid
+             */
+            into_id: string;
+        };
+        /** InstrumentModelMergeOut */
+        InstrumentModelMergeOut: {
+            /** Moved Instruments */
+            moved_instruments: number;
+            /** Moved Templates */
+            moved_templates: number;
+            /** Into */
+            into: string;
+        };
+        /** InstrumentModelOut */
+        InstrumentModelOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /** Instrument Type */
+            instrument_type: string;
+            /** Service Interval Months */
+            service_interval_months: number | null;
+            /** Notes */
+            notes: string | null;
+            /** Unit Count */
+            unit_count: number;
+            /** Template Count */
+            template_count: number;
+            /**
+             * Similar To
+             * @default []
+             */
+            similar_to: string[];
+        };
+        /** InstrumentModelUpdate */
+        InstrumentModelUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Manufacturer */
+            manufacturer?: string | null;
+            /** Instrument Type */
+            instrument_type?: string | null;
+            /** Service Interval Months */
+            service_interval_months?: number | null;
+            /** Notes */
+            notes?: string | null;
         };
         /** InstrumentOut */
         InstrumentOut: {
@@ -1153,6 +1347,7 @@ export interface components {
             manufacturer: string | null;
             /** Distributor */
             distributor: string | null;
+            /** Institution */
             institution: string | null;
             /** Serial Number */
             serial_number: string;
@@ -1177,6 +1372,8 @@ export interface components {
             name: string;
             /** Model */
             model: string;
+            /** Institution */
+            institution?: string | null;
             /** Serial Number */
             serial_number: string;
             /** Report Count */
@@ -1228,6 +1425,7 @@ export interface components {
             manufacturer?: string | null;
             /** Distributor */
             distributor?: string | null;
+            /** Institution */
             institution?: string | null;
             /** Serial Number */
             serial_number?: string | null;
@@ -1331,6 +1529,41 @@ export interface components {
             other_count: number;
             /** Total */
             total: number;
+        };
+        /**
+         * ReportCountByInstrumentOut
+         * @description One row of GET /analytics/fleet's report_counts_by_instrument: how many reports matched the
+         *     filters (finalized unless the status filter says otherwise, any report type) for one instrument.
+         *     Every instrument that passes the unit filters appears, including one with none.
+         */
+        ReportCountByInstrumentOut: {
+            /**
+             * Instrument Id
+             * Format: uuid
+             */
+            instrument_id: string;
+            /** Name */
+            name: string;
+            /** Model */
+            model: string;
+            /** Institution */
+            institution?: string | null;
+            /** Serial Number */
+            serial_number: string;
+            /** Report Count */
+            report_count: number;
+        };
+        /**
+         * ReportCountByModelOut
+         * @description The same counts added up per instrument model, with how many units of the model are listed.
+         */
+        ReportCountByModelOut: {
+            /** Model */
+            model: string;
+            /** Unit Count */
+            unit_count: number;
+            /** Report Count */
+            report_count: number;
         };
         /**
          * ReportCreate
@@ -1927,6 +2160,158 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstrumentTypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_instrument_models_instrument_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentModelOut"][];
+                };
+            };
+        };
+    };
+    create_instrument_model_instrument_models_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstrumentModelCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentModelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_instrument_model_instrument_models__model_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_instrument_model_instrument_models__model_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstrumentModelUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentModelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_instrument_model_instrument_models__model_id__merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstrumentModelMerge"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentModelMergeOut"];
                 };
             };
             /** @description Validation Error */
@@ -3030,6 +3415,71 @@ export interface operations {
             };
         };
     };
+    get_attachment_pages_attachments__attachment_id__pages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_attachment_page_image_attachments__attachment_id__pages__page__get: {
+        parameters: {
+            query?: {
+                width?: number;
+            };
+            header?: never;
+            path: {
+                attachment_id: string;
+                page: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     classify_attachment_attachments__attachment_id__classify_post: {
         parameters: {
             query?: never;
@@ -3299,6 +3749,12 @@ export interface operations {
                 date_from?: string | null;
                 /** @description Report date on or before this day */
                 date_to?: string | null;
+                /** @description Only reports in this status; omitted = finalized only, 'all' = every status */
+                status?: string | null;
+                /** @description Lab manager contains this text (case-insensitive) */
+                technician?: string | null;
+                /** @description Free-text search (finalized reports only), as on the Reports list */
+                q?: string | null;
             };
             header?: never;
             path?: never;
@@ -3339,6 +3795,12 @@ export interface operations {
                 date_from?: string | null;
                 /** @description Report date on or before this day */
                 date_to?: string | null;
+                /** @description Only reports in this status; omitted = finalized only, 'all' = every status */
+                status?: string | null;
+                /** @description Lab manager contains this text (case-insensitive) */
+                technician?: string | null;
+                /** @description Free-text search (finalized reports only), as on the Reports list */
+                q?: string | null;
             };
             header?: never;
             path?: never;
@@ -3383,6 +3845,12 @@ export interface operations {
                 date_from?: string | null;
                 /** @description Report date on or before this day */
                 date_to?: string | null;
+                /** @description Only reports in this status; omitted = finalized only, 'all' = every status */
+                status?: string | null;
+                /** @description Lab manager contains this text (case-insensitive) */
+                technician?: string | null;
+                /** @description Free-text search (finalized reports only), as on the Reports list */
+                q?: string | null;
             };
             header?: never;
             path?: never;
