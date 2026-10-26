@@ -2005,8 +2005,44 @@ textarea {
     gap: 2px;
   }
   .view-tab {
-    font-size: 0.7rem;
-    padding: 7px 6px;
+    font-size: 0.75rem;
+    padding: 7px 5px;
+  }
+}
+
+/* Touch targets: Android asks for 48dp, 44px is the usual floor. Phone width only; desktop keeps its compact controls. */
+@media (max-width: 620px) {
+  .btn,
+  .btn.small,
+  .view-tab,
+  .row-menu-item,
+  .date-input-pick,
+  select,
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not(.date-input-native) {
+    min-height: 44px;
+  }
+  .btn,
+  .btn.small {
+    justify-content: center;
+  }
+  .date-input-pick {
+    min-width: 44px;
+    justify-content: center;
+  }
+  .date-input > input[type='text'] {
+    padding-right: 52px;
+  }
+  /* The sort buttons above the Reports cards: big enough to hit, still a compact row. */
+  .sort-head {
+    min-height: 44px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .report-row-head {
+    gap: 0 8px;
+    align-items: center;
   }
 }
 
