@@ -7,6 +7,7 @@ import { ReportsListScreen } from './components/ReportsListScreen';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import type { TemplateRequest } from './templateRequest';
 import './App.css';
+import { ToastHost } from './components/ToastHost';
 
 // Fallback only, for the brief window before GET /config resolves (or if it
 // fails) — matches backend/app/config.py's own defaults so behavior is
@@ -43,6 +44,24 @@ function parseHash(hash: string): Route {
 // shared across all of them: the instrument list (fetched once here and
 // threaded down, so a create/edit anywhere refreshes it everywhere) and the
 // app-wide confidence-threshold config.
+
+// Small outline icons for the phone's bottom bar (hidden on wide screens, where the tabs are text only).
+function TabIcon({ name }: { name: 'new' | 'reports' | 'analytics' | 'templates' | 'instruments' }) {
+  const common = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true, className: 'tab-icon' };
+  switch (name) {
+    case 'new':
+      return (<svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></svg>);
+    case 'reports':
+      return (<svg {...common}><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5M10 13h6M10 17h6" /></svg>);
+    case 'analytics':
+      return (<svg {...common}><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></svg>);
+    case 'templates':
+      return (<svg {...common}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 10h16M10 10v10" /></svg>);
+    case 'instruments':
+      return (<svg {...common}><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3" /><path d="M8 15h8" /></svg>);
+  }
+}
+
 export default function App() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [instrumentsLoading, setInstrumentsLoading] = useState(true);
@@ -138,21 +157,28 @@ export default function App() {
 
       <div className="view-tabs">
         <button className={`view-tab ${view === 'new' ? 'active' : ''}`} onClick={() => selectView('new')}>
-          New report
+          <TabIcon name="new" />
+          <span className="tab-label">New report</span>
         </button>
         <button className={`view-tab ${view === 'reports' ? 'active' : ''}`} onClick={() => selectView('reports')}>
-          Reports
+          <TabIcon name="reports" />
+          <span className="tab-label">Reports</span>
         </button>
         <button className={`view-tab ${view === 'analytics' ? 'active' : ''}`} onClick={() => selectView('analytics')}>
-          Analytics
+          <TabIcon name="analytics" />
+          <span className="tab-label">Analytics</span>
         </button>
         <button className={`view-tab ${view === 'templates' ? 'active' : ''}`} onClick={() => selectView('templates')}>
-          Templates
+          <TabIcon name="templates" />
+          <span className="tab-label">Templates</span>
         </button>
         <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} onClick={() => selectView('instruments')}>
-          Instruments
+          <TabIcon name="instruments" />
+          <span className="tab-label">Instruments</span>
         </button>
       </div>
+
+      <ToastHost />
 
       <div className="app-shell">
         {/* The intake flow is rendered (hidden) while the Templates tab shows a

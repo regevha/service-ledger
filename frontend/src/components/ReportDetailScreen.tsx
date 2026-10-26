@@ -1,3 +1,4 @@
+import { showToast } from '../toast';
 import { useEffect, useState } from 'react';
 import {
   ApiError,
@@ -127,6 +128,7 @@ export function ReportDetailScreen({
       setReport(final);
       setEditing(false);
       setDuplicatesNonce((n) => n + 1); // a save can change what matches
+      showToast(finalize ? 'Saved and finalized' : 'Saved');
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Saving failed unexpectedly.');
     } finally {
