@@ -789,6 +789,15 @@ export function attachmentFileUrl(attachmentId: string, opts: { inline?: boolean
   return `${API_BASE}/attachments/${attachmentId}/file${opts.inline ? '?inline=1' : ''}`;
 }
 
+/** Page count of the stored scan (an image is one page), and a page rendered as a PNG for the phone's Scan view. */
+export function getAttachmentPageCount(attachmentId: string): Promise<{ page_count: number }> {
+  return apiFetch(`/attachments/${attachmentId}/pages`);
+}
+
+export function attachmentPageUrl(attachmentId: string, page: number, width = 900): string {
+  return `${API_BASE}/attachments/${attachmentId}/pages/${page}?width=${width}`;
+}
+
 // Both of these now only enqueue a job and return immediately (202) — the
 // actual Claude vision call happens in the background worker (app/worker.py,
 // SL-ARCH-001 §3), not inline in the request (a vision call runs seconds,

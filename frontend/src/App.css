@@ -2118,6 +2118,65 @@ textarea {
   }
 }
 
+/* Phone: Fields | Scan switch and the scan as page images */
+.view-switch {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0;
+  padding: 4px;
+  background: var(--panel-2, #eef0f3);
+  border-radius: 10px;
+}
+.view-switch-button {
+  flex: 1;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+}
+.view-switch-button.active {
+  background: var(--panel, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+.scan-zoom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.scan-zoom-bar .btn {
+  min-width: 44px;
+  min-height: 44px;
+}
+.scan-zoom-level {
+  min-width: 3.5em;
+  text-align: center;
+}
+.scan-pane {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--line, #d7dbe0);
+  border-radius: 8px;
+  touch-action: pan-x pan-y;
+  background: #888;
+}
+.scan-sheet {
+  min-width: 100%;
+}
+.scan-page {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: 6px;
+  background: #fff;
+}
+.row-menu-list { z-index: 20; }
+.review-split[hidden] { display: none; }
+
 /* ---------- Toast and the phone's bottom navigation (2026-10-26) ---------- */
 
 .tab-icon {
@@ -2396,7 +2455,8 @@ textarea {
   .detail-nav-links > .back-link {
     order: 1;
   }
-  .detail-nav-row > .btn.danger {
+  .detail-nav-row > .btn.danger,
+  .detail-nav-row > .row-menu {
     order: 2;
     margin-left: auto;
   }
