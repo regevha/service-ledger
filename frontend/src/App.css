@@ -708,6 +708,12 @@ textarea {
   font-size: 0.76rem;
   color: var(--text-faint);
 }
+@media (max-width: 620px) {
+  .stat-value {
+    font-size: 1.15rem;
+    white-space: nowrap;
+  }
+}
 
 .chart-section {
   margin-bottom: 24px;
@@ -1355,6 +1361,12 @@ textarea {
 
 .trend-table-wrap {
   overflow-x: auto;
+  /* Soft edges appear on the side that has more to scroll to. */
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) 0 0 / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) 100% 0 / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.18), transparent) 0 0 / 10px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.18), transparent) 100% 0 / 10px 100% no-repeat scroll;
 }
 .trend-table {
   width: 100%;
@@ -1569,7 +1581,7 @@ textarea {
   min-width: 0;
 }
 /* A finalized report is read-only until Edit: values show as plain text, not as boxes to type in. */
-.field-list.read-only input,
+.field-list.read-only input:not(.date-input-native),
 .field-list.read-only textarea,
 .field-list.read-only select {
   background: transparent;
@@ -1578,6 +1590,10 @@ textarea {
   opacity: 1;
   resize: none;
   appearance: none;
+}
+/* A long narrative is shown whole (the box grows to its text; see AutoGrow in FieldEditor). */
+.field-list.read-only textarea {
+  overflow: hidden;
 }
 .field-list.read-only .row-remove,
 .field-list.read-only .btn,
@@ -2005,6 +2021,23 @@ textarea {
   }
   .filter-row .filter-sep {
     display: none;
+  }
+  .filter-row .date-pair-label {
+    display: block;
+    flex: 1 1 100%;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: -6px;
+  }
+}
+.filter-row .date-pair-label {
+  display: none;
+}
+@media (max-width: 620px) {
+  .filter-row .date-pair-label {
+    display: block;
   }
 }
 

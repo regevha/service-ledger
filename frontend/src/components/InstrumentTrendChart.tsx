@@ -82,6 +82,18 @@ export function formatDate(iso: string | null): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/**
+ * Where the end-value label goes: on the side of the last point away from the line that arrives at it,
+ * so the label never sits on the line (above when the line rises into it, below when it falls into it).
+ */
+function endLabelY(values: (number | undefined)[], lastIndex: number, yAt: (v: number) => number): number {
+  const lastY = yAt(values[lastIndex]!);
+  const prevIndex = values.slice(0, lastIndex).findLastIndex((v) => v !== undefined);
+  if (prevIndex < 0) return lastY - 12;
+  const prevY = yAt(values[prevIndex]!);
+  return prevY < lastY ? lastY + 20 : lastY - 12; // smaller y is higher on the screen
+}
+
 const MARGIN = { top: 16, right: 16, bottom: 28, left: 40 };
 // The chart is drawn at the width it is shown at (so its text stays the size of the rest of the page
 // instead of growing with the window); this is only the width used before it has been measured.
@@ -230,7 +242,7 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
             {soleSeries && soleLastIndex >= 0 && (
               <text
                 x={xAt(soleLastIndex) - 8}
-                y={yAt(soleSeries.values[soleLastIndex]!) - 12}
+                y={endLabelY(soleSeries.values, soleLastIndex, yAt)}
                 textAnchor="end"
                 className="trend-end-label"
               >

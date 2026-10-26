@@ -10,10 +10,14 @@ const COLLAPSE_KEY = 'sl.filters.collapsed';
 // Per-viewer convenience only (shared by both tabs): browser storage can be empty or throw.
 function readCollapsed(): boolean {
   try {
-    return localStorage.getItem(COLLAPSE_KEY) === 'yes';
+    const saved = localStorage.getItem(COLLAPSE_KEY);
+    if (saved === 'yes') return true;
+    if (saved === 'no') return false;
   } catch {
-    return false;
+    /* fall through to the default */
   }
+  // Never chosen: folded on a phone, so the list is on the first screen; open elsewhere.
+  return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 620px)').matches === true;
 }
 function writeCollapsed(collapsed: boolean) {
   try {
@@ -229,12 +233,18 @@ export function ReportFilterBar<F extends BarFilters>({
           ))}
         </select>
 
+        <span className="date-pair-label" aria-hidden="true">
+          From
+        </span>
         <DateInput
           ariaLabel="From date"
           value={filters.date_from ?? ''}
           onChange={(v) => setFilters((f) => ({ ...f, date_from: v || undefined }))}
         />
         <span className="filter-sep">to</span>
+        <span className="date-pair-label" aria-hidden="true">
+          To
+        </span>
         <DateInput
           ariaLabel="To date"
           value={filters.date_to ?? ''}
