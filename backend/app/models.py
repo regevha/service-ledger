@@ -110,6 +110,28 @@ class InstrumentType(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class InstrumentModel(Base):
+    """A model of instrument ("FACSAria III") as a record of its own, so facts
+    that belong to the model live once instead of being typed on every unit
+    (plans: "plan for instrument models"). Step 1 of that plan: the table is
+    filled from the instruments' model text and every instrument links to one,
+    but nothing reads it yet. `name` is the exact model text, unique;
+    near-duplicates ("FACSAria III" / "FACS Aria III") are never merged by
+    guess. `manufacturer` and `instrument_type` mirror the instrument's own
+    copies (the instrument keeps them for now). `service_interval_months` is
+    for the later overdue badge; empty means a model never shows as overdue."""
+
+    __tablename__ = "instrument_models"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    manufacturer: Mapped[str | None] = mapped_column(String, nullable=True)
+    instrument_type: Mapped[str] = mapped_column(String, nullable=False, default="facs")
+    service_interval_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Instrument(Base):
     """§5: the physical asset. `instrument_type` is the `key` of an
     InstrumentType row (default "facs", shown as "Flow cytometer"), stored as a
@@ -121,6 +143,12 @@ class Instrument(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     instrument_type: Mapped[str] = mapped_column(String, nullable=False, default="facs")
     model: Mapped[str] = mapped_column(String, nullable=False)
+    # The model's own record (instrument_models). Kept in step with `model` by
+    # services/instrument_models.py on every save, so it is only empty for a
+    # moment inside a transaction. The text above stays the source for now.
+    model_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("instrument_models.id"), nullable=True, index=True
+    )
     # Free text ("BD", "Beckman Coulter"); NULL when not recorded. The fleet is
     # no longer BD-only, but existing rows predate this column.
     manufacturer: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -144,6 +172,7 @@ class Instrument(Base):
     # under a race. Left alone, the FK (no ondelete, so RESTRICT) rejects the
     # delete at commit time, which delete_instrument turns into a clean 409.
     reports: Mapped[list["Report"]] = relationship(back_populates="instrument", passive_deletes=True)
+    model_record: Mapped["InstrumentModel | None"] = relationship()
 
 
 class ReportTemplate(Base):
@@ -444,4 +473,4 @@ def report_chronological_order() -> tuple:
 # Importing the search module registers the before_flush listener that keeps
 # Report.search_text current (see services/report_search.py). It lives at the
 # bottom because that module imports this one.
-from app.services import report_search  # noqa: E402,F401
+from app.services import instrument_models, report_search  # noqa: E402,F401
