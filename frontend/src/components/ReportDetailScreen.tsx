@@ -272,6 +272,15 @@ export function ReportDetailScreen({
           linksInMenu
           readOnly={report.status === 'finalized' && !editing}
           onEdit={() => setEditing(true)}
+          onCancelEdit={
+            report.status === 'finalized' && editing
+              ? () => {
+                  setFields(report.extracted_fields ?? {});
+                  setReportDate(report.report_date);
+                  setEditing(false);
+                }
+              : undefined
+          }
         />
         </>
       ) : report ? (
