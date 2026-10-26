@@ -1,3 +1,4 @@
+import { showToast } from '../toast';
 import { useEffect, useState } from 'react';
 import {
   ApiError,
@@ -130,6 +131,7 @@ export function ReportDetailScreen({
       setReport(final);
       setEditing(false);
       setDuplicatesNonce((n) => n + 1); // a save can change what matches
+      showToast(finalize ? 'Saved and finalized' : 'Saved');
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Saving failed unexpectedly.');
     } finally {
@@ -259,7 +261,8 @@ export function ReportDetailScreen({
           onFinalize={
             report.status === 'extracted' || report.status === 'in_review' ? () => void handleSave(true) : undefined
           }
-          title={`${REPORT_TYPE_LABEL[template.report_type]} — ${STATUS_LABEL[report.status]}`}
+          title={`${REPORT_TYPE_LABEL[template.report_type]}${instrument ? ` · ${instrument.name}` : ''}`}
+          titleMeta={`${report.report_date ?? 'No report date'} · ${STATUS_LABEL[report.status]}`}
           // §4: "one file per report" for MVP, so the first (only) attachment
           // is the original this report's fields came from.
           originalScanUrl={report.attachments[0] ? attachmentFileUrl(report.attachments[0].id) : undefined}

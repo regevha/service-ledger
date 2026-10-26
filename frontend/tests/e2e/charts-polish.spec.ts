@@ -191,7 +191,8 @@ test.describe('analytics bars', () => {
 });
 
 test.describe('active tab joins its card', () => {
-  for (const width of [1300, 390]) {
+  // On a phone the tabs are the bottom bar, not a tab joined to the card (see phone-nav-toast.spec.ts).
+  for (const width of [1300]) {
     test(`at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await page.goto('/#/templates');
