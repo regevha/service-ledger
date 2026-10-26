@@ -7,8 +7,10 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+import io
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -168,6 +170,71 @@ def get_attachment_file(attachment_id: uuid.UUID, inline: bool = False, db: Sess
         # this keeps the browser from treating them as anything else.
         headers={"X-Content-Type-Options": "nosniff"} if inline else None,
     )
+
+
+def _stored_scan(db: Session, attachment_id: uuid.UUID) -> tuple[models.Attachment, Path]:
+    attachment = db.get(models.Attachment, attachment_id)
+    if not attachment:
+        raise HTTPException(404, "Attachment not found")
+    path = Path(attachment.file_path)
+    if not path.exists():
+        raise HTTPException(404, "Attachment file is missing from storage")
+    return attachment, path
+
+
+@router.get("/attachments/{attachment_id}/pages")
+def get_attachment_pages(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
+    """How many viewable pages the stored scan has (an image is one page).
+    The phone's Scan view lists these and fetches each as a PNG, because
+    Android Chrome cannot show a PDF inside an <iframe>."""
+    attachment, path = _stored_scan(db, attachment_id)
+    if attachment.file_type == "application/pdf":
+        import pypdfium2 as pdfium
+
+        try:
+            pdf = pdfium.PdfDocument(str(path))
+            try:
+                return {"page_count": len(pdf)}
+            finally:
+                pdf.close()
+        except pdfium.PdfiumError:
+            raise HTTPException(422, "The stored PDF could not be opened")
+    return {"page_count": 1}
+
+
+@router.get("/attachments/{attachment_id}/pages/{page}")
+def get_attachment_page_image(
+    attachment_id: uuid.UUID,
+    page: int,
+    width: int = Query(900, ge=200, le=2400),
+    db: Session = Depends(get_db),
+):
+    """One page of the stored scan as a PNG `width` pixels wide (1-based).
+    A raster image scan is returned as stored."""
+    attachment, path = _stored_scan(db, attachment_id)
+    headers = {"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600"}
+    if attachment.file_type != "application/pdf":
+        if page != 1:
+            raise HTTPException(404, "Page not found")
+        return FileResponse(path, media_type=attachment.file_type or "application/octet-stream", headers=headers)
+
+    import pypdfium2 as pdfium
+
+    try:
+        pdf = pdfium.PdfDocument(str(path))
+    except pdfium.PdfiumError:
+        raise HTTPException(422, "The stored PDF could not be opened")
+    try:
+        if page < 1 or page > len(pdf):
+            raise HTTPException(404, "Page not found")
+        pdf_page = pdf[page - 1]
+        scale = width / pdf_page.get_width()
+        image = pdf_page.render(scale=scale).to_pil().convert("RGB")
+    finally:
+        pdf.close()
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return Response(buffer.getvalue(), media_type="image/png", headers=headers)
 
 
 @router.post(

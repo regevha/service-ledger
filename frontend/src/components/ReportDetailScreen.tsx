@@ -18,7 +18,9 @@ import {
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { searchableSegments } from '../searchHighlight';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { ReviewScreen } from './ReviewScreen';
+import { RowMenu } from './RowMenu';
 import { SearchMatches } from './SearchMatches';
 
 function describeDuplicate(d: ReportDuplicate): string {
@@ -64,6 +66,7 @@ export function ReportDetailScreen({
   const [reportDate, setReportDate] = useState<string | null>(null);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const phone = useMediaQuery('(max-width: 620px)');
   // Other saved reports that probably record the same visit as this one.
   // Advisory only: if the check fails the screen simply shows no banner.
   const [duplicates, setDuplicates] = useState<ReportDuplicate[]>([]);
@@ -167,10 +170,22 @@ export function ReportDetailScreen({
             </button>
           )}
         </div>
-        {report && !confirmingDelete && (
+        {report && !confirmingDelete && !phone && (
           <button className="btn small danger" onClick={() => setConfirmingDelete(true)}>
             Delete report
           </button>
+        )}
+        {report && !confirmingDelete && phone && (
+          <RowMenu
+            label="Report actions"
+            items={[
+              { label: 'Download PDF', onSelect: () => window.location.assign(reportPdfUrl(report.id)), disabled: !template, title: template ? undefined : 'No template for this report' },
+              ...(report.attachments[0]
+                ? [{ label: 'View original scan', onSelect: () => window.open(attachmentFileUrl(report.attachments[0].id), '_blank', 'noopener') }]
+                : []),
+              { label: 'Delete report', danger: true, onSelect: () => setConfirmingDelete(true) },
+            ]}
+          />
         )}
       </div>
 
@@ -250,6 +265,8 @@ export function ReportDetailScreen({
           originalScanUrl={report.attachments[0] ? attachmentFileUrl(report.attachments[0].id) : undefined}
           scanInlineUrl={report.attachments[0] ? attachmentFileUrl(report.attachments[0].id, { inline: true }) : undefined}
           pdfUrl={reportPdfUrl(report.id)}
+          scanAttachmentId={report.attachments[0]?.id}
+          linksInMenu
           readOnly={report.status === 'finalized' && !editing}
           onEdit={() => setEditing(true)}
         />
