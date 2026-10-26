@@ -57,6 +57,8 @@ test.describe('on a phone', () => {
   test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
 
   test('a long notice shows two lines and a More button that opens it', async ({ page }) => {
+    // A narrow phone, so the notice is more than two lines whatever the fonts of the machine are.
+    await page.setViewportSize({ width: 360, height: 800 });
     await reachReview(page);
     const text = page.locator('#placeholder-notice .notice-text');
     const more = page.locator('#placeholder-notice .notice-more');

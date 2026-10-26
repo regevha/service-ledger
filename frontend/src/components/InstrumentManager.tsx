@@ -12,6 +12,8 @@ import {
   type InstrumentType,
 } from '../api';
 import { INSTRUMENT_STATUS_LABEL } from '../labels';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { RowMenu } from './RowMenu';
 
 /**
  * The Instruments tab: create/edit for the fleet, replacing "POST
@@ -306,6 +308,7 @@ export function InstrumentManagerScreen({
   const [mode, setMode] = useState<ManagerMode>({ kind: 'list' });
   // The instrument awaiting a delete confirmation, with how many reports go
   // with it (looked up when Delete is clicked, so the warning is specific).
+  const phone = useMediaQuery('(max-width: 620px)');
   const [pendingDelete, setPendingDelete] = useState<{ instrument: Instrument; total: number; finalized: number } | null>(
     null
   );
@@ -440,9 +443,16 @@ export function InstrumentManagerScreen({
                 <button type="button" className="btn small" onClick={() => setMode({ kind: 'edit', instrument: inst })}>
                   Edit
                 </button>
-                <button type="button" className="btn small danger" onClick={() => void askToDelete(inst)}>
-                  Delete
-                </button>
+                {phone ? (
+                  <RowMenu
+                    label={`More actions for ${inst.name}`}
+                    items={[{ label: 'Delete', danger: true, onSelect: () => void askToDelete(inst) }]}
+                  />
+                ) : (
+                  <button type="button" className="btn small danger" onClick={() => void askToDelete(inst)}>
+                    Delete
+                  </button>
+                )}
               </span>
             </div>
           ))}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { attachmentPageUrl, getAttachmentPageCount } from '../api';
 
+const ZOOM_KEY = 'scan-zoom';
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 
@@ -9,11 +10,20 @@ const MAX_ZOOM = 4;
  * iframe, so the server renders each page to a PNG. Pinch (or the +/- buttons)
  * zooms; the pane scrolls both ways when zoomed in.
  */
+function readZoom(): number {
+  try {
+    const v = Number(sessionStorage.getItem(ZOOM_KEY));
+    return v >= MIN_ZOOM && v <= MAX_ZOOM ? v : 1;
+  } catch {
+    return 1;
+  }
+}
+
 export function ScanPages({ attachmentId }: { attachmentId: string }) {
   const [pages, setPages] = useState<number | null>(null);
   const [error, setError] = useState(false);
-  const [zoom, setZoom] = useState(1);
-  const zoomRef = useRef(1);
+  const [zoom, setZoom] = useState(readZoom);
+  const zoomRef = useRef(zoom);
   const pane = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,6 +42,11 @@ export function ScanPages({ attachmentId }: { attachmentId: string }) {
     const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
     zoomRef.current = z;
     setZoom(z);
+    try {
+      sessionStorage.setItem(ZOOM_KEY, String(z));
+    } catch {
+      /* the zoom is just not remembered */
+    }
   }
 
   useEffect(() => {
@@ -51,8 +66,15 @@ export function ScanPages({ attachmentId }: { attachmentId: string }) {
         applyZoom(startZoom * (dist(e.touches) / startDist));
       }
     };
-    const onEnd = () => {
+    let lastTap = 0;
+    const onEnd = (e: TouchEvent) => {
       startDist = 0;
+      // A second tap within 300 ms zooms in to 200% and, from there, back out to fit.
+      if (e.touches.length === 0 && e.changedTouches.length === 1) {
+        const now = Date.now();
+        if (now - lastTap < 300) applyZoom(zoomRef.current > 1.01 ? 1 : 2);
+        lastTap = now;
+      }
     };
     el.addEventListener('touchstart', onStart, { passive: true });
     el.addEventListener('touchmove', onMove, { passive: true });
@@ -80,7 +102,7 @@ export function ScanPages({ attachmentId }: { attachmentId: string }) {
         <button type="button" className="btn small" aria-label="Zoom out" onClick={() => applyZoom(zoom - 0.5)} disabled={zoom <= MIN_ZOOM}>
           −
         </button>
-        <span className="scan-zoom-level">{Math.round(zoom * 100)}%</span>
+        <span className="scan-zoom-level" title="Double-tap the page to zoom">{Math.round(zoom * 100)}%</span>
         <button type="button" className="btn small" aria-label="Zoom in" onClick={() => applyZoom(zoom + 0.5)} disabled={zoom >= MAX_ZOOM}>
           +
         </button>

@@ -34,7 +34,7 @@ test.describe('on a phone', () => {
       // Open the filters where there are some, so their controls are measured too.
       const show = page.locator('button:has-text("Show filters")');
       if (await show.count()) await show.first().click();
-      if (tab === 'Reports') await expect(page.locator('.sort-head').first()).toBeVisible();
+      if (tab === 'Reports') await expect(page.locator('.sort-select').first()).toBeVisible();
       expect(await tooSmall(page), tab).toEqual([]);
     }
   });
