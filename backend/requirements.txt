@@ -1,15 +1,15 @@
-fastapi==0.143.0
+fastapi==0.161.1
 uvicorn[standard]==0.54.0
-sqlalchemy==2.1.4
+sqlalchemy==2.1.6
 psycopg2-binary==2.9.13
-alembic==1.20.0
+alembic==1.20.1
 pydantic==2.14.1
-pydantic-settings==2.15.0
+pydantic-settings==2.16.1
 python-multipart==0.0.32
 pytest==9.1.1
 pytest-cov==7.1.0  # coverage: python -m pytest --cov (settings in .coveragerc)
 pytest-randomly==5.0.0  # shuffles test order every run and prints the seed; reproduce a failure with: pytest -p randomly --randomly-seed=<seed>; turn off with: pytest -p no:randomly
 httpx==0.28.1
 anthropic==1.13.0
-reportlab==5.0.1
-pypdf==6.20.1  # reads the text layer of uploaded PDFs (services/text_reader.py); tests also use it to verify generated PDFs
+reportlab==5.1.0
+pypdf==6.21.2  # reads the text layer of uploaded PDFs (services/text_reader.py); tests also use it to verify generated PDFs
