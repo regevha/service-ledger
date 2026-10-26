@@ -45,6 +45,7 @@ Mount a folder at `/data` so uploaded files survive a restart; the API and the w
 
 ```
 python -m app.tools.show_claude_log [--report ID] [--job ID] [--attachment ID] [--kind classify|extract|translate] [--errors] [--days N] [--last N] [--raw]
+python -m app.tools.list_instrument_models      # read-only: the model records, their unit counts, and names that may be the same model
 ```
 
 ## What's here
@@ -83,6 +84,7 @@ backend/
                               GET /analytics/models and /analytics/models/trend — units of one model side by side
     services/
       templates.py            Model-specific-row-over-NULL-row resolution (§2)
+      instrument_models.py   Keeps `instruments.model_id` pointing at the `instrument_models` record named exactly like the instrument's model text (a before_flush listener, so the API, seeds and tests all get it); `near_duplicates` only reports look-alike names, nothing is ever merged (migration `b1c2d3e4f5a6`; nothing reads the table yet)
       report_search.py        Free-text search: what is indexed (text fields, table text cells, instrument model and serial),
                               the websearch query, excerpts; a before_flush listener keeps reports.search_text current
                               (migration b2c3d4e5f6a7, partial GIN index on finalized reports)
