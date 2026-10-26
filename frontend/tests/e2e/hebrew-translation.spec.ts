@@ -106,15 +106,13 @@ test('an instrument that is not in the fleet is added on the spot and the docume
   await panel.locator('input[aria-label="Instrument name"]').fill(`E2E-Aurora-${serial}`);
   await panel.locator('button:has-text("Add instrument")').click();
 
-  // Classified again: now matched by serial. The report type still needs a
-  // person's confirmation, so the confirm screen shows, without the add panel.
+  // Classified again: now matched by serial. The new instrument takes the type of the existing
+  // "Cytek Aurora" model (a flow cytometer), so the report finds its template and goes straight
+  // to review, without the add panel.
   await expect(page.locator('#serial-notice')).toContainText(`Matched to Cytek Aurora (${serial})`, { timeout: 30_000 });
   await expect(page.locator('.banner-crit')).toHaveCount(0);
   await expect(page.locator('#add-instrument-panel')).toHaveCount(0);
-  await page.click('button:has-text("Confirm & continue to extraction")');
-  // A brand-new instrument type has no template yet (a known follow-up), so
-  // extraction says so plainly instead of failing.
-  await expect(page.locator('.banner-crit')).toContainText('template', { timeout: 30_000 });
+  await expect(page.locator('.field-list').first()).toBeVisible({ timeout: 30_000 });
 
   // The new instrument is in the fleet list with its distributor.
   await page.click('.view-tab:has-text("Instruments")');

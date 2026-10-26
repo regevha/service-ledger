@@ -2612,3 +2612,51 @@ textarea {
   align-items: center;
   color: var(--text);
 }
+
+/* ---------- Instruments | Models switch and the Models list ---------- */
+.sub-switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  margin: 0 0 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.sub-switch button {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.sub-switch button.active {
+  background: var(--surface);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+@media (max-width: 620px) {
+  .sub-switch {
+    display: flex;
+  }
+  .sub-switch button {
+    flex: 1;
+    min-height: 44px;
+  }
+}
+@media (min-width: 901px) {
+  .instrument-row.model-row {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) 100px minmax(0, 0.9fr) 148px;
+  }
+}
+.model-row .model-similar,
+.model-row .model-notes,
+.model-hint {
+  display: block;
+}
+.model-row .model-similar {
+  color: var(--warn-text, inherit);
+}

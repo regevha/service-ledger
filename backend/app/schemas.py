@@ -12,7 +12,7 @@ import uuid
 from typing import Literal
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models import (
     ExtractionJobKind,
@@ -189,6 +189,70 @@ class InstrumentOut(BaseModel):
     serial_number: str
     location: str | None
     status: InstrumentStatus
+
+
+# ---------- Instrument models ----------
+
+
+class InstrumentModelOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    manufacturer: str | None
+    instrument_type: str
+    service_interval_months: int | None
+    notes: str | None
+    # How many instruments are of this model, and how many report templates
+    # are written for exactly this model name.
+    unit_count: int
+    template_count: int
+    # Other model names that look like the same model (never merged by guess).
+    similar_to: list[str] = []
+
+
+class InstrumentModelCreate(BaseModel):
+    name: str
+    manufacturer: str | None = None
+    instrument_type: str = "facs"
+    service_interval_months: int | None = Field(default=None, ge=1, le=600)
+    notes: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, value: str) -> str:
+        return _required_text("Name")(value)
+
+    @field_validator("manufacturer", "notes")
+    @classmethod
+    def _blank_is_none(cls, value: str | None) -> str | None:
+        return (value.strip() or None) if isinstance(value, str) else value
+
+
+class InstrumentModelUpdate(BaseModel):
+    name: str | None = None
+    manufacturer: str | None = None
+    instrument_type: str | None = None
+    service_interval_months: int | None = Field(default=None, ge=1, le=600)
+    notes: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, value: str | None) -> str | None:
+        return _required_text("Name")(value)
+
+    @field_validator("manufacturer", "notes")
+    @classmethod
+    def _blank_is_none(cls, value: str | None) -> str | None:
+        return (value.strip() or None) if isinstance(value, str) else value
+
+
+class InstrumentModelMerge(BaseModel):
+    into_id: uuid.UUID
+
+
+class InstrumentModelMergeOut(BaseModel):
+    moved_instruments: int
+    moved_templates: int
+    into: str
 
 
 # ---------- Report templates ----------

@@ -76,8 +76,21 @@ def _link_instruments(session: Session, flush_context, instances) -> None:
 
 
 def _stale(session: Session, instrument: models.Instrument) -> bool:
-    """The model text was edited in this unit of work."""
-    return inspect(instrument).attrs.model.history.has_changes()
+    """The model text was edited in this unit of work and no longer matches
+    the linked record (renaming a record edits its units' text to match)."""
+    if not inspect(instrument).attrs.model.history.has_changes():
+        return False
+    record = instrument.model_record
+    return record is None or record.name != instrument.model
+
+
+def type_conflict(db: Session, model_text: str, instrument_type: str) -> str | None:
+    """A message when `model_text` is already a model of a different instrument
+    type (an instrument's type cannot change, so it cannot join that model)."""
+    record = db.query(models.InstrumentModel).filter(models.InstrumentModel.name == model_text).first()
+    if record is not None and record.instrument_type != instrument_type:
+        return f"“{model_text}” is already a model of type {record.instrument_type}, not {instrument_type}."
+    return None
 
 
 event.listen(Session, "before_flush", _link_instruments)
