@@ -11,6 +11,7 @@ import {
   type UnitComparison,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import { ChartSection } from './ChartSection';
 import { useElementWidth } from '../hooks/useElementWidth';
 import { SERIES_COLORS, formatDate, formatValue, niceCeil } from './InstrumentTrendChart';
 
@@ -351,25 +352,26 @@ export function ModelComparisonSection({ filters = {} }: { filters?: AnalyticsFi
   const group = groups.find((g) => g.model === selectedModel) ?? groups[0];
 
   return (
-    <div className="chart-section" id="model-comparison">
-      <div className="section-title-row">
-        <div className="chart-title">Compare units of the same model</div>
-        <select value={group.model} onChange={(e) => setSelectedModel(e.target.value)} aria-label="Model to compare">
-          {groups.map((g) => (
-            <option key={g.model} value={g.model}>
-              {g.model} ({g.units.length} unit{g.units.length === 1 ? '' : 's'})
-            </option>
-          ))}
-        </select>
-      </div>
-      {group.units.length < 2 && (
-        <p className="hint-text">
-          Only one {group.model} is on file, so there is nothing to compare it with yet. Add another unit on the
-          Instruments tab.
-        </p>
-      )}
-      <UnitTable units={group.units} />
-      <ModelTrendSection key={group.model} group={group} filters={filters} />
+    <div id="model-comparison">
+      <ChartSection title="Compare units of the same model">
+        <div className="section-title-row">
+          <select value={group.model} onChange={(e) => setSelectedModel(e.target.value)} aria-label="Model to compare">
+            {groups.map((g) => (
+              <option key={g.model} value={g.model}>
+                {g.model} ({g.units.length} unit{g.units.length === 1 ? '' : 's'})
+              </option>
+            ))}
+          </select>
+        </div>
+        {group.units.length < 2 && (
+          <p className="hint-text">
+            Only one {group.model} is on file, so there is nothing to compare it with yet. Add another unit on the
+            Instruments tab.
+          </p>
+        )}
+        <UnitTable units={group.units} />
+        <ModelTrendSection key={group.model} group={group} filters={filters} />
+      </ChartSection>
     </div>
   );
 }
