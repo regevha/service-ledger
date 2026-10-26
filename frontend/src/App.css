@@ -708,6 +708,12 @@ textarea {
   font-size: 0.76rem;
   color: var(--text-faint);
 }
+@media (max-width: 620px) {
+  .stat-value {
+    font-size: 1.15rem;
+    white-space: nowrap;
+  }
+}
 
 .chart-section {
   margin-bottom: 24px;
@@ -1355,6 +1361,12 @@ textarea {
 
 .trend-table-wrap {
   overflow-x: auto;
+  /* Soft edges appear on the side that has more to scroll to. */
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) 0 0 / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) 100% 0 / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.18), transparent) 0 0 / 10px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.18), transparent) 100% 0 / 10px 100% no-repeat scroll;
 }
 .trend-table {
   width: 100%;
@@ -1569,7 +1581,7 @@ textarea {
   min-width: 0;
 }
 /* A finalized report is read-only until Edit: values show as plain text, not as boxes to type in. */
-.field-list.read-only input,
+.field-list.read-only input:not(.date-input-native),
 .field-list.read-only textarea,
 .field-list.read-only select {
   background: transparent;
@@ -1578,6 +1590,10 @@ textarea {
   opacity: 1;
   resize: none;
   appearance: none;
+}
+/* A long narrative is shown whole (the box grows to its text; see AutoGrow in FieldEditor). */
+.field-list.read-only textarea {
+  overflow: hidden;
 }
 .field-list.read-only .row-remove,
 .field-list.read-only .btn,
@@ -1989,8 +2005,44 @@ textarea {
     gap: 2px;
   }
   .view-tab {
-    font-size: 0.7rem;
-    padding: 7px 6px;
+    font-size: 0.75rem;
+    padding: 7px 5px;
+  }
+}
+
+/* Touch targets: Android asks for 48dp, 44px is the usual floor. Phone width only; desktop keeps its compact controls. */
+@media (max-width: 620px) {
+  .btn,
+  .btn.small,
+  .view-tab,
+  .row-menu-item,
+  .date-input-pick,
+  select,
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not(.date-input-native) {
+    min-height: 44px;
+  }
+  .btn,
+  .btn.small {
+    justify-content: center;
+  }
+  .date-input-pick {
+    min-width: 44px;
+    justify-content: center;
+  }
+  .date-input > input[type='text'] {
+    padding-right: 52px;
+  }
+  /* The sort buttons above the Reports cards: big enough to hit, still a compact row. */
+  .sort-head {
+    min-height: 44px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .report-row-head {
+    gap: 0 8px;
+    align-items: center;
   }
 }
 
@@ -2005,6 +2057,23 @@ textarea {
   }
   .filter-row .filter-sep {
     display: none;
+  }
+  .filter-row .date-pair-label {
+    display: block;
+    flex: 1 1 100%;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: -6px;
+  }
+}
+.filter-row .date-pair-label {
+  display: none;
+}
+@media (max-width: 620px) {
+  .filter-row .date-pair-label {
+    display: block;
   }
 }
 
@@ -2162,5 +2231,86 @@ textarea {
   }
   .instrument-report-row-body > span[data-label]::before {
     display: none;
+  }
+
+/* ---------- Review screen and report header (phone review, 2026-10-25) ---------- */
+
+.report-heading {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.report-heading-meta {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.next-short,
+.notice-more {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  /* Long notices show two lines and a More button. */
+  .notice:not(.notice-open) .notice-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .notice-more {
+    display: inline-block;
+    min-height: 44px;
+    padding: 0 6px 0 0;
+  }
+
+  /* One row: [2 ↓] [Save corrections] [Save & finalize report]. */
+  .review-actions {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 8px 0;
+  }
+  .review-actions-status {
+    flex: none;
+  }
+  .review-actions-count,
+  .next-long {
+    display: none;
+  }
+  .next-short {
+    display: inline;
+  }
+  .review-actions-buttons {
+    flex: 1 1 auto;
+    margin-left: 0;
+    gap: 8px;
+  }
+  .review-actions-buttons .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 0.78rem;
+  }
+
+  /* Back and Delete share a row; "View instrument" gets its own line below. */
+  .detail-nav-links {
+    display: contents;
+  }
+  .detail-nav-row {
+    row-gap: 8px;
+  }
+  .detail-nav-links > .back-link {
+    order: 1;
+  }
+  .detail-nav-row > .btn.danger {
+    order: 2;
+    margin-left: auto;
+  }
+  .detail-nav-links > .btn:not(.back-link) {
+    order: 3;
+    flex: 1 1 100%;
+    justify-content: flex-start;
   }
 }
