@@ -2206,6 +2206,8 @@ textarea {
   }
   .toast-region {
     bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
 
 /* ---------- Phone: report cards and folding Analytics sections (2026-10-26) ---------- */
 
@@ -2321,6 +2323,7 @@ textarea {
   .instrument-report-row-body > span[data-label]::before {
     display: none;
   }
+}
 
 /* ---------- Review screen and report header (phone review, 2026-10-25) ---------- */
 
