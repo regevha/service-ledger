@@ -2117,3 +2117,85 @@ textarea {
     padding: 14px;
   }
 }
+
+/* ---------- Review screen and report header (phone review, 2026-10-25) ---------- */
+
+.report-heading {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.report-heading-meta {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.next-short,
+.notice-more {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  /* Long notices show two lines and a More button. */
+  .notice:not(.notice-open) .notice-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .notice-more {
+    display: inline-block;
+    min-height: 44px;
+    padding: 0 6px 0 0;
+  }
+
+  /* One row: [2 ↓] [Save corrections] [Save & finalize report]. */
+  .review-actions {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 8px 0;
+  }
+  .review-actions-status {
+    flex: none;
+  }
+  .review-actions-count,
+  .next-long {
+    display: none;
+  }
+  .next-short {
+    display: inline;
+  }
+  .review-actions-buttons {
+    flex: 1 1 auto;
+    margin-left: 0;
+    gap: 8px;
+  }
+  .review-actions-buttons .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 0.78rem;
+  }
+
+  /* Back and Delete share a row; "View instrument" gets its own line below. */
+  .detail-nav-links {
+    display: contents;
+  }
+  .detail-nav-row {
+    row-gap: 8px;
+  }
+  .detail-nav-links > .back-link {
+    order: 1;
+  }
+  .detail-nav-row > .btn.danger {
+    order: 2;
+    margin-left: auto;
+  }
+  .detail-nav-links > .btn:not(.back-link) {
+    order: 3;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+}
