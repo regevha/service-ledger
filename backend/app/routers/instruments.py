@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
 from app.db import get_db
+from app.services.instrument_models import type_conflict
 from app.services.instrument_types import type_exists
 from app.services.analytics import trend_points, trendable_fields
 from app.services.report_deletion import count_in_flight_jobs, remove_report_files
@@ -23,6 +24,9 @@ def create_instrument(payload: schemas.InstrumentCreate, db: Session = Depends(g
         raise HTTPException(422, f"Unknown instrument type '{payload.instrument_type}'. Add it first.")
     if db.query(models.Instrument).filter(models.Instrument.serial_number == payload.serial_number).first():
         raise HTTPException(409, _SERIAL_CONFLICT)
+    conflict = type_conflict(db, payload.model, payload.instrument_type)
+    if conflict:
+        raise HTTPException(422, conflict)
     instrument = models.Instrument(**payload.model_dump())
     db.add(instrument)
     try:
@@ -80,6 +84,11 @@ def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdat
         )
         if conflict:
             raise HTTPException(409, _SERIAL_CONFLICT)
+
+    if "model" in provided and payload.model != instrument.model:
+        conflict = type_conflict(db, payload.model, instrument.instrument_type)
+        if conflict:
+            raise HTTPException(422, conflict)
 
     for field in ("name", "model", "manufacturer", "distributor", "institution", "serial_number", "location", "status"):
         if field in provided:

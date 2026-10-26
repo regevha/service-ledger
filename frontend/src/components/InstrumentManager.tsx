@@ -4,15 +4,18 @@ import {
   createInstrument,
   createInstrumentType,
   deleteInstrument,
+  listInstrumentModels,
   listInstrumentTypes,
   listReports,
   updateInstrument,
   type Instrument,
   type InstrumentStatus,
+  type InstrumentModel,
   type InstrumentType,
 } from '../api';
 import { INSTRUMENT_STATUS_LABEL } from '../labels';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { ModelsManager } from './ModelsManager';
 import { RowMenu } from './RowMenu';
 
 /**
@@ -59,12 +62,30 @@ function InstrumentFormScreen({
   const [types, setTypes] = useState<InstrumentType[]>([]);
   const [typeKey, setTypeKey] = useState(existing?.instrument_type ?? 'facs');
   const [newTypeName, setNewTypeName] = useState<string | null>(null);
+  const [knownModels, setKnownModels] = useState<InstrumentModel[]>([]);
 
   useEffect(() => {
     listInstrumentTypes()
       .then(setTypes)
       .catch(() => setTypes([]));
+    listInstrumentModels()
+      .then(setKnownModels)
+      .catch(() => setKnownModels([]));
   }, []);
+
+  // The model typed is one that already exists (exact name), or a new one.
+  const matchedModel = knownModels.find((m) => m.name === model.trim());
+
+  // Choosing an existing model fills in what the model already says (only for
+  // a new instrument, and only an empty manufacturer); the person can still
+  // change it. An effect, so it also applies when the list arrives after typing.
+  const matchedId = matchedModel?.id;
+  useEffect(() => {
+    if (existing || !matchedModel) return;
+    setManufacturer((current) => (current.trim() === '' && matchedModel.manufacturer ? matchedModel.manufacturer : current));
+    setTypeKey(matchedModel.instrument_type);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchedId]);
 
   async function handleAddType() {
     if (!newTypeName || !newTypeName.trim()) return;
@@ -193,8 +214,21 @@ function InstrumentFormScreen({
             className="text-input"
             placeholder="e.g. FACSAria III"
             value={model}
+            list="known-models"
             onChange={(e) => setModel(e.target.value)}
           />
+          <datalist id="known-models">
+            {knownModels.map((m) => (
+              <option key={m.id} value={m.name} />
+            ))}
+          </datalist>
+          {model.trim() !== '' && (
+            <small className="muted model-hint" id="model-hint">
+              {matchedModel
+                ? `Existing model · ${matchedModel.unit_count} instrument${matchedModel.unit_count === 1 ? '' : 's'}`
+                : 'New model · it will be added to Models'}
+            </small>
+          )}
         </label>
       </div>
 
@@ -315,6 +349,7 @@ export function InstrumentManagerScreen({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [typeNames, setTypeNames] = useState<Record<string, string>>({});
+  const [section, setSection] = useState<'instruments' | 'models'>('instruments');
 
   useEffect(() => {
     listInstrumentTypes()
@@ -370,7 +405,29 @@ export function InstrumentManagerScreen({
     );
   }
 
+  const switcher = (
+    <div className="sub-switch" role="tablist" aria-label="Instruments or models">
+      <button type="button" role="tab" aria-selected={section === 'instruments'} className={section === 'instruments' ? 'active' : ''} onClick={() => setSection('instruments')}>
+        Instruments
+      </button>
+      <button type="button" role="tab" aria-selected={section === 'models'} className={section === 'models' ? 'active' : ''} onClick={() => setSection('models')}>
+        Models
+      </button>
+    </div>
+  );
+
+  if (section === 'models') {
+    return (
+      <>
+        {switcher}
+        <ModelsManager onChanged={onRefresh} />
+      </>
+    );
+  }
+
   return (
+    <>
+    {switcher}
     <div className="section">
       <div className="section-title-row">
         <div className="section-title">Instruments</div>
@@ -459,5 +516,6 @@ export function InstrumentManagerScreen({
         </div>
       )}
     </div>
+    </>
   );
 }

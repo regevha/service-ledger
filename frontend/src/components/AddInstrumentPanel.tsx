@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import {
   ApiError,
   createInstrument,
+  listInstrumentModels,
   listInstrumentTypes,
   type ClassificationResult,
   type Instrument,
+  type InstrumentModel,
   type InstrumentType,
 } from '../api';
 
@@ -36,6 +38,20 @@ export function AddInstrumentPanel({
   const [room, setRoom] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [knownModels, setKnownModels] = useState<InstrumentModel[]>([]);
+
+  useEffect(() => {
+    listInstrumentModels()
+      .then(setKnownModels)
+      .catch(() => setKnownModels([]));
+  }, []);
+
+  // A model that already exists has one instrument type; the new instrument has to match it.
+  useEffect(() => {
+    const match = knownModels.find((m) => m.name === model.trim());
+    if (match) setTypeKey(match.instrument_type);
+  }, [knownModels, model]);
 
   useEffect(() => {
     listInstrumentTypes()
