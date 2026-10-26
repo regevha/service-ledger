@@ -1,4 +1,5 @@
 import { test, expect } from './coverage';
+import { BACKEND_PORT } from '../../playwright.config';
 
 // Analytics on a phone is a short list of headings you open one at a time (the first starts open);
 // on a wide screen every chart is simply shown.
@@ -43,6 +44,30 @@ test.describe('on a phone', () => {
     for (let i = 0; i < (await toggles.count()); i++) {
       expect((await toggles.nth(i).boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
     }
+  });
+
+  test('the intro is one line you can open, and "Compare units of the same model" folds like the charts', async ({ page, request }) => {
+    // A model with two units, so the comparison section exists.
+    const model = `E2E-Fold-${Date.now()}`;
+    for (const n of [1, 2]) {
+      await request.post(`http://localhost:${BACKEND_PORT}/instruments`, {
+        data: { name: `${model}-${n}`, model, manufacturer: 'E2E Maker', serial_number: `SN-${model}-${n}` },
+      });
+    }
+    await page.goto('/#/analytics');
+    const intro = page.locator('details.hint-details');
+    await expect(intro).toBeVisible({ timeout: 15_000 });
+    await expect(intro.locator('summary')).toHaveText('Computed from finalized reports');
+    const closed = (await intro.boundingBox())!.height;
+    expect(closed).toBeLessThan(60); // one line, not five
+    await intro.locator('summary').click();
+    expect((await intro.boundingBox())!.height).toBeGreaterThan(closed + 30);
+
+    const compare = page.locator('#model-comparison .chart-toggle');
+    await expect(compare).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#model-comparison .compare-table')).toHaveCount(0);
+    await compare.click();
+    await expect(page.locator('#model-comparison .compare-table')).toBeVisible();
   });
 });
 
