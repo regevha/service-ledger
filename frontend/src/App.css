@@ -2016,6 +2016,18 @@ textarea {
   .date-input > input[type='text'] {
     padding-right: 52px;
   }
+  /* The sort buttons above the Reports cards: big enough to hit, still a compact row. */
+  .sort-head {
+    min-height: 44px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .report-row-head {
+    gap: 0 8px;
+    align-items: center;
+  }
 }
 
 /* Filters: one control per line, full width, on a phone. */

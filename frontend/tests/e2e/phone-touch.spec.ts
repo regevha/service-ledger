@@ -1,4 +1,5 @@
 import { test, expect } from './coverage';
+import { BACKEND_PORT } from '../../playwright.config';
 
 // Phone review of 2026-10-25, item 8 and 19: controls are big enough for a thumb, the tab labels are
 // readable, and the keyboard leaves serial and part numbers alone.
@@ -23,7 +24,9 @@ async function tooSmall(page: import('@playwright/test').Page): Promise<string[]
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
 
-  test('buttons, selects and text boxes are at least 44px high on every tab', async ({ page }) => {
+  test('buttons, selects and text boxes are at least 44px high on every tab', async ({ page, request }) => {
+    // A report in the list, so the sort buttons above the cards are measured too.
+    await request.post(`http://localhost:${BACKEND_PORT}/reports`, { data: { technician_name: `E2E-Touch-${Date.now()}` } });
     await page.goto('/');
     for (const tab of TABS) {
       await page.click(`.view-tab:has-text("${tab}")`);
@@ -31,6 +34,7 @@ test.describe('on a phone', () => {
       // Open the filters where there are some, so their controls are measured too.
       const show = page.locator('button:has-text("Show filters")');
       if (await show.count()) await show.first().click();
+      if (tab === 'Reports') await expect(page.locator('.sort-head').first()).toBeVisible();
       expect(await tooSmall(page), tab).toEqual([]);
     }
   });
