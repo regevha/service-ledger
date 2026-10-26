@@ -133,7 +133,7 @@ test.describe('reports search screen', () => {
     await page.click(`.report-row-body:has-text("${marker}")`);
 
     await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('.section-title')).toContainText('Finalized');
+    await expect(page.locator('.report-heading-meta')).toContainText('Finalized');
     // A finalized report opens read-only: Edit unlocks it, and only then is there anything to save.
     await expect(page.locator('button:has-text("Save corrections")')).toHaveCount(0);
     await page.click('.review-actions button:has-text("Edit")');
@@ -157,12 +157,12 @@ test.describe('reports search screen', () => {
     await page.click(`.report-row-body:has-text("${marker}")`);
 
     await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('.section-title')).toContainText('Extracted');
+    await expect(page.locator('.report-heading-meta')).toContainText('Extracted');
     const finalizeButton = page.locator('button:has-text("Save & finalize report")');
     await expect(finalizeButton).toBeVisible();
 
     await finalizeButton.click();
-    await expect(page.locator('.section-title')).toContainText('Finalized', { timeout: 15_000 });
+    await expect(page.locator('.report-heading-meta')).toContainText('Finalized', { timeout: 15_000 });
     await expect(page.locator('button:has-text("Save & finalize report")')).toHaveCount(0);
   });
 });

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { DateInput } from './DateInput';
+import { Notice } from './Notice';
 import { FieldControl } from './FieldEditor';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
@@ -47,6 +48,7 @@ export function ReviewScreen({
   onSave,
   onFinalize,
   title,
+  titleMeta,
   originalScanUrl,
   pdfUrl,
   scanInlineUrl,
@@ -79,6 +81,8 @@ export function ReviewScreen({
   // meaningless without fresh extraction confidences (an already-saved
   // report has none), so the reports list passes its own heading instead.
   title?: string;
+  // A muted line under `title` (date and status of a saved report).
+  titleMeta?: string;
   // Link to the scanned original this review screen's values came from.
   // Undefined hides the link — covers the brief window during live intake
   // before the attachment finishes uploading.
@@ -128,7 +132,10 @@ export function ReviewScreen({
   return (
     <div className="section">
       <div className="section-title-row">
-        <div className="section-title">{heading}</div>
+        <div>
+          <div className={`section-title${title ? ' report-heading' : ''}`}>{heading}</div>
+          {titleMeta && <div className="report-heading-meta">{titleMeta}</div>}
+        </div>
         <div className="section-title-actions">
           {scanInlineUrl && wide && (
             <button
@@ -156,10 +163,10 @@ export function ReviewScreen({
       </div>
 
       {placeholderValues && (
-        <div className="banner banner-warn" id="placeholder-notice">
+        <Notice tone="warn" id="placeholder-notice">
           No API key is set, so these values are placeholders, not read from the document. Check every field against the
           scan.
-        </div>
+        </Notice>
       )}
 
       <div className={`review-split${showScan ? ' with-scan' : ''}`}>
@@ -223,11 +230,19 @@ export function ReviewScreen({
             <span>Finalized. Press Edit to change it.</span>
           ) : flaggedCount > 0 ? (
             <>
-              <span>
+              <span className="review-actions-count">
                 {flaggedCount} field{flaggedCount === 1 ? '' : 's'} need{flaggedCount === 1 ? 's' : ''} attention
               </span>
-              <button type="button" className="btn small" onClick={goToNextFlagged}>
-                Next ↓
+              <button
+                type="button"
+                className="btn small"
+                onClick={goToNextFlagged}
+                title={`${flaggedCount} field${flaggedCount === 1 ? '' : 's'} need${flaggedCount === 1 ? 's' : ''} attention`}
+              >
+                <span className="next-long">Next ↓</span>
+                <span className="next-short" aria-hidden="true">
+                  {flaggedCount} ↓
+                </span>
               </button>
             </>
           ) : null}
