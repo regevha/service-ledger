@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import type { ItemSchemaColumn, TemplateField } from '../api';
 import { fieldLabel } from '../fieldLabels';
 import { DateInput } from './DateInput';
@@ -15,6 +16,26 @@ import { DateInput } from './DateInput';
  */
 
 type LeafType = 'text' | 'number' | 'boolean' | 'date';
+
+/**
+ * A text box. In a finalized report (read-only) it grows to show all of its text, so a long
+ * narrative can be read without pressing Edit; while editing it keeps its normal size.
+ */
+function AutoGrowTextarea({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (el.closest('.read-only')) {
+      el.style.height = 'auto';
+      // scrollHeight leaves out the border; with box-sizing: border-box the height must include it.
+      el.style.height = `${el.scrollHeight + (el.offsetHeight - el.clientHeight)}px`;
+    } else {
+      el.style.height = '';
+    }
+  });
+  return <textarea ref={ref} value={value} onChange={(e) => onChange(e.target.value)} />;
+}
 
 function leafInput(value: unknown, type: string, onChange: (v: unknown) => void) {
   if (type === 'boolean') {
@@ -206,7 +227,7 @@ export function FieldControl({
     case 'date':
       return leafInput(value, field.type, onChange);
     case 'text':
-      return <textarea value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)} />;
+      return <AutoGrowTextarea value={typeof value === 'string' ? value : ''} onChange={onChange} />;
     case 'enum':
       return (
         <select value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)}>
