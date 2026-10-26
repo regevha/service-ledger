@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { DateInput } from './DateInput';
 import { Notice } from './Notice';
-import { FieldControl } from './FieldEditor';
+import { FieldControl, ReadOnlyContext } from './FieldEditor';
 import { ScanPages } from './ScanPages';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
@@ -86,7 +86,7 @@ export function ReviewScreen({
   // report has none), so the reports list passes its own heading instead.
   title?: string;
   // A muted line under `title` (date and status of a saved report).
-  titleMeta?: string;
+  titleMeta?: ReactNode;
   // Link to the scanned original this review screen's values came from.
   // Undefined hides the link — covers the brief window during live intake
   // before the attachment finishes uploading.
@@ -117,11 +117,14 @@ export function ReviewScreen({
   const reportDateFlagged = isFlagged('report_date');
   const flaggedCount =
     template.field_schema.fields.filter((f) => isFlagged(f.name)).length + (reportDateFlagged ? 1 : 0);
-  const heading =
-    title ??
-    `${REPORT_TYPE_LABEL[template.report_type]} — ${flaggedCount} field${flaggedCount === 1 ? '' : 's'} ${
-      flaggedCount === 1 ? 'needs' : 'need'
-    } your attention`;
+  const heading = title ?? REPORT_TYPE_LABEL[template.report_type];
+  const meta =
+    titleMeta ??
+    (title === undefined
+      ? flaggedCount > 0
+        ? `${flaggedCount} field${flaggedCount === 1 ? '' : 's'} ${flaggedCount === 1 ? 'needs' : 'need'} your attention`
+        : 'Check the values against the scan'
+      : undefined);
 
   const wide = useMediaQuery('(min-width: 900px)');
   const [scanOpen, setScanOpen] = useState(readScanPref);
@@ -146,8 +149,8 @@ export function ReviewScreen({
     <div className="section">
       <div className="section-title-row">
         <div>
-          <div className={`section-title${title ? ' report-heading' : ''}`}>{heading}</div>
-          {titleMeta && <div className="report-heading-meta">{titleMeta}</div>}
+          <div className="section-title report-heading">{heading}</div>
+          {meta && <div className="report-heading-meta">{meta}</div>}
         </div>
         <div className="section-title-actions">
           {scanInlineUrl && wide && (
@@ -162,12 +165,12 @@ export function ReviewScreen({
               {scanOpen ? 'Hide scan' : 'Show scan'}
             </button>
           )}
-          {originalScanUrl && !(linksInMenu && phone) && (
+          {originalScanUrl && !(phone && (linksInMenu || phoneScan)) && (
             <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
               View original scan
             </a>
           )}
-          {pdfUrl && !(linksInMenu && phone) && (
+          {pdfUrl && !(phone && (linksInMenu || phoneScan)) && (
             <a className="btn small" href={pdfUrl}>
               Download PDF
             </a>
@@ -208,6 +211,7 @@ export function ReviewScreen({
         )}
         <div className="review-fields">
       <fieldset className="review-fieldset" disabled={readOnly}>
+      <ReadOnlyContext.Provider value={readOnly}>
       <div className={`field-list${readOnly ? ' read-only' : ''}`} ref={listRef}>
         <div className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}>
           <div className="field-top">
@@ -252,6 +256,7 @@ export function ReviewScreen({
           );
         })}
       </div>
+      </ReadOnlyContext.Provider>
 
       </fieldset>
 
