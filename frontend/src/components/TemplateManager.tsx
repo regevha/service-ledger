@@ -19,6 +19,7 @@ import {
 } from '../api';
 import { EnumArrayInput } from './FieldEditor';
 import { RowMenu } from './RowMenu';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { fieldLabel } from '../fieldLabels';
 import { FieldAliasManagerScreen } from './FieldAliasManager';
 import { TemplateCompareScreen } from './TemplateCompare';
@@ -671,6 +672,7 @@ export function TemplateManagerScreen({
   const [usage, setUsage] = useState<Record<string, TemplateUsage>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const phone = useMediaQuery('(max-width: 620px)');
   const [mode, setMode] = useState<ManagerMode>(() => (request ? { kind: 'create' } : { kind: 'list' }));
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [typeNames, setTypeNames] = useState<Record<string, string>>({});
@@ -760,22 +762,39 @@ export function TemplateManagerScreen({
 
   return (
     <div className="section">
-      <div className="section-title-row">
+      <div className="section-title-row templates-head">
         <div className="section-title">Report templates</div>
         <div className="section-title-actions">
-          <button
-            type="button"
-            className="btn small"
-            id="compare-templates"
-            disabled={templates.length < 2}
-            title={templates.length < 2 ? 'There need to be two templates to compare.' : undefined}
-            onClick={() => setMode({ kind: 'compare', left: null })}
-          >
-            Compare templates
-          </button>
-          <button type="button" className="btn small" id="field-aliases" onClick={() => setMode({ kind: 'aliases' })}>
-            Field aliases
-          </button>
+          {phone ? (
+            <RowMenu
+              label="More template actions"
+              items={[
+                {
+                  label: 'Compare templates',
+                  disabled: templates.length < 2,
+                  title: templates.length < 2 ? 'There need to be two templates to compare.' : undefined,
+                  onSelect: () => setMode({ kind: 'compare', left: null }),
+                },
+                { label: 'Field aliases', onSelect: () => setMode({ kind: 'aliases' }) },
+              ]}
+            />
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn small"
+                id="compare-templates"
+                disabled={templates.length < 2}
+                title={templates.length < 2 ? 'There need to be two templates to compare.' : undefined}
+                onClick={() => setMode({ kind: 'compare', left: null })}
+              >
+                Compare templates
+              </button>
+              <button type="button" className="btn small" id="field-aliases" onClick={() => setMode({ kind: 'aliases' })}>
+                Field aliases
+              </button>
+            </>
+          )}
           <button type="button" className="btn small primary" onClick={() => setMode({ kind: 'create' })}>
             + New template
           </button>

@@ -2502,3 +2502,104 @@ textarea {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ---------- Phone: third pass (2026-10-26) ---------- */
+
+/* The sort menu replaces the row of column names on a phone, and the sort row is gone from wide screens. */
+.sort-select-wrap {
+  display: none;
+}
+@media (max-width: 620px) {
+  .sort-select-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .sort-select-wrap .sort-select {
+    flex: 1;
+    min-height: 44px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.9rem;
+    font-weight: 400;
+  }
+  .report-row-head {
+    display: none;
+  }
+
+  /* No card inside a card: the page itself is the surface, and the content gets the full width. */
+  .wrap {
+    max-width: none;
+    padding-top: 12px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .masthead {
+    padding: 0 16px;
+  }
+  .app-shell {
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* Templates: the title has its own line; the actions sit under it. */
+  .templates-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .templates-head .section-title-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Analytics bars: the name and the value share a line, the bar sits under them. A bar with nothing is just "none". */
+  .bar-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label value'
+      'track track';
+    column-gap: 10px;
+  }
+  .bar-row > .bar-row-label {
+    grid-area: label;
+  }
+  .bar-row > .bar-value {
+    grid-area: value;
+    text-align: right;
+  }
+  .bar-row > .bar-track {
+    grid-area: track;
+  }
+  .bar-row-empty > .bar-track {
+    display: none;
+  }
+
+  /* The scan: the Fields | Scan switch stays at the top while the pages scroll. */
+  .view-switch {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+  }
+  .scan-pane {
+    max-height: none;
+  }
+
+  /* Removing a row of a table is a thumb-sized button. */
+  .row-remove,
+  .row-remove.icon {
+    width: auto;
+    height: auto;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

@@ -188,7 +188,7 @@ test.describe('phone cards say what each value is', () => {
       expect(type!.y).toBeGreaterThan(inst!.y + 8);
       expect(tech!.y).toBeGreaterThan(type!.y + 8); // lab manager last
       expect(status!.x).toBeGreaterThan(inst!.x); // status to the right of the instrument
-      expect(await before(page, '.report-row-head')).toBe('Sort by');
+      await expect(page.locator('.sort-select-wrap')).toContainText('Sort by'); // one menu, not a run of column names
     }).toPass({ timeout: 10_000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });

@@ -35,6 +35,7 @@ import type { TemplateRequest } from '../templateRequest';
 import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
 import { AddInstrumentPanel } from './AddInstrumentPanel';
 import { Notice } from './Notice';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { ReviewScreen } from './ReviewScreen';
 import { TranslationReview } from './TranslationReview';
 
@@ -127,6 +128,7 @@ function IntakeScreen({
   const [dragging, setDragging] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
 
+  const phone = useMediaQuery('(max-width: 620px)');
   const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes('Files');
 
   return (
@@ -173,7 +175,7 @@ function IntakeScreen({
       >
         <div className="icon">📄</div>
         <div className="primary">
-          {dragging ? 'Drop the file here' : file ? file.name : 'Click to choose a scan or PDF, or drop it here'}
+          {dragging ? 'Drop the file here' : file ? file.name : phone ? 'Take a photo or choose a file' : 'Click to choose a scan or PDF, or drop it here'}
         </div>
         <div className="secondary">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one file per report, any instrument, any report type</div>
         <input

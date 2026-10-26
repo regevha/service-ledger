@@ -205,6 +205,24 @@ export function ReportsListScreen({
               ⬇ Export CSV
             </a>
           </div>
+          <label className="sort-select-wrap">
+            <span>Sort by</span>
+            <select
+              className="sort-select"
+              data-testid="sort-select"
+              value={sort ? `${sort.key}:${sort.direction}` : ''}
+              onChange={(e) => {
+                const [key, direction] = e.target.value.split(':');
+                setSort(key ? { key: key as SortKey, direction: direction as 'asc' | 'desc' } : null);
+              }}
+            >
+              <option value="">{searching ? 'Best match' : 'Default order'}</option>
+              {(Object.keys(SORT_LABEL) as SortKey[]).flatMap((key) => [
+                <option key={`${key}:asc`} value={`${key}:asc`}>{`${SORT_LABEL[key]} ▲`}</option>,
+                <option key={`${key}:desc`} value={`${key}:desc`}>{`${SORT_LABEL[key]} ▼`}</option>,
+              ])}
+            </select>
+          </label>
           <div className="report-table">
             <div className="report-row report-row-head">
               {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => {

@@ -12,7 +12,7 @@ export function BarRow({ label, sublabel, value, maxValue, formattedValue, class
 }) {
   const pct = maxValue > 0 ? Math.max((value / maxValue) * 100, value > 0 ? 2 : 0) : 0;
   return (
-    <div className={`bar-row ${className}`.trim()} title={tooltip}>
+    <div className={`bar-row${value > 0 ? '' : ' bar-row-empty'} ${className}`.trim()} title={tooltip}>
       <div className="bar-row-label">
         <span className="bar-label">{label}</span>
         {sublabel && <span className="bar-sublabel">{sublabel}</span>}
