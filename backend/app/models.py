@@ -184,7 +184,7 @@ class ReportTemplate(Base):
 
     __tablename__ = "report_templates"
     __table_args__ = (
-        # See alembic/versions/6b5fc4e1c3ca_*.py for the full rationale
+        # See alembic/versions/0001_baseline.py for the full rationale
         # (COALESCE(model, '') instead of a plain unique constraint, so two
         # NULL-model "any model" rows for the same (instrument_type,
         # report_type) collide too) — declared here as well, not just in

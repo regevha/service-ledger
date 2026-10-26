@@ -198,7 +198,7 @@ def create_report_template(payload: schemas.TemplateCreate, db: Session = Depend
         # The app-level check above closes the common case; this closes the
         # race window between that check and the commit (two concurrent
         # POSTs for the same instrument_type/report_type/model) — the DB's
-        # own unique index (migration 6b5fc4e1c3ca) is what actually stops
+        # own unique index (the baseline migration) is what actually stops
         # the duplicate row, this just turns the resulting IntegrityError
         # into the same clean 409 the pre-check gives everyone else.
         db.rollback()

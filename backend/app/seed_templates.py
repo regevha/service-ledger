@@ -302,7 +302,7 @@ CYTOFLEX_S_REPAIR_FIELDS = [
 # a model-specific row exists for the same report_type. Repair (v0.9) and
 # preventive_maintenance (v0.12) both collapsed to a single shared row once
 # checked against real documents. There is no calibration type any more: lab
-# users asked for it to be removed (migration a8b9c0d1e2f3).
+# users asked for it to be removed (the baseline migration).
 TEMPLATE_ROWS: list[tuple[ReportType, str | None, list[dict]]] = [
     (ReportType.repair, None, REPAIR_FIELDS),
     (ReportType.preventive_maintenance, None, PM_FIELDS),
