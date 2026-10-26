@@ -29,6 +29,7 @@ import {
   type Translation,
 } from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
+import { showToast } from '../toast';
 import { ACCEPTED_TYPES, dropProblem } from '../uploadFiles';
 import type { TemplateRequest } from '../templateRequest';
 import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
@@ -907,6 +908,7 @@ export function IntakeFlow({
       if (finalize) final = await finalizeReport(report.id);
       setReport(final);
       setPhase(finalize ? { name: 'done' } : { name: 'review' });
+      if (!finalize) showToast('Saved');
     });
   }
 
