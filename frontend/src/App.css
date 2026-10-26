@@ -2048,3 +2048,94 @@ textarea {
     padding: 14px;
   }
 }
+
+/* ---------- Toast and the phone's bottom navigation (2026-10-26) ---------- */
+
+.tab-icon {
+  display: none;
+}
+.toast-region {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 50;
+}
+.toast {
+  background: var(--text);
+  color: var(--surface);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  animation: toast-in 0.18s ease-out;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+@media (max-width: 620px) {
+  /* The five tabs become a bar at the bottom of the screen, within thumb reach. */
+  .view-tabs {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    gap: 0;
+    margin: 0;
+    padding: 0 0 env(safe-area-inset-bottom);
+    overflow: visible;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .view-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 56px;
+    padding: 6px 2px;
+    border: none;
+    border-radius: 0;
+    font-size: 0.75rem;
+  }
+  .view-tab.active {
+    background: none;
+    border: none;
+    margin-bottom: 0;
+    color: var(--accent);
+  }
+  .tab-icon {
+    display: block;
+  }
+  .wrap {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+  /* The save bar sits above the bottom navigation, not under it. */
+  .review-actions {
+    bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+  .toast-region {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
