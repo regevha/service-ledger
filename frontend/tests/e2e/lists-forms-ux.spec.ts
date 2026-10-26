@@ -165,13 +165,27 @@ test.describe('phone cards say what each value is', () => {
     expect(await before(page, `${row} > span[data-label="Serial number"]`)).toBe('Serial number');
   });
 
-  test('Reports: labelled values, and the sort buttons introduced as such', async ({ page }) => {
+  test('Reports: a card puts instrument and status on top, type and date under, lab manager small; sort buttons introduced as such', async ({
+    page,
+  }) => {
     await page.goto('/#/reports');
     const row = '.report-row-body';
     await expect(page.locator(row).first()).toBeVisible();
-    expect(await before(page, `${row} > span[data-label="Lab manager"]`)).toBe('Lab manager');
-    expect(await before(page, `${row} > span[data-label="Report date"]`)).toBe('Report date');
-    expect(await before(page, `${row} > span[data-label="Status"]`)).toBe('Status');
+    // Only the lab manager keeps a label ("Lab manager: name"); the others read for themselves.
+    expect(await before(page, `${row} > span[data-label="Lab manager"]`)).toBe('Lab manager: ');
+    for (const label of ['Instrument', 'Report type', 'Report date', 'Status']) {
+      expect(await page.locator(`${row} > span[data-label="${label}"]`).first().evaluate((el) => getComputedStyle(el, '::before').display)).toBe('none');
+    }
+    const box = (label: string) => page.locator(`${row} > span[data-label="${label}"]`).first().boundingBox();
+    const [inst, status, type, date, tech] = await Promise.all(
+      ['Instrument', 'Status', 'Report type', 'Report date', 'Lab manager'].map(box)
+    );
+    const mid = (b: NonNullable<typeof inst>) => b.y + b.height / 2;
+    expect(Math.abs(mid(inst!) - mid(status!))).toBeLessThan(14); // top line
+    expect(Math.abs(mid(type!) - mid(date!))).toBeLessThan(6); // second line
+    expect(type!.y).toBeGreaterThan(inst!.y + 8);
+    expect(tech!.y).toBeGreaterThan(type!.y + 8); // lab manager last
+    expect(status!.x).toBeGreaterThan(inst!.x); // status to the right of the instrument
     expect(await before(page, '.report-row-head')).toBe('Sort by');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });

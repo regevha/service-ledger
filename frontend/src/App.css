@@ -2048,3 +2048,119 @@ textarea {
     padding: 14px;
   }
 }
+
+/* ---------- Phone: report cards and folding Analytics sections (2026-10-26) ---------- */
+
+.chart-toggle {
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.chart-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.chart-section-fold {
+  margin-bottom: 0;
+}
+.chart-section-open > .chart-toggle {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 620px) {
+  /* A report is a card: instrument and status on top, type and date under it, lab manager small. */
+  .report-row-body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'inst status'
+      'type date'
+      'tech tech'
+      'excerpt excerpt';
+    gap: 3px 12px;
+    padding: 12px 14px;
+  }
+  .report-row-body > span[data-label='Instrument'] {
+    grid-area: inst;
+    font-weight: 700;
+  }
+  .report-row-body > span[data-label='Status'] {
+    grid-area: status;
+    justify-self: end;
+  }
+  .report-row-body > span[data-label='Report type'] {
+    grid-area: type;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+  .report-row-body > span[data-label='Report date'] {
+    grid-area: date;
+    justify-self: end;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+  .report-row-body > span[data-label='Lab manager'] {
+    grid-area: tech;
+    color: var(--text-faint);
+    font-size: 0.78rem;
+  }
+  .report-row-body > .report-excerpt {
+    grid-area: excerpt;
+  }
+  .report-row-body > span[data-label='Instrument']::before,
+  .report-row-body > span[data-label='Status']::before,
+  .report-row-body > span[data-label='Report type']::before,
+  .report-row-body > span[data-label='Report date']::before {
+    display: none;
+  }
+  .report-row-body > span[data-label='Lab manager']::before {
+    display: inline;
+    content: 'Lab manager: ';
+    font-size: inherit;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    margin: 0;
+  }
+
+  /* The same on an instrument's report history: type and status on top, date and lab manager under. */
+  .instrument-report-row-body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'type status'
+      'date tech';
+    gap: 3px 12px;
+    padding: 12px 14px;
+  }
+  .instrument-report-row-body > span[data-label='Type'] {
+    grid-area: type;
+    font-weight: 700;
+  }
+  .instrument-report-row-body > span[data-label='Status'] {
+    grid-area: status;
+    justify-self: end;
+  }
+  .instrument-report-row-body > span[data-label='Report date'] {
+    grid-area: date;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+  .instrument-report-row-body > span[data-label='Lab manager'] {
+    grid-area: tech;
+    justify-self: end;
+    color: var(--text-faint);
+    font-size: 0.78rem;
+  }
+  .instrument-report-row-body > span[data-label]::before {
+    display: none;
+  }
+}
