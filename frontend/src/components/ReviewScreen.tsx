@@ -56,6 +56,7 @@ export function ReviewScreen({
   scanAttachmentId,
   readOnly = false,
   onEdit,
+  onCancelEdit,
   linksInMenu = false,
 }: {
   template: ReportTemplate;
@@ -103,6 +104,8 @@ export function ReviewScreen({
   // A finalized report opens read-only: its fields can't be typed into until Edit is pressed.
   readOnly?: boolean;
   onEdit?: () => void;
+  // Shown while a finalized report is being edited: throws the changes away.
+  onCancelEdit?: () => void;
   // On a phone the report screen's "⋯" menu carries these two links instead.
   linksInMenu?: boolean;
 }) {
@@ -284,6 +287,11 @@ export function ReviewScreen({
             )
           ) : (
             <>
+              {onCancelEdit && (
+                <button className="btn review-cancel-edit" onClick={onCancelEdit}>
+                  Cancel
+                </button>
+              )}
               <button className="btn" onClick={onSave}>
                 Save corrections
               </button>
