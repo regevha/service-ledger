@@ -34,6 +34,7 @@ import { ACCEPTED_TYPES, dropProblem } from '../uploadFiles';
 import type { TemplateRequest } from '../templateRequest';
 import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
 import { AddInstrumentPanel } from './AddInstrumentPanel';
+import { Notice } from './Notice';
 import { ReviewScreen } from './ReviewScreen';
 import { TranslationReview } from './TranslationReview';
 
@@ -940,15 +941,15 @@ export function IntakeFlow({
       )}
 
       {serialNotice && (phase.name === 'confirm-classification' || phase.name === 'review') && (
-        <div className={`banner ${serialNotice.tone === 'warn' ? 'banner-warn' : 'banner-info'}`} id="serial-notice">
+        <Notice tone={serialNotice.tone === 'warn' ? 'warn' : 'info'} id="serial-notice">
           {serialNotice.text}
-        </div>
+        </Notice>
       )}
 
       {Object.keys(duplicates).length > 0 && (phase.name === 'confirm-classification' || phase.name === 'review') && (
-        <div className="banner banner-warn" id="duplicate-notice">
+        <Notice tone="warn" id="duplicate-notice">
           {describeDuplicates(duplicates)}
-        </div>
+        </Notice>
       )}
 
       {phase.name === 'review-translation' && translation && attachmentId && report && (
@@ -979,33 +980,36 @@ export function IntakeFlow({
       )}
 
       {phase.name === 'review' && templateNote && (
-        <div className="banner banner-info" id="template-note">
+        <Notice tone="info" id="template-note">
           {templateNote}
-        </div>
+        </Notice>
       )}
 
       {phase.name === 'review' && template && template.model === null && reviewInstrument && attachmentId && report && onCreateTemplate && !genericNoticeDismissed && (
-        <div className="banner banner-info" id="generic-template-notice">
-          <div>
-            This report used the generic {REPORT_TYPE_LABEL[template.report_type]} template for {reviewInstrument.model}. A template made for{' '}
-            {reviewInstrument.model} can ask for the fields its forms carry; saving one reads this report again and replaces what is on
-            screen, so make corrections after, not before.
-          </div>
-          <div className="banner-actions">
-            <button
-              type="button"
-              className="btn small"
-              onClick={() =>
-                requestTemplate({ reportId: report.id, attachmentId, instrument: reviewInstrument, reportType: template.report_type })
-              }
-            >
-              Create a {reviewInstrument.model} template
-            </button>{' '}
-            <button type="button" className="link-button" onClick={() => setGenericNoticeDismissed(true)}>
-              Not now
-            </button>
-          </div>
-        </div>
+        <Notice
+          tone="info"
+          id="generic-template-notice"
+          actions={
+            <div className="banner-actions">
+              <button
+                type="button"
+                className="btn small"
+                onClick={() =>
+                  requestTemplate({ reportId: report.id, attachmentId, instrument: reviewInstrument, reportType: template.report_type })
+                }
+              >
+                Create a {reviewInstrument.model} template
+              </button>{' '}
+              <button type="button" className="link-button" onClick={() => setGenericNoticeDismissed(true)}>
+                Not now
+              </button>
+            </div>
+          }
+        >
+          This report used the generic {REPORT_TYPE_LABEL[template.report_type]} template for {reviewInstrument.model}. A template made for{' '}
+          {reviewInstrument.model} can ask for the fields its forms carry; saving one reads this report again and replaces what is on
+          screen, so make corrections after, not before.
+        </Notice>
       )}
 
       {phase.name === 'review' && template && (

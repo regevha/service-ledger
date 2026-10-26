@@ -108,7 +108,7 @@ export function AddInstrumentPanel({
         </label>
         <label>
           <span className="clabel">Serial number</span>
-          <input className="text-input" value={serial} onChange={(e) => setSerial(e.target.value)} aria-label="Instrument serial number" />
+          <input className="text-input" value={serial} onChange={(e) => setSerial(e.target.value)} aria-label="Instrument serial number" autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
         </label>
         <label>
           <span className="clabel">Room name (optional)</span>

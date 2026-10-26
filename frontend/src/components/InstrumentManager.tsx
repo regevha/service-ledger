@@ -209,7 +209,7 @@ function InstrumentFormScreen({
         </label>
         <label className="schema-form-label">
           <span>Serial number <Required /></span>
-          <input type="text" className="text-input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} />
+          <input type="text" className="text-input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
         </label>
       </div>
 

@@ -246,7 +246,8 @@ export function ReportDetailScreen({
           onFinalize={
             report.status === 'extracted' || report.status === 'in_review' ? () => void handleSave(true) : undefined
           }
-          title={`${REPORT_TYPE_LABEL[template.report_type]} — ${STATUS_LABEL[report.status]}`}
+          title={`${REPORT_TYPE_LABEL[template.report_type]}${instrument ? ` · ${instrument.name}` : ''}`}
+          titleMeta={`${report.report_date ?? 'No report date'} · ${STATUS_LABEL[report.status]}`}
           // §4: "one file per report" for MVP, so the first (only) attachment
           // is the original this report's fields came from.
           originalScanUrl={report.attachments[0] ? attachmentFileUrl(report.attachments[0].id) : undefined}
