@@ -2603,3 +2603,12 @@ textarea {
     min-height: 44px;
   }
 }
+
+/* The Analytics intro on a phone is one line you can open. */
+.hint-details > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--text);
+}

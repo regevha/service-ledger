@@ -12,6 +12,7 @@ import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { BarRow } from './BarRow';
 import { ChartSection } from './ChartSection';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { LaborHoursChart } from './LaborHoursChart';
 import { ReportsPerInstrumentChart, ReportsPerModelChart } from './ReportCountCharts';
 import { ReportFilterBar } from './ReportFilterBar';
@@ -247,6 +248,7 @@ function FilterBar({ filters, setFilters, instruments }: {
 }
 
 export function AnalyticsScreen() {
+  const phone = useMediaQuery('(max-width: 620px)');
   const [data, setData] = useState<FleetAnalytics | null>(null);
   const [filters, setFilters] = useState<AnalyticsFilters>({});
   const [instruments, setInstruments] = useState<Instrument[]>([]);
@@ -317,10 +319,18 @@ export function AnalyticsScreen() {
   return (
     <div className="section">
       <div className="section-title">Fleet analytics</div>
-      <p className="hint-text">
-        Computed from finalized reports — draft/in-review reports aren't counted yet since their data isn't final.
-        The filters below apply to everything on this page. A date range leaves out reports that have no report date.
-      </p>
+      {phone ? (
+        <details className="hint-text hint-details">
+          <summary>Computed from finalized reports</summary>
+          Draft and in-review reports aren't counted yet, since their data isn't final. The filters below apply to
+          everything on this page. A date range leaves out reports that have no report date.
+        </details>
+      ) : (
+        <p className="hint-text">
+          Computed from finalized reports — draft/in-review reports aren't counted yet since their data isn't final.
+          The filters below apply to everything on this page. A date range leaves out reports that have no report date.
+        </p>
+      )}
 
       {filterBar}
       {error && <div className="banner banner-warn">{error}</div>}
