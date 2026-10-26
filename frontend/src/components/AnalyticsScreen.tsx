@@ -11,6 +11,7 @@ import {
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { BarRow } from './BarRow';
+import { ChartSection } from './ChartSection';
 import { LaborHoursChart } from './LaborHoursChart';
 import { ReportsPerInstrumentChart, ReportsPerModelChart } from './ReportCountCharts';
 import { ReportFilterBar } from './ReportFilterBar';
@@ -347,38 +348,32 @@ export function AnalyticsScreen() {
         </div>
       </div>
 
-      <div className="chart-section">
-        <div className="chart-title">Most replaced parts</div>
+      <ChartSection title="Most replaced parts" defaultOpen>
         <PartsChart parts={data.parts_replaced} />
-      </div>
+      </ChartSection>
 
-      <div className="chart-section">
-        <div className="chart-title">Labor hours by instrument</div>
+      <ChartSection title="Labor hours by instrument">
         <LaborHoursByInstrumentChart
           rows={data.labor_hours_by_instrument}
           withoutHours={data.reports_without_labor_hours ?? 0}
         />
-      </div>
+      </ChartSection>
 
-      <div className="chart-section">
-        <div className="chart-title">{filters.status ? 'Reports' : 'Finalized reports'} per instrument</div>
+      <ChartSection title={`${filters.status ? 'Reports' : 'Finalized reports'} per instrument`}>
         <ReportsPerInstrumentChart rows={data.report_counts_by_instrument ?? []} />
-      </div>
+      </ChartSection>
 
-      <div className="chart-section">
-        <div className="chart-title">{filters.status ? 'Reports' : 'Finalized reports'} per instrument model</div>
+      <ChartSection title={`${filters.status ? 'Reports' : 'Finalized reports'} per instrument model`}>
         <ReportsPerModelChart rows={data.report_counts_by_model ?? []} />
-      </div>
+      </ChartSection>
 
-      <div className="chart-section">
-        <div className="chart-title">Labor hours by fault category (repair only)</div>
+      <ChartSection title="Labor hours by fault category (repair only)">
         <LaborHoursByFaultCategoryChart byCategory={data.labor_hours_by_fault_category} />
-      </div>
+      </ChartSection>
 
-      <div className="chart-section">
-        <div className="chart-title">Pass / fail rate</div>
+      <ChartSection title="Pass / fail rate">
         <PassFailSection byReportType={data.pass_fail_by_report_type} />
-      </div>
+      </ChartSection>
 
       <ModelComparisonSection filters={filters} />
     </div>
