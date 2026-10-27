@@ -1380,6 +1380,10 @@ export interface components {
             report_count: number;
             /** Repair Count */
             repair_count: number;
+            /** Maintenance Due Date */
+            maintenance_due_date?: string | null;
+            /** Maintenance State */
+            maintenance_state?: string | null;
             /** Draft Count */
             draft_count: number;
         };
@@ -1420,6 +1424,12 @@ export interface components {
             /** Location */
             location: string | null;
             status: components["schemas"]["InstrumentStatus"];
+            /** Last Maintenance Date */
+            last_maintenance_date?: string | null;
+            /** Maintenance Due Date */
+            maintenance_due_date?: string | null;
+            /** Maintenance State */
+            maintenance_state?: string | null;
         };
         /**
          * InstrumentRollupOut

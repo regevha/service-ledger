@@ -189,6 +189,13 @@ class InstrumentOut(BaseModel):
     serial_number: str
     location: str | None
     status: InstrumentStatus
+    # Worked out on every read from the model's service interval and the
+    # newest finalized preventive-maintenance report (services/maintenance.py).
+    # State is one of not_tracked, no_record, ok, due_soon, overdue; None for a
+    # retired instrument.
+    last_maintenance_date: date | None = None
+    maintenance_due_date: date | None = None
+    maintenance_state: str | None = None
 
 
 # ---------- Instrument models ----------
@@ -223,6 +230,8 @@ class InstrumentModelUnitOut(BaseModel):
     last_service_date: date | None
     report_count: int
     repair_count: int
+    maintenance_due_date: date | None = None
+    maintenance_state: str | None = None
     # Reports still being read or reviewed.
     draft_count: int
 

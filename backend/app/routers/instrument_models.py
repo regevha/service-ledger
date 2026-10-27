@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.db import get_db
+from app.services.maintenance import annotate
 from app.routers.reports import _list_item
 from app.services.instrument_models import near_duplicates
 from app.services.instrument_types import type_exists
@@ -83,6 +84,7 @@ def get_instrument_model(model_id: uuid.UUID, db: Session = Depends(get_db)):
     for report in reports:
         by_unit.setdefault(report.instrument_id, []).append(report)
 
+    annotate(db, units)
     unit_rows = []
     for unit in units:
         own = by_unit.get(unit.id, [])
@@ -98,6 +100,8 @@ def get_instrument_model(model_id: uuid.UUID, db: Session = Depends(get_db)):
                 location=unit.location,
                 last_service_date=max(days) if days else None,
                 report_count=len(done),
+                maintenance_due_date=unit.maintenance_due_date,
+                maintenance_state=unit.maintenance_state,
                 repair_count=sum(1 for r in done if r.template and r.template.report_type == models.ReportType.repair),
                 draft_count=len(own) - len(done),
             )
