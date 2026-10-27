@@ -94,3 +94,17 @@ def type_conflict(db: Session, model_text: str, instrument_type: str) -> str | N
 
 
 event.listen(Session, "before_flush", _link_instruments)
+
+
+def lock_manufacturer(db: Session, instrument: models.Instrument) -> None:
+    """An instrument's manufacturer follows its model. If a record for the
+    instrument's model text exists, the instrument takes the record's
+    manufacturer, whatever was submitted. A record that has no manufacturer yet
+    adopts the submitted one, once, so the gap is filled and then locked."""
+    record = db.query(models.InstrumentModel).filter(models.InstrumentModel.name == instrument.model).first()
+    if record is None:
+        return
+    if record.manufacturer is None:
+        record.manufacturer = instrument.manufacturer
+    else:
+        instrument.manufacturer = record.manufacturer

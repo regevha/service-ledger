@@ -48,7 +48,14 @@ export interface Instrument {
   serial_number: string;
   location: string | null;
   status: InstrumentStatus;
+  /** Worked out by the backend from the model's service interval and the newest finalized preventive-maintenance report. */
+  last_maintenance_date?: string | null;
+  maintenance_due_date?: string | null;
+  /** null for a retired instrument. */
+  maintenance_state?: MaintenanceState | null;
 }
+
+export type MaintenanceState = 'not_tracked' | 'no_record' | 'ok' | 'due_soon' | 'overdue';
 
 // instrument_type is chosen when an instrument is created and cannot be
 // changed afterwards (InstrumentUpdate has no such field).

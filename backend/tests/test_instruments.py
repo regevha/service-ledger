@@ -345,21 +345,19 @@ def test_manufacturer_is_trimmed_and_returned(client):
     assert listed["MFR-0002"]["manufacturer"] == "Beckman Coulter"
 
 
-def test_update_manufacturer_sets_changes_and_clears_it(client):
+def test_update_manufacturer_is_locked_to_the_model(client):
+    """Models plan step 4: an instrument's manufacturer follows its model, so a
+    PATCH that sets, changes or clears it leaves the model's value in place
+    (it is changed on the model, which pushes it to the units)."""
     created = client.post(
         "/instruments", json={"name": "Edit Maker", "model": "M4", "manufacturer": "TestCo", "serial_number": "MFR-0004", "location": "Room 9"}
     ).json()
 
-    set_ = client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek"}).json()
-    assert set_["manufacturer"] == "Cytek"
-    assert set_["location"] == "Room 9"  # other fields untouched
-
-    # A PATCH that does not mention it leaves it alone…
-    assert client.patch(f"/instruments/{created['id']}", json={"location": "Room 1"}).json()["manufacturer"] == "Cytek"
-    # …and an explicit null (or blank) clears it.
-    assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": None}).json()["manufacturer"] is None
-    client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek"})
-    assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": " "}).json()["manufacturer"] is None
+    kept = client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek", "location": "Room 1"}).json()
+    assert kept["manufacturer"] == "TestCo"
+    assert kept["location"] == "Room 1"  # other fields still change
+    assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": None}).json()["manufacturer"] == "TestCo"
+    assert client.patch(f"/instruments/{created['id']}", json={"manufacturer": " "}).json()["manufacturer"] == "TestCo"
 
 
 # ---------- distributor ----------

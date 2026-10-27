@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { listReports, type Instrument, type ReportListItem } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import { MaintenanceBadge } from './MaintenanceBadge';
 import { INSTRUMENT_STATUS_LABEL, REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { InstrumentTrendSection } from './InstrumentTrendChart';
 
@@ -75,8 +76,11 @@ export function InstrumentDetailScreen({
                 {instrument.distributor ? ` · Distributor: ${instrument.distributor}` : ''}
               </div>
             </div>
-            <span className={`status-pill instrument-status-${instrument.status}`}>
-              {INSTRUMENT_STATUS_LABEL[instrument.status]}
+            <span className="instrument-header-pills">
+              <MaintenanceBadge state={instrument.maintenance_state} dueDate={instrument.maintenance_due_date} />
+              <span className={`status-pill instrument-status-${instrument.status}`}>
+                {INSTRUMENT_STATUS_LABEL[instrument.status]}
+              </span>
             </span>
           </div>
 

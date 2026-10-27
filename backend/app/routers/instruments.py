@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
 from app.db import get_db
-from app.services.instrument_models import type_conflict
+from app.services.instrument_models import lock_manufacturer, type_conflict
+from app.services.maintenance import annotate
 from app.services.instrument_types import type_exists
 from app.services.analytics import trend_points, trendable_fields
 from app.services.report_deletion import count_in_flight_jobs, remove_report_files
@@ -28,6 +29,7 @@ def create_instrument(payload: schemas.InstrumentCreate, db: Session = Depends(g
     if conflict:
         raise HTTPException(422, conflict)
     instrument = models.Instrument(**payload.model_dump())
+    lock_manufacturer(db, instrument)
     db.add(instrument)
     try:
         db.commit()
@@ -40,12 +42,15 @@ def create_instrument(payload: schemas.InstrumentCreate, db: Session = Depends(g
         db.rollback()
         raise HTTPException(409, _SERIAL_CONFLICT)
     db.refresh(instrument)
+    annotate(db, [instrument])
     return instrument
 
 
 @router.get("/instruments", response_model=list[schemas.InstrumentOut])
 def list_instruments(db: Session = Depends(get_db)):
-    return db.query(models.Instrument).order_by(models.Instrument.name).all()
+    instruments = db.query(models.Instrument).options(joinedload(models.Instrument.model_record)).order_by(models.Instrument.name).all()
+    annotate(db, instruments)
+    return instruments
 
 
 @router.get("/instruments/{instrument_id}", response_model=schemas.InstrumentOut)
@@ -53,6 +58,7 @@ def get_instrument(instrument_id: uuid.UUID, db: Session = Depends(get_db)):
     instrument = db.get(models.Instrument, instrument_id)
     if not instrument:
         raise HTTPException(404, "Instrument not found")
+    annotate(db, [instrument])
     return instrument
 
 
@@ -93,6 +99,7 @@ def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdat
     for field in ("name", "model", "manufacturer", "distributor", "institution", "serial_number", "location", "status"):
         if field in provided:
             setattr(instrument, field, getattr(payload, field))
+    lock_manufacturer(db, instrument)
 
     try:
         db.commit()
@@ -100,6 +107,7 @@ def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdat
         db.rollback()
         raise HTTPException(409, _SERIAL_CONFLICT)
     db.refresh(instrument)
+    annotate(db, [instrument])
     return instrument
 
 

@@ -12,8 +12,10 @@ import {
   type InstrumentStatus,
   type InstrumentModel,
   type InstrumentType,
+  type MaintenanceState,
 } from '../api';
-import { INSTRUMENT_STATUS_LABEL } from '../labels';
+import { INSTRUMENT_STATUS_LABEL, MAINTENANCE_STATE_LABEL } from '../labels';
+import { MaintenanceBadge } from './MaintenanceBadge';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { ModelsManager } from './ModelsManager';
 import { RowMenu } from './RowMenu';
@@ -75,14 +77,15 @@ function InstrumentFormScreen({
 
   // The model typed is one that already exists (exact name), or a new one.
   const matchedModel = knownModels.find((m) => m.name === model.trim());
+  // An instrument's manufacturer follows its model: with an existing model that
+  // has one, it is shown read-only and changed only on the model.
+  const lockedManufacturer = matchedModel?.manufacturer ?? null;
 
-  // Choosing an existing model fills in what the model already says (only for
-  // a new instrument, and only an empty manufacturer); the person can still
-  // change it. An effect, so it also applies when the list arrives after typing.
+  // Choosing an existing model fills in its type for a new instrument. An
+  // effect, so it also applies when the list arrives after typing.
   const matchedId = matchedModel?.id;
   useEffect(() => {
     if (existing || !matchedModel) return;
-    setManufacturer((current) => (current.trim() === '' && matchedModel.manufacturer ? matchedModel.manufacturer : current));
     setTypeKey(matchedModel.instrument_type);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchedId]);
@@ -109,7 +112,7 @@ function InstrumentFormScreen({
         await updateInstrument(existing.id, {
           name: name.trim(),
           model: model.trim(),
-          manufacturer: manufacturer.trim() || null,
+          manufacturer: (lockedManufacturer ?? manufacturer).trim() || null,
           distributor: distributor.trim() || null,
           institution: institution.trim() || null,
           serial_number: serialNumber.trim(),
@@ -121,7 +124,7 @@ function InstrumentFormScreen({
           name: name.trim(),
           model: model.trim(),
           instrument_type: typeKey,
-          manufacturer: manufacturer.trim(),
+          manufacturer: (lockedManufacturer ?? manufacturer).trim(),
           distributor: distributor.trim() || null,
           institution: institution.trim() || null,
           serial_number: serialNumber.trim(),
@@ -139,7 +142,7 @@ function InstrumentFormScreen({
   const missing = [
     name.trim().length === 0 ? 'name' : null,
     model.trim().length === 0 ? 'model' : null,
-    existing === undefined && manufacturer.trim().length === 0 ? 'manufacturer' : null,
+    existing === undefined && (lockedManufacturer ?? manufacturer).trim().length === 0 ? 'manufacturer' : null,
     serialNumber.trim().length === 0 ? 'serial number' : null,
   ].filter((m): m is string => m !== null);
   const canSave = missing.length === 0 && !saving;
@@ -239,8 +242,9 @@ function InstrumentFormScreen({
             type="text"
             className="text-input"
             placeholder="e.g. BD"
-            value={manufacturer}
+            value={lockedManufacturer ?? manufacturer}
             onChange={(e) => setManufacturer(e.target.value)}
+            disabled={lockedManufacturer !== null}
           />
         </label>
         <label className="schema-form-label">
@@ -248,6 +252,10 @@ function InstrumentFormScreen({
           <input type="text" className="text-input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
         </label>
       </div>
+
+      {lockedManufacturer !== null && (
+        <small className="muted manufacturer-lock-hint">Set by the model. Change it on the Models screen.</small>
+      )}
 
       <div className="schema-form-row">
         <label className="schema-form-label">
@@ -350,6 +358,7 @@ export function InstrumentManagerScreen({
   const [deleting, setDeleting] = useState(false);
   const [typeNames, setTypeNames] = useState<Record<string, string>>({});
   const [section, setSection] = useState<'instruments' | 'models'>('instruments');
+  const [stateFilter, setStateFilter] = useState<'all' | MaintenanceState>('all');
 
   useEffect(() => {
     listInstrumentTypes()
@@ -390,6 +399,8 @@ export function InstrumentManagerScreen({
       setDeleting(false);
     }
   }
+
+  const shownInstruments = stateFilter === 'all' ? instruments : instruments.filter((i) => i.maintenance_state === stateFilter);
 
   function handleSaved() {
     setMode({ kind: 'list' });
@@ -458,6 +469,20 @@ export function InstrumentManagerScreen({
         </div>
       )}
 
+      {!loading && instruments.length > 0 && (
+        <label className="maintenance-filter">
+          <span>Maintenance</span>
+          <select className="text-input" aria-label="Filter by maintenance" value={stateFilter} onChange={(e) => setStateFilter(e.target.value as 'all' | MaintenanceState)}>
+            <option value="all">All</option>
+            {(['overdue', 'due_soon', 'ok', 'no_record', 'not_tracked'] as MaintenanceState[]).map((k) => (
+              <option key={k} value={k}>
+                {MAINTENANCE_STATE_LABEL[k]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       {loading ? (
         <div className="working-panel">
           <div className="spinner" />
@@ -465,6 +490,8 @@ export function InstrumentManagerScreen({
         </div>
       ) : instruments.length === 0 ? (
         <div className="empty-hint">No instruments yet.</div>
+      ) : shownInstruments.length === 0 ? (
+        <div className="empty-hint">No instruments match this maintenance filter.</div>
       ) : (
         <div className="template-table">
           <div className="instrument-row template-row-head">
@@ -477,7 +504,7 @@ export function InstrumentManagerScreen({
             <span>Status</span>
             <span>Actions</span>
           </div>
-          {instruments.map((inst) => (
+          {shownInstruments.map((inst) => (
             <div className="instrument-row template-row-body" key={inst.id}>
               <span data-label="Name">
                 {inst.name}
@@ -494,7 +521,8 @@ export function InstrumentManagerScreen({
               <span data-label="Status">
                 <span className={`status-pill instrument-status-${inst.status}`}>
                   {INSTRUMENT_STATUS_LABEL[inst.status]}
-                </span>
+                </span>{' '}
+                <MaintenanceBadge state={inst.maintenance_state} dueDate={inst.maintenance_due_date} />
               </span>
               <span className="template-row-actions">
                 <button type="button" className="btn small" onClick={() => setMode({ kind: 'edit', instrument: inst })}>

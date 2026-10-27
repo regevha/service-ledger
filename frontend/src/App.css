@@ -2663,7 +2663,7 @@ textarea {
 
 /* ---------- A model's page ---------- */
 .instrument-row.model-unit-row {
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) 100px minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) 100px minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
 }
 .instrument-row.model-report-row {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
@@ -2691,4 +2691,35 @@ textarea {
 .model-name.link-button {
   text-align: left;
   font-weight: 600;
+}
+
+/* Maintenance state pills (instrument list, instrument page, model page). */
+.maintenance-ok {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.maintenance-due_soon {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.maintenance-overdue {
+  background: var(--crit-soft);
+  color: var(--crit);
+}
+.maintenance-no_record,
+.maintenance-not_tracked {
+  background: var(--surface-2);
+  color: var(--text-faint);
+}
+.maintenance-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.instrument-header-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
 }

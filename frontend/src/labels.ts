@@ -1,4 +1,4 @@
-import type { FieldType, InstrumentStatus, ReportStatus, ReportType } from './api';
+import type { FieldType, InstrumentStatus, MaintenanceState, ReportStatus, ReportType } from './api';
 
 // Shared between several components/*.tsx screens — pulled out to its own
 // module rather than exported from any one of them so none of them form a
@@ -44,4 +44,12 @@ export const FIELD_TYPE_LABEL: Record<FieldType, string> = {
   'object[]': 'Table of rows',
   'number[detector]': 'Per-detector numbers',
   'number[laser]': 'Per-laser numbers',
+};
+
+export const MAINTENANCE_STATE_LABEL: Record<MaintenanceState, string> = {
+  not_tracked: 'Not tracked',
+  no_record: 'No maintenance on record',
+  ok: 'Maintenance OK',
+  due_soon: 'Due soon',
+  overdue: 'Overdue',
 };

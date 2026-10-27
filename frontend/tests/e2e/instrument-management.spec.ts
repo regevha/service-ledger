@@ -31,7 +31,7 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   await expect(page.locator('.schema-form-label', { hasText: 'Status' })).toHaveCount(0);
 
   await page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input').fill(uniqueName);
-  await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill('E2E-Model');
+  await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(`E2E-Model-${Date.now()}`);
   await page.locator('.schema-form-label', { hasText: 'Manufacturer' }).locator('input').fill('E2E Maker');
   await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill(serial);
   await page.locator('.schema-form-label', { hasText: 'Room name' }).locator('input').fill('E2E Room');
@@ -87,7 +87,7 @@ test('editing an instrument to reuse another one\'s serial number shows an error
   async function createInstrument(name: string, serial: string) {
     await page.click('button:has-text("+ New instrument")');
     await page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input').fill(name);
-    await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill('E2E-Model');
+    await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(`E2E-Model-${Date.now()}`);
     await page.locator('.schema-form-label', { hasText: 'Manufacturer' }).locator('input').fill('E2E Maker');
     await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill(serial);
     await page.click('button:has-text("Create instrument")');

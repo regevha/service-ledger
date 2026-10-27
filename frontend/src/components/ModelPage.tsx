@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ApiError, getInstrumentModel, type InstrumentModelDetail } from '../api';
+import { ApiError, getInstrumentModel, type InstrumentModelDetail, type MaintenanceState } from '../api';
+import { MaintenanceBadge } from './MaintenanceBadge';
 import { INSTRUMENT_STATUS_LABEL, REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { formatDate } from './InstrumentTrendChart';
 
@@ -87,6 +88,7 @@ export function ModelPage({
             <span>Place</span>
             <span>Status</span>
             <span>Last service</span>
+            <span>Maintenance</span>
             <span>Reports</span>
             <span>Repairs</span>
           </div>
@@ -103,6 +105,9 @@ export function ModelPage({
                 <span className={`status-pill instrument-status-${u.status}`}>{INSTRUMENT_STATUS_LABEL[u.status]}</span>
               </span>
               <span data-label="Last service">{u.last_service_date ? formatDate(u.last_service_date) : 'None yet'}</span>
+              <span data-label="Maintenance">
+                <MaintenanceBadge state={u.maintenance_state as MaintenanceState | null | undefined} dueDate={u.maintenance_due_date} />
+              </span>
               <span data-label="Reports">
                 {u.report_count}
                 {u.draft_count > 0 && <small className="muted"> +{u.draft_count} in progress</small>}

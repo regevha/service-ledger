@@ -13,13 +13,15 @@ test('distributor is optional, shown in the list and detail page, edited and cle
   const withoutSerial = `E2E-NDS-${stamp}`;
   const label = (text: string) => page.locator('.schema-form-label', { hasText: new RegExp('^\\s*' + text) }).locator('input');
 
+  // A new model per run: an existing model would lock the manufacturer.
+  const model = `E2E-Cytometer-${Date.now()}`;
   await page.goto('/');
   await page.click('.view-tab:has-text("Instruments")');
 
   // Created without a distributor: allowed, shown as a dash.
   await page.click('button:has-text("+ New instrument")');
   await label('Name').fill(withoutName);
-  await label('Model').fill('E2E-Cytometer');
+  await label('Model').fill(model);
   await label('Manufacturer').fill('Acme Optics');
   await label('Serial number').fill(withoutSerial);
   await page.click('button:has-text("Create instrument")');
@@ -30,8 +32,8 @@ test('distributor is optional, shown in the list and detail page, edited and cle
   // Created with one: trimmed and shown in the list.
   await page.click('button:has-text("+ New instrument")');
   await label('Name').fill(withName);
-  await label('Model').fill('E2E-Cytometer');
-  await label('Manufacturer').fill('Acme Optics');
+  await label('Model').fill(model);
+  await expect(label('Manufacturer')).toHaveValue('Acme Optics'); // follows the model
   await label('Distributor').fill('  Rhenium ');
   await label('Serial number').fill(withSerial);
   await page.click('button:has-text("Create instrument")');
