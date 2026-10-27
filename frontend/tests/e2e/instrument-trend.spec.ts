@@ -62,7 +62,7 @@ async function createInstrument(request: APIRequestContext, marker: string): Pro
 async function openInstrumentDetail(page: import('@playwright/test').Page, instrumentId: string) {
   await page.goto('/');
   await page.click('.view-tab:has-text("Reports")');
-  await page.locator('.filter-row select').first().selectOption(instrumentId);
+  await page.locator('.filter-row select[aria-label="Instrument"]').selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
   await expect(page.locator('.trend-section')).toBeVisible();
 }

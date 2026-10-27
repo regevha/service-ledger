@@ -59,7 +59,7 @@ test('save a filter, reload, pick it, see the same rows, then delete it', async 
   await expect(page.locator('[data-testid="saved-filter-active"]')).not.toContainText('(changed)');
 
   // Editing a control marks it as changed.
-  await page.selectOption('.filter-row select >> nth=2', 'finalized');
+  await page.selectOption('.filter-row select[aria-label="Status"]', 'finalized');
   await expect(page.locator('[data-testid="saved-filter-active"]')).toContainText('(changed)');
 
   // Delete asks first, and says it removes the filter for everyone.

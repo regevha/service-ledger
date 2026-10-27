@@ -52,7 +52,7 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   // (The filter's own option text is "model (serial number)" — App.tsx's
   // filter-row select — not the instrument's name.) ----
   await page.click('.view-tab:has-text("Reports")');
-  await expect(page.locator('.filter-row select').first().locator('option', { hasText: serial })).toHaveCount(1);
+  await expect(page.locator('.filter-row select[aria-label="Instrument"]').locator('option', { hasText: serial })).toHaveCount(1);
   await page.click('.view-tab:has-text("Instruments")');
 
   // ---- Edit: rename, relocate, and retire it ----

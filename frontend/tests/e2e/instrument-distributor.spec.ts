@@ -42,7 +42,7 @@ test('distributor is optional, shown in the list and detail page, edited and cle
 
   // Detail page (reached through the Reports tab's instrument filter).
   await page.click('.view-tab:has-text("Reports")');
-  const select = page.locator('.filter-row select').first();
+  const select = page.locator('.filter-row select[aria-label="Instrument"]');
   const value = (await select.locator('option', { hasText: withSerial }).getAttribute('value')) ?? '';
   await select.selectOption({ value });
   await page.click('button:has-text("View instrument details")');

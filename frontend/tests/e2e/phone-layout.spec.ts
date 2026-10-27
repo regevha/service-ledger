@@ -52,7 +52,7 @@ async function openInstrument(page: Page, instrumentId: string) {
   await page.click('.view-tab:has-text("Reports")');
   const bar = page.locator('button:has-text("Show filters")');
   if (await bar.count()) await bar.click();
-  await page.locator('.filter-row select').first().selectOption(instrumentId);
+  await page.locator('.filter-row select[aria-label="Instrument"]').selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
 }
 

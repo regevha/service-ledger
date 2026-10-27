@@ -71,7 +71,7 @@ test('instrument detail page: reached from the reports filter, shows history, an
 
   // Filter to this instrument, then follow the new "View instrument
   // details" link the filter row only shows once an instrument is picked.
-  await page.locator('.filter-row select').first().selectOption(instrumentId);
+  await page.locator('.filter-row select[aria-label="Instrument"]').selectOption(instrumentId);
   await expect(page.locator('button:has-text("View instrument details")')).toBeVisible();
   await page.click('button:has-text("View instrument details")');
 

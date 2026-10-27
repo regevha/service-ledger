@@ -74,8 +74,8 @@ test.describe('reports search screen', () => {
     await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
 
     // Matching filters keep it.
-    await page.selectOption('.filter-row select >> nth=1', 'installation_upgrade');
-    await page.selectOption('.filter-row select >> nth=2', 'finalized');
+    await page.selectOption('.filter-row select[aria-label="Report type"]', 'installation_upgrade');
+    await page.selectOption('.filter-row select[aria-label="Status"]', 'finalized');
     await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
 
     // Scoped to this test's own marker: the report above is finalized, so
@@ -85,8 +85,8 @@ test.describe('reports search screen', () => {
     // reports in that status, depending on run order.) Proves the empty
     // state renders and the export link (tied 1:1 to a non-empty result set)
     // disappears with it.
-    await page.selectOption('.filter-row select >> nth=1', '');
-    await page.selectOption('.filter-row select >> nth=2', 'classified');
+    await page.selectOption('.filter-row select[aria-label="Report type"]', '');
+    await page.selectOption('.filter-row select[aria-label="Status"]', 'classified');
     await page.locator('input[aria-label="Lab manager"]').fill(marker);
     await expect(page.locator('.report-row-body')).toHaveCount(0);
     await expect(page.locator('.empty-hint')).toBeVisible();
