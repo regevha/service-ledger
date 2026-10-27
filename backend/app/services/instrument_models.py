@@ -25,9 +25,12 @@ def _normalize(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", name.lower())
 
 
-def near_duplicates(names: list[str]) -> list[list[str]]:
+def near_duplicates(names: list[str], *, contains: bool = False) -> list[list[str]]:
     """Groups of two or more distinct names that probably mean the same model
-    (equal once case, spaces and punctuation are ignored, or very similar)."""
+    (equal once case, spaces and punctuation are ignored, or very similar).
+    With `contains`, a name that is wholly inside another (at least 3 characters:
+    "205" in "Room 205", "Bar Ilan" in "Bar-Ilan University") also counts, which
+    suits places."""
     distinct = sorted(set(names))
     parent = {n: n for n in distinct}
 
@@ -40,7 +43,8 @@ def near_duplicates(names: list[str]) -> list[list[str]]:
     for i, a in enumerate(distinct):
         for b in distinct[i + 1 :]:
             na, nb = _normalize(a), _normalize(b)
-            if na and (na == nb or SequenceMatcher(None, na, nb).ratio() >= SIMILARITY):
+            inside = contains and min(len(na), len(nb)) >= 3 and (na in nb or nb in na)
+            if na and (na == nb or inside or SequenceMatcher(None, na, nb).ratio() >= SIMILARITY):
                 parent[find(b)] = find(a)
     groups: dict[str, list[str]] = {}
     for n in distinct:
