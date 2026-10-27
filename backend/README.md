@@ -66,29 +66,29 @@ backend/
     seed_trend_demo.py       5 synthetic PM reports for the FACSAria III, for the trend chart — optional, manual only
     routers/
       instrument_models.py  GET/POST /instrument-models, PATCH/DELETE /instrument-models/{id}, POST .../{id}/merge — models as records: the record is the source (a rename updates its instruments and the templates written for the name, a manufacturer change updates its instruments); delete only with no instruments; merge only same type and moves instruments and templates, refusing on a template clash; an instrument cannot join a model of another type
-      instrument_types.py    GET/POST /instrument-types — the managed list of kinds of instrument (migration `a7c4e1f2b836`). Seeded: Flow cytometer (`facs`), Electron microscope, ImageStream, Mass spectrometer, PCR machine (`ensure_default_types`, run by the seeds and at startup; never renames or removes a type); more are added in the app
+      instrument_types.py    GET/POST /instrument-types — the managed list of kinds of instrument (the baseline migration). Seeded: Flow cytometer (`facs`), Electron microscope, ImageStream, Mass spectrometer, PCR machine (`ensure_default_types`, run by the seeds and at startup; never renames or removes a type); more are added in the app
       instruments.py         POST/GET/PATCH/DELETE /instruments (DELETE also deletes the instrument's reports; PATCH backs the Instruments tab's create/edit UI —
-                              every field but instrument_type is editable); `name`, `model`, `serial_number` and `manufacturer` are required text on create and may not be blank or all whitespace on create or PATCH (422 "<Field> cannot be blank"; values are trimmed); an optional free-text `distributor` (the local seller / service company when it is not the maker; trimmed, blank means none, editable and clearable; migration `c3d4e5f6a7b8`); on PATCH a manufacturer can still be cleared (the seeded fleet is "BD", filled in on existing rows only where empty; migration `f6a2c3d9e014`); `instrument_type` must be a key from /instrument-types, GET /instruments/{id}/trend-fields
+                              every field but instrument_type is editable); `name`, `model`, `serial_number` and `manufacturer` are required text on create and may not be blank or all whitespace on create or PATCH (422 "<Field> cannot be blank"; values are trimmed); an optional free-text `distributor` (the local seller / service company when it is not the maker; trimmed, blank means none, editable and clearable; the baseline migration); on PATCH a manufacturer can still be cleared (the seeded fleet is "BD", filled in on existing rows only where empty; the baseline migration); `instrument_type` must be a key from /instrument-types, GET /instruments/{id}/trend-fields
                               (which numeric fields a given instrument's own finalized reports actually have
                               data for), GET .../trend (number and number[detector]/number[laser] both
                               supported — TrendOut/TrendPointOut)
       report_templates.py    GET /report-templates (resolution logic, §2); GET .../usage (reports per template, for the manager's warnings); GET .../all, GET/POST/PATCH/DELETE
                               .../{id} — the structured field editor's CRUD, backed by a DB-level unique
-                              index on (instrument_type, report_type, model) (migration 6b5fc4e1c3ca)
+                              index on (instrument_type, report_type, model) (the baseline migration)
       reports.py              /reports CRUD (incl. delete), filtered list with free-text search (`q`), export, template confirm, finalize, GET .../{id}/pdf
       saved_filters.py        GET/POST/DELETE /saved-report-filters — a global list of at most five named
-                              combinations of the Reports list's six filters (migration a1b2c3d4e5f6); the
+                              combinations of the Reports list's six filters (the baseline migration); the
                               client applies one through the ordinary GET /reports
       attachments.py          upload, GET .../file, GET .../pages and .../pages/{n} (a stored PDF's page count, and one page as a PNG `width` pixels wide, rendered with `pypdfium2`; an image scan is one page returned as stored; the phone's Fields | Scan view uses them because Android Chrome cannot show a PDF in an iframe), classify, extract (both 202 + enqueue), extraction-jobs
-      translations.py         Hebrew translation (migration `d4e5f6a7b8c9`, proposal `claude/proposal-hebrew-translation.md`): `POST /attachments/{id}/translate` (202, enqueues a `translate` job; body `include_pages` asks for pages skipped as QC printouts to be included; sending it again translates again and keeps the earlier one as history), `GET /attachments/{id}/translation` (current) and `/translations` (history), `POST /translations/{id}/accept` (optional edited `accepted_text`; both texts are kept) and `/discard`. A review is always required: classify and extract answer 409 while a translation is being made or waits for review, and for a Hebrew text layer that was never translated; once accepted they read the accepted English instead of the original; a discarded translation means the original is used as before. Instrument QC printout pages are ignored (listed in `ignored_pages`). The English text is for the screen only: no route serves it as a file. No API key: a Hebrew text layer is refused with a message; in stub mode only a file whose name contains "hebrew" gets a fixed fixture. Classification of another company's form also returns `issuer`, `detected_manufacturer`, `maker_in_fleet` (false when the instrument is not in the fleet: the guess is then a zero-confidence placeholder) and `report_type_note` (a second report type); `issuer` and `report_type_note` are stored on the report.
+      translations.py         Hebrew translation (the baseline migration, proposal `claude/proposal-hebrew-translation.md`): `POST /attachments/{id}/translate` (202, enqueues a `translate` job; body `include_pages` asks for pages skipped as QC printouts to be included; sending it again translates again and keeps the earlier one as history), `GET /attachments/{id}/translation` (current) and `/translations` (history), `POST /translations/{id}/accept` (optional edited `accepted_text`; both texts are kept) and `/discard`. A review is always required: classify and extract answer 409 while a translation is being made or waits for review, and for a Hebrew text layer that was never translated; once accepted they read the accepted English instead of the original; a discarded translation means the original is used as before. Instrument QC printout pages are ignored (listed in `ignored_pages`). The English text is for the screen only: no route serves it as a file. No API key: a Hebrew text layer is refused with a message; in stub mode only a file whose name contains "hebrew" gets a fixed fixture. Classification of another company's form also returns `issuer`, `detected_manufacturer`, `maker_in_fleet` (false when the instrument is not in the fleet: the guess is then a zero-confidence placeholder) and `report_type_note` (a second report type); `issuer` and `report_type_note` are stored on the report.
       analytics.py             GET /analytics/fleet — fleet-wide roll-ups (parts, labor hours, pass/fail);
                               GET /analytics/models and /analytics/models/trend — units of one model side by side
     services/
       templates.py            Model-specific-row-over-NULL-row resolution (§2)
-      instrument_models.py   Keeps `instruments.model_id` pointing at the `instrument_models` record named exactly like the instrument's model text (a before_flush listener, so the API, seeds and tests all get it); `near_duplicates` only reports look-alike names, nothing is ever merged (migration `b1c2d3e4f5a6`; nothing reads the table yet)
+      instrument_models.py   Keeps `instruments.model_id` pointing at the `instrument_models` record named exactly like the instrument's model text (a before_flush listener, so the API, seeds and tests all get it); `near_duplicates` only reports look-alike names, nothing is ever merged (the baseline migration; nothing reads the table yet)
       report_search.py        Free-text search: what is indexed (text fields, table text cells, instrument model and serial),
                               the websearch query, excerpts; a before_flush listener keeps reports.search_text current
-                              (migration b2c3d4e5f6a7, partial GIN index on finalized reports)
+                              (the baseline migration, partial GIN index on finalized reports)
       classification.py       classify() — live Claude call or stub, by settings.use_live_claude
       extraction.py            extract() — live Claude call or stub, by settings.use_live_claude
       text_reader.py           Reads a PDF's own text layer (model, serial, task code, work order) — no API key
@@ -101,7 +101,7 @@ backend/
     testing/reset_db.py       One-shot DB reset used between Playwright e2e runs; not imported by the app
   scripts/export_openapi.py  Dumps app.openapi() to stdout — feeds frontend's `npm run codegen`
                               (see frontend/README.md's "Regenerating API types from the backend")
-  alembic/                    Migrations (autogenerated from app/models.py)
+  alembic/                    Migrations (autogenerated from app/models.py). `0001_baseline` is the whole schema as of 2026-10-26: the 16 earlier migrations were joined into it before any real database existed. A database made by the old chain has a version that no longer exists: recreate it, or run `alembic stamp 0001_baseline` if its schema is already current. Add one migration per change from here.
   tests/                      real Postgres (tests/conftest.py) — see "Testing", below
   storage/attachments/         Local disk storage for scanned originals (§8: dev choice, swap for S3-compatible later)
 
@@ -320,7 +320,7 @@ is derived from this backend enum via `npm run codegen`, not hand-typed.
 `(instrument_type, report_type, model)` uniqueness — previously enforced
 only procedurally, by `seed_templates.py`'s own existence-check before
 inserting a row — is now backed by a real database constraint too
-(`alembic/versions/6b5fc4e1c3ca_*.py`, mirrored in `models.py`'s
+(`alembic/versions/0001_baseline.py`, mirrored in `models.py`'s
 `ReportTemplate.__table_args__` so `Base.metadata.create_all` — what the
 test and e2e databases build their schema from — enforces it as well): a
 `CREATE UNIQUE INDEX ... (instrument_type, report_type, COALESCE(model,
