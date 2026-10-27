@@ -14,6 +14,7 @@ from app.request_trace import RequestTraceMiddleware
 from app.shared_password import SharedPasswordMiddleware
 from app.trace import configure_logging
 from app.services.instrument_types import ensure_default_types
+from app.services.places import PlaceTextError
 from app.routers import (
     analytics,
     attachments,
@@ -72,6 +73,13 @@ app.add_middleware(SharedPasswordMiddleware)
 app.add_middleware(RequestTraceMiddleware)
 
 logger = logging.getLogger("app.main")
+
+
+@app.exception_handler(PlaceTextError)
+async def place_text_error(request: Request, exc: PlaceTextError) -> JSONResponse:
+    """An institution and room that cannot name one place (see services/places.py):
+    the edit is refused, with the reason in plain words."""
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
 @app.exception_handler(Exception)
