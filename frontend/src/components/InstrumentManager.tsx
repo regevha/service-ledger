@@ -17,6 +17,7 @@ import {
   type Place,
 } from '../api';
 import { INSTRUMENT_STATUS_LABEL, MAINTENANCE_STATE_LABEL } from '../labels';
+import { idsInside, placeLabel } from '../placeUtils';
 import { MaintenanceBadge } from './MaintenanceBadge';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { ModelsManager } from './ModelsManager';
@@ -400,6 +401,13 @@ export function InstrumentManagerScreen({
   const [typeNames, setTypeNames] = useState<Record<string, string>>({});
   const [section, setSection] = useState<'instruments' | 'models' | 'places'>('instruments');
   const [stateFilter, setStateFilter] = useState<'all' | MaintenanceState>('all');
+  const [placeFilter, setPlaceFilter] = useState('');
+  const [allPlaces, setAllPlaces] = useState<Place[]>([]);
+  useEffect(() => {
+    listPlaces()
+      .then(setAllPlaces)
+      .catch(() => setAllPlaces([]));
+  }, [instruments]);
 
   useEffect(() => {
     listInstrumentTypes()
@@ -441,7 +449,10 @@ export function InstrumentManagerScreen({
     }
   }
 
-  const shownInstruments = stateFilter === 'all' ? instruments : instruments.filter((i) => i.maintenance_state === stateFilter);
+  const insidePlace = idsInside(allPlaces, placeFilter || undefined);
+  const shownInstruments = instruments
+    .filter((i) => stateFilter === 'all' || i.maintenance_state === stateFilter)
+    .filter((i) => !insidePlace || (i.place_id != null && insidePlace.has(i.place_id)));
 
   function handleSaved() {
     setMode({ kind: 'list' });
@@ -522,6 +533,20 @@ export function InstrumentManagerScreen({
         </div>
       )}
 
+      {!loading && instruments.length > 0 && allPlaces.length > 0 && (
+        <label className="maintenance-filter">
+          <span>Place</span>
+          <select className="text-input" aria-label="Filter by place" value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)}>
+            <option value="">All places</option>
+            {allPlaces.map((p) => (
+              <option key={p.id} value={p.id}>
+                {placeLabel(p)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       {!loading && instruments.length > 0 && (
         <label className="maintenance-filter">
           <span>Maintenance</span>
@@ -544,7 +569,7 @@ export function InstrumentManagerScreen({
       ) : instruments.length === 0 ? (
         <div className="empty-hint">No instruments yet.</div>
       ) : shownInstruments.length === 0 ? (
-        <div className="empty-hint">No instruments match this maintenance filter.</div>
+        <div className="empty-hint">No instruments match these filters.</div>
       ) : (
         <div className="template-table">
           <div className="instrument-row template-row-head">

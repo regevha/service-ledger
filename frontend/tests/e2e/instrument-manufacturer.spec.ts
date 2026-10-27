@@ -27,7 +27,7 @@ test('manufacturer can be set, shown in the list and detail page, and follows th
 
   // Detail page (reached through the Reports tab's instrument filter).
   await page.click('.view-tab:has-text("Reports")');
-  await page.locator('.filter-row select').first().selectOption({ value: await optionValue(page, serial) });
+  await page.getByLabel('Instrument', { exact: true }).selectOption({ value: await optionValue(page, serial) });
   await page.click('button:has-text("View instrument details")');
   await expect(page.locator('.instrument-meta')).toContainText(`Acme Optics ${model} · S/N ${serial}`);
 
@@ -52,6 +52,6 @@ test('manufacturer can be set, shown in the list and detail page, and follows th
 });
 
 async function optionValue(page: import('@playwright/test').Page, serial: string): Promise<string> {
-  const option = page.locator('.filter-row select').first().locator('option', { hasText: serial });
+  const option = page.getByLabel('Instrument', { exact: true }).locator('option', { hasText: serial });
   return (await option.getAttribute('value')) ?? '';
 }
