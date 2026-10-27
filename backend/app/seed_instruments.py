@@ -32,14 +32,15 @@ INSTRUMENTS = [
     # The two instruments from the Hebrew service reports (docs: claude/
     # proposal-hebrew-translation.md). Neither maker is BD, and both were
     # serviced by an Israeli distributor whose form carries the report.
-    # `location` is the room printed on each form.
+    # `institution` and `location` (the room) are as printed on each form.
     {
         "name": "Cytek Aurora",
         "model": "Cytek Aurora",
         "manufacturer": "Cytek Biosciences",
         "distributor": "almog diagnostic",
         "serial_number": "Y1033",
-        "location": "Bar-Ilan University, room 205",
+        "institution": "Bar-Ilan University",
+        "location": "Room 205",
     },
     {
         "name": "CytoFLEX S",
@@ -47,7 +48,8 @@ INSTRUMENTS = [
         "manufacturer": "Beckman Coulter",
         "distributor": "Rhenium",
         "serial_number": "102579",
-        "location": "Bar-Ilan University, room C767",
+        "institution": "Bar-Ilan University",
+        "location": "Room C767",
     },
 ]
 
