@@ -189,6 +189,9 @@ class InstrumentOut(BaseModel):
     serial_number: str
     location: str | None
     status: InstrumentStatus
+    # The most specific place known (institutions, faculties and rooms are
+    # managed under Places); None when no institution or room is recorded.
+    place_id: uuid.UUID | None = None
     # Worked out on every read from the model's service interval and the
     # newest finalized preventive-maintenance report (services/maintenance.py).
     # State is one of not_tracked, no_record, ok, due_soon, overdue; None for a
@@ -1010,6 +1013,20 @@ class PassFailBreakdownOut(BaseModel):
     total: int
 
 
+class PlaceRollupOut(BaseModel):
+    """One row of GET /analytics/fleet's place_rollups: the instruments under
+    a place (itself and everything inside it), the reports that matched the
+    filters on them, and their work hours."""
+
+    place_id: uuid.UUID
+    kind: PlaceKind
+    name: str
+    institution_name: str
+    instrument_count: int
+    report_count: int
+    total_labor_hours: float
+
+
 class FleetAnalyticsOut(BaseModel):
     """GET /analytics/fleet (new): fleet-wide roll-ups computed entirely from
     fields every finalized report already carries — no new columns, no new
@@ -1026,6 +1043,8 @@ class FleetAnalyticsOut(BaseModel):
     reports_without_labor_hours: int = 0
     report_counts_by_instrument: list[ReportCountByInstrumentOut] = []
     report_counts_by_model: list[ReportCountByModelOut] = []
+    # Per institution, faculty and room (see services/analytics.py::_place_rollups).
+    place_rollups: list[PlaceRollupOut] = []
     # Keyed by whatever fault_category values actually appear in the data
     # (repair only — seed_templates.py's REPAIR_FIELDS) rather than a
     # hardcoded copy of that enum's options, so this can't silently drift
@@ -1122,7 +1141,7 @@ class ModelTrendOut(BaseModel):
 # under the keys GET /reports already takes. The free-text search `q` became
 # saveable on 2026-10-16 (it was left out at first; the project owner reversed
 # that after finding that "Save this filter" did nothing with only a search word).
-SAVED_FILTER_KEYS = ("instrument_id", "report_type", "status", "date_from", "date_to", "technician", "q")
+SAVED_FILTER_KEYS = ("instrument_id", "place_id", "report_type", "status", "date_from", "date_to", "technician", "q")
 
 
 class SavedFilterCriteria(BaseModel):
@@ -1132,6 +1151,7 @@ class SavedFilterCriteria(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     instrument_id: uuid.UUID | None = None
+    place_id: uuid.UUID | None = None
     report_type: ReportType | None = None
     status: ReportStatus | None = None
     date_from: date | None = None
@@ -1183,8 +1203,10 @@ class SavedFilterOut(BaseModel):
     # Only the criteria that were set; dates are YYYY-MM-DD exactly as saved.
     filters: dict
     created_at: datetime
-    # True when the saved instrument no longer exists.
+    # True when the saved instrument or place no longer exists; `stale_keys`
+    # says which of the two ("instrument_id", "place_id").
     stale: bool = False
+    stale_keys: list[str] = []
 
 
 class SavedFilterListOut(BaseModel):

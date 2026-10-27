@@ -59,7 +59,7 @@ test('an instrument with no reports is deleted after a confirm step', async ({ p
 
   // Gone from the Reports tab's instrument filter too (same shared list).
   await page.click('.view-tab:has-text("Reports")');
-  await expect(page.locator('.filter-row select').first().locator('option', { hasText: name })).toHaveCount(0);
+  await expect(page.getByLabel('Instrument', { exact: true }).locator('option', { hasText: name })).toHaveCount(0);
 });
 
 test('deleting an instrument also deletes all of its reports, and says how many', async ({ page, request }) => {

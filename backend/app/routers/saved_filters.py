@@ -27,19 +27,28 @@ _NAME_MESSAGE = "A saved filter with this name already exists"
 _LOCK_KEY = 726_001
 
 
-def _out(row: models.SavedReportFilter, existing_instruments: set[str]) -> schemas.SavedFilterOut:
-    instrument_id = row.filters.get("instrument_id")
+def _out(row: models.SavedReportFilter, existing: dict[str, set[str]]) -> schemas.SavedFilterOut:
+    stale_keys = [
+        key
+        for key, ids in (("instrument_id", existing["instrument_id"]), ("place_id", existing["place_id"]))
+        if row.filters.get(key) and row.filters[key] not in ids
+    ]
     return schemas.SavedFilterOut(
         id=row.id,
         name=row.name,
         filters=row.filters,
         created_at=row.created_at,
-        stale=bool(instrument_id) and instrument_id not in existing_instruments,
+        stale=bool(stale_keys),
+        stale_keys=stale_keys,
     )
 
 
-def _existing_instruments(db: Session) -> set[str]:
-    return {str(i) for (i,) in db.query(models.Instrument.id).all()}
+def _existing_instruments(db: Session) -> dict[str, set[str]]:
+    """The ids a saved filter can point at that still exist."""
+    return {
+        "instrument_id": {str(i) for (i,) in db.query(models.Instrument.id).all()},
+        "place_id": {str(i) for (i,) in db.query(models.Place.id).all()},
+    }
 
 
 @router.get("/saved-report-filters", response_model=schemas.SavedFilterListOut)
@@ -54,6 +63,8 @@ def create_saved_filter(payload: schemas.SavedFilterCreate, db: Session = Depend
     criteria = payload.filters
     if criteria.instrument_id and not db.get(models.Instrument, criteria.instrument_id):
         raise HTTPException(422, "That instrument does not exist")
+    if criteria.place_id and not db.get(models.Place, criteria.place_id):
+        raise HTTPException(422, "That place does not exist")
     # exclude_none keeps only the criteria that were set; mode="json" turns
     # UUIDs, enums and dates into their plain string forms (dates as
     # YYYY-MM-DD exactly as picked).

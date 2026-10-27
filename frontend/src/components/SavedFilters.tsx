@@ -8,7 +8,7 @@ import {
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 
-const KEYS = ['instrument_id', 'report_type', 'status', 'date_from', 'date_to', 'technician', 'q'] as const;
+const KEYS = ['instrument_id', 'place_id', 'report_type', 'status', 'date_from', 'date_to', 'technician', 'q'] as const;
 
 /** Only the saved-filter criteria (the six filters and the search text), with empty values dropped, so two filter objects compare by content. */
 function criteria(f: ReportFilters): ReportFilters {
@@ -18,6 +18,19 @@ function criteria(f: ReportFilters): ReportFilters {
     if (v) (out as Record<string, string>)[k] = v;
   }
   return out;
+}
+
+/** The saved criteria that no longer point at something that exists. */
+function staleKeys(f: SavedFilter): ('instrument_id' | 'place_id')[] {
+  const keys = (f.stale_keys ?? (f.stale ? ['instrument_id'] : [])) as ('instrument_id' | 'place_id')[];
+  return keys;
+}
+
+/** What was actually applied for a stale saved filter: without the instrument or place that is gone. */
+function withoutStale(f: SavedFilter): ReportFilters {
+  const next = { ...f.filters };
+  for (const k of staleKeys(f)) delete next[k];
+  return next;
 }
 
 function sameCriteria(a: ReportFilters, b: ReportFilters): boolean {
@@ -68,7 +81,7 @@ export function SavedFilters({
   // Edited since it was applied. A stale filter is compared without its
   // dropped instrument, since that is what was actually applied.
   const changed = active
-    ? !sameCriteria(filters, active.stale ? { ...active.filters, instrument_id: undefined } : active.filters)
+    ? !sameCriteria(filters, active.stale ? withoutStale(active) : active.filters)
     : false;
 
   function apply(id: string) {
@@ -79,10 +92,10 @@ export function SavedFilters({
     setActiveId(id);
     const chosen = items.find((i) => i.id === id);
     if (!chosen) return;
-    const next = { ...chosen.filters };
+    const next = chosen.stale ? withoutStale(chosen) : { ...chosen.filters };
     if (chosen.stale) {
-      delete next.instrument_id;
-      setNotice('The saved instrument no longer exists, so that filter was left out.');
+      const gone = staleKeys(chosen).map((k) => (k === 'place_id' ? 'place' : 'instrument'));
+      setNotice(`The saved ${gone.join(' and ')} no longer exists, so that filter was left out.`);
     }
     onApply(next);
   }
