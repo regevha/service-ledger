@@ -27,25 +27,31 @@ _NAME_MESSAGE = "A saved filter with this name already exists"
 _LOCK_KEY = 726_001
 
 
-def _out(row: models.SavedReportFilter, existing_instruments: set[str]) -> schemas.SavedFilterOut:
-    instrument_id = row.filters.get("instrument_id")
+def _out(row: models.SavedReportFilter, existing: dict[str, set[str]]) -> schemas.SavedFilterOut:
+    """`existing` maps a criterion key to the ids that still exist for it (see _existing)."""
+    stale_keys = [key for key, ids in existing.items() if row.filters.get(key) and row.filters[key] not in ids]
     return schemas.SavedFilterOut(
         id=row.id,
         name=row.name,
         filters=row.filters,
         created_at=row.created_at,
-        stale=bool(instrument_id) and instrument_id not in existing_instruments,
+        stale=bool(stale_keys),
+        stale_keys=stale_keys,
     )
 
 
-def _existing_instruments(db: Session) -> set[str]:
-    return {str(i) for (i,) in db.query(models.Instrument.id).all()}
+def _existing(db: Session) -> dict[str, set[str]]:
+    """The instruments and models that exist now, for spotting saved filters that point at a deleted one."""
+    return {
+        "instrument_id": {str(i) for (i,) in db.query(models.Instrument.id).all()},
+        "model_id": {str(i) for (i,) in db.query(models.InstrumentModel.id).all()},
+    }
 
 
 @router.get("/saved-report-filters", response_model=schemas.SavedFilterListOut)
 def list_saved_filters(db: Session = Depends(get_db)):
     rows = db.query(models.SavedReportFilter).order_by(models.SavedReportFilter.created_at.desc()).all()
-    existing = _existing_instruments(db)
+    existing = _existing(db)
     return schemas.SavedFilterListOut(items=[_out(r, existing) for r in rows], cap=MAX_SAVED_FILTERS)
 
 
@@ -54,6 +60,8 @@ def create_saved_filter(payload: schemas.SavedFilterCreate, db: Session = Depend
     criteria = payload.filters
     if criteria.instrument_id and not db.get(models.Instrument, criteria.instrument_id):
         raise HTTPException(422, "That instrument does not exist")
+    if criteria.model_id and not db.get(models.InstrumentModel, criteria.model_id):
+        raise HTTPException(422, "That model does not exist")
     # exclude_none keeps only the criteria that were set; mode="json" turns
     # UUIDs, enums and dates into their plain string forms (dates as
     # YYYY-MM-DD exactly as picked).
@@ -75,7 +83,7 @@ def create_saved_filter(payload: schemas.SavedFilterCreate, db: Session = Depend
         db.rollback()
         raise HTTPException(409, _NAME_MESSAGE)
     db.refresh(row)
-    return _out(row, _existing_instruments(db))
+    return _out(row, _existing(db))
 
 
 @router.delete("/saved-report-filters/{filter_id}", status_code=204)

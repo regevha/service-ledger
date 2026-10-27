@@ -273,6 +273,10 @@ def merge_instrument_model(model_id: uuid.UUID, payload: schemas.InstrumentModel
             unit.manufacturer = target.manufacturer
     for template in templates:
         template.model = target.name
+    # A saved report filter that named the merged-away model follows its instruments.
+    for saved in db.query(models.SavedReportFilter).all():
+        if saved.filters.get("model_id") == str(source.id):
+            saved.filters = {**saved.filters, "model_id": str(target.id)}
     db.flush()
     db.delete(source)
     db.commit()

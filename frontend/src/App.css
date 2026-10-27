@@ -2717,6 +2717,12 @@ textarea {
   gap: 8px;
   margin: 8px 0;
 }
+/* The Model and Maintenance choices of the Instruments list, side by side, wrapping on a narrow screen. */
+.instrument-filters {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 16px;
+}
 .instrument-header-pills {
   display: flex;
   flex-wrap: wrap;

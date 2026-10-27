@@ -1434,6 +1434,8 @@ export interface components {
             instrument_type: string;
             /** Model */
             model: string;
+            /** Model Id */
+            model_id?: string | null;
             /** Manufacturer */
             manufacturer: string | null;
             /** Distributor */
@@ -1877,6 +1879,8 @@ export interface components {
         SavedFilterCriteria: {
             /** Instrument Id */
             instrument_id?: string | null;
+            /** Model Id */
+            model_id?: string | null;
             report_type?: components["schemas"]["ReportType"] | null;
             status?: components["schemas"]["ReportStatus"] | null;
             /** Date From */
@@ -1918,6 +1922,11 @@ export interface components {
              * @default false
              */
             stale: boolean;
+            /**
+             * Stale Keys
+             * @default []
+             */
+            stale_keys: string[];
         };
         /**
          * SnippetPiece
@@ -3033,6 +3042,7 @@ export interface operations {
         parameters: {
             query?: {
                 instrument_id?: string | null;
+                model_id?: string | null;
                 report_type?: components["schemas"]["ReportType"] | null;
                 date_from?: string | null;
                 date_to?: string | null;
@@ -3103,6 +3113,7 @@ export interface operations {
         parameters: {
             query?: {
                 instrument_id?: string | null;
+                model_id?: string | null;
                 report_type?: components["schemas"]["ReportType"] | null;
                 date_from?: string | null;
                 date_to?: string | null;
@@ -3961,6 +3972,8 @@ export interface operations {
             query?: {
                 /** @description Only this instrument (also limits the units listed) */
                 instrument_id?: string | null;
+                /** @description Only instruments of this model record (also limits the units listed) */
+                model_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
                 /** @description Only reports of this type */
@@ -4007,6 +4020,8 @@ export interface operations {
             query?: {
                 /** @description Only this instrument (also limits the units listed) */
                 instrument_id?: string | null;
+                /** @description Only instruments of this model record (also limits the units listed) */
+                model_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
                 /** @description Only reports of this type */
@@ -4057,6 +4072,8 @@ export interface operations {
                 field: string;
                 /** @description Only this instrument (also limits the units listed) */
                 instrument_id?: string | null;
+                /** @description Only instruments of this model record (also limits the units listed) */
+                model_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
                 /** @description Only reports of this type */

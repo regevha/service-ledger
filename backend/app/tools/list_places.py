@@ -14,6 +14,9 @@ from app.db import SessionLocal
 from app.services.instrument_models import near_duplicates
 
 
+_PLURAL = {"institution": "institutions", "faculty": "faculties", "room": "rooms"}
+
+
 def main() -> None:
     with SessionLocal() as db:
         places = db.query(models.Place).order_by(models.Place.kind, models.Place.name).all()
@@ -35,7 +38,7 @@ def main() -> None:
         group = [p for p in places if p.kind == kind]
         if not group:
             continue
-        print(f"\n{kind}s")
+        print(f"\n{_PLURAL[kind]}")
         for p in group:
             parent = f" in {names[p.parent_id]}" if p.parent_id is not None else ""
             print(f"  {p.name}{parent}: {counts.get(p.id, 0)} instrument(s) pointing directly here")

@@ -221,17 +221,26 @@ function FilterBar({ filters, setFilters, instruments }: {
       instruments={instruments}
       summaryExtra={filters.manufacturer ? [filters.manufacturer] : []}
       instrumentFilter={(inst) => !filters.manufacturer || (inst.manufacturer?.trim() ?? '') === filters.manufacturer}
+      modelFilter={(m) => !filters.manufacturer || (m.manufacturer?.trim() ?? '') === filters.manufacturer}
       leading={
         <select
           aria-label="Manufacturer"
           value={filters.manufacturer ?? ''}
           onChange={(e) => {
             const manufacturer = e.target.value || undefined;
-            // Drop a chosen instrument that is not from this maker, so the two never contradict.
+            // Drop a chosen instrument or model that is not from this maker, so they never contradict.
             setFilters((f) => {
               const kept = instruments.find((i) => i.id === f.instrument_id);
               const clash = manufacturer && kept && (kept.manufacturer?.trim() ?? '') !== manufacturer;
-              return { ...f, manufacturer, instrument_id: clash ? undefined : f.instrument_id };
+              // An instrument takes its maker from its model, so one unit of the model tells which maker it is.
+              const keptModel = instruments.find((i) => i.model_id === f.model_id);
+              const modelClash = manufacturer && f.model_id && keptModel && (keptModel.manufacturer?.trim() ?? '') !== manufacturer;
+              return {
+                ...f,
+                manufacturer,
+                instrument_id: clash ? undefined : f.instrument_id,
+                model_id: modelClash ? undefined : f.model_id,
+              };
             });
           }}
         >
