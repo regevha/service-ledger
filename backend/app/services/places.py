@@ -41,6 +41,28 @@ def text_of(place: models.Place | None) -> tuple[str | None, str | None]:
     return place.name, None
 
 
+def subtree_ids(db: Session, place: models.Place) -> list:
+    """The place's id and the ids of every place inside it."""
+    ids, frontier = [place.id], [place.id]
+    while frontier:
+        frontier = [i for (i,) in db.query(models.Place.id).filter(models.Place.parent_id.in_(frontier)).all()]
+        ids += frontier
+    return ids
+
+
+def refresh_instrument_text(db: Session, place: models.Place) -> int:
+    """After a place is renamed, moved or merged into: the text on the
+    instruments pointing at it or inside it follows the record (the record is the
+    source). Returns how many instruments were looked at."""
+    instruments = db.query(models.Instrument).filter(models.Instrument.place_id.in_(subtree_ids(db, place))).all()
+    for instrument in instruments:
+        institution, room = text_of(instrument.place)
+        instrument.institution = institution
+        if instrument.place.kind == ROOM:
+            instrument.location = room
+    return len(instruments)
+
+
 def _needs_link(instrument: models.Instrument) -> bool:
     institution, room = clean(instrument.institution), clean(instrument.location)
     if instrument.place_id is None and instrument.place is None:

@@ -18,6 +18,7 @@ from app.routers import (
     analytics,
     attachments,
     instrument_models,
+    places,
     instrument_types,
     instruments,
     report_templates,
@@ -100,6 +101,7 @@ async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
 
 app.include_router(instrument_types.router)
 app.include_router(instrument_models.router)
+app.include_router(places.router)
 app.include_router(instruments.router)
 app.include_router(report_templates.router)
 app.include_router(reports.router)
