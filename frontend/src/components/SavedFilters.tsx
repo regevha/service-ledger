@@ -8,9 +8,9 @@ import {
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 
-const KEYS = ['instrument_id', 'place_id', 'report_type', 'status', 'date_from', 'date_to', 'technician', 'q'] as const;
+const KEYS = ['instrument_id', 'model_id', 'place_id', 'report_type', 'status', 'date_from', 'date_to', 'technician', 'q'] as const;
 
-/** Only the saved-filter criteria (the six filters and the search text), with empty values dropped, so two filter objects compare by content. */
+/** Only the saved-filter criteria (the filters and the search text), with empty values dropped, so two filter objects compare by content. */
 function criteria(f: ReportFilters): ReportFilters {
   const out: ReportFilters = {};
   for (const k of KEYS) {
@@ -20,18 +20,26 @@ function criteria(f: ReportFilters): ReportFilters {
   return out;
 }
 
-/** The saved criteria that no longer point at something that exists. */
-function staleKeys(f: SavedFilter): ('instrument_id' | 'place_id')[] {
-  const keys = (f.stale_keys ?? (f.stale ? ['instrument_id'] : [])) as ('instrument_id' | 'place_id')[];
-  return keys;
-}
-
-/** What was actually applied for a stale saved filter: without the instrument or place that is gone. */
-function withoutStale(f: SavedFilter): ReportFilters {
-  const next = { ...f.filters };
-  for (const k of staleKeys(f)) delete next[k];
+/** What was actually applied: the saved criteria, minus an instrument, model or place that no longer exists. */
+function withoutGone(saved: SavedFilter): ReportFilters {
+  const next = { ...saved.filters };
+  for (const key of saved.stale_keys ?? []) delete next[key];
   return next;
 }
+
+/** "instrument", "model", "place" or a mix: what a stale saved filter points at. */
+function goneLabel(saved: SavedFilter): string {
+  const keys = saved.stale_keys ?? [];
+  return [keys.includes('instrument_id') ? 'instrument' : '', keys.includes('model_id') ? 'model' : '', keys.includes('place_id') ? 'place' : '']
+    .filter(Boolean)
+    .join(' and ');
+}
+
+const GONE_NOTICE: Record<'instrument_id' | 'model_id' | 'place_id', string> = {
+  instrument_id: 'The saved instrument no longer exists, so that filter was left out.',
+  model_id: 'The saved model no longer exists, so that filter was left out.',
+  place_id: 'The saved place no longer exists, so that filter was left out.',
+};
 
 function sameCriteria(a: ReportFilters, b: ReportFilters): boolean {
   const ca = criteria(a);
@@ -79,10 +87,8 @@ export function SavedFilters({
   const hasCriteria = Object.keys(criteria(filters)).length > 0;
   const full = items.length >= cap;
   // Edited since it was applied. A stale filter is compared without its
-  // dropped instrument, since that is what was actually applied.
-  const changed = active
-    ? !sameCriteria(filters, active.stale ? withoutStale(active) : active.filters)
-    : false;
+  // dropped instrument, model or place, since that is what was actually applied.
+  const changed = active ? !sameCriteria(filters, withoutGone(active)) : false;
 
   function apply(id: string) {
     setError(null);
@@ -92,12 +98,8 @@ export function SavedFilters({
     setActiveId(id);
     const chosen = items.find((i) => i.id === id);
     if (!chosen) return;
-    const next = chosen.stale ? withoutStale(chosen) : { ...chosen.filters };
-    if (chosen.stale) {
-      const gone = staleKeys(chosen).map((k) => (k === 'place_id' ? 'place' : 'instrument'));
-      setNotice(`The saved ${gone.join(' and ')} no longer exists, so that filter was left out.`);
-    }
-    onApply(next);
+    if (chosen.stale) setNotice((chosen.stale_keys ?? []).map((k) => GONE_NOTICE[k]).join(' '));
+    onApply(withoutGone(chosen));
   }
 
   async function save() {
@@ -137,7 +139,7 @@ export function SavedFilters({
           <option key={i.id} value={i.id}>
             {i.stale ? '⚠ ' : ''}
             {i.name}
-            {i.stale ? ' (instrument no longer exists)' : ''}
+            {i.stale ? ` (${goneLabel(i)} no longer exists)` : ''}
           </option>
         ))}
       </select>

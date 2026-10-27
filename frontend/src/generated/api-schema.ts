@@ -1501,6 +1501,8 @@ export interface components {
             instrument_type: string;
             /** Model */
             model: string;
+            /** Model Id */
+            model_id?: string | null;
             /** Manufacturer */
             manufacturer: string | null;
             /** Distributor */
@@ -2049,6 +2051,8 @@ export interface components {
         SavedFilterCriteria: {
             /** Instrument Id */
             instrument_id?: string | null;
+            /** Model Id */
+            model_id?: string | null;
             /** Place Id */
             place_id?: string | null;
             report_type?: components["schemas"]["ReportType"] | null;
@@ -3364,6 +3368,7 @@ export interface operations {
         parameters: {
             query?: {
                 instrument_id?: string | null;
+                model_id?: string | null;
                 place_id?: string | null;
                 report_type?: components["schemas"]["ReportType"] | null;
                 date_from?: string | null;
@@ -3435,6 +3440,7 @@ export interface operations {
         parameters: {
             query?: {
                 instrument_id?: string | null;
+                model_id?: string | null;
                 place_id?: string | null;
                 report_type?: components["schemas"]["ReportType"] | null;
                 date_from?: string | null;
@@ -4294,6 +4300,8 @@ export interface operations {
             query?: {
                 /** @description Only this instrument (also limits the units listed) */
                 instrument_id?: string | null;
+                /** @description Only instruments of this model record (also limits the units listed) */
+                model_id?: string | null;
                 /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
                 place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
@@ -4342,6 +4350,8 @@ export interface operations {
             query?: {
                 /** @description Only this instrument (also limits the units listed) */
                 instrument_id?: string | null;
+                /** @description Only instruments of this model record (also limits the units listed) */
+                model_id?: string | null;
                 /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
                 place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
@@ -4394,6 +4404,8 @@ export interface operations {
                 field: string;
                 /** @description Only this instrument (also limits the units listed) */
                 instrument_id?: string | null;
+                /** @description Only instruments of this model record (also limits the units listed) */
+                model_id?: string | null;
                 /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
                 place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
