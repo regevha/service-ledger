@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.db import get_db
 from app.services.maintenance import annotate
+from app.services.model_reliability import compute_model_reliability
 from app.routers.reports import _list_item
 from app.services.instrument_models import near_duplicates
 from app.services.instrument_types import type_exists
@@ -113,6 +114,15 @@ def get_instrument_model(model_id: uuid.UUID, db: Session = Depends(get_db)):
         reports=[_list_item(r) for r in reports[:_PAGE_REPORTS]],
         report_total=len(reports),
     )
+
+
+@router.get("/instrument-models/{model_id}/reliability", response_model=schemas.ModelReliabilityOut)
+def get_instrument_model_reliability(model_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Days between repairs, common fault categories, parts and labor hours for
+    a model's instruments (services/model_reliability.py)."""
+    if not db.get(models.InstrumentModel, model_id):
+        raise HTTPException(404, "Model not found")
+    return compute_model_reliability(db, model_id)
 
 
 @router.post("/instrument-models", response_model=schemas.InstrumentModelOut, status_code=201)

@@ -2723,3 +2723,15 @@ textarea {
   gap: 6px;
   justify-content: flex-end;
 }
+
+.instrument-row.model-rel-row {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr);
+}
+@media (max-width: 620px) {
+  .instrument-row.model-rel-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.model-rel-notes {
+  margin: 8px 0;
+}
