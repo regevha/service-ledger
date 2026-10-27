@@ -27,10 +27,9 @@ def main() -> None:
         unlinked = (
             db.query(models.Instrument)
             .filter(models.Instrument.place_id.is_(None))
-            .filter((models.Instrument.institution.isnot(None)) | (models.Instrument.location.isnot(None)))
             .all()
         )
-    print(f"{len(places)} places; {len(unlinked)} instruments with a place in text but no link")
+    print(f"{len(places)} places; {len(unlinked)} instruments with no place")
     for kind in ("institution", "faculty", "room"):
         group = [p for p in places if p.kind == kind]
         if not group:
@@ -40,9 +39,9 @@ def main() -> None:
             parent = f" in {names[p.parent_id]}" if p.parent_id is not None else ""
             print(f"  {p.name}{parent}: {counts.get(p.id, 0)} instrument(s) pointing directly here")
     if unlinked:
-        print("\nNot linked (a room needs an institution to sit in):")
+        print("\nNo place recorded:")
         for i in unlinked:
-            print(f"  {i.name} ({i.serial_number}): institution={i.institution!r} room={i.location!r}")
+            print(f"  {i.name} ({i.serial_number})")
     for kind in ("institution", "room"):
         groups = near_duplicates([p.name for p in places if p.kind == kind], contains=True)
         if groups:

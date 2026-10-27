@@ -160,7 +160,8 @@ function InstrumentFormScreen({
     existing === undefined && (lockedManufacturer ?? manufacturer).trim().length === 0 ? 'manufacturer' : null,
     serialNumber.trim().length === 0 ? 'serial number' : null,
   ].filter((m): m is string => m !== null);
-  const canSave = missing.length === 0 && !saving;
+  const roomWithoutInstitution = location.trim() !== '' && institution.trim() === '';
+  const canSave = missing.length === 0 && !roomWithoutInstitution && !saving;
 
   return (
     <div className="section">
@@ -325,7 +326,7 @@ function InstrumentFormScreen({
           {institution.trim() !== '' && location.trim() !== '' && '. '}
           {location.trim() !== '' &&
             (institution.trim() === ''
-              ? 'A room needs an institution to be listed under Places.'
+              ? 'A room needs an institution: fill in the institution too.'
               : matchedRoom
                 ? `Existing room${matchedRoom.faculty_name ? ` in ${matchedRoom.faculty_name}` : ''} · ${matchedRoom.total_unit_count} instrument${matchedRoom.total_unit_count === 1 ? '' : 's'}`
                 : 'New room · it will be added to Places')}

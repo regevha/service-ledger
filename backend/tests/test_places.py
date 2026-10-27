@@ -29,7 +29,7 @@ def test_room_and_institution_create_a_room_under_the_institution(client, db_ses
     unit = _mine(db_session, "P1")
     assert unit.place.kind == "room" and unit.place.name == "Room 205"
     assert unit.place.parent.kind == "institution" and unit.place.parent.name == "Zeta University"
-    assert unit.institution == "Zeta University" and unit.location == "Room 205"  # the text stays the source
+    assert unit.institution == "Zeta University" and unit.location == "Room 205"  # read back from the place
 
 
 def test_institution_alone_links_to_the_institution(client, db_session):
@@ -38,9 +38,10 @@ def test_institution_alone_links_to_the_institution(client, db_session):
     assert unit.place.kind == "institution" and unit.place.name == "Zeta University"
 
 
-def test_room_without_institution_stays_unlinked(client, db_session):
-    client.post("/instruments", json=_payload("P3", location="Core Lab"))
-    assert _mine(db_session, "P3").place_id is None
+def test_room_without_institution_is_refused_and_nothing_is_saved(client, db_session):
+    r = client.post("/instruments", json=_payload("P3", location="Core Lab"))
+    assert r.status_code == 422 and "institution" in r.json()["detail"]
+    assert db_session.query(models.Instrument).filter(models.Instrument.serial_number == "P3").count() == 0
 
 
 def test_no_place_text_means_no_link(client, db_session):
@@ -103,14 +104,14 @@ def test_an_existing_room_in_a_faculty_is_reused_not_duplicated(client, db_sessi
     assert len([p for p in db_session.query(models.Place).filter(models.Place.name == "B12")]) == 1
 
 
-def test_a_room_name_in_two_faculties_is_ambiguous_so_not_linked(client, db_session):
+def test_a_room_name_in_two_faculties_is_ambiguous_so_refused(client, db_session):
     institution = models.Place(kind="institution", name="Zeta Tech")
     f1 = models.Place(kind="faculty", name="Physics", parent=institution)
     f2 = models.Place(kind="faculty", name="Chemistry", parent=institution)
     db_session.add_all([institution, f1, f2, models.Place(kind="room", name="101", parent=f1), models.Place(kind="room", name="101", parent=f2)])
     db_session.commit()
-    client.post("/instruments", json=_payload("P15", institution="Zeta Tech", location="101"))
-    assert _mine(db_session, "P15").place_id is None
+    r = client.post("/instruments", json=_payload("P15", institution="Zeta Tech", location="101"))
+    assert r.status_code == 422 and "several rooms named 101" in r.json()["detail"]
 
 
 def test_text_of_walks_up_the_tree():
@@ -127,3 +128,20 @@ def test_places_near_duplicates_include_names_inside_each_other():
     assert near_duplicates(["Room 205", "205", "C767"], contains=True) == [["205", "Room 205"]]
     assert near_duplicates(["Bar Ilan", "Bar-Ilan University", "MIT"], contains=True) == [["Bar Ilan", "Bar-Ilan University"]]
     assert near_duplicates(["Room 205", "205"]) == []  # models keep the stricter rule
+
+
+def test_the_text_columns_are_gone_and_text_follows_the_place(client, db_session):
+    assert "institution" not in models.Instrument.__table__.columns and "location" not in models.Instrument.__table__.columns
+    created = client.post("/instruments", json=_payload("P16", institution="Zeta University", location="Room 1")).json()
+    room = _mine(db_session, "P16").place
+    client.patch(f"/places/{room.id}", json={"name": "Room 1A"})
+    assert client.get(f"/instruments/{created['id']}").json()["location"] == "Room 1A"
+    client.patch(f"/places/{room.parent_id}", json={"name": "Zeta Univ."})
+    got = client.get(f"/instruments/{created['id']}").json()
+    assert (got["institution"], got["location"]) == ("Zeta Univ.", "Room 1A")
+
+
+def test_changing_only_the_institution_keeps_the_room_name(client, db_session):
+    created = client.post("/instruments", json=_payload("P17", institution="Zeta University", location="Room 1")).json()
+    got = client.patch(f"/instruments/{created['id']}", json={"institution": "Zeta Institute"}).json()
+    assert (got["institution"], got["location"]) == ("Zeta Institute", "Room 1")

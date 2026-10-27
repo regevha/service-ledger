@@ -155,7 +155,9 @@ class Place(Base):
     parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("places.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    parent: Mapped["Place | None"] = relationship(remote_side="Place.id")
+    # selectin: the room -> faculty -> institution chain is read for every
+    # instrument (its institution and room text come from it), so load it in bulk
+    parent: Mapped["Place | None"] = relationship(remote_side="Place.id", lazy="selectin")
 
     __table_args__ = (
         Index(
@@ -193,15 +195,11 @@ class Instrument(Base):
     # is not the maker ("Rhenium", "almog diagnostic"); NULL when there is none or
     # it is not recorded. Optional, unlike the manufacturer.
     distributor: Mapped[str | None] = mapped_column(String, nullable=True)
-    # Free text: the university or company the unit belongs to ("Bar-Ilan University");
-    # NULL when not recorded.
-    institution: Mapped[str | None] = mapped_column(String, nullable=True)
     serial_number: Mapped[str] = mapped_column(String, nullable=False, unique=True)
-    location: Mapped[str | None] = mapped_column(String, nullable=True)
-    # The most specific place known (a room, else a faculty, else the institution),
-    # kept in step with `institution` and `location` by services/places.py. Empty
-    # when neither is recorded (or a room has no institution to sit in). The text
-    # above stays the source for now.
+    # Where the unit is: the most specific place known (a room, else a faculty, else
+    # the institution). The place record is the only copy; `institution` and
+    # `location` (the room) below are read from it, and writing them finds or
+    # creates the matching places (services/places.py).
     place_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("places.id", name="fk_instruments_place_id"), nullable=True, index=True
     )
@@ -217,7 +215,48 @@ class Instrument(Base):
     # delete at commit time, which delete_instrument turns into a clean 409.
     reports: Mapped[list["Report"]] = relationship(back_populates="instrument", passive_deletes=True)
     model_record: Mapped["InstrumentModel | None"] = relationship()
-    place: Mapped["Place | None"] = relationship()
+    place: Mapped["Place | None"] = relationship(lazy="selectin")
+
+    # `institution` (the university or company) and `location` (the room) are not
+    # columns: the place record is the only copy (places plan, step 4). Reading
+    # them gives the names along the place's chain; writing them (the API, the
+    # seeds, tests) is remembered until the next flush, when services/places.py
+    # finds or creates the matching places and points `place` at the most
+    # specific one. Setting one keeps the other as it was.
+    def _text(self, index: int) -> str | None:
+        from app.services.places import text_of  # noqa: PLC0415 (places imports models)
+
+        edit = self.__dict__.get("_text_edit")
+        return (edit if edit is not None else text_of(self.place))[index]
+
+    def _set_text(self, index: int, value: str | None) -> None:
+        from sqlalchemy import inspect as sa_inspect  # noqa: PLC0415
+        from sqlalchemy.orm.attributes import flag_modified  # noqa: PLC0415
+
+        from app.services.places import text_of  # noqa: PLC0415
+
+        edit = list(self.__dict__.get("_text_edit") or text_of(self.place))
+        edit[index] = value
+        self.__dict__["_text_edit"] = tuple(edit)
+        if sa_inspect(self).persistent:
+            self.place_id  # noqa: B018 (load it, so it can be marked as changed and the flush runs)
+            flag_modified(self, "place_id")
+
+    @property
+    def institution(self) -> str | None:
+        return self._text(0)
+
+    @institution.setter
+    def institution(self, value: str | None) -> None:
+        self._set_text(0, value)
+
+    @property
+    def location(self) -> str | None:
+        return self._text(1)
+
+    @location.setter
+    def location(self, value: str | None) -> None:
+        self._set_text(1, value)
 
 
 class ReportTemplate(Base):

@@ -290,7 +290,7 @@ def test_the_instrument_rollup_carries_the_institution(client, seeded):
     body = client.get("/analytics/fleet").json()
     by_model = {row["model"]: row for row in body["labor_hours_by_instrument"]}
     assert by_model["FACSAria III"]["institution"] == "Bar-Ilan University"
-    assert by_model["LSRFortessa"]["institution"] is None
+    assert by_model["LSRFortessa"]["institution"] == "Demo Institution"  # as seeded
 
 
 # ---------- the Reports-tab filters on analytics: status, lab manager, search ----------

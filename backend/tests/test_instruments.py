@@ -16,7 +16,7 @@ from app.models import Instrument, Report, ReportStatus, ReportTemplate, ReportT
 def test_create_instrument(client):
     resp = client.post(
         "/instruments",
-        json={"name": "Test Cytometer", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "TC-0001", "location": "Room 9"},
+        json={"name": "Test Cytometer", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "TC-0001", "institution": "Test University", "location": "Room 9"},
     )
     assert resp.status_code == 201
     body = resp.json()
@@ -209,7 +209,7 @@ def test_instrument_trend_fields_ignores_non_finalized_and_templateless_reports(
 def test_update_instrument_partial_update_only_touches_provided_fields(client):
     created = client.post(
         "/instruments",
-        json={"name": "Edit Me", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "PATCH-0001", "location": "Room 1"},
+        json={"name": "Edit Me", "model": "TestModel-9000", "manufacturer": "TestCo", "serial_number": "PATCH-0001", "institution": "Test University", "location": "Room 1"},
     ).json()
 
     resp = client.patch(f"/instruments/{created['id']}", json={"location": "Room 2"})
@@ -244,6 +244,7 @@ def test_update_instrument_can_change_every_editable_field_at_once(client):
             "name": "New Name",
             "model": "NewModel",
             "serial_number": "PATCH-0003-NEW",
+            "institution": "New University",
             "location": "New Room",
             "status": "maintenance",
         },
@@ -253,6 +254,7 @@ def test_update_instrument_can_change_every_editable_field_at_once(client):
     assert body["name"] == "New Name"
     assert body["model"] == "NewModel"
     assert body["serial_number"] == "PATCH-0003-NEW"
+    assert body["institution"] == "New University"
     assert body["location"] == "New Room"
     assert body["status"] == "maintenance"
 
@@ -295,7 +297,7 @@ def test_update_instrument_allows_resubmitting_its_own_current_serial_number(cli
     # Re-sending the instrument's own serial number (e.g. a form that always
     # submits every field) must not trip the "already exists" check against
     # itself.
-    resp = client.patch(f"/instruments/{created['id']}", json={"serial_number": "PATCH-0006", "location": "Room 3"})
+    resp = client.patch(f"/instruments/{created['id']}", json={"serial_number": "PATCH-0006", "institution": "Test University", "location": "Room 3"})
     assert resp.status_code == 200
     assert resp.json()["location"] == "Room 3"
 
@@ -350,7 +352,7 @@ def test_update_manufacturer_is_locked_to_the_model(client):
     PATCH that sets, changes or clears it leaves the model's value in place
     (it is changed on the model, which pushes it to the units)."""
     created = client.post(
-        "/instruments", json={"name": "Edit Maker", "model": "M4", "manufacturer": "TestCo", "serial_number": "MFR-0004", "location": "Room 9"}
+        "/instruments", json={"name": "Edit Maker", "model": "M4", "manufacturer": "TestCo", "serial_number": "MFR-0004", "institution": "Test University", "location": "Room 9"}
     ).json()
 
     kept = client.patch(f"/instruments/{created['id']}", json={"manufacturer": "Cytek", "location": "Room 1"}).json()
@@ -391,7 +393,7 @@ def test_a_blank_distributor_on_create_means_none(client):
 
 def test_update_distributor_sets_changes_and_clears_it(client):
     created = client.post(
-        "/instruments", json={"name": "Edit Dist", "model": "D4", "manufacturer": "Cytek", "serial_number": "DIST-0004", "location": "Room 2"}
+        "/instruments", json={"name": "Edit Dist", "model": "D4", "manufacturer": "Cytek", "serial_number": "DIST-0004", "institution": "Test University", "location": "Room 2"}
     ).json()
 
     assert client.patch(f"/instruments/{created['id']}", json={"distributor": "almog diagnostic"}).json()["distributor"] == "almog diagnostic"
@@ -426,4 +428,7 @@ def test_institution_is_optional_trimmed_returned_and_editable(client):
     # Edits: set, leave alone on other edits, blank clears it.
     assert client.patch(f"/instruments/{plain['id']}", json={"institution": "Tel Aviv University"}).json()["institution"] == "Tel Aviv University"
     assert client.patch(f"/instruments/{plain['id']}", json={"location": "Room 9"}).json()["institution"] == "Tel Aviv University"
-    assert client.patch(f"/instruments/{plain['id']}", json={"institution": "  "}).json()["institution"] is None
+    # A room needs an institution, so the institution can only be cleared with the room.
+    assert client.patch(f"/instruments/{plain['id']}", json={"institution": "  "}).status_code == 422
+    cleared = client.patch(f"/instruments/{plain['id']}", json={"institution": "  ", "location": None}).json()
+    assert cleared["institution"] is None and cleared["location"] is None
