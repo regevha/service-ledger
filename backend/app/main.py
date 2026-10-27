@@ -14,10 +14,12 @@ from app.request_trace import RequestTraceMiddleware
 from app.shared_password import SharedPasswordMiddleware
 from app.trace import configure_logging
 from app.services.instrument_types import ensure_default_types
+from app.services.places import PlaceTextError
 from app.routers import (
     analytics,
     attachments,
     instrument_models,
+    places,
     instrument_types,
     instruments,
     report_templates,
@@ -73,6 +75,13 @@ app.add_middleware(RequestTraceMiddleware)
 logger = logging.getLogger("app.main")
 
 
+@app.exception_handler(PlaceTextError)
+async def place_text_error(request: Request, exc: PlaceTextError) -> JSONResponse:
+    """An institution and room that cannot name one place (see services/places.py):
+    the edit is refused, with the reason in plain words."""
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
 @app.exception_handler(Exception)
 async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
     """An exception no route handled used to reach the browser as a bare 500
@@ -100,6 +109,7 @@ async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
 
 app.include_router(instrument_types.router)
 app.include_router(instrument_models.router)
+app.include_router(places.router)
 app.include_router(instruments.router)
 app.include_router(report_templates.router)
 app.include_router(reports.router)

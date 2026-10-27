@@ -50,6 +50,8 @@ export interface Instrument {
   serial_number: string;
   location: string | null;
   status: InstrumentStatus;
+  /** The most specific place known (see Places); null when no institution or room is recorded. */
+  place_id?: string | null;
   /** Worked out by the backend from the model's service interval and the newest finalized preventive-maintenance report. */
   last_maintenance_date?: string | null;
   maintenance_due_date?: string | null;
@@ -296,6 +298,8 @@ export interface PassFailBreakdown {
   total: number;
 }
 
+export type PlaceRollup = components['schemas']['PlaceRollupOut'];
+
 export interface FleetAnalytics {
   finalized_report_count: number;
   parts_replaced: PartUsage[];
@@ -305,6 +309,8 @@ export interface FleetAnalytics {
   reports_without_labor_hours?: number;
   report_counts_by_instrument?: ReportCountByInstrument[];
   report_counts_by_model?: ReportCountByModel[];
+  /** Instruments, reports and work hours per institution, faculty and room. */
+  place_rollups?: PlaceRollup[];
   labor_hours_by_fault_category: Record<string, number>;
   pass_fail_by_report_type: Record<string, PassFailBreakdown>;
 }
@@ -482,6 +488,8 @@ export interface AnalyticsFilters {
   instrument_id?: string;
   /** Every unit of one model record (also limits the units listed). */
   model_id?: string;
+  /** An institution, faculty or room, with everything inside it. */
+  place_id?: string;
   manufacturer?: string;
   report_type?: ReportType;
   date_from?: string;
@@ -723,6 +731,8 @@ export interface ReportFilters {
   instrument_id?: string;
   /** Every unit of one model record (an InstrumentModel id). */
   model_id?: string;
+  /** An institution, faculty or room, with everything inside it. */
+  place_id?: string;
   report_type?: ReportType;
   status?: ReportStatus;
   date_from?: string;
@@ -912,10 +922,10 @@ export interface SavedFilter {
   name: string;
   filters: ReportFilters;
   created_at: string;
-  /** The saved instrument or model no longer exists. */
+  /** A saved instrument, model or place no longer exists. */
   stale: boolean;
   /** Which saved criteria point at something that is gone. */
-  stale_keys: ('instrument_id' | 'model_id')[];
+  stale_keys: ('instrument_id' | 'model_id' | 'place_id')[];
 }
 
 export interface SavedFilterList {
@@ -972,6 +982,29 @@ export function mergeInstrumentModel(
   intoId: string
 ): Promise<{ moved_instruments: number; moved_templates: number; into: string }> {
   return apiFetch(`/instrument-models/${id}/merge`, { method: 'POST', body: JSON.stringify({ into_id: intoId }) });
+}
+
+export type Place = components['schemas']['PlaceOut'];
+export type PlaceKind = components['schemas']['PlaceKind'];
+
+export function listPlaces(): Promise<Place[]> {
+  return apiFetch('/places');
+}
+
+export function createPlace(payload: { kind: PlaceKind; name: string; parent_id?: string | null }): Promise<Place> {
+  return apiFetch('/places', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updatePlace(id: string, payload: { name?: string; parent_id?: string | null }): Promise<Place> {
+  return apiFetch(`/places/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function deletePlace(id: string): Promise<void> {
+  return apiFetch(`/places/${id}`, { method: 'DELETE' });
+}
+
+export function mergePlace(id: string, intoId: string): Promise<{ moved_instruments: number; moved_places: number; into: string }> {
+  return apiFetch(`/places/${id}/merge`, { method: 'POST', body: JSON.stringify({ into_id: intoId }) });
 }
 
 export type InstrumentModelDetail = components['schemas']['InstrumentModelDetailOut'];

@@ -26,6 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Query, Session, joinedload
 
 from app import models, schemas
+from app.services.places import subtree_ids
 from app.services.report_filters import apply_report_filters
 from app.models import report_chronological_order
 
@@ -95,6 +96,9 @@ class AnalyticsFilters:
     # The instruments of one model record (instrument_models.id); narrows the
     # listed instruments and whose reports count, like `manufacturer`.
     model_id: uuid.UUID | None = None
+    # A place (institution, faculty or room) and everything inside it: only the
+    # instruments there, and their reports. Same meaning as on the Reports list.
+    place_id: uuid.UUID | None = None
     manufacturer: str | None = None
     report_type: models.ReportType | None = None
     date_from: date | None = None
@@ -112,6 +116,10 @@ def _apply_unit_filters(query: Query, filters: AnalyticsFilters) -> Query:
         query = query.filter(models.Instrument.id == filters.instrument_id)
     if filters.model_id:
         query = query.filter(models.Instrument.model_id == filters.model_id)
+    if filters.place_id:
+        place = query.session.get(models.Place, filters.place_id)
+        ids = subtree_ids(query.session, place) if place is not None else []
+        query = query.filter(models.Instrument.place_id.in_(ids))
     if filters.manufacturer:
         query = query.filter(_same_manufacturer(filters.manufacturer))
     return query
@@ -139,6 +147,7 @@ def _apply_filters(query: Query, filters: AnalyticsFilters) -> Query:
         query,
         instrument_id=filters.instrument_id,
         model_id=filters.model_id,
+        place_id=filters.place_id,
         report_type=filters.report_type,
         date_from=filters.date_from,
         date_to=filters.date_to,
@@ -273,6 +282,8 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         reverse=True,
     )
 
+    place_rollups = _place_rollups(db, instruments, report_count_by_instrument, labor_by_instrument)
+
     return schemas.FleetAnalyticsOut(
         finalized_report_count=len(reports),
         parts_replaced=parts_replaced,
@@ -281,6 +292,7 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         reports_without_labor_hours=reports_without_hours,
         report_counts_by_instrument=report_counts_by_instrument,
         report_counts_by_model=report_counts_by_model,
+        place_rollups=place_rollups,
         labor_hours_by_fault_category=labor_by_fault_category,
         pass_fail_by_report_type={
             report_type: schemas.PassFailBreakdownOut(
@@ -292,6 +304,42 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
             for report_type, counts in pass_fail.items()
         },
     )
+
+
+def _place_rollups(
+    db: Session,
+    instruments: list[models.Instrument],
+    report_counts: dict[uuid.UUID, int],
+    labor: dict[uuid.UUID, float],
+) -> list[schemas.PlaceRollupOut]:
+    """Instruments, reports and work hours per place, at every level an
+    instrument sits under: its institution, its faculty (when its room is in
+    one) and its room. An instrument counts at each level above its own place;
+    one with no place counts nowhere. Only places with an instrument are listed."""
+    places = {p.id: p for p in db.query(models.Place).all()}
+    rows: dict[uuid.UUID, schemas.PlaceRollupOut] = {}
+    for instrument in instruments:
+        node = places.get(instrument.place_id) if instrument.place_id else None
+        while node is not None:
+            institution = node if node.kind == "institution" else places[node.parent_id]
+            if node.kind == "room" and institution.kind != "institution":
+                institution = places[institution.parent_id]
+            row = rows.get(node.id)
+            if row is None:
+                row = rows[node.id] = schemas.PlaceRollupOut(
+                    place_id=node.id,
+                    kind=node.kind,
+                    name=node.name,
+                    institution_name=institution.name,
+                    instrument_count=0,
+                    report_count=0,
+                    total_labor_hours=0.0,
+                )
+            row.instrument_count += 1
+            row.report_count += report_counts.get(instrument.id, 0)
+            row.total_labor_hours += labor.get(instrument.id, 0.0)
+            node = places.get(node.parent_id) if node.parent_id else None
+    return sorted(rows.values(), key=lambda r: (r.institution_name.lower(), r.kind != "institution", r.name.lower()))
 
 
 # ---------- trend helpers (shared by routers/instruments.py and the model comparison) ----------

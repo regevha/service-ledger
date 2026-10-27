@@ -102,7 +102,7 @@ def test_models_listing_runs_as_a_module(db_session, factory, capsys):
 def test_places_listing_of_an_empty_database(factory, capsys):
     list_places.main()
     out = capsys.readouterr().out
-    assert "0 places; 0 instruments with a place in text but no link" in out
+    assert "0 places; 0 instruments with no place" in out
     assert "Not linked" not in out
     assert "may be the same place" not in out
 
@@ -122,7 +122,7 @@ def test_places_listing_shows_each_kind_with_its_parent_and_counts(db_session, f
     list_places.main()
     out = capsys.readouterr().out
 
-    assert "4 places; 0 instruments with a place in text but no link" in out
+    assert "4 places; 0 instruments with no place" in out
     assert "\ninstitutions\n  Bar-Ilan University: 1 instrument(s) pointing directly here" in out
     assert "\nfaculties\n  Life Sciences in Bar-Ilan University: 0 instrument(s) pointing directly here" in out
     assert "  Room 205 in Bar-Ilan University: 1 instrument(s) pointing directly here" in out
@@ -132,17 +132,16 @@ def test_places_listing_shows_each_kind_with_its_parent_and_counts(db_session, f
     assert _counts(db_session) == before
 
 
-def test_places_listing_names_the_instruments_that_could_not_be_linked(db_session, factory, capsys):
-    # A room with no institution has nothing to sit in, so it stays as text only.
-    db_session.add(_unit("P1", location="Core Lab"))
+def test_places_listing_names_the_instruments_with_no_place(db_session, factory, capsys):
+    db_session.add(_unit("P1"))
     db_session.commit()
 
     list_places.main()
     out = capsys.readouterr().out
 
-    assert "0 places; 1 instruments with a place in text but no link" in out
-    assert "Not linked (a room needs an institution to sit in):" in out
-    assert "  Unit P1 (P1): institution=None room='Core Lab'" in out
+    assert "0 places; 1 instruments with no place" in out
+    assert "No place recorded:" in out
+    assert "  Unit P1 (P1)" in out
 
 
 def test_places_listing_flags_look_alike_institutions_and_rooms(db_session, factory, capsys):

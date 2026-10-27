@@ -14,6 +14,7 @@ import { BarRow } from './BarRow';
 import { ChartSection } from './ChartSection';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { LaborHoursChart } from './LaborHoursChart';
+import { PlaceCharts } from './PlaceCharts';
 import { ReportsPerInstrumentChart, ReportsPerModelChart } from './ReportCountCharts';
 import { ReportFilterBar } from './ReportFilterBar';
 import { ModelComparisonSection } from './ModelComparison';
@@ -384,6 +385,10 @@ export function AnalyticsScreen() {
 
       <ChartSection title={`${filters.status ? 'Reports' : 'Finalized reports'} per instrument model`}>
         <ReportsPerModelChart rows={data.report_counts_by_model ?? []} />
+      </ChartSection>
+
+      <ChartSection title="By place (institution, faculty, room)">
+        <PlaceCharts rows={data.place_rollups ?? []} reportsLabel={filters.status ? 'Reports' : 'Finalized reports'} />
       </ChartSection>
 
       <ChartSection title="Labor hours by fault category (repair only)">

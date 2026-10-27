@@ -2741,3 +2741,37 @@ textarea {
 .model-rel-notes {
   margin: 8px 0;
 }
+
+/* Places screen */
+.instrument-row.place-row {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 1fr) auto;
+}
+@media (max-width: 900px) {
+  .instrument-row.place-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .instrument-row.place-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.place-depth-1 .place-name-text {
+  padding-left: 16px;
+}
+.place-depth-2 .place-name-text {
+  padding-left: 32px;
+}
+.place-name-text {
+  font-weight: 500;
+}
+.place-depth-0 .place-name-text {
+  font-weight: 600;
+}
+.places-legend {
+  margin-top: 8px;
+}
+
+.place-chart-switch {
+  margin-bottom: 8px;
+}

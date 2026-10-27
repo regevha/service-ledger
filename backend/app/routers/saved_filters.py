@@ -41,10 +41,11 @@ def _out(row: models.SavedReportFilter, existing: dict[str, set[str]]) -> schema
 
 
 def _existing(db: Session) -> dict[str, set[str]]:
-    """The instruments and models that exist now, for spotting saved filters that point at a deleted one."""
+    """The instruments, models and places that exist now, for spotting saved filters that point at a deleted one."""
     return {
         "instrument_id": {str(i) for (i,) in db.query(models.Instrument.id).all()},
         "model_id": {str(i) for (i,) in db.query(models.InstrumentModel.id).all()},
+        "place_id": {str(i) for (i,) in db.query(models.Place.id).all()},
     }
 
 
@@ -62,6 +63,8 @@ def create_saved_filter(payload: schemas.SavedFilterCreate, db: Session = Depend
         raise HTTPException(422, "That instrument does not exist")
     if criteria.model_id and not db.get(models.InstrumentModel, criteria.model_id):
         raise HTTPException(422, "That model does not exist")
+    if criteria.place_id and not db.get(models.Place, criteria.place_id):
+        raise HTTPException(422, "That place does not exist")
     # exclude_none keeps only the criteria that were set; mode="json" turns
     # UUIDs, enums and dates into their plain string forms (dates as
     # YYYY-MM-DD exactly as picked).

@@ -35,6 +35,7 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   await page.locator('.schema-form-label', { hasText: 'Manufacturer' }).locator('input').fill('E2E Maker');
   await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill(serial);
   await page.locator('.schema-form-label', { hasText: 'Room name' }).locator('input').fill('E2E Room');
+  await page.locator('.schema-form-label', { hasText: 'Institution' }).locator('input').fill('E2E University');
   await page.click('button:has-text("Create instrument")');
 
   // ---- Verify it landed in the list, active by default ----
@@ -52,7 +53,7 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   // (The filter's own option text is "model (serial number)" — App.tsx's
   // filter-row select — not the instrument's name.) ----
   await page.click('.view-tab:has-text("Reports")');
-  await expect(page.locator('.filter-row select[aria-label="Instrument"]').locator('option', { hasText: serial })).toHaveCount(1);
+  await expect(page.getByLabel('Instrument', { exact: true }).locator('option', { hasText: serial })).toHaveCount(1);
   await page.click('.view-tab:has-text("Instruments")');
 
   // ---- Edit: rename, relocate, and retire it ----
@@ -62,6 +63,7 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   const nameInput = page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input');
   await nameInput.fill(`${uniqueName}-Renamed`);
   await page.locator('.schema-form-label', { hasText: 'Room name' }).locator('input').fill('New Room');
+  await page.locator('.schema-form-label', { hasText: 'Institution' }).locator('input').fill('E2E University');
   await page.locator('.schema-form-label', { hasText: 'Status' }).locator('select').selectOption('maintenance');
   await page.click('button:has-text("Save changes")');
 

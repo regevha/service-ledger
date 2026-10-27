@@ -116,14 +116,14 @@ test('search says it covers finalized reports only when the status filter is som
   await page.fill('input[aria-label="Search reports"]', word);
   await expect(page.locator('.report-row-body')).toHaveCount(1);
 
-  await page.selectOption('.filter-row select[aria-label="Status"]', 'draft');
+  await page.getByLabel('Status', { exact: true }).selectOption('draft');
   await expect(page.locator('[data-testid="empty-hint"]')).toContainText('Search covers finalized reports only');
 
-  await page.selectOption('.filter-row select[aria-label="Status"]', 'finalized');
+  await page.getByLabel('Status', { exact: true }).selectOption('finalized');
   await expect(page.locator('.report-row-body')).toHaveCount(1);
 
   // Another filter that excludes it gives the plain no-match message.
-  await page.selectOption('.filter-row select[aria-label="Report type"]', 'installation_upgrade');
+  await page.getByLabel('Report type', { exact: true }).selectOption('installation_upgrade');
   await expect(page.locator('[data-testid="empty-hint"]')).toContainText(`No finalized reports contain “${word}”`);
 });
 

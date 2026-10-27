@@ -22,11 +22,21 @@ def normalized_search_text(q: str | None) -> str | None:
     return report_search.normalize_query(q)
 
 
+def _place_ids(query: Query, place_id: uuid.UUID) -> list[uuid.UUID]:
+    """The place and everything inside it (empty when the place does not exist, so nothing matches)."""
+    from app.services.places import subtree_ids  # noqa: PLC0415 (places imports models, as this does)
+
+    session = query.session
+    place = session.get(models.Place, place_id)
+    return subtree_ids(session, place) if place is not None else []
+
+
 def apply_report_filters(
     query: Query,
     *,
     instrument_id: uuid.UUID | None = None,
     model_id: uuid.UUID | None = None,
+    place_id: uuid.UUID | None = None,
     report_type: models.ReportType | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -45,6 +55,8 @@ def apply_report_filters(
         query = query.filter(
             models.Report.instrument_id.in_(select(models.Instrument.id).where(models.Instrument.model_id == model_id))
         )
+    if place_id:
+        query = query.filter(models.Report.instrument_id.in_(select(models.Instrument.id).where(models.Instrument.place_id.in_(_place_ids(query, place_id)))))
     if report_type:
         query = query.join(models.ReportTemplate).filter(models.ReportTemplate.report_type == report_type)
     if date_from:

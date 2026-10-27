@@ -115,6 +115,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/places": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Places */
+        get: operations["list_places_places_get"];
+        put?: never;
+        /** Create Place */
+        post: operations["create_place_places_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/places/{place_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Place
+         * @description Removes a place that nothing is in and no instrument points at.
+         */
+        delete: operations["delete_place_places__place_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Place */
+        patch: operations["update_place_places__place_id__patch"];
+        trace?: never;
+    };
+    "/places/{place_id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Place
+         * @description Moves the instruments pointing at this place, and the places inside it, to
+         *     another place of the same kind, then removes this one. Only a person asks for
+         *     this; the app never merges by guess. Refuses when both places have an inside
+         *     place of the same name: merge those first.
+         */
+        post: operations["merge_place_places__place_id__merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/instruments": {
         parameters: {
             query?: never;
@@ -1247,6 +1309,11 @@ export interface components {
              * @default []
              */
             report_counts_by_model: components["schemas"]["ReportCountByModelOut"][];
+            /**
+             * Place Rollups
+             * @default []
+             */
+            place_rollups: components["schemas"]["PlaceRollupOut"][];
             /** Labor Hours By Fault Category */
             labor_hours_by_fault_category: {
                 [key: string]: number;
@@ -1447,6 +1514,8 @@ export interface components {
             /** Location */
             location: string | null;
             status: components["schemas"]["InstrumentStatus"];
+            /** Place Id */
+            place_id?: string | null;
             /** Last Maintenance Date */
             last_maintenance_date?: string | null;
             /** Maintenance Due Date */
@@ -1690,6 +1759,109 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** PlaceCreate */
+        PlaceCreate: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "institution" | "faculty" | "room";
+            /** Name */
+            name: string;
+            /** Parent Id */
+            parent_id?: string | null;
+        };
+        /** PlaceMerge */
+        PlaceMerge: {
+            /**
+             * Into Id
+             * Format: uuid
+             */
+            into_id: string;
+        };
+        /** PlaceMergeOut */
+        PlaceMergeOut: {
+            /** Moved Instruments */
+            moved_instruments: number;
+            /** Moved Places */
+            moved_places: number;
+            /** Into */
+            into: string;
+        };
+        /** PlaceOut */
+        PlaceOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "institution" | "faculty" | "room";
+            /** Name */
+            name: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /**
+             * Institution Id
+             * Format: uuid
+             */
+            institution_id: string;
+            /** Institution Name */
+            institution_name: string;
+            /** Faculty Id */
+            faculty_id: string | null;
+            /** Faculty Name */
+            faculty_name: string | null;
+            /** Unit Count */
+            unit_count: number;
+            /** Total Unit Count */
+            total_unit_count: number;
+            /** Child Count */
+            child_count: number;
+            /**
+             * Similar To
+             * @default []
+             */
+            similar_to: string[];
+        };
+        /**
+         * PlaceRollupOut
+         * @description One row of GET /analytics/fleet's place_rollups: the instruments under
+         *     a place (itself and everything inside it), the reports that matched the
+         *     filters on them, and their work hours.
+         */
+        PlaceRollupOut: {
+            /**
+             * Place Id
+             * Format: uuid
+             */
+            place_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "institution" | "faculty" | "room";
+            /** Name */
+            name: string;
+            /** Institution Name */
+            institution_name: string;
+            /** Instrument Count */
+            instrument_count: number;
+            /** Report Count */
+            report_count: number;
+            /** Total Labor Hours */
+            total_labor_hours: number;
+        };
+        /** PlaceUpdate */
+        PlaceUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Parent Id */
+            parent_id?: string | null;
+        };
         /**
          * ReportCountByInstrumentOut
          * @description One row of GET /analytics/fleet's report_counts_by_instrument: how many reports matched the
@@ -1881,6 +2053,8 @@ export interface components {
             instrument_id?: string | null;
             /** Model Id */
             model_id?: string | null;
+            /** Place Id */
+            place_id?: string | null;
             report_type?: components["schemas"]["ReportType"] | null;
             status?: components["schemas"]["ReportStatus"] | null;
             /** Date From */
@@ -2554,6 +2728,158 @@ export interface operations {
             };
         };
     };
+    list_places_places_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceOut"][];
+                };
+            };
+        };
+    };
+    create_place_places_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_place_places__place_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                place_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_place_places__place_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                place_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_place_places__place_id__merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                place_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceMerge"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceMergeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_instruments_instruments_get: {
         parameters: {
             query?: never;
@@ -3043,6 +3369,7 @@ export interface operations {
             query?: {
                 instrument_id?: string | null;
                 model_id?: string | null;
+                place_id?: string | null;
                 report_type?: components["schemas"]["ReportType"] | null;
                 date_from?: string | null;
                 date_to?: string | null;
@@ -3114,6 +3441,7 @@ export interface operations {
             query?: {
                 instrument_id?: string | null;
                 model_id?: string | null;
+                place_id?: string | null;
                 report_type?: components["schemas"]["ReportType"] | null;
                 date_from?: string | null;
                 date_to?: string | null;
@@ -3974,6 +4302,8 @@ export interface operations {
                 instrument_id?: string | null;
                 /** @description Only instruments of this model record (also limits the units listed) */
                 model_id?: string | null;
+                /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
+                place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
                 /** @description Only reports of this type */
@@ -4022,6 +4352,8 @@ export interface operations {
                 instrument_id?: string | null;
                 /** @description Only instruments of this model record (also limits the units listed) */
                 model_id?: string | null;
+                /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
+                place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
                 /** @description Only reports of this type */
@@ -4074,6 +4406,8 @@ export interface operations {
                 instrument_id?: string | null;
                 /** @description Only instruments of this model record (also limits the units listed) */
                 model_id?: string | null;
+                /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
+                place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
                 /** @description Only reports of this type */

@@ -192,6 +192,9 @@ class InstrumentOut(BaseModel):
     serial_number: str
     location: str | None
     status: InstrumentStatus
+    # The most specific place known (institutions, faculties and rooms are
+    # managed under Places); None when no institution or room is recorded.
+    place_id: uuid.UUID | None = None
     # Worked out on every read from the model's service interval and the
     # newest finalized preventive-maintenance report (services/maintenance.py).
     # State is one of not_tracked, no_record, ok, due_soon, overdue; None for a
@@ -329,6 +332,61 @@ class InstrumentModelMerge(BaseModel):
 class InstrumentModelMergeOut(BaseModel):
     moved_instruments: int
     moved_templates: int
+    into: str
+
+
+# ---------- Places ----------
+
+PlaceKind = Literal["institution", "faculty", "room"]
+
+
+class PlaceOut(BaseModel):
+    id: uuid.UUID
+    kind: PlaceKind
+    name: str
+    parent_id: uuid.UUID | None
+    # The institution this place is in (itself, for an institution) and, for a
+    # room inside a faculty, that faculty.
+    institution_id: uuid.UUID
+    institution_name: str
+    faculty_id: uuid.UUID | None
+    faculty_name: str | None
+    # Instruments pointing exactly here, and in all (here plus everything inside).
+    unit_count: int
+    total_unit_count: int
+    child_count: int
+    # Other places of the same kind that look like the same place (never merged by guess).
+    similar_to: list[str] = []
+
+
+class PlaceCreate(BaseModel):
+    kind: PlaceKind
+    name: str
+    parent_id: uuid.UUID | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, value: str) -> str:
+        return " ".join(_required_text("Name")(value).split())
+
+
+class PlaceUpdate(BaseModel):
+    name: str | None = None
+    parent_id: uuid.UUID | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, value: str | None) -> str | None:
+        return " ".join(_required_text("Name")(value).split()) if value is not None else None
+
+
+class PlaceMerge(BaseModel):
+    into_id: uuid.UUID
+
+
+class PlaceMergeOut(BaseModel):
+    moved_instruments: int
+    moved_places: int
     into: str
 
 
@@ -958,6 +1016,20 @@ class PassFailBreakdownOut(BaseModel):
     total: int
 
 
+class PlaceRollupOut(BaseModel):
+    """One row of GET /analytics/fleet's place_rollups: the instruments under
+    a place (itself and everything inside it), the reports that matched the
+    filters on them, and their work hours."""
+
+    place_id: uuid.UUID
+    kind: PlaceKind
+    name: str
+    institution_name: str
+    instrument_count: int
+    report_count: int
+    total_labor_hours: float
+
+
 class FleetAnalyticsOut(BaseModel):
     """GET /analytics/fleet (new): fleet-wide roll-ups computed entirely from
     fields every finalized report already carries — no new columns, no new
@@ -974,6 +1046,8 @@ class FleetAnalyticsOut(BaseModel):
     reports_without_labor_hours: int = 0
     report_counts_by_instrument: list[ReportCountByInstrumentOut] = []
     report_counts_by_model: list[ReportCountByModelOut] = []
+    # Per institution, faculty and room (see services/analytics.py::_place_rollups).
+    place_rollups: list[PlaceRollupOut] = []
     # Keyed by whatever fault_category values actually appear in the data
     # (repair only — seed_templates.py's REPAIR_FIELDS) rather than a
     # hardcoded copy of that enum's options, so this can't silently drift
@@ -1071,7 +1145,8 @@ class ModelTrendOut(BaseModel):
 # saveable on 2026-10-16 (it was left out at first; the project owner reversed
 # that after finding that "Save this filter" did nothing with only a search word).
 # The instrument model (`model_id`) joined on 2026-10-27 with the model filter.
-SAVED_FILTER_KEYS = ("instrument_id", "model_id", "report_type", "status", "date_from", "date_to", "technician", "q")
+# The place (`place_id`) joined with the places plan, step 3.
+SAVED_FILTER_KEYS = ("instrument_id", "model_id", "place_id", "report_type", "status", "date_from", "date_to", "technician", "q")
 
 
 class SavedFilterCriteria(BaseModel):
@@ -1083,6 +1158,7 @@ class SavedFilterCriteria(BaseModel):
     instrument_id: uuid.UUID | None = None
     # An instrument model record (instrument_models.id), as GET /reports?model_id= takes.
     model_id: uuid.UUID | None = None
+    place_id: uuid.UUID | None = None
     report_type: ReportType | None = None
     status: ReportStatus | None = None
     date_from: date | None = None
@@ -1134,9 +1210,9 @@ class SavedFilterOut(BaseModel):
     # Only the criteria that were set; dates are YYYY-MM-DD exactly as saved.
     filters: dict
     created_at: datetime
-    # True when the saved instrument or model no longer exists.
+    # True when a saved instrument, model or place no longer exists; `stale_keys`
+    # says which ("instrument_id", "model_id", "place_id").
     stale: bool = False
-    # Which saved criteria point at something that is gone ("instrument_id", "model_id").
     stale_keys: list[str] = []
 
 

@@ -203,5 +203,5 @@ def test_required_text_is_trimmed_on_create_and_update(client):
 
 def test_omitting_a_field_on_update_still_leaves_it_alone(client):
     created = client.post("/instruments", json=_instrument()).json()
-    patched = client.patch(f"/instruments/{created['id']}", json={"location": "Room 2"}).json()
+    patched = client.patch(f"/instruments/{created['id']}", json={"institution": "Test University", "location": "Room 2"}).json()
     assert patched["name"] == created["name"] and patched["location"] == "Room 2"
