@@ -158,3 +158,53 @@ def test_instrument_cannot_join_a_model_of_another_type(client):
     assert r.status_code == 422
     unit = _make_unit(client, "S1")
     assert client.patch(f"/instruments/{unit['id']}", json={"model": "Zeta PCR"}).status_code == 422
+
+
+def _report(db_session, unit_id, template_id, day, status=models.ReportStatus.finalized):
+    from datetime import date
+
+    db_session.add(
+        models.Report(
+            instrument_id=unit_id,
+            template_id=template_id,
+            status=status,
+            report_date=date.fromisoformat(day) if day else None,
+        )
+    )
+    db_session.commit()
+
+
+def test_model_page_lists_units_with_last_service_and_counts(client, db_session):
+    import uuid
+
+    a = _make_unit(client, "S1", model="Zeta Sorter")
+    b = _make_unit(client, "S2", model="Zeta Sorter")
+    _make_unit(client, "S3", model="Other Zeta")
+    repair = uuid.UUID(_template(client, "Zeta Sorter", "repair")["id"])
+    pm = uuid.UUID(_template(client, "Zeta Sorter", "preventive_maintenance")["id"])
+    A, B = uuid.UUID(a["id"]), uuid.UUID(b["id"])
+    _report(db_session, A, repair, "2026-03-01")
+    _report(db_session, A, repair, "2026-05-10")
+    _report(db_session, A, pm, "2026-04-01")
+    _report(db_session, A, repair, None, status=models.ReportStatus.draft)
+    _report(db_session, B, pm, "2026-01-15")
+
+    page = client.get(f"/instrument-models/{_model(client, 'Zeta Sorter')['id']}").json()
+    assert page["name"] == "Zeta Sorter" and page["unit_count"] == 2
+    units = {u["serial_number"]: u for u in page["units"]}
+    assert set(units) == {"S1", "S2"}  # the other model's unit is not here
+    assert units["S1"]["last_service_date"] == "2026-05-10"
+    assert (units["S1"]["report_count"], units["S1"]["repair_count"], units["S1"]["draft_count"]) == (3, 2, 1)
+    assert (units["S2"]["last_service_date"], units["S2"]["report_count"], units["S2"]["repair_count"]) == ("2026-01-15", 1, 0)
+    assert page["report_total"] == 5 and len(page["reports"]) == 5
+    assert page["reports"][0]["status"] == "draft"  # undated, so ordered by when it was created: newest
+    assert all(r["instrument_model"] == "Zeta Sorter" for r in page["reports"])
+
+
+def test_model_page_for_a_model_without_units_or_unknown(client):
+    empty = client.post("/instrument-models", json={"name": "Empty One"}).json()
+    page = client.get(f"/instrument-models/{empty['id']}").json()
+    assert page["units"] == [] and page["reports"] == [] and page["report_total"] == 0
+    import uuid
+
+    assert client.get(f"/instrument-models/{uuid.uuid4()}").status_code == 404

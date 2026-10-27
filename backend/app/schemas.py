@@ -209,6 +209,31 @@ class InstrumentModelOut(BaseModel):
     similar_to: list[str] = []
 
 
+class InstrumentModelUnitOut(BaseModel):
+    """One instrument on a model's page, with what its reports say."""
+
+    id: uuid.UUID
+    name: str
+    serial_number: str
+    status: InstrumentStatus
+    institution: str | None
+    location: str | None
+    # Finalized reports only; the date is report_date, or the day the report
+    # was created when it has none.
+    last_service_date: date | None
+    report_count: int
+    repair_count: int
+    # Reports still being read or reviewed.
+    draft_count: int
+
+
+class InstrumentModelDetailOut(InstrumentModelOut):
+    units: list[InstrumentModelUnitOut]
+    # Newest first, at most 25; report_total is how many there are in all.
+    reports: list["ReportListItemOut"]
+    report_total: int
+
+
 class InstrumentModelCreate(BaseModel):
     name: str
     manufacturer: str | None = None
@@ -1061,3 +1086,6 @@ class SavedFilterOut(BaseModel):
 class SavedFilterListOut(BaseModel):
     items: list[SavedFilterOut]
     cap: int
+
+
+InstrumentModelDetailOut.model_rebuild()
