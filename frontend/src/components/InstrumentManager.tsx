@@ -6,6 +6,7 @@ import {
   deleteInstrument,
   listInstrumentModels,
   listInstrumentTypes,
+  listPlaces,
   listReports,
   updateInstrument,
   type Instrument,
@@ -13,11 +14,13 @@ import {
   type InstrumentModel,
   type InstrumentType,
   type MaintenanceState,
+  type Place,
 } from '../api';
 import { INSTRUMENT_STATUS_LABEL, MAINTENANCE_STATE_LABEL } from '../labels';
 import { MaintenanceBadge } from './MaintenanceBadge';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { ModelsManager } from './ModelsManager';
+import { PlacesManager } from './PlacesManager';
 import { RowMenu } from './RowMenu';
 
 /**
@@ -65,6 +68,7 @@ function InstrumentFormScreen({
   const [typeKey, setTypeKey] = useState(existing?.instrument_type ?? 'facs');
   const [newTypeName, setNewTypeName] = useState<string | null>(null);
   const [knownModels, setKnownModels] = useState<InstrumentModel[]>([]);
+  const [knownPlaces, setKnownPlaces] = useState<Place[]>([]);
 
   useEffect(() => {
     listInstrumentTypes()
@@ -73,10 +77,20 @@ function InstrumentFormScreen({
     listInstrumentModels()
       .then(setKnownModels)
       .catch(() => setKnownModels([]));
+    listPlaces()
+      .then(setKnownPlaces)
+      .catch(() => setKnownPlaces([]));
   }, []);
 
   // The model typed is one that already exists (exact name), or a new one.
   const matchedModel = knownModels.find((m) => m.name === model.trim());
+  // Places already on record: the institution typed is one of them (ignoring case
+  // and spaces) or a new one; rooms offered are those in the institution typed.
+  const sameText = (a: string, b: string) => a.trim().replace(/\s+/g, ' ').toLowerCase() === b.trim().replace(/\s+/g, ' ').toLowerCase();
+  const matchedInstitution = knownPlaces.find((p) => p.kind === 'institution' && sameText(p.name, institution));
+  const roomsHere = matchedInstitution ? knownPlaces.filter((p) => p.kind === 'room' && p.institution_id === matchedInstitution.id) : [];
+  const matchedRoom = roomsHere.find((p) => sameText(p.name, location));
+
   // An instrument's manufacturer follows its model: with an existing model that
   // has one, it is shown read-only and changed only on the model.
   const lockedManufacturer = matchedModel?.manufacturer ?? null;
@@ -265,8 +279,14 @@ function InstrumentFormScreen({
             className="text-input"
             placeholder="e.g. Core Lab"
             value={location}
+            list="known-rooms"
             onChange={(e) => setLocation(e.target.value)}
           />
+          <datalist id="known-rooms">
+            {roomsHere.map((p) => (
+              <option key={p.id} value={p.name} />
+            ))}
+          </datalist>
         </label>
         <label className="schema-form-label">
           Institution
@@ -275,8 +295,16 @@ function InstrumentFormScreen({
             className="text-input"
             placeholder="e.g. Bar-Ilan University (optional)"
             value={institution}
+            list="known-institutions"
             onChange={(e) => setInstitution(e.target.value)}
           />
+          <datalist id="known-institutions">
+            {knownPlaces
+              .filter((p) => p.kind === 'institution')
+              .map((p) => (
+                <option key={p.id} value={p.name} />
+              ))}
+          </datalist>
         </label>
         <label className="schema-form-label">
           Distributor
@@ -289,6 +317,19 @@ function InstrumentFormScreen({
           />
         </label>
       </div>
+
+      {(institution.trim() !== '' || location.trim() !== '') && (
+        <small className="muted place-hint" id="place-hint">
+          {institution.trim() !== '' && (matchedInstitution ? `Existing institution · ${matchedInstitution.total_unit_count} instrument${matchedInstitution.total_unit_count === 1 ? '' : 's'}` : 'New institution · it will be added to Places')}
+          {institution.trim() !== '' && location.trim() !== '' && '. '}
+          {location.trim() !== '' &&
+            (institution.trim() === ''
+              ? 'A room needs an institution to be listed under Places.'
+              : matchedRoom
+                ? `Existing room${matchedRoom.faculty_name ? ` in ${matchedRoom.faculty_name}` : ''} · ${matchedRoom.total_unit_count} instrument${matchedRoom.total_unit_count === 1 ? '' : 's'}`
+                : 'New room · it will be added to Places')}
+        </small>
+      )}
 
       {/* A brand-new instrument is always created active (schemas.py's
           InstrumentCreate has no status field) — status only becomes
@@ -357,7 +398,7 @@ export function InstrumentManagerScreen({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [typeNames, setTypeNames] = useState<Record<string, string>>({});
-  const [section, setSection] = useState<'instruments' | 'models'>('instruments');
+  const [section, setSection] = useState<'instruments' | 'models' | 'places'>('instruments');
   const [stateFilter, setStateFilter] = useState<'all' | MaintenanceState>('all');
 
   useEffect(() => {
@@ -417,15 +458,27 @@ export function InstrumentManagerScreen({
   }
 
   const switcher = (
-    <div className="sub-switch" role="tablist" aria-label="Instruments or models">
+    <div className="sub-switch" role="tablist" aria-label="Instruments, models or places">
       <button type="button" role="tab" aria-selected={section === 'instruments'} className={section === 'instruments' ? 'active' : ''} onClick={() => setSection('instruments')}>
         Instruments
       </button>
       <button type="button" role="tab" aria-selected={section === 'models'} className={section === 'models' ? 'active' : ''} onClick={() => setSection('models')}>
         Models
       </button>
+      <button type="button" role="tab" aria-selected={section === 'places'} className={section === 'places' ? 'active' : ''} onClick={() => setSection('places')}>
+        Places
+      </button>
     </div>
   );
+
+  if (section === 'places') {
+    return (
+      <>
+        {switcher}
+        <PlacesManager onChanged={onRefresh} />
+      </>
+    );
+  }
 
   if (section === 'models') {
     return (
