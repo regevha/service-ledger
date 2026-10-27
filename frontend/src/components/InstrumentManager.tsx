@@ -402,6 +402,7 @@ export function InstrumentManagerScreen({
   const [typeNames, setTypeNames] = useState<Record<string, string>>({});
   const [section, setSection] = useState<'instruments' | 'models' | 'places'>('instruments');
   const [stateFilter, setStateFilter] = useState<'all' | MaintenanceState>('all');
+  const [modelFilter, setModelFilter] = useState('all');
   const [placeFilter, setPlaceFilter] = useState('');
   const [allPlaces, setAllPlaces] = useState<Place[]>([]);
   useEffect(() => {
@@ -450,9 +451,16 @@ export function InstrumentManagerScreen({
     }
   }
 
+  // The models that have instruments in this list, by name. A choice that is gone (its last unit was
+  // moved or deleted) counts as "all", so the list is never empty because of a stale choice.
+  const modelOptions = Array.from(
+    new Map(instruments.filter((i) => i.model_id).map((i) => [i.model_id as string, i.model])).entries()
+  ).sort((a, b) => a[1].localeCompare(b[1]));
+  const activeModel = modelOptions.some(([id]) => id === modelFilter) ? modelFilter : 'all';
   const insidePlace = idsInside(allPlaces, placeFilter || undefined);
   const shownInstruments = instruments
     .filter((i) => stateFilter === 'all' || i.maintenance_state === stateFilter)
+    .filter((i) => activeModel === 'all' || i.model_id === activeModel)
     .filter((i) => !insidePlace || (i.place_id != null && insidePlace.has(i.place_id)));
 
   function handleSaved() {
@@ -549,17 +557,30 @@ export function InstrumentManagerScreen({
       )}
 
       {!loading && instruments.length > 0 && (
-        <label className="maintenance-filter">
-          <span>Maintenance</span>
-          <select className="text-input" aria-label="Filter by maintenance" value={stateFilter} onChange={(e) => setStateFilter(e.target.value as 'all' | MaintenanceState)}>
-            <option value="all">All</option>
-            {(['overdue', 'due_soon', 'ok', 'no_record', 'not_tracked'] as MaintenanceState[]).map((k) => (
-              <option key={k} value={k}>
-                {MAINTENANCE_STATE_LABEL[k]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="instrument-filters">
+          <label className="maintenance-filter">
+            <span>Model</span>
+            <select className="text-input" aria-label="Filter by model" value={activeModel} onChange={(e) => setModelFilter(e.target.value)}>
+              <option value="all">All models</option>
+              {modelOptions.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="maintenance-filter">
+            <span>Maintenance</span>
+            <select className="text-input" aria-label="Filter by maintenance" value={stateFilter} onChange={(e) => setStateFilter(e.target.value as 'all' | MaintenanceState)}>
+              <option value="all">All</option>
+              {(['overdue', 'due_soon', 'ok', 'no_record', 'not_tracked'] as MaintenanceState[]).map((k) => (
+                <option key={k} value={k}>
+                  {MAINTENANCE_STATE_LABEL[k]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       )}
 
       {loading ? (

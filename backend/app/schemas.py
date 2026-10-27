@@ -183,6 +183,9 @@ class InstrumentOut(BaseModel):
     name: str
     instrument_type: str
     model: str
+    # The model record this instrument belongs to (instrument_models.id); the
+    # model filter on the Reports, Analytics and Instruments screens uses it.
+    model_id: uuid.UUID | None = None
     manufacturer: str | None
     distributor: str | None
     institution: str | None
@@ -1141,7 +1144,9 @@ class ModelTrendOut(BaseModel):
 # under the keys GET /reports already takes. The free-text search `q` became
 # saveable on 2026-10-16 (it was left out at first; the project owner reversed
 # that after finding that "Save this filter" did nothing with only a search word).
-SAVED_FILTER_KEYS = ("instrument_id", "place_id", "report_type", "status", "date_from", "date_to", "technician", "q")
+# The instrument model (`model_id`) joined on 2026-10-27 with the model filter.
+# The place (`place_id`) joined with the places plan, step 3.
+SAVED_FILTER_KEYS = ("instrument_id", "model_id", "place_id", "report_type", "status", "date_from", "date_to", "technician", "q")
 
 
 class SavedFilterCriteria(BaseModel):
@@ -1151,6 +1156,8 @@ class SavedFilterCriteria(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     instrument_id: uuid.UUID | None = None
+    # An instrument model record (instrument_models.id), as GET /reports?model_id= takes.
+    model_id: uuid.UUID | None = None
     place_id: uuid.UUID | None = None
     report_type: ReportType | None = None
     status: ReportStatus | None = None
@@ -1203,8 +1210,8 @@ class SavedFilterOut(BaseModel):
     # Only the criteria that were set; dates are YYYY-MM-DD exactly as saved.
     filters: dict
     created_at: datetime
-    # True when the saved instrument or place no longer exists; `stale_keys`
-    # says which of the two ("instrument_id", "place_id").
+    # True when a saved instrument, model or place no longer exists; `stale_keys`
+    # says which ("instrument_id", "model_id", "place_id").
     stale: bool = False
     stale_keys: list[str] = []
 

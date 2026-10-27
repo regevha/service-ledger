@@ -80,9 +80,12 @@ def test_seeded_fleet_is_linked(client, db_session):
     assert db_session.query(models.Instrument).filter(models.Instrument.model_id.is_(None)).count() == 0
 
 
-def test_the_api_does_not_expose_the_link_yet(client):
+def test_the_api_exposes_the_model_id_only(client, db_session):
+    # The id is what the model filter on the Reports, Analytics and Instruments screens uses;
+    # the ORM relationship itself is never part of the output.
     created = client.post("/instruments", json=_payload("S1")).json()
-    assert "model_id" not in created and "model_record" not in created
+    assert created["model_id"] == str(_records(db_session)["ZetaSorter III"].id)
+    assert "model_record" not in created
 
 
 def test_deleting_an_instrument_leaves_its_model_record(client, db_session):

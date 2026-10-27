@@ -29,12 +29,23 @@ function writeCollapsed(collapsed: boolean) {
 }
 const STATUS_OPTIONS: ReportStatus[] = ['draft', 'classified', 'extracted', 'in_review', 'finalized'];
 
+/** A model as this bar knows it: one per model record that has instruments in the list it is given. */
+export type ModelOption = { id: string; name: string; manufacturer: string | null };
+
+function modelsOf(instruments: Instrument[]): ModelOption[] {
+  const byId = new Map<string, ModelOption>();
+  for (const i of instruments) {
+    if (i.model_id && !byId.has(i.model_id)) byId.set(i.model_id, { id: i.model_id, name: i.model, manufacturer: i.manufacturer });
+  }
+  return [...byId.values()];
+}
+
 /** The filters this bar edits: the Reports list's, with a status that may also be 'all' (Analytics). */
 export type BarFilters = Omit<ReportFilters, 'status'> & { status?: string };
 
 /**
  * The one filter bar of the Reports tab and the Analytics tab: saved filters, text search,
- * instrument, report type, status, report dates and lab manager. Both tabs use this component, so
+ * instrument model, instrument, report type, status, report dates and lab manager. Both tabs use this component, so
  * they cannot drift apart. Lab manager and search are typed freely, so they keep their own text and
  * reach `filters` after a short pause (a name does not fire a request per letter).
  *
@@ -42,7 +53,9 @@ export type BarFilters = Omit<ReportFilters, 'status'> & { status?: string };
  * - `analytics` (status): Analytics counts finalized reports unless told otherwise, so its first
  *   status choice is "Finalized" (the default) and "All statuses" is a separate choice.
  * - `leading` / `extra`: controls only that tab has (Analytics' manufacturer, Reports' link to the
- *   instrument page), and `instrumentFilter` narrows the instrument list (to the chosen maker).
+ *   instrument page), and `instrumentFilter` / `modelFilter` narrow the instrument and model
+ *   lists (to the chosen maker).
+ * - The instrument list also narrows to the chosen model, so the two filters never contradict.
  */
 export function ReportFilterBar<F extends BarFilters>({
   filters,
@@ -52,6 +65,7 @@ export function ReportFilterBar<F extends BarFilters>({
   leading,
   extra,
   instrumentFilter,
+  modelFilter,
   summaryExtra = [],
   testId,
   onClear,
@@ -63,6 +77,8 @@ export function ReportFilterBar<F extends BarFilters>({
   leading?: ReactNode;
   extra?: ReactNode;
   instrumentFilter?: (instrument: Instrument) => boolean;
+  /** Narrows the model list (Analytics: to the chosen maker). */
+  modelFilter?: (model: ModelOption) => boolean;
   /** Summary entries for the controls only this tab has (e.g. "Manufacturer: BD"). */
   summaryExtra?: string[];
   testId?: string;
@@ -91,7 +107,9 @@ export function ReportFilterBar<F extends BarFilters>({
 
   useEffect(() => {
     const handle = setTimeout(() => {
-      setFilters((f) => ({ ...f, technician: technicianInput || undefined }));
+      // Leave the filters object alone when nothing changed (it does on every mount): a new object
+      // reloads the list, which flashes the table away for no reason.
+      setFilters((f) => (f.technician === (technicianInput || undefined) ? f : { ...f, technician: technicianInput || undefined }));
     }, 300);
     return () => clearTimeout(handle);
   }, [technicianInput, setFilters]);
@@ -99,7 +117,8 @@ export function ReportFilterBar<F extends BarFilters>({
   useEffect(() => {
     const handle = setTimeout(() => {
       const q = searchInput.trim();
-      setFilters((f) => ({ ...f, q: q.length >= MIN_SEARCH_LENGTH ? q : undefined }));
+      const next = q.length >= MIN_SEARCH_LENGTH ? q : undefined;
+      setFilters((f) => (f.q === next ? f : { ...f, q: next }));
     }, 300);
     return () => clearTimeout(handle);
   }, [searchInput, setFilters]);
@@ -108,11 +127,20 @@ export function ReportFilterBar<F extends BarFilters>({
   const searchTooShort = searchInput.trim().length > 0 && searchInput.trim().length < MIN_SEARCH_LENGTH;
   const insidePlace = idsInside(places, filters.place_id);
   const byPlace = (inst: Instrument) => !insidePlace || (inst.place_id != null && insidePlace.has(inst.place_id));
-  const shownInstruments = (instrumentFilter ? instruments.filter(instrumentFilter) : instruments).filter(byPlace);
+  const byMaker = instrumentFilter ? instruments.filter(instrumentFilter) : instruments;
+  const byModel = filters.model_id ? byMaker.filter((i) => i.model_id === filters.model_id) : byMaker;
+  const shownInstruments = byModel.filter(byPlace);
   const place = places.find((p) => p.id === filters.place_id);
+  // The models of the instruments we were handed (so no request of its own: this bar mounts on every
+  // visit to Reports and Analytics), narrowed like the instruments.
+  const models = modelsOf(instruments);
+  const shownModels = models
+    .filter((m) => m.id === filters.model_id || !modelFilter || modelFilter(m))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const statuses = analytics ? STATUS_OPTIONS.filter((s) => s !== 'finalized') : STATUS_OPTIONS;
 
   const instrument = instruments.find((i) => i.id === filters.instrument_id);
+  const model = models.find((m) => m.id === filters.model_id);
   const statusText = filters.status === 'all' ? 'All statuses' : filters.status ? STATUS_LABEL[filters.status as ReportStatus] : '';
   const dates =
     filters.date_from && filters.date_to
@@ -126,6 +154,7 @@ export function ReportFilterBar<F extends BarFilters>({
     filters.q ? `“${filters.q}”` : '',
     ...summaryExtra,
     place ? placeLabel(place) : '',
+    model ? model.name : '',
     instrument ? `${instrument.model} (${instrument.serial_number})` : '',
     filters.report_type ? REPORT_TYPE_LABEL[filters.report_type] : '',
     statusText,
@@ -224,6 +253,28 @@ export function ReportFilterBar<F extends BarFilters>({
             ))}
           </select>
         )}
+
+        <select
+          aria-label="Model"
+          value={filters.model_id ?? ''}
+          onChange={(e) => {
+            const model_id = e.target.value || undefined;
+            // Drop a chosen instrument that is not of this model, so the two never contradict.
+            setFilters((f) => {
+              const kept = instruments.find((i) => i.id === f.instrument_id);
+              const clash = model_id && kept && kept.model_id !== model_id;
+              return { ...f, model_id, instrument_id: clash ? undefined : f.instrument_id };
+            });
+          }}
+        >
+          <option value="">All models</option>
+          {filters.model_id && !model && <option value={filters.model_id}>(model no longer in use)</option>}
+          {shownModels.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
 
         <select
           aria-label="Instrument"

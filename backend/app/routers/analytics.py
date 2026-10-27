@@ -21,6 +21,7 @@ router = APIRouter(tags=["analytics"])
 
 def analytics_filters(
     instrument_id: uuid.UUID | None = Query(None, description="Only this instrument (also limits the units listed)"),
+    model_id: uuid.UUID | None = Query(None, description="Only instruments of this model record (also limits the units listed)"),
     place_id: uuid.UUID | None = Query(None, description="Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed"),
     manufacturer: str | None = Query(None, description="Only instruments from this manufacturer (also limits the units listed)"),
     report_type: models.ReportType | None = Query(None, description="Only reports of this type"),
@@ -48,6 +49,7 @@ def analytics_filters(
         raise HTTPException(422, str(e)) from None
     return AnalyticsFilters(
         instrument_id=instrument_id,
+        model_id=model_id,
         place_id=place_id,
         manufacturer=manufacturer or None,
         report_type=report_type,

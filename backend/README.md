@@ -77,14 +77,17 @@ backend/
       report_templates.py    GET /report-templates (resolution logic, §2); GET .../usage (reports per template, for the manager's warnings); GET .../all, GET/POST/PATCH/DELETE
                               .../{id} — the structured field editor's CRUD, backed by a DB-level unique
                               index on (instrument_type, report_type, model) (the baseline migration)
-      reports.py              /reports CRUD (incl. delete), filtered list with free-text search (`q`), export, template confirm, finalize, GET .../{id}/pdf
+      reports.py              /reports CRUD (incl. delete), filtered list (instrument, `model_id` = every unit of one model record, type, status, dates, lab manager) with free-text search (`q`), export with the same filters, template confirm, finalize, GET .../{id}/pdf
       saved_filters.py        GET/POST/DELETE /saved-report-filters — a global list of at most five named
-                              combinations of the Reports list's six filters (the baseline migration); the
+                              combinations of the Reports list's filters, the model (`model_id`) included (the
+                              baseline migration); `stale_keys` names a saved instrument or model that no longer
+                              exists, and merging two models moves the filters that named the old one; the
                               client applies one through the ordinary GET /reports
       attachments.py          upload, GET .../file, GET .../pages and .../pages/{n} (a stored PDF's page count, and one page as a PNG `width` pixels wide, rendered with `pypdfium2`; an image scan is one page returned as stored; the phone's Fields | Scan view uses them because Android Chrome cannot show a PDF in an iframe), classify, extract (both 202 + enqueue), extraction-jobs
       translations.py         Hebrew translation (the baseline migration, proposal `claude/proposal-hebrew-translation.md`): `POST /attachments/{id}/translate` (202, enqueues a `translate` job; body `include_pages` asks for pages skipped as QC printouts to be included; sending it again translates again and keeps the earlier one as history), `GET /attachments/{id}/translation` (current) and `/translations` (history), `POST /translations/{id}/accept` (optional edited `accepted_text`; both texts are kept) and `/discard`. A review is always required: classify and extract answer 409 while a translation is being made or waits for review, and for a Hebrew text layer that was never translated; once accepted they read the accepted English instead of the original; a discarded translation means the original is used as before. Instrument QC printout pages are ignored (listed in `ignored_pages`). The English text is for the screen only: no route serves it as a file. No API key: a Hebrew text layer is refused with a message; in stub mode only a file whose name contains "hebrew" gets a fixed fixture. Classification of another company's form also returns `issuer`, `detected_manufacturer`, `maker_in_fleet` (false when the instrument is not in the fleet: the guess is then a zero-confidence placeholder) and `report_type_note` (a second report type); `issuer` and `report_type_note` are stored on the report.
       analytics.py             GET /analytics/fleet — fleet-wide roll-ups (parts, labor hours, pass/fail);
-                              GET /analytics/models and /analytics/models/trend — units of one model side by side
+                              GET /analytics/models and /analytics/models/trend — units of one model side by side;
+                              all three take the same optional filters as the Reports list, `model_id` included
     services/
       templates.py            Model-specific-row-over-NULL-row resolution (§2)
       instrument_models.py   Keeps `instruments.model_id` pointing at the `instrument_models` record named exactly like the instrument's model text (a before_flush listener, so the API, seeds and tests all get it); `near_duplicates` only reports look-alike names, nothing is ever merged ; `lock_manufacturer` makes an instrument's manufacturer follow its model record
