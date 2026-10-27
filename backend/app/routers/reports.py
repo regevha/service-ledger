@@ -34,6 +34,7 @@ def _filtered_reports_query(
     db: Session,
     *,
     instrument_id: uuid.UUID | None,
+    place_id: uuid.UUID | None,
     report_type: models.ReportType | None,
     date_from: date | None,
     date_to: date | None,
@@ -50,6 +51,7 @@ def _filtered_reports_query(
     return report_filters.apply_report_filters(
         db.query(models.Report),
         instrument_id=instrument_id,
+        place_id=place_id,
         report_type=report_type,
         date_from=date_from,
         date_to=date_to,
@@ -88,6 +90,7 @@ def create_report(payload: schemas.ReportCreate, db: Session = Depends(get_db)):
 @router.get("/reports", response_model=list[schemas.ReportListItemOut])
 def search_reports(
     instrument_id: uuid.UUID | None = None,
+    place_id: uuid.UUID | None = None,
     report_type: models.ReportType | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -118,6 +121,7 @@ def search_reports(
     query = _filtered_reports_query(
         db,
         instrument_id=instrument_id,
+        place_id=place_id,
         report_type=report_type,
         date_from=date_from,
         date_to=date_to,
@@ -144,6 +148,7 @@ def search_reports(
 @router.get("/reports/export")
 def export_reports(
     instrument_id: uuid.UUID | None = None,
+    place_id: uuid.UUID | None = None,
     report_type: models.ReportType | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -162,6 +167,7 @@ def export_reports(
     query = _filtered_reports_query(
         db,
         instrument_id=instrument_id,
+        place_id=place_id,
         report_type=report_type,
         date_from=date_from,
         date_to=date_to,

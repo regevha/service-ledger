@@ -1309,6 +1309,11 @@ export interface components {
              * @default []
              */
             report_counts_by_model: components["schemas"]["ReportCountByModelOut"][];
+            /**
+             * Place Rollups
+             * @default []
+             */
+            place_rollups: components["schemas"]["PlaceRollupOut"][];
             /** Labor Hours By Fault Category */
             labor_hours_by_fault_category: {
                 [key: string]: number;
@@ -1507,6 +1512,8 @@ export interface components {
             /** Location */
             location: string | null;
             status: components["schemas"]["InstrumentStatus"];
+            /** Place Id */
+            place_id?: string | null;
             /** Last Maintenance Date */
             last_maintenance_date?: string | null;
             /** Maintenance Due Date */
@@ -1818,6 +1825,34 @@ export interface components {
              */
             similar_to: string[];
         };
+        /**
+         * PlaceRollupOut
+         * @description One row of GET /analytics/fleet's place_rollups: the instruments under
+         *     a place (itself and everything inside it), the reports that matched the
+         *     filters on them, and their work hours.
+         */
+        PlaceRollupOut: {
+            /**
+             * Place Id
+             * Format: uuid
+             */
+            place_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "institution" | "faculty" | "room";
+            /** Name */
+            name: string;
+            /** Institution Name */
+            institution_name: string;
+            /** Instrument Count */
+            instrument_count: number;
+            /** Report Count */
+            report_count: number;
+            /** Total Labor Hours */
+            total_labor_hours: number;
+        };
         /** PlaceUpdate */
         PlaceUpdate: {
             /** Name */
@@ -2014,6 +2049,8 @@ export interface components {
         SavedFilterCriteria: {
             /** Instrument Id */
             instrument_id?: string | null;
+            /** Place Id */
+            place_id?: string | null;
             report_type?: components["schemas"]["ReportType"] | null;
             status?: components["schemas"]["ReportStatus"] | null;
             /** Date From */
@@ -2055,6 +2092,11 @@ export interface components {
              * @default false
              */
             stale: boolean;
+            /**
+             * Stale Keys
+             * @default []
+             */
+            stale_keys: string[];
         };
         /**
          * SnippetPiece
@@ -3322,6 +3364,7 @@ export interface operations {
         parameters: {
             query?: {
                 instrument_id?: string | null;
+                place_id?: string | null;
                 report_type?: components["schemas"]["ReportType"] | null;
                 date_from?: string | null;
                 date_to?: string | null;
@@ -3392,6 +3435,7 @@ export interface operations {
         parameters: {
             query?: {
                 instrument_id?: string | null;
+                place_id?: string | null;
                 report_type?: components["schemas"]["ReportType"] | null;
                 date_from?: string | null;
                 date_to?: string | null;
@@ -4250,6 +4294,8 @@ export interface operations {
             query?: {
                 /** @description Only this instrument (also limits the units listed) */
                 instrument_id?: string | null;
+                /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
+                place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
                 /** @description Only reports of this type */
@@ -4296,6 +4342,8 @@ export interface operations {
             query?: {
                 /** @description Only this instrument (also limits the units listed) */
                 instrument_id?: string | null;
+                /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
+                place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
                 /** @description Only reports of this type */
@@ -4346,6 +4394,8 @@ export interface operations {
                 field: string;
                 /** @description Only this instrument (also limits the units listed) */
                 instrument_id?: string | null;
+                /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
+                place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
                 /** @description Only reports of this type */

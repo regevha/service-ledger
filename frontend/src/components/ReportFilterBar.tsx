@@ -1,6 +1,7 @@
 import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import type { Instrument, ReportFilters, ReportStatus, ReportType } from '../api';
+import { listPlaces, type Instrument, type Place, type ReportFilters, type ReportStatus, type ReportType } from '../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
+import { idsInside, placeLabel } from '../placeUtils';
 import { DateInput } from './DateInput';
 import { SavedFilters } from './SavedFilters';
 
@@ -69,6 +70,17 @@ export function ReportFilterBar<F extends BarFilters>({
   onClear?: () => void;
 }) {
   const [technicianInput, setTechnicianInput] = useState(filters.technician ?? '');
+  // Institutions, faculties and rooms to filter by (an empty list hides the control).
+  const [places, setPlaces] = useState<Place[]>([]);
+  useEffect(() => {
+    let live = true;
+    listPlaces()
+      .then((p) => live && setPlaces(p))
+      .catch(() => live && setPlaces([]));
+    return () => {
+      live = false;
+    };
+  }, []);
   const [searchInput, setSearchInput] = useState(filters.q ?? '');
   // The filters can be folded away to leave room for the list; a one-line summary stays in their place.
   const [collapsed, setCollapsed] = useState(readCollapsed);
@@ -94,7 +106,10 @@ export function ReportFilterBar<F extends BarFilters>({
 
   const hasFilters = Object.values(filters).some(Boolean);
   const searchTooShort = searchInput.trim().length > 0 && searchInput.trim().length < MIN_SEARCH_LENGTH;
-  const shownInstruments = instrumentFilter ? instruments.filter(instrumentFilter) : instruments;
+  const insidePlace = idsInside(places, filters.place_id);
+  const byPlace = (inst: Instrument) => !insidePlace || (inst.place_id != null && insidePlace.has(inst.place_id));
+  const shownInstruments = (instrumentFilter ? instruments.filter(instrumentFilter) : instruments).filter(byPlace);
+  const place = places.find((p) => p.id === filters.place_id);
   const statuses = analytics ? STATUS_OPTIONS.filter((s) => s !== 'finalized') : STATUS_OPTIONS;
 
   const instrument = instruments.find((i) => i.id === filters.instrument_id);
@@ -110,6 +125,7 @@ export function ReportFilterBar<F extends BarFilters>({
   const summary = [
     filters.q ? `“${filters.q}”` : '',
     ...summaryExtra,
+    place ? placeLabel(place) : '',
     instrument ? `${instrument.model} (${instrument.serial_number})` : '',
     filters.report_type ? REPORT_TYPE_LABEL[filters.report_type] : '',
     statusText,
@@ -184,6 +200,30 @@ export function ReportFilterBar<F extends BarFilters>({
         </span>
 
         {leading}
+
+        {places.length > 0 && (
+          <select
+            aria-label="Place"
+            value={filters.place_id ?? ''}
+            onChange={(e) =>
+              setFilters((f) => {
+                const kept = instruments.find((i) => i.id === f.instrument_id);
+                const next = e.target.value || undefined;
+                const inside = idsInside(places, next);
+                // An instrument outside the newly chosen place cannot stay chosen.
+                const clash = next && kept && !(kept.place_id != null && inside?.has(kept.place_id));
+                return { ...f, place_id: next, instrument_id: clash ? undefined : f.instrument_id };
+              })
+            }
+          >
+            <option value="">All places</option>
+            {places.map((p) => (
+              <option key={p.id} value={p.id}>
+                {placeLabel(p)}
+              </option>
+            ))}
+          </select>
+        )}
 
         <select
           aria-label="Instrument"
