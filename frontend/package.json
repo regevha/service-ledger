@@ -17,19 +17,19 @@
     "test:e2e:coverage:shuffled": "rm -rf .nyc_output coverage && COVERAGE=1 node scripts/run-e2e-shuffled.mjs && npm run coverage:report"
   },
   "dependencies": {
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.0",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.2",
     "nyc": "^18.0.0",
-    "oxlint": "^1.87.0",
+    "oxlint": "^1.90.0",
     "typescript": "~7.0.2",
-    "vite": "^8.3.4",
+    "vite": "^8.3.5",
     "vite-plugin-istanbul": "^9.0.1"
   }
 }
