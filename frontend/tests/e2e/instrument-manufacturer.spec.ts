@@ -40,7 +40,9 @@ test('manufacturer can be set, shown in the list and detail page, and follows th
   await page.click('button:has-text("Cancel")');
 
   await page.click('.sub-switch button:has-text("Models")');
-  const modelRow = page.locator('.instrument-row.template-row-body', { hasText: model });
+  const modelRow = page.locator('.model-row.template-row-body', {
+    has: page.locator('.model-name', { hasText: new RegExp(`^${model}$`) }),
+  });
   await modelRow.locator('button:has-text("Edit")').click();
   await page.locator('.schema-form-label', { hasText: new RegExp('^\\s*Manufacturer') }).locator('input').fill('Globex');
   await page.click('button:has-text("Save changes")');
