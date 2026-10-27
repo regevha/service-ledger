@@ -958,3 +958,10 @@ export function mergeInstrumentModel(
 ): Promise<{ moved_instruments: number; moved_templates: number; into: string }> {
   return apiFetch(`/instrument-models/${id}/merge`, { method: 'POST', body: JSON.stringify({ into_id: intoId }) });
 }
+
+export type InstrumentModelDetail = components['schemas']['InstrumentModelDetailOut'];
+export type InstrumentModelUnit = components['schemas']['InstrumentModelUnitOut'];
+
+export function getInstrumentModel(id: string): Promise<InstrumentModelDetail> {
+  return apiFetch(`/instrument-models/${id}`);
+}

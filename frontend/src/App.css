@@ -2660,3 +2660,35 @@ textarea {
 .model-row .model-similar {
   color: var(--warn-text, inherit);
 }
+
+/* ---------- A model's page ---------- */
+.instrument-row.model-unit-row {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) 100px minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+}
+.instrument-row.model-report-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
+}
+@media (max-width: 900px) {
+  .instrument-row.model-unit-row,
+  .instrument-row.model-report-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .instrument-row.model-unit-row,
+  .instrument-row.model-report-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.model-standout {
+  color: var(--warn-text, #a15c00);
+  font-weight: 600;
+}
+.model-notes-text {
+  white-space: pre-wrap;
+  margin: 0 0 12px;
+}
+.model-name.link-button {
+  text-align: left;
+  font-weight: 600;
+}

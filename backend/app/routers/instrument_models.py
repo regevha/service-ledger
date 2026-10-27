@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.db import get_db
+from app.routers.reports import _list_item
 from app.services.instrument_models import near_duplicates
 from app.services.instrument_types import type_exists
 
@@ -53,6 +54,61 @@ def list_instrument_models(db: Session = Depends(get_db)):
     records = db.query(models.InstrumentModel).order_by(func.lower(models.InstrumentModel.name)).all()
     similar = _similar_map([r.name for r in records])
     return [_out(db, r, similar) for r in records]
+
+
+_PAGE_REPORTS = 25
+
+
+@router.get("/instrument-models/{model_id}", response_model=schemas.InstrumentModelDetailOut)
+def get_instrument_model(model_id: uuid.UUID, db: Session = Depends(get_db)):
+    """A model's page: the record, each of its instruments with last service
+    date and report counts, and its newest reports."""
+    record = db.get(models.InstrumentModel, model_id)
+    if not record:
+        raise HTTPException(404, "Model not found")
+    units = (
+        db.query(models.Instrument)
+        .filter(models.Instrument.model_id == record.id)
+        .order_by(models.Instrument.name)
+        .all()
+    )
+    reports = (
+        db.query(models.Report)
+        .join(models.Instrument, models.Report.instrument_id == models.Instrument.id)
+        .filter(models.Instrument.model_id == record.id)
+        .order_by(*[t.desc() for t in models.report_chronological_order()])
+        .all()
+    )
+    by_unit: dict[uuid.UUID, list[models.Report]] = {}
+    for report in reports:
+        by_unit.setdefault(report.instrument_id, []).append(report)
+
+    unit_rows = []
+    for unit in units:
+        own = by_unit.get(unit.id, [])
+        done = [r for r in own if r.status == models.ReportStatus.finalized]
+        days = [r.report_date or r.created_at.date() for r in done]
+        unit_rows.append(
+            schemas.InstrumentModelUnitOut(
+                id=unit.id,
+                name=unit.name,
+                serial_number=unit.serial_number,
+                status=unit.status,
+                institution=unit.institution,
+                location=unit.location,
+                last_service_date=max(days) if days else None,
+                report_count=len(done),
+                repair_count=sum(1 for r in done if r.template and r.template.report_type == models.ReportType.repair),
+                draft_count=len(own) - len(done),
+            )
+        )
+    base = _out(db, record, _similar_map([m.name for m in db.query(models.InstrumentModel).all()]))
+    return schemas.InstrumentModelDetailOut(
+        **base.model_dump(),
+        units=unit_rows,
+        reports=[_list_item(r) for r in reports[:_PAGE_REPORTS]],
+        report_total=len(reports),
+    )
 
 
 @router.post("/instrument-models", response_model=schemas.InstrumentModelOut, status_code=201)
