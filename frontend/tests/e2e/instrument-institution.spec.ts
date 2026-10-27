@@ -52,3 +52,19 @@ test('Analytics hours chart: the bar is labelled with the instrument name and sh
   await expect(bar.locator('.bar-sublabel')).toContainText('Bar-Ilan University');
   await expect(bar.locator('.bar-value')).toHaveText('none');
 });
+
+test('a room needs an institution: the form will not save a room alone', async ({ page }) => {
+  await page.goto('/');
+  await page.click('.view-tab:has-text("Instruments")');
+  await page.click('button:has-text("+ New instrument")');
+  const field = (label: string | RegExp) => page.locator('.schema-form-label', { hasText: label }).locator('input');
+  await field(/^\s*Name/).fill(`E2E-RoomOnly-${Date.now()}`);
+  await field('Model').fill(`E2E-RoomModel-${Date.now()}`);
+  await field('Manufacturer').fill('E2E Maker');
+  await field('Serial number').fill(`E2E-ROOMONLY-${Date.now()}`);
+  await field('Room name').fill('Room 7');
+  await expect(page.locator('#place-hint')).toContainText('A room needs an institution');
+  await expect(page.getByRole('button', { name: 'Create instrument' })).toBeDisabled();
+  await field('Institution').fill('Bar-Ilan University');
+  await expect(page.getByRole('button', { name: 'Create instrument' })).toBeEnabled();
+});

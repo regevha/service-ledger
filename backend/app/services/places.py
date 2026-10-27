@@ -1,12 +1,14 @@
-"""Keeps `instruments.place_id` in step with the instrument's institution and
-room text.
+"""Where an instrument is: `instruments.place_id` is the only copy.
 
-Step 1 of the places plan. An instrument points at the most specific place its
-text names: a room (institution + room), else the institution alone. One
-`before_flush` listener does it for every write path (the API, the seeds, tests
-that build `Instrument` rows directly). Nothing is ever merged here; the tool
-`list_places` only reports names that look alike so a person can decide. A room
-with no institution has nowhere to sit, so that instrument stays unlinked.
+An instrument points at the most specific place known: a room, else a faculty,
+else the institution. `Instrument.institution` and `Instrument.location` (the
+room) are read from that place; writing them (the API, the seeds, tests that
+build `Instrument` rows directly) is remembered, and one `before_flush` listener
+turns it into the matching place, creating what is missing. Nothing is ever
+merged here; the tool `list_places` only reports names that look alike so a
+person can decide. Text that cannot name one place (a room with no institution,
+or a room name found in several faculties of the institution) is refused with a
+`PlaceTextError`, never guessed.
 """
 from __future__ import annotations
 
@@ -22,10 +24,6 @@ def clean(text: str | None) -> str | None:
     """Trimmed, inner spaces collapsed; None when blank."""
     collapsed = " ".join((text or "").split())
     return collapsed or None
-
-
-def same(a: str | None, b: str | None) -> bool:
-    return (clean(a) or "").lower() == (clean(b) or "").lower()
 
 
 def text_of(place: models.Place | None) -> tuple[str | None, str | None]:
@@ -50,29 +48,9 @@ def subtree_ids(db: Session, place: models.Place) -> list:
     return ids
 
 
-def refresh_instrument_text(db: Session, place: models.Place) -> int:
-    """After a place is renamed, moved or merged into: the text on the
-    instruments pointing at it or inside it follows the record (the record is the
-    source). Returns how many instruments were looked at."""
-    instruments = db.query(models.Instrument).filter(models.Instrument.place_id.in_(subtree_ids(db, place))).all()
-    for instrument in instruments:
-        institution, room = text_of(instrument.place)
-        instrument.institution = institution
-        if instrument.place.kind == ROOM:
-            instrument.location = room
-    return len(instruments)
-
-
-def _needs_link(instrument: models.Instrument) -> bool:
-    institution, room = clean(instrument.institution), clean(instrument.location)
-    if instrument.place_id is None and instrument.place is None:
-        return bool(institution or room)
-    state = inspect(instrument)
-    changed = state.attrs.institution.history.has_changes() or state.attrs.location.history.has_changes()
-    if not changed:
-        return False
-    place_inst, place_room = text_of(instrument.place)
-    return not (same(place_inst, institution) and same(place_room, room))
+class PlaceTextError(ValueError):
+    """The institution and room text cannot name one place; the message says why
+    in words the person editing the instrument can act on."""
 
 
 class _Resolver:
@@ -121,20 +99,31 @@ def _link_instruments(session: Session, flush_context, instances) -> None:
     with session.no_autoflush:
         pending = [
             obj
-            for obj in list(session.new) + list(session.dirty)
-            if isinstance(obj, models.Instrument) and _needs_link(obj)
+            for obj in list(session.new) + list(session.identity_map.values())
+            if isinstance(obj, models.Instrument) and obj.__dict__.get("_text_edit") is not None
         ]
     if not pending:
         return
     resolver = _Resolver(session)
     with session.no_autoflush:
         for instrument in pending:
-            institution_text, room_text = clean(instrument.institution), clean(instrument.location)
+            institution_text, room_text = (clean(t) for t in instrument.__dict__.pop("_text_edit"))
             if institution_text is None:
-                instrument.place = None  # a room alone has no institution to sit in
+                if room_text is not None:
+                    raise PlaceTextError("A room needs an institution: fill in the institution too.")
+                instrument.place = None
                 continue
             institution = resolver.get_or_create(INSTITUTION, institution_text, None)
-            instrument.place = resolver.room_in(institution, room_text) if room_text else institution
+            if room_text is None:
+                instrument.place = institution
+                continue
+            room = resolver.room_in(institution, room_text)
+            if room is None:
+                raise PlaceTextError(
+                    f"{institution_text} has several rooms named {room_text} (in different faculties). "
+                    "Rename one of them on the Places screen first."
+                )
+            instrument.place = room
 
 
 event.listen(Session, "before_flush", _link_instruments)

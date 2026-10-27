@@ -14,12 +14,13 @@ from app.models import Instrument
 from app.services.instrument_types import ensure_default_types
 
 INSTRUMENTS = [
-    {"name": "FACSAria III", "model": "FACSAria III", "manufacturer": "BD", "serial_number": "P648282B3003", "location": "Core Lab"},
+    {"name": "FACSAria III", "model": "FACSAria III", "manufacturer": "BD", "serial_number": "P648282B3003", "institution": "Demo Institution", "location": "Core Lab"},
     {
         "name": "LSRFortessa",
         "model": "LSRFortessa",
         "manufacturer": "BD",
         "serial_number": "R647794E6092",
+        "institution": "Demo Institution",
         "location": "Core Lab",
     },
     {
@@ -27,6 +28,7 @@ INSTRUMENTS = [
         "model": "FACSDiscover S8",
         "manufacturer": "BD",
         "serial_number": "MP6651580000057",
+        "institution": "Demo Institution",
         "location": "Core Lab",
     },
     # The two instruments from the Hebrew service reports (docs: claude/

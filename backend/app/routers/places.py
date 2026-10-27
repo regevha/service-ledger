@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.db import get_db
 from app.services.instrument_models import near_duplicates
-from app.services.places import FACULTY, INSTITUTION, ROOM, refresh_instrument_text
+from app.services.places import FACULTY, INSTITUTION, ROOM
 
 router = APIRouter(tags=["places"])
 
@@ -159,7 +159,6 @@ def update_place(place_id: uuid.UUID, payload: schemas.PlaceUpdate, db: Session 
     place.parent_id = new_parent_id
     db.flush()
     db.expire(place)
-    refresh_instrument_text(db, place)
     try:
         db.commit()
     except IntegrityError:
@@ -229,7 +228,6 @@ def merge_place(place_id: uuid.UUID, payload: schemas.PlaceMerge, db: Session = 
     db.flush()
     db.expire_all()
     target = db.get(models.Place, target.id)
-    moved = refresh_instrument_text(db, target)
     db.flush()
     db.delete(db.get(models.Place, source.id))
     db.commit()
