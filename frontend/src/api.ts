@@ -966,6 +966,29 @@ export function mergeInstrumentModel(
   return apiFetch(`/instrument-models/${id}/merge`, { method: 'POST', body: JSON.stringify({ into_id: intoId }) });
 }
 
+export type Place = components['schemas']['PlaceOut'];
+export type PlaceKind = components['schemas']['PlaceKind'];
+
+export function listPlaces(): Promise<Place[]> {
+  return apiFetch('/places');
+}
+
+export function createPlace(payload: { kind: PlaceKind; name: string; parent_id?: string | null }): Promise<Place> {
+  return apiFetch('/places', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updatePlace(id: string, payload: { name?: string; parent_id?: string | null }): Promise<Place> {
+  return apiFetch(`/places/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function deletePlace(id: string): Promise<void> {
+  return apiFetch(`/places/${id}`, { method: 'DELETE' });
+}
+
+export function mergePlace(id: string, intoId: string): Promise<{ moved_instruments: number; moved_places: number; into: string }> {
+  return apiFetch(`/places/${id}/merge`, { method: 'POST', body: JSON.stringify({ into_id: intoId }) });
+}
+
 export type InstrumentModelDetail = components['schemas']['InstrumentModelDetailOut'];
 export type InstrumentModelUnit = components['schemas']['InstrumentModelUnitOut'];
 
