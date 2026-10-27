@@ -132,6 +132,43 @@ class InstrumentModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+PLACE_KINDS = ("institution", "faculty", "room")
+
+
+class Place(Base):
+    """A place an instrument can be in, as a record of its own (plans: "plan for
+    instrument locations"): an institution, a faculty inside an institution, or a
+    room inside an institution or a faculty. One table with a `kind` and a
+    `parent_id` rather than three, because an instrument points at the most
+    specific place known (a room, else a faculty, else just the institution), and
+    a lab or group level can later be one more kind. Step 1: filled from the
+    instruments' institution and room text, and every instrument links to one, but
+    nothing reads it yet. Names are stored with spaces collapsed; a name is unique
+    (ignoring case) among places of the same kind under the same parent.
+    Near-duplicates ("Bar Ilan" / "Bar-Ilan University") are never merged by guess."""
+
+    __tablename__ = "places"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    kind: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("places.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    parent: Mapped["Place | None"] = relationship(remote_side="Place.id")
+
+    __table_args__ = (
+        Index(
+            "uq_places_kind_parent_name",
+            "kind",
+            text("coalesce(parent_id, '00000000-0000-0000-0000-000000000000'::uuid)"),
+            text("lower(name)"),
+            unique=True,
+        ),
+        Index("ix_places_parent_id", "parent_id"),
+    )
+
+
 class Instrument(Base):
     """§5: the physical asset. `instrument_type` is the `key` of an
     InstrumentType row (default "facs", shown as "Flow cytometer"), stored as a
@@ -161,6 +198,13 @@ class Instrument(Base):
     institution: Mapped[str | None] = mapped_column(String, nullable=True)
     serial_number: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     location: Mapped[str | None] = mapped_column(String, nullable=True)
+    # The most specific place known (a room, else a faculty, else the institution),
+    # kept in step with `institution` and `location` by services/places.py. Empty
+    # when neither is recorded (or a room has no institution to sit in). The text
+    # above stays the source for now.
+    place_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("places.id", name="fk_instruments_place_id"), nullable=True, index=True
+    )
     status: Mapped[InstrumentStatus] = mapped_column(
         Enum(InstrumentStatus, name="instrument_status"), nullable=False, default=InstrumentStatus.active
     )
@@ -173,6 +217,7 @@ class Instrument(Base):
     # delete at commit time, which delete_instrument turns into a clean 409.
     reports: Mapped[list["Report"]] = relationship(back_populates="instrument", passive_deletes=True)
     model_record: Mapped["InstrumentModel | None"] = relationship()
+    place: Mapped["Place | None"] = relationship()
 
 
 class ReportTemplate(Base):
@@ -473,4 +518,4 @@ def report_chronological_order() -> tuple:
 # Importing the search module registers the before_flush listener that keeps
 # Report.search_text current (see services/report_search.py). It lives at the
 # bottom because that module imports this one.
-from app.services import instrument_models, report_search  # noqa: E402,F401
+from app.services import instrument_models, places, report_search  # noqa: E402,F401
