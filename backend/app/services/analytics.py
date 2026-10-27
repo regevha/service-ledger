@@ -92,6 +92,9 @@ class AnalyticsFilters:
     selects the whole group of instruments from that maker."""
 
     instrument_id: uuid.UUID | None = None
+    # The instruments of one model record (instrument_models.id); narrows the
+    # listed instruments and whose reports count, like `manufacturer`.
+    model_id: uuid.UUID | None = None
     manufacturer: str | None = None
     report_type: models.ReportType | None = None
     date_from: date | None = None
@@ -107,6 +110,8 @@ def _apply_unit_filters(query: Query, filters: AnalyticsFilters) -> Query:
     """The filters that choose which instruments are listed (query on Instrument)."""
     if filters.instrument_id:
         query = query.filter(models.Instrument.id == filters.instrument_id)
+    if filters.model_id:
+        query = query.filter(models.Instrument.model_id == filters.model_id)
     if filters.manufacturer:
         query = query.filter(_same_manufacturer(filters.manufacturer))
     return query
@@ -123,6 +128,10 @@ def _apply_filters(query: Query, filters: AnalyticsFilters) -> Query:
     if filters.manufacturer:
         query = query.filter(
             models.Report.instrument_id.in_(select(models.Instrument.id).where(_same_manufacturer(filters.manufacturer)))
+        )
+    if filters.model_id:
+        query = query.filter(
+            models.Report.instrument_id.in_(select(models.Instrument.id).where(models.Instrument.model_id == filters.model_id))
         )
     if filters.status is None:
         status = models.ReportStatus.finalized

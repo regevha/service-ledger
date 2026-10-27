@@ -969,6 +969,12 @@ export function mergeInstrumentModel(
 export type InstrumentModelDetail = components['schemas']['InstrumentModelDetailOut'];
 export type InstrumentModelUnit = components['schemas']['InstrumentModelUnitOut'];
 
+export type ModelReliability = components['schemas']['ModelReliabilityOut'];
+
+export function getModelReliability(id: string): Promise<ModelReliability> {
+  return apiFetch(`/instrument-models/${id}/reliability`);
+}
+
 export function getInstrumentModel(id: string): Promise<InstrumentModelDetail> {
   return apiFetch(`/instrument-models/${id}`);
 }

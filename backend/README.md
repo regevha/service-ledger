@@ -87,6 +87,7 @@ backend/
       templates.py            Model-specific-row-over-NULL-row resolution (§2)
       instrument_models.py   Keeps `instruments.model_id` pointing at the `instrument_models` record named exactly like the instrument's model text (a before_flush listener, so the API, seeds and tests all get it); `near_duplicates` only reports look-alike names, nothing is ever merged ; `lock_manufacturer` makes an instrument's manufacturer follow its model record
       maintenance.py        Whether an instrument's preventive maintenance is overdue: model service interval + newest finalized preventive-maintenance report (report_date, else the day created), calendar months, "due soon" 30 days before; worked out on every read, nothing stored; retired instruments get no state
+      model_reliability.py  Reliability of one model from its instruments' finalized repair reports: days between repairs (per instrument and pooled), fault categories (with repeat faults), parts (via the fleet analytics with a model filter), labor hours; averages withheld below 3 repairs, undated repairs and repairs without a fault category are counted and named; GET /instrument-models/{id}/reliability
       report_search.py        Free-text search: what is indexed (text fields, table text cells, instrument model and serial),
                               the websearch query, excerpts; a before_flush listener keeps reports.search_text current
                               (the baseline migration, partial GIN index on finalized reports)

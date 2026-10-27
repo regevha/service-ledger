@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError, getInstrumentModel, type InstrumentModelDetail, type MaintenanceState } from '../api';
 import { MaintenanceBadge } from './MaintenanceBadge';
+import { ModelReliabilitySection } from './ModelReliabilitySection';
 import { INSTRUMENT_STATUS_LABEL, REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { formatDate } from './InstrumentTrendChart';
 
@@ -120,6 +121,8 @@ export function ModelPage({
           ))}
         </div>
       )}
+
+      <ModelReliabilitySection modelId={modelId} />
 
       <div className="section-title">Reports</div>
       {detail.reports.length === 0 ? (
