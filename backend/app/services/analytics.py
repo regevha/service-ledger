@@ -137,10 +137,6 @@ def _apply_filters(query: Query, filters: AnalyticsFilters) -> Query:
         query = query.filter(
             models.Report.instrument_id.in_(select(models.Instrument.id).where(_same_manufacturer(filters.manufacturer)))
         )
-    if filters.model_id:
-        query = query.filter(
-            models.Report.instrument_id.in_(select(models.Instrument.id).where(models.Instrument.model_id == filters.model_id))
-        )
     if filters.status is None:
         status = models.ReportStatus.finalized
     elif filters.status == "all":
@@ -151,6 +147,7 @@ def _apply_filters(query: Query, filters: AnalyticsFilters) -> Query:
         query,
         instrument_id=filters.instrument_id,
         place_id=filters.place_id,
+        model_id=filters.model_id,
         report_type=filters.report_type,
         date_from=filters.date_from,
         date_to=filters.date_to,

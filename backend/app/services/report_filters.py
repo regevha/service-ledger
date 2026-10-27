@@ -1,6 +1,6 @@
 """The report filters shared by the Reports list, its CSV export and the Analytics page.
 
-One place decides what "instrument, report type, dates, status, lab manager and search text"
+One place decides what "instrument, model, report type, dates, status, lab manager and search text"
 mean, so the Analytics tab can never drift from the Reports tab (the lab asked for them to be
 identical). Callers pass whatever they have; a filter left as None is not applied.
 """
@@ -36,6 +36,7 @@ def apply_report_filters(
     *,
     instrument_id: uuid.UUID | None = None,
     place_id: uuid.UUID | None = None,
+    model_id: uuid.UUID | None = None,
     report_type: models.ReportType | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -43,13 +44,19 @@ def apply_report_filters(
     technician: str | None = None,
     q: str | None = None,
 ) -> Query:
-    """Narrow a query on Report. `technician` is a case-insensitive partial match (ILIKE); `q`
-    is the word-based free-text search, which covers finalized reports only (services/
-    report_search.py), so combined with another status it is simply empty."""
+    """Narrow a query on Report. `model_id` keeps the reports of every instrument of that model
+    record (instrument_models.id); with `instrument_id` too, both must hold. `technician` is a
+    case-insensitive partial match (ILIKE); `q` is the word-based free-text search, which covers
+    finalized reports only (services/report_search.py), so combined with another status it is
+    simply empty."""
     if instrument_id:
         query = query.filter(models.Report.instrument_id == instrument_id)
     if place_id:
         query = query.filter(models.Report.instrument_id.in_(select(models.Instrument.id).where(models.Instrument.place_id.in_(_place_ids(query, place_id)))))
+    if model_id:
+        query = query.filter(
+            models.Report.instrument_id.in_(select(models.Instrument.id).where(models.Instrument.model_id == model_id))
+        )
     if report_type:
         query = query.join(models.ReportTemplate).filter(models.ReportTemplate.report_type == report_type)
     if date_from:

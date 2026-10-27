@@ -40,6 +40,8 @@ export interface Instrument {
   name: string;
   instrument_type: string;
   model: string;
+  /** The model record this instrument belongs to (see InstrumentModel); the model filters use it. */
+  model_id?: string | null;
   manufacturer: string | null;
   /** The local seller / service company when it is not the maker (e.g. "Rhenium"). */
   distributor: string | null;
@@ -484,6 +486,8 @@ export interface ModelTrend {
  */
 export interface AnalyticsFilters {
   instrument_id?: string;
+  /** Every unit of one model record (also limits the units listed). */
+  model_id?: string;
   /** An institution, faculty or room, with everything inside it. */
   place_id?: string;
   manufacturer?: string;
@@ -725,6 +729,8 @@ export function getReportDuplicates(reportId: string): Promise<ReportDuplicate[]
 
 export interface ReportFilters {
   instrument_id?: string;
+  /** Every unit of one model record (an InstrumentModel id). */
+  model_id?: string;
   /** An institution, faculty or room, with everything inside it. */
   place_id?: string;
   report_type?: ReportType;
@@ -916,10 +922,10 @@ export interface SavedFilter {
   name: string;
   filters: ReportFilters;
   created_at: string;
-  /** The saved instrument or place no longer exists. */
+  /** The saved instrument, model or place no longer exists. */
   stale: boolean;
-  /** Which of 'instrument_id' / 'place_id' no longer exists. */
-  stale_keys?: string[];
+  /** Which saved criteria point at something that is gone. */
+  stale_keys?: ('instrument_id' | 'model_id' | 'place_id')[];
 }
 
 export interface SavedFilterList {
