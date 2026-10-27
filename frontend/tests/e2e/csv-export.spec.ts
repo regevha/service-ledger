@@ -45,7 +45,7 @@ test('export link reflects the active filter and downloads the filtered CSV', as
   const exportLink = page.locator('a.btn:has-text("Export CSV")');
   await expect(exportLink).toHaveAttribute('href', `${API_BASE}/reports/export`);
 
-  await page.selectOption('.filter-row select >> nth=1', 'preventive_maintenance');
+  await page.getByLabel('Report type', { exact: true }).selectOption('preventive_maintenance');
   await expect(exportLink).toHaveAttribute('href', `${API_BASE}/reports/export?report_type=preventive_maintenance`);
 
   const [download] = await Promise.all([page.waitForEvent('download'), exportLink.click()]);

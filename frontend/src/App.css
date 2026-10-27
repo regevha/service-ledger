@@ -2765,3 +2765,7 @@ textarea {
 .places-legend {
   margin-top: 8px;
 }
+
+.place-chart-switch {
+  margin-bottom: 8px;
+}

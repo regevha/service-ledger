@@ -48,6 +48,8 @@ export interface Instrument {
   serial_number: string;
   location: string | null;
   status: InstrumentStatus;
+  /** The most specific place known (see Places); null when no institution or room is recorded. */
+  place_id?: string | null;
   /** Worked out by the backend from the model's service interval and the newest finalized preventive-maintenance report. */
   last_maintenance_date?: string | null;
   maintenance_due_date?: string | null;
@@ -294,6 +296,8 @@ export interface PassFailBreakdown {
   total: number;
 }
 
+export type PlaceRollup = components['schemas']['PlaceRollupOut'];
+
 export interface FleetAnalytics {
   finalized_report_count: number;
   parts_replaced: PartUsage[];
@@ -303,6 +307,8 @@ export interface FleetAnalytics {
   reports_without_labor_hours?: number;
   report_counts_by_instrument?: ReportCountByInstrument[];
   report_counts_by_model?: ReportCountByModel[];
+  /** Instruments, reports and work hours per institution, faculty and room. */
+  place_rollups?: PlaceRollup[];
   labor_hours_by_fault_category: Record<string, number>;
   pass_fail_by_report_type: Record<string, PassFailBreakdown>;
 }
@@ -478,6 +484,8 @@ export interface ModelTrend {
  */
 export interface AnalyticsFilters {
   instrument_id?: string;
+  /** An institution, faculty or room, with everything inside it. */
+  place_id?: string;
   manufacturer?: string;
   report_type?: ReportType;
   date_from?: string;
@@ -717,6 +725,8 @@ export function getReportDuplicates(reportId: string): Promise<ReportDuplicate[]
 
 export interface ReportFilters {
   instrument_id?: string;
+  /** An institution, faculty or room, with everything inside it. */
+  place_id?: string;
   report_type?: ReportType;
   status?: ReportStatus;
   date_from?: string;
@@ -906,8 +916,10 @@ export interface SavedFilter {
   name: string;
   filters: ReportFilters;
   created_at: string;
-  /** The saved instrument no longer exists. */
+  /** The saved instrument or place no longer exists. */
   stale: boolean;
+  /** Which of 'instrument_id' / 'place_id' no longer exists. */
+  stale_keys?: string[];
 }
 
 export interface SavedFilterList {
