@@ -229,7 +229,7 @@ def test_create_report_template_conflicts_on_duplicate_null_model(client, seeded
 
 def test_database_itself_rejects_duplicate_null_model_rows(seeded):
     # Bypasses the app-level pre-check entirely (direct ORM insert) to prove
-    # migration 6b5fc4e1c3ca's unique index — not just routers/
+    # the baseline migration's unique index — not just routers/
     # report_templates.py's own check — is what actually closes the
     # concurrent-request race window.
     dup = ReportTemplate(instrument_type="facs", report_type=ReportType.installation_upgrade, model=None, field_schema={"fields": MIN_FIELDS})
