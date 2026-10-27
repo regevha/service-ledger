@@ -72,6 +72,27 @@ export interface paths {
         patch: operations["update_instrument_model_instrument_models__model_id__patch"];
         trace?: never;
     };
+    "/instrument-models/{model_id}/reliability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Instrument Model Reliability
+         * @description Days between repairs, common fault categories, parts and labor hours for
+         *     a model's instruments (services/model_reliability.py).
+         */
+        get: operations["get_instrument_model_reliability_instrument_models__model_id__reliability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/instrument-models/{model_id}/merge": {
         parameters: {
             query?: never;
@@ -1541,6 +1562,51 @@ export interface components {
             /** Trend Fields */
             trend_fields: components["schemas"]["TrendFieldOut"][];
         };
+        /** ModelFaultCategoryOut */
+        ModelFaultCategoryOut: {
+            /** Category */
+            category: string;
+            /** Report Count */
+            report_count: number;
+            /** Instrument Count */
+            instrument_count: number;
+            /** Repeat */
+            repeat: boolean;
+        };
+        /**
+         * ModelReliabilityOut
+         * @description How a model holds up, from its instruments' finalized repair reports.
+         *     Averages are withheld (None) while the model has fewer than `min_repairs`
+         *     repairs; the counts are always given.
+         */
+        ModelReliabilityOut: {
+            /** Repair Count */
+            repair_count: number;
+            /** Min Repairs */
+            min_repairs: number;
+            /** Enough Data */
+            enough_data: boolean;
+            /** Repairs Without Date */
+            repairs_without_date: number;
+            /** Repairs With Fault Category */
+            repairs_with_fault_category: number;
+            /** Mean Days Between Repairs */
+            mean_days_between_repairs: number | null;
+            /** Gap Count */
+            gap_count: number;
+            /** Avg Labor Hours */
+            avg_labor_hours: number | null;
+            /** Repairs With Labor Hours */
+            repairs_with_labor_hours: number;
+            /** Total Labor Hours */
+            total_labor_hours: number;
+            /** Units */
+            units: components["schemas"]["ModelUnitReliabilityOut"][];
+            /** Fault Categories */
+            fault_categories: components["schemas"]["ModelFaultCategoryOut"][];
+            /** Parts */
+            parts: components["schemas"]["PartUsageOut"][];
+        };
         /**
          * ModelTrendOut
          * @description GET /analytics/models/trend: one field's series for every unit of a
@@ -1567,6 +1633,22 @@ export interface components {
             serial_number: string;
             /** Points */
             points: components["schemas"]["TrendPointOut"][];
+        };
+        /** ModelUnitReliabilityOut */
+        ModelUnitReliabilityOut: {
+            /**
+             * Instrument Id
+             * Format: uuid
+             */
+            instrument_id: string;
+            /** Name */
+            name: string;
+            /** Serial Number */
+            serial_number: string;
+            /** Repair Count */
+            repair_count: number;
+            /** Mean Days Between Repairs */
+            mean_days_between_repairs: number | null;
         };
         /**
          * PartUsageOut
@@ -2384,6 +2466,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstrumentModelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_instrument_model_reliability_instrument_models__model_id__reliability_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelReliabilityOut"];
                 };
             };
             /** @description Validation Error */

@@ -236,6 +236,46 @@ class InstrumentModelUnitOut(BaseModel):
     draft_count: int
 
 
+class ModelFaultCategoryOut(BaseModel):
+    category: str
+    report_count: int
+    instrument_count: int
+    # The same instrument had this category on two or more repairs.
+    repeat: bool
+
+
+class ModelUnitReliabilityOut(BaseModel):
+    instrument_id: uuid.UUID
+    name: str
+    serial_number: str
+    repair_count: int
+    # Needs two dated repairs on this instrument; None otherwise, and always
+    # None while the model has too few repairs for averages.
+    mean_days_between_repairs: float | None
+
+
+class ModelReliabilityOut(BaseModel):
+    """How a model holds up, from its instruments' finalized repair reports.
+    Averages are withheld (None) while the model has fewer than `min_repairs`
+    repairs; the counts are always given."""
+
+    repair_count: int
+    min_repairs: int
+    enough_data: bool
+    # Repairs with no report date: left out of the gaps.
+    repairs_without_date: int
+    repairs_with_fault_category: int
+    mean_days_between_repairs: float | None
+    gap_count: int
+    avg_labor_hours: float | None
+    repairs_with_labor_hours: int
+    total_labor_hours: float
+    units: list[ModelUnitReliabilityOut]
+    fault_categories: list[ModelFaultCategoryOut]
+    # Top 10 by quantity, from every finalized report of the model's instruments.
+    parts: list["PartUsageOut"]
+
+
 class InstrumentModelDetailOut(InstrumentModelOut):
     units: list[InstrumentModelUnitOut]
     # Newest first, at most 25; report_total is how many there are in all.
@@ -1098,3 +1138,4 @@ class SavedFilterListOut(BaseModel):
 
 
 InstrumentModelDetailOut.model_rebuild()
+ModelReliabilityOut.model_rebuild()
