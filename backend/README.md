@@ -237,7 +237,7 @@ now backed by a real API:
    polled job reaches `succeeded`.
 6. `PATCH /reports/{id}/fields` — lab manager corrections; moves to
    `in_review`. Synchronous.
-7. `POST /reports/{id}/finalize` — moves to `finalized`. Synchronous.
+7. `POST /reports/{id}/finalize` — moves to `finalized`. Synchronous. Finalizing a report that is already finalized returns it unchanged (so a retry is harmless); any other status that cannot be finalized is a 409.
 8. `DELETE /reports/{id}` — permanently removes the report, its attachments,
    their extraction jobs and the stored scan files (204). A finalized report
    needs `?force=true` (otherwise 409); a report whose scan is still pending
