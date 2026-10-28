@@ -2018,6 +2018,8 @@ export interface components {
             extracted_fields?: {
                 [key: string]: unknown;
             } | null;
+            /** Checked Fields */
+            checked_fields?: string[] | null;
             /** Technician Name */
             technician_name?: string | null;
             /** Service Actions */
@@ -2081,6 +2083,18 @@ export interface components {
             status: components["schemas"]["ReportStatus"];
             /** Extracted Fields */
             extracted_fields: {
+                [key: string]: unknown;
+            };
+            /**
+             * Checked Fields
+             * @default []
+             */
+            checked_fields: string[];
+            /**
+             * Field Confidences
+             * @default {}
+             */
+            field_confidences: {
                 [key: string]: unknown;
             };
             /** Technician Name */

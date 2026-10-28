@@ -736,6 +736,11 @@ class ReportOut(BaseModel):
     template_id: uuid.UUID | None
     status: ReportStatus
     extracted_fields: dict
+    # Low-confidence fields the technician already marked as checked, and the
+    # confidences of the newest extraction (field name -> 0..1; "report_date" for
+    # the service date), so a reopened draft can flag what is still unchecked.
+    checked_fields: list[str] = []
+    field_confidences: dict = {}
     technician_name: str | None
     # Who issued the form and a second report type, when classification read
     # them off the document (see ClassificationResult).
@@ -807,6 +812,8 @@ class ReportFieldsUpdate(BaseModel):
     """§9: PATCH /reports/{id}/fields — overwrites in place, no audit log in MVP."""
 
     extracted_fields: dict | None = None
+    # The full set of fields marked as checked; replaces the stored list.
+    checked_fields: list[str] | None = None
     technician_name: str | None = None
     service_actions: str | None = None
     parts_replaced: str | None = None

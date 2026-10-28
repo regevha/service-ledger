@@ -10,7 +10,7 @@ of these choices — this file only encodes the decisions, it doesn't re-argue t
 """
 import enum
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy import Date, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -340,6 +340,10 @@ class Report(Base):
         Enum(ReportStatus, name="report_status"), nullable=False, default=ReportStatus.draft
     )
     extracted_fields: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # Names of the low-confidence fields the technician marked as checked on the
+    # review screen ("report_date" for the service date). Cleared whenever a new
+    # extraction replaces the values, since what was checked no longer exists.
+    checked_fields: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
     # The searchable text of this report (text fields, table text cells, the
     # instrument's model and serial), kept current by
     # services/report_search.py; never returned by the API.
@@ -366,6 +370,24 @@ class Report(Base):
     instrument: Mapped[Instrument | None] = relationship(back_populates="reports")
     template: Mapped[ReportTemplate | None] = relationship(back_populates="reports")
     attachments: Mapped[list["Attachment"]] = relationship(back_populates="report", cascade="all, delete-orphan")
+
+    @property
+    def field_confidences(self) -> dict:
+        """The per-field confidences of the newest successful extraction of this
+        report's scan ({} when it has none, e.g. a report made before they were
+        kept or one that was never extracted). Read-only: the numbers stay on the
+        extraction job, this only exposes them so a reopened draft can flag the
+        fields that were low confidence."""
+        done = [
+            j
+            for a in self.attachments
+            for j in a.extraction_jobs
+            if j.kind == ExtractionJobKind.extract and j.status == ExtractionJobStatus.succeeded and j.field_confidences
+        ]
+        if not done:
+            return {}
+        newest = max(done, key=lambda j: j.completed_at or datetime.min.replace(tzinfo=timezone.utc))
+        return dict(newest.field_confidences)
 
 
 class Attachment(Base):

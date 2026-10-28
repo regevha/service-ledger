@@ -141,6 +141,10 @@ export interface Report {
   template_id: string | null;
   status: ReportStatus;
   extracted_fields: Record<string, unknown>;
+  /** Low-confidence fields the technician marked as checked ("report_date" is the service date). */
+  checked_fields?: string[];
+  /** Confidences of the newest extraction, by field name; empty when it never ran. */
+  field_confidences?: Record<string, number>;
   technician_name: string | null;
   /** Who issued the form (often a distributor), when classification read one. */
   issuer?: string | null;
@@ -807,7 +811,7 @@ export function updateReportFields(
   reportId: string,
   // report_date: the service-visit date. Extraction fills it in from the
   // document; the review screen sends it back as corrected (null clears it).
-  payload: { extracted_fields?: Record<string, unknown>; report_date?: string | null }
+  payload: { extracted_fields?: Record<string, unknown>; report_date?: string | null; checked_fields?: string[] }
 ): Promise<Report> {
   return apiFetch(`/reports/${reportId}/fields`, { method: 'PATCH', body: JSON.stringify(payload) });
 }

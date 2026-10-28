@@ -971,7 +971,11 @@ export function IntakeFlow({
     if (!report) return;
     setPhase({ name: 'working', label: finalize ? 'Saving and finalizing…' : 'Saving corrections…' });
     await attempt('Saving failed unexpectedly.', () => void handleSaveFields(finalize), async () => {
-      const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
+      const updated = await updateReportFields(report.id, {
+        extracted_fields: fields,
+        report_date: reportDate,
+        checked_fields: [...checkedFields],
+      });
       let final = updated;
       if (finalize) final = await finalizeReport(report.id);
       setReport(final);

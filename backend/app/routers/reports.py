@@ -358,6 +358,11 @@ def update_report_fields(report_id: uuid.UUID, payload: schemas.ReportFieldsUpda
                 422, "extracted_fields cannot be null — omit the field to leave it unchanged, or send {} to no-op."
             )
         report.extracted_fields = {**(report.extracted_fields or {}), **incoming}
+    if "checked_fields" in data:
+        incoming_checked = data.pop("checked_fields")
+        # An explicit null means "no change", like an omitted key; a list replaces the set (deduplicated, in order).
+        if incoming_checked is not None:
+            report.checked_fields = list(dict.fromkeys(incoming_checked))
     for key, value in data.items():
         setattr(report, key, value)
 

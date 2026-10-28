@@ -16,7 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function seedReport(
   request: APIRequestContext,
-  opts: { model: string; reportType: string; technician: string; finalize?: boolean }
+  opts: { model: string; reportType: string; technician: string; finalize?: boolean; fileName?: string }
 ): Promise<string> {
   const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: opts.technician } })).json();
   const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
@@ -29,7 +29,7 @@ async function seedReport(
   });
   const attachment = await (
     await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
+      multipart: { file: { name: opts.fileName ?? 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
     })
   ).json();
   const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
@@ -259,4 +259,28 @@ test('flagged fields are listed above the fields and clear only when marked as c
   await page.getByRole('button', { name: 'Save corrections' }).click();
   await page.waitForSelector('.field-list', { timeout: 30_000 });
   await expect(page.locator('.field.pending')).toHaveCount(n - 1);
+});
+
+test('a saved draft, reopened, still flags only the low-confidence fields not yet marked as checked', async ({ page, request }) => {
+  const marker = `E2E-Reopen-${Date.now()}`;
+  // The stub reads a "sample-work-order" repair report with its root cause and replaced components at low confidence.
+  await seedReport(request, {
+    model: 'FACSDiscover S8',
+    reportType: 'repair',
+    technician: marker,
+    fileName: `sample-work-order-${Date.now()}.pdf`,
+  });
+  await openFromList(page, marker);
+  const n = await page.locator('.field.pending').count();
+  expect(n).toBeGreaterThanOrEqual(2);
+
+  await page.locator('.field.pending').first().getByRole('button', { name: 'Mark as checked' }).click();
+  await expect(page.locator('.field.pending')).toHaveCount(n - 1);
+  await page.getByRole('button', { name: 'Save corrections' }).click();
+  await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
+
+  // Leave and come back: the one marked checked stays checked, the rest are still flagged.
+  await openFromList(page, marker);
+  await expect(page.locator('.field.pending')).toHaveCount(n - 1);
+  await expect(page.getByTestId('attention-strip')).toContainText(`${n - 1} field`);
 });

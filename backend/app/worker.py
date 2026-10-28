@@ -290,6 +290,8 @@ def _run_extract_job(db: Session, job: models.ExtractionJob) -> None:
                 "Extraction job %s: replaced %r in field %r with the instrument's serial", job.id, fix.found, fix.field
             )
     report.extracted_fields = result.extracted_fields
+    # New values: whatever was marked as checked belonged to the old ones.
+    report.checked_fields = []
     if result.report_date is not None:
         # Only overwrite with a date actually read off the document — when
         # none could be read, keep whatever the report already has (e.g. a

@@ -65,6 +65,8 @@ export function ReportDetailScreen({
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [fields, setFields] = useState<Record<string, unknown>>({});
   const [reportDate, setReportDate] = useState<string | null>(null);
+  // Low-confidence fields marked as checked; saved with the report so a half-reviewed draft remembers them.
+  const [checkedFields, setCheckedFields] = useState<ReadonlySet<string>>(() => new Set());
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const phone = useMediaQuery('(max-width: 620px)');
@@ -99,6 +101,7 @@ export function ReportDetailScreen({
       setReport(r);
       setFields(r.extracted_fields ?? {});
       setReportDate(r.report_date);
+      setCheckedFields(new Set(r.checked_fields ?? []));
       // Fetch the report's own template_id directly (GET /report-templates/
       // {id}), not re-resolve "the" template for its instrument model +
       // report type (findTemplate) the way this used to. resolve_template's
@@ -126,7 +129,11 @@ export function ReportDetailScreen({
     if (!report) return;
     setBusyLabel(finalize ? 'Saving and finalizing…' : 'Saving corrections…');
     try {
-      const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
+      const updated = await updateReportFields(report.id, {
+        extracted_fields: fields,
+        report_date: reportDate,
+        checked_fields: [...checkedFields],
+      });
       const final = finalize ? await finalizeReport(report.id) : updated;
       setReport(final);
       setEditing(false);
@@ -254,7 +261,11 @@ export function ReportDetailScreen({
           fields={fields}
           reportDate={reportDate}
           onReportDateChange={setReportDate}
-          fieldConfidences={{}}
+          // A draft that was saved half-reviewed still flags the low-confidence fields not yet marked as
+          // checked; a finalized report is closed, so nothing is flagged on it.
+          fieldConfidences={report.status === 'finalized' ? {} : (report.field_confidences ?? {})}
+          checkedFields={checkedFields}
+          onMarkChecked={(name) => setCheckedFields((prev) => new Set(prev).add(name))}
           fieldConfidenceThreshold={fieldConfidenceThreshold}
           onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
           onSave={() => void handleSave(false)}
