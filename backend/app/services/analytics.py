@@ -176,6 +176,8 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
     # Finalized repair/PM reports that added nothing to the hours: no hours recorded, or no instrument.
     reports_without_hours = 0
     labor_by_fault_category: dict[str, float] = {}
+    # How each instrument's repair / preventive maintenance reports came out, for the fleet list's pass rate.
+    results_by_instrument: dict[uuid.UUID, dict[str, int]] = {}
     pass_fail: dict[str, dict[str, int]] = {rt.value: {"pass": 0, "fail": 0, "other": 0} for rt in _LABOR_TRACKING_REPORT_TYPES}
 
     for report in reports:
@@ -234,6 +236,9 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
             result = fields.get(result_field) if result_field else None
             bucket_key = "pass" if result == "pass" else "fail" if result == "fail" else "other"
             pass_fail[report_type.value][bucket_key] += 1
+            if report.instrument_id is not None:
+                per_instrument = results_by_instrument.setdefault(report.instrument_id, {"pass": 0, "fail": 0, "other": 0})
+                per_instrument[bucket_key] += 1
 
     instrument_query = db.query(models.Instrument).order_by(models.Instrument.name)
     instruments = _apply_unit_filters(instrument_query, filters).all()
@@ -250,6 +255,7 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         for instrument in instruments
     ]
 
+    no_results = {"pass": 0, "fail": 0, "other": 0}
     report_counts_by_instrument = [
         schemas.ReportCountByInstrumentOut(
             instrument_id=instrument.id,
@@ -258,14 +264,26 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
             institution=instrument.institution,
             serial_number=instrument.serial_number,
             report_count=report_count_by_instrument.get(instrument.id, 0),
+            total_labor_hours=labor_by_instrument.get(instrument.id, 0.0),
+            pass_count=results_by_instrument.get(instrument.id, no_results)["pass"],
+            fail_count=results_by_instrument.get(instrument.id, no_results)["fail"],
+            other_count=results_by_instrument.get(instrument.id, no_results)["other"],
         )
         for instrument in instruments
     ]
-    by_model: dict[str, schemas.ReportCountByModelOut] = {}
-    for row in report_counts_by_instrument:
-        entry = by_model.setdefault(row.model, schemas.ReportCountByModelOut(model=row.model, unit_count=0, report_count=0))
+    by_model: dict[object, schemas.ReportCountByModelOut] = {}
+    for instrument, row in zip(instruments, report_counts_by_instrument):
+        # Units of one model record belong together; a unit with no record is grouped by its model name.
+        entry = by_model.setdefault(
+            instrument.model_id or row.model,
+            schemas.ReportCountByModelOut(model=row.model, model_id=instrument.model_id, unit_count=0, report_count=0),
+        )
         entry.unit_count += 1
         entry.report_count += row.report_count
+        entry.total_labor_hours += row.total_labor_hours
+        entry.pass_count += row.pass_count
+        entry.fail_count += row.fail_count
+        entry.other_count += row.other_count
     report_counts_by_model = sorted(by_model.values(), key=lambda m: (-m.report_count, m.model))
 
     parts_replaced = sorted(
@@ -282,7 +300,7 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         reverse=True,
     )
 
-    place_rollups = _place_rollups(db, instruments, report_count_by_instrument, labor_by_instrument)
+    place_rollups = _place_rollups(db, instruments, report_count_by_instrument, labor_by_instrument, results_by_instrument)
 
     return schemas.FleetAnalyticsOut(
         finalized_report_count=len(reports),
@@ -311,6 +329,7 @@ def _place_rollups(
     instruments: list[models.Instrument],
     report_counts: dict[uuid.UUID, int],
     labor: dict[uuid.UUID, float],
+    results: dict[uuid.UUID, dict[str, int]] | None = None,
 ) -> list[schemas.PlaceRollupOut]:
     """Instruments, reports and work hours per place, at every level an
     instrument sits under: its institution, its faculty (when its room is in
@@ -338,6 +357,11 @@ def _place_rollups(
             row.instrument_count += 1
             row.report_count += report_counts.get(instrument.id, 0)
             row.total_labor_hours += labor.get(instrument.id, 0.0)
+            tally = (results or {}).get(instrument.id)
+            if tally:
+                row.pass_count += tally["pass"]
+                row.fail_count += tally["fail"]
+                row.other_count += tally["other"]
             node = places.get(node.parent_id) if node.parent_id else None
     return sorted(rows.values(), key=lambda r: (r.institution_name.lower(), r.kind != "institution", r.name.lower()))
 

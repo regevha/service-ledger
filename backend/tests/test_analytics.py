@@ -345,3 +345,32 @@ def test_report_counts_per_instrument_and_per_model(client, seeded):
     assert client.get("/analytics/fleet", params={"status": "all"}).json()["report_counts_by_instrument"]
     allrows = {r["model"]: r["report_count"] for r in client.get("/analytics/fleet", params={"status": "all"}).json()["report_counts_by_instrument"]}
     assert allrows["LSRFortessa"] == 2
+
+
+def test_rows_carry_hours_and_pass_counts_for_the_fleet_list(client, seeded):
+    """Each per-instrument, per-model and per-place row says how its repair / preventive
+    maintenance reports came out and how many hours they took, so the fleet list beside
+    the charts can show a pass rate and an hours bar without another request."""
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.repair,
+                 extracted_fields={"labor_hours": 2, "retest_result": "pass"})
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.repair,
+                 extracted_fields={"labor_hours": 3, "retest_result": "fail"})
+    _make_report(seeded, model="FACSAria III", report_type=ReportType.preventive_maintenance,
+                 extracted_fields={"labor_hours": 1})
+    _make_report(seeded, model="LSRFortessa", report_type=ReportType.repair,
+                 extracted_fields={"labor_hours": 4, "retest_result": "pass"})
+    body = client.get("/analytics/fleet").json()
+
+    unit = {r["model"]: r for r in body["report_counts_by_instrument"]}["FACSAria III"]
+    assert (unit["pass_count"], unit["fail_count"], unit["other_count"]) == (1, 1, 1)
+    assert unit["total_labor_hours"] == 6.0
+
+    model = {r["model"]: r for r in body["report_counts_by_model"]}["FACSAria III"]
+    assert (model["pass_count"], model["fail_count"], model["other_count"]) == (1, 1, 1)
+    assert model["total_labor_hours"] == 6.0
+    # The model record's id is what the page sends back as the model_id filter.
+    narrowed = client.get("/analytics/fleet", params={"model_id": model["model_id"]}).json()
+    assert [r["model"] for r in narrowed["report_counts_by_model"]] == ["FACSAria III"]
+
+    quiet = {r["model"]: r for r in body["report_counts_by_model"]}["CytoFLEX S"]
+    assert (quiet["pass_count"], quiet["fail_count"], quiet["other_count"], quiet["total_labor_hours"]) == (0, 0, 0, 0.0)
