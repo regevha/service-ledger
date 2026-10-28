@@ -3,6 +3,7 @@ import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { finalizeFromReview } from './finalize-helper';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The uncertain case (§4): the stub special-cases any filename containing
@@ -58,6 +59,6 @@ test('uncertain report type routes through manual confirm before extracting', as
 
   // A human fills in the blank the model correctly declined to guess.
   await rootCauseField.locator('textarea').fill('Sample injector O-ring degraded');
-  await page.click('button:has-text("Save & finalize report")');
+  await finalizeFromReview(page);
   await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
 });

@@ -1,6 +1,7 @@
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 
+import { finalizeFromReview } from './finalize-helper';
 // Installation / upgrade is a report type of its own (BD task code T107). The
 // stub treats a file name containing "sample-work-order" as an uncertain report
 // type (manual-confirm.spec.ts), which is the easiest way to reach the confirm
@@ -30,7 +31,7 @@ test('a technician can confirm a report as an installation / upgrade and review 
   // The repair template's fields are not on this report.
   await expect(fields).not.toContainText('Fault category');
 
-  await page.click('button:has-text("Save & finalize report")');
+  await finalizeFromReview(page);
   await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
 
   // It is filterable by its type in the reports list.

@@ -2,6 +2,7 @@ import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
 
+import { finalizeFromReview } from './finalize-helper';
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 // A model alone can't tell two units of one model apart, so a fleet with
@@ -36,7 +37,7 @@ test('a document naming a serial number is assigned to that unit even when its m
     await expect(page.locator('#review-report-date')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('#serial-notice')).toContainText(`Matched to FACSAria III (${serial})`);
 
-    await page.click('button:has-text("Save & finalize report")');
+    await finalizeFromReview(page);
     await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
 
     // The report belongs to that unit, not to the other Aria.
