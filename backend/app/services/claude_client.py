@@ -28,6 +28,7 @@ from anthropic import Anthropic
 
 from app.config import get_settings
 from app.debug_claude_log import record_call
+from app.services import prompt_gate
 from app.services.errors import LiveClaudeError
 
 settings = get_settings()
@@ -115,6 +116,10 @@ def call_claude_tool(
     messages need — see classification.py/extraction.py for exactly which
     wording each call site uses.
     """
+    if settings.view_prompts and not prompt_gate.approved_var.get():
+        # Debug aid (VIEW_PROMPTS): stop here; the worker parks the job and the
+        # person reads the prompt and presses Send or Cancel.
+        raise prompt_gate.PromptApprovalNeeded(prompt_gate.build_preview(request_kwargs, verb))
     call_started = time.perf_counter()
     try:
         response = client.messages.create(**request_kwargs)

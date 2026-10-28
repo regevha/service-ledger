@@ -36,6 +36,7 @@ from app.debug_claude_log import announce_debug_log
 from app.services.classification import classify as run_classify
 from app.services.duplicates import normalize_work_order
 from app.services.errors import ClassificationError, ExtractionError, TranslationError
+from app.services import prompt_gate
 from app.services.extraction import extract as run_extract
 from app.services.serial_check import correct_serial_typos
 from app.services.text_reader import extract_text
@@ -324,6 +325,7 @@ def _run_claimed_job(db: Session, job: models.ExtractionJob, job_id, kind) -> No
     started_at = time.perf_counter()
     queued_for = (datetime.now(timezone.utc) - job.started_at).total_seconds() if job.started_at else 0.0
     logger.info("Job %s started (kind=%s, queued %.1fs)", job_id, kind.value, queued_for)
+    approved_token = prompt_gate.approved_var.set(bool((job.params or {}).get("prompt_approved")))
     try:
         if job.kind == models.ExtractionJobKind.classify:
             _run_classify_job(db, job)
@@ -331,6 +333,14 @@ def _run_claimed_job(db: Session, job: models.ExtractionJob, job_id, kind) -> No
             _run_translate_job(db, job)
         else:
             _run_extract_job(db, job)
+    except prompt_gate.PromptApprovalNeeded as pause:
+        # VIEW_PROMPTS: park the job with the prompt for a person to read.
+        db.rollback()
+        parked = db.get(models.ExtractionJob, job_id)
+        if parked is not None:
+            parked.status = models.ExtractionJobStatus.awaiting_approval
+            parked.prompt_preview = pause.preview
+            db.commit()
     except Exception:  # noqa: BLE001 — a bug in this file must not wedge the queue
         logger.exception("Unhandled error processing extraction job %s (kind=%s)", job.id, job.kind)
         try:
@@ -357,6 +367,7 @@ def _run_claimed_job(db: Session, job: models.ExtractionJob, job_id, kind) -> No
                 "in-progress until the worker restarts and _recover_orphaned_jobs picks it up.",
                 job.id,
             )
+    prompt_gate.approved_var.reset(approved_token)
     outcome = "unknown"
     try:
         db.expire_all()

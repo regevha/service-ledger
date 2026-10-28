@@ -60,6 +60,7 @@ class ExtractionJobStatus(str, enum.Enum):
     classifying = "classifying"
     extracting = "extracting"
     translating = "translating"
+    awaiting_approval = "awaiting_approval"
     succeeded = "succeeded"
     failed = "failed"
 
@@ -437,6 +438,9 @@ class ExtractionJob(Base):
     # Options for the job, e.g. {"include_pages": [2, 3]} for a translate job
     # that should translate pages it would otherwise skip as QC printouts.
     params: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # The prompt waiting for a person's Send/Cancel while status=awaiting_approval
+    # (VIEW_PROMPTS; see services/prompt_gate.py). Kept after Send for reference.
+    prompt_preview: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

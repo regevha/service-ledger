@@ -1246,7 +1246,7 @@ export interface components {
          *     background job, kept minimal on purpose.
          * @enum {string}
          */
-        ExtractionJobStatus: "pending" | "classifying" | "extracting" | "translating" | "succeeded" | "failed";
+        ExtractionJobStatus: "pending" | "classifying" | "extracting" | "translating" | "awaiting_approval" | "succeeded" | "failed";
         /**
          * FieldAliasGroupIn
          * @description A set of at least two field names that mean the same thing. Names are

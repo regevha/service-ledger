@@ -22,6 +22,7 @@ IN_FLIGHT_JOB_STATUSES = (
     models.ExtractionJobStatus.classifying,
     models.ExtractionJobStatus.extracting,
     models.ExtractionJobStatus.translating,
+    models.ExtractionJobStatus.awaiting_approval,
 )
 
 

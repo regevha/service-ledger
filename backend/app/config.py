@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     # (nothing pending) at single-user scale.
     worker_poll_interval_seconds: float = 0.5
 
+    # Debug aid: before each live Claude call the job stops and the intake screen
+    # shows the exact prompt; the person presses Send or Cancel. Off by default.
+    view_prompts: bool = False
+
     use_live_claude: bool = False
     anthropic_api_key: str = ""
     # Was a literal "claude-sonnet-5" duplicated separately inside both
