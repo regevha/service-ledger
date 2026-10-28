@@ -605,6 +605,8 @@ export function IntakeFlow({
   const [attachmentId, setAttachmentId] = useState<string | null>(null);
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [fieldConfidences, setFieldConfidences] = useState<Record<string, number>>({});
+  // Measured in the browser, from submitting the extraction to the job finishing; shown on Review & finalize only.
+  const [extractionSeconds, setExtractionSeconds] = useState<number | null>(null);
   const [fields, setFields] = useState<Record<string, unknown>>({});
   const [reportDate, setReportDate] = useState<string | null>(null);
 
@@ -653,6 +655,7 @@ export function IntakeFlow({
     setAttachmentId(null);
     setTemplate(null);
     setFieldConfidences({});
+    setExtractionSeconds(null);
     setFields({});
     setReportDate(null);
     setDuplicates({});
@@ -721,8 +724,10 @@ export function IntakeFlow({
       // §3/§9: this only enqueues the job — app/worker.py is what actually
       // runs it — so wait for it to leave pending/extracting before reading
       // the result back.
+      const startedAt = performance.now();
       const submitted = await extractAttachment(attId);
       const job = await pollExtractionJob(submitted.id);
+      const elapsedSeconds = (performance.now() - startedAt) / 1000;
       if (job.status === 'failed') {
         failPhase(job.error_message || 'Extraction failed for an unknown reason.', () => void runExtraction(attId, reportId, tpl));
         return;
@@ -730,6 +735,7 @@ export function IntakeFlow({
       const refreshed = await getReport(reportId);
       setReport(refreshed);
       setFieldConfidences(job.field_confidences ?? {});
+      setExtractionSeconds(elapsedSeconds);
       setFields(refreshed.extracted_fields ?? {});
       setReportDate(refreshed.report_date);
       setPhase({ name: 'review' });
@@ -1086,6 +1092,7 @@ export function IntakeFlow({
           scanInlineUrl={attachmentId ? attachmentFileUrl(attachmentId, { inline: true }) : undefined}
           scanAttachmentId={attachmentId ?? undefined}
           pdfUrl={report ? reportPdfUrl(report.id) : undefined}
+          extractionSeconds={extractionSeconds}
         />
       )}
 
