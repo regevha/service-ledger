@@ -30,6 +30,7 @@ from app.services.claude_client import (
     is_sample_document as _is_sample_document,
     call_claude_tool,
     extract_tool_use,
+    raise_if_truncated,
     get_client as _get_client,
     stable_unit as _stable_unit,
 )
@@ -60,7 +61,8 @@ independently — they are not the same call.
 _CLASSIFY_BODY = """1. Which instrument model this document is for. Look for the "Installed Product" or \
 "System" field, which prints a code and model name (e.g. "648282B3 - ARIA III ACDU \
 6B/3R/3V" is a FACSAria III; "665158 - FACSDiscover S8 ..." is a FACSDiscover S8). \
-Only choose from the allowed options.
+Only choose from the allowed options. Always fill `instrument_model` with one of them, \
+even when `detected_model` says the same thing: both are required.
 
 2. What kind of service visit this is. The most reliable signal is the "Work Order \
 Task Code" field: a code starting T113 ("Repair / Troubleshooting Visit") means \
@@ -76,7 +78,7 @@ accuracy of the characters matters more than your interpretation of them. If the
 is no task code, return an empty string with confidence 0.
 
 3. The instrument's serial number, exactly as printed in the "Installed Product" block \
-(its "Serial/Lot Number" line, e.g. "MP6651580000057"). Ignore the "Serial/Lot Number: \
+(its "Serial/Lot Number" line, e.g. "MP1000000000042"). Ignore the "Serial/Lot Number: \
 N/A" line under the SYSTEM column, which is not the instrument's. Copy the characters \
 exactly; never guess or complete a character you cannot read — give a lower confidence \
 instead. If the Installed Product has no serial number, or it is printed as N/A, return \
@@ -98,8 +100,8 @@ software or the part numbers, in `detected_manufacturer`, and its model name as 
 model in the fleet, answer "(not in the fleet)" for `instrument_model` with a low \
 confidence; never pick the nearest model in the fleet just to give an answer. On such a \
 form the serial is the number labelled "serial number" (or "S.N"), copied exactly. A number \
-labelled "device number" or "instrument number" can be the model code (for example BE50173 \
-on a CytoFLEX form), not the serial, and an asset or inventory number is not the serial \
+labelled "device number" or "instrument number" can be the model code (for example AB12345 \
+on a form from another maker), not the serial, and an asset or inventory number is not the serial \
 either. The work-order number on such a form is the number that identifies this visit \
 (labelled "service call", "call number", "service report" or "report number"); a \
 customer order or purchase-order number is not the work order, and neither is a part \
@@ -301,6 +303,7 @@ def _live_classify(
         noun="classification",
     )
 
+    raise_if_truncated(response, error_cls=ClassificationError, noun="classification")
     tool_use = extract_tool_use(
         response,
         error_cls=ClassificationError,

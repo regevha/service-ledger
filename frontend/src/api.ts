@@ -241,8 +241,28 @@ export interface ExtractionJob {
   classification: Record<string, unknown> | null;
   field_confidences: Record<string, number> | null;
   error_message: string | null;
+  /** The prompt waiting for Send/Cancel while status is 'awaiting_approval' (VIEW_PROMPTS). */
+  prompt_preview?: PromptPreview | null;
   started_at: string | null;
   completed_at: string | null;
+}
+
+/** The exact request a job is about to send to Claude (backend services/prompt_gate.py). */
+export interface PromptPreview {
+  verb: string;
+  model: string | null;
+  max_tokens: number | null;
+  system: unknown;
+  tool_choice: unknown;
+  tools: unknown;
+  blocks: {
+    type: string;
+    role?: string | null;
+    text?: string;
+    media_type?: string | null;
+    bytes?: number | null;
+    sha256?: string | null;
+  }[];
 }
 
 // GET /config (§4/§12): the confidence thresholds, read from the backend's
@@ -843,16 +863,40 @@ export function getExtractionJob(jobId: string): Promise<ExtractionJob> {
 // either way — succeeded or failed is a normal outcome for a caller to
 // branch on (see App.tsx's runClassification/runExtraction), not an
 // exception; only a genuinely stuck job (past timeoutMs) throws.
+export function approveExtractionJob(jobId: string): Promise<ExtractionJob> {
+  return apiFetch(`/extraction-jobs/${jobId}/approve`, { method: 'POST' });
+}
+
+export function cancelExtractionJob(jobId: string): Promise<ExtractionJob> {
+  return apiFetch(`/extraction-jobs/${jobId}/cancel`, { method: 'POST' });
+}
+
+// VIEW_PROMPTS (debug): when the backend parks a job as 'awaiting_approval', the
+// poll below hands the prompt to this handler (the intake screen shows it) and
+// sends the person's answer back. No handler: the poll just keeps waiting.
+let promptApprovalHandler: ((preview: PromptPreview) => Promise<boolean>) | null = null;
+export function setPromptApprovalHandler(handler: ((preview: PromptPreview) => Promise<boolean>) | null): void {
+  promptApprovalHandler = handler;
+}
+
 export async function pollExtractionJob(
   jobId: string,
   opts: { intervalMs?: number; timeoutMs?: number } = {}
 ): Promise<ExtractionJob> {
   const intervalMs = opts.intervalMs ?? 400;
   const timeoutMs = opts.timeoutMs ?? 90_000;
-  const deadline = Date.now() + timeoutMs;
+  let deadline = Date.now() + timeoutMs;
   for (;;) {
     const job = await getExtractionJob(jobId);
     if (job.status === 'succeeded' || job.status === 'failed') return job;
+    if (job.status === 'awaiting_approval' && job.prompt_preview && promptApprovalHandler) {
+      const send = await promptApprovalHandler(job.prompt_preview);
+      if (!send) return cancelExtractionJob(jobId);
+      await approveExtractionJob(jobId);
+      deadline = Date.now() + timeoutMs; // the person's reading time does not count
+      continue;
+    }
+    if (job.status === 'awaiting_approval') deadline = Date.now() + timeoutMs;
     if (Date.now() >= deadline) {
       throw new ApiError(0, `Extraction job ${jobId} did not finish within ${Math.round(timeoutMs / 1000)}s.`);
     }
@@ -985,7 +1029,7 @@ export function mergeInstrumentModel(
 }
 
 export type Place = components['schemas']['PlaceOut'];
-export type PlaceKind = components['schemas']['PlaceKind'];
+export type PlaceKind = Place['kind'];
 
 export function listPlaces(): Promise<Place[]> {
   return apiFetch('/places');

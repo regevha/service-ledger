@@ -38,11 +38,16 @@ fi
 
 open_database
 APPS_STOPPED=0
+# shellcheck source=_apps.sh
+source "$HERE/_apps.sh"
 start_apps() {
   if [[ "$APPS_STOPPED" == "1" ]]; then
     echo "== Starting the API and the worker"
     for app in "api-$NAME" "worker-$NAME"; do
-      az containerapp update -g "$RG" -n "$app" --min-replicas 1 --max-replicas 1 -o none
+      app_action "$app" start || echo "   could not start $app; start it in the portal (the app's Overview page, Start)" >&2
+    done
+    for app in "api-$NAME" "worker-$NAME"; do
+      wait_app_status "$app" Running && echo "   $app running" || true
     done
   fi
 }
@@ -52,7 +57,11 @@ trap cleanup EXIT
 echo "== Stopping the API and the worker"
 APPS_STOPPED=1
 for app in "api-$NAME" "worker-$NAME"; do
-  az containerapp update -g "$RG" -n "$app" --min-replicas 0 --max-replicas 0 -o none
+  app_action "$app" stop
+done
+for app in "api-$NAME" "worker-$NAME"; do
+  wait_app_status "$app" Stopped || { echo "Not restoring while $app may still be running." >&2; exit 1; }
+  echo "   $app stopped"
 done
 
 echo "== Restoring the database (one transaction)"

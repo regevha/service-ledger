@@ -33,7 +33,9 @@ ANTHROPIC_API_KEY=... ./deploy/azure/deploy.sh sl-test   # live Claude (environm
 
 Optional: `LOCATION` (default `westeurope`, a decision for the project owner), `IMAGE_TAG`, `INGRESS`, `BUILD_IMAGE`.
 
-Not covered: re-running over an existing deployment (create commands will report what already exists), custom domain, automatic backups of the file share (use `backup.sh` below), Key Vault (secrets are Container Apps secrets for now).
+**If a first run stops half way** (a build error, a timeout), fix the cause and run the same command again. It keeps what already exists (environment, storage and share, Postgres server and database, registry), sets a new database admin password (the earlier one was never stored), replaces the migration job and carries on. It refuses once `api-<name>` or `worker-<name>` exists: a running environment is changed only through `update.sh`, `set-secrets.sh` or `restore.sh`. If the API app was created but the worker was not, run `destroy.sh` and start again.
+
+Not covered: custom domain, automatic backups of the file share (use `backup.sh` below), Key Vault (secrets are Container Apps secrets for now).
 
 ## Changing the API key or the shared password
 
@@ -54,6 +56,16 @@ After a code change (merged or on your branch), roll it out without recreating a
 ```
 
 It builds the frontend and a new image (tagged with the commit and the time), runs the migration with that image and waits for it, then points the API and the worker at the new image. The database, attachments, password and API key are untouched. If the migration fails, the apps keep running the old image. To go back, check out the earlier commit and run it again. Not yet run against real Azure.
+
+## Pausing between test rounds
+
+```
+./deploy/azure/pause.sh sl-test              # stops the API, the worker, and the database
+./deploy/azure/pause.sh sl-test --keep-db    # apps only; the database keeps running
+./deploy/azure/resume.sh sl-test             # database first (if stopped) and waits for it, then the apps
+```
+
+Nothing is deleted. The apps are stopped with the Container Apps stop operation (the same one `restore.sh` uses, in `_apps.sh`), so while paused the address answers nothing: a stopped app does not wake on a request. Jobs the worker was running are recovered when it starts again. Stopping the database does not touch its data; Azure starts a stopped database again by itself after 7 days, so a long pause may need `pause.sh` run again. Still charged regardless: the database's storage, the file share, the registry and the log workspace. Run against real Azure so far: `pause.sh` for the apps (confirmed with a 404 on the app's address); not yet the database stop, or `resume.sh`.
 
 ## Backing up and restoring
 

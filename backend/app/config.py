@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     # (nothing pending) at single-user scale.
     worker_poll_interval_seconds: float = 0.5
 
+    # Debug aid: before each live Claude call the job stops and the intake screen
+    # shows the exact prompt; the person presses Send or Cancel. Off by default.
+    view_prompts: bool = False
+
     use_live_claude: bool = False
     # Stub mode only (ignored when use_live_claude is true). On (the default):
     # extraction reads the PDF's own text (services/text_extraction.py) and
@@ -97,6 +101,9 @@ class Settings(BaseSettings):
     # typical text call, hence the generous timeout.
     anthropic_timeout_seconds: float = 90.0
     anthropic_max_retries: int = 2
+    # Output limit of one extract call. A template with long tables (labor, parts,
+    # detector values) needs room: a cut-off answer is refused, not half-used.
+    extract_max_tokens: int = 8192
 
     # Hebrew translation (docs: claude/proposal-hebrew-translation.md). A
     # document counts as Hebrew when more than this share of its letters are
