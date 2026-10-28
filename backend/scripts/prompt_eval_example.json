@@ -1,0 +1,15 @@
+{
+  "file": "example-report.pdf",
+  "classify": {
+    "instrument_model": "FACSAria III",
+    "report_type": "repair",
+    "serial": "P000000000001",
+    "work_order": "WO-00000001"
+  },
+  "extract": {
+    "report_type": "repair",
+    "model": "FACSAria III",
+    "fields": {"labor_hours": 3.5, "retest_result": "pass"},
+    "report_date": "2026-01-15"
+  }
+}
