@@ -33,7 +33,9 @@ ANTHROPIC_API_KEY=... ./deploy/azure/deploy.sh sl-test   # live Claude (environm
 
 Optional: `LOCATION` (default `westeurope`, a decision for the project owner), `IMAGE_TAG`, `INGRESS`, `BUILD_IMAGE`.
 
-Not covered: re-running over an existing deployment (create commands will report what already exists), custom domain, automatic backups of the file share (use `backup.sh` below), Key Vault (secrets are Container Apps secrets for now).
+**If a first run stops half way** (a build error, a timeout), fix the cause and run the same command again. It keeps what already exists (environment, storage and share, Postgres server and database, registry), sets a new database admin password (the earlier one was never stored), replaces the migration job and carries on. It refuses once `api-<name>` or `worker-<name>` exists: a running environment is changed only through `update.sh`, `set-secrets.sh` or `restore.sh`. If the API app was created but the worker was not, run `destroy.sh` and start again.
+
+Not covered: custom domain, automatic backups of the file share (use `backup.sh` below), Key Vault (secrets are Container Apps secrets for now).
 
 ## Changing the API key or the shared password
 
