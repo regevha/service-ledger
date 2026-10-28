@@ -1,31 +1,12 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { DateInput } from './DateInput';
 import { Notice } from './Notice';
 import { FieldControl, ReadOnlyContext } from './FieldEditor';
-import { ScanPages } from './ScanPages';
+import { PhoneScanSwitch, ScanSplit, ScanToggleButton, useScanPreview } from './ScanPreview';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
-import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { ReportTemplate } from '../api';
-
-const SCAN_PREF_KEY = 'sl.review.showScan';
-
-// Per-viewer convenience only: browser storage can be empty or throw, so the page works without it.
-function readScanPref(): boolean {
-  try {
-    return localStorage.getItem(SCAN_PREF_KEY) !== 'off';
-  } catch {
-    return true;
-  }
-}
-function writeScanPref(on: boolean) {
-  try {
-    localStorage.setItem(SCAN_PREF_KEY, on ? 'on' : 'off');
-  } catch {
-    /* not remembered; nothing else depends on it */
-  }
-}
 
 /**
  * The field-by-field review/correction UI (§5) — shared between the live
@@ -126,12 +107,8 @@ export function ReviewScreen({
         : 'Check the values against the scan'
       : undefined);
 
-  const wide = useMediaQuery('(min-width: 900px)');
-  const [scanOpen, setScanOpen] = useState(readScanPref);
-  const showScan = Boolean(scanInlineUrl) && wide && scanOpen;
-  const phone = useMediaQuery('(max-width: 620px)');
-  const [phoneView, setPhoneView] = useState<'fields' | 'scan'>('fields');
-  const phoneScan = phone && Boolean(scanAttachmentId);
+  const preview = useScanPreview(scanInlineUrl, scanAttachmentId);
+  const { phone, phoneScan } = preview;
 
   // "Next ↓" walks the fields that need attention, one press at a time, wrapping round.
   const listRef = useRef<HTMLDivElement>(null);
@@ -153,18 +130,7 @@ export function ReviewScreen({
           {meta && <div className="report-heading-meta">{meta}</div>}
         </div>
         <div className="section-title-actions">
-          {scanInlineUrl && wide && (
-            <button
-              type="button"
-              className="btn small"
-              onClick={() => {
-                setScanOpen(!scanOpen);
-                writeScanPref(!scanOpen);
-              }}
-            >
-              {scanOpen ? 'Hide scan' : 'Show scan'}
-            </button>
-          )}
+          <ScanToggleButton preview={preview} />
           {originalScanUrl && !(phone && (linksInMenu || phoneScan)) && (
             <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
               View original scan
@@ -185,31 +151,9 @@ export function ReviewScreen({
         </Notice>
       )}
 
-      {phoneScan && (
-        <div className="view-switch" role="tablist" aria-label="Show fields or scan">
-          {(['fields', 'scan'] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              aria-selected={phoneView === v}
-              className={`view-switch-button${phoneView === v ? ' active' : ''}`}
-              onClick={() => setPhoneView(v)}
-            >
-              {v === 'fields' ? 'Fields' : 'Scan'}
-            </button>
-          ))}
-        </div>
-      )}
-      {phoneScan && phoneView === 'scan' && scanAttachmentId && <ScanPages attachmentId={scanAttachmentId} />}
+      <PhoneScanSwitch preview={preview} />
 
-      <div className={`review-split${showScan ? ' with-scan' : ''}`} hidden={phoneScan && phoneView === 'scan'}>
-        {showScan && (
-          <aside className="review-scan" aria-label="Original scan">
-            <iframe src={`${scanInlineUrl}#view=FitH`} title="Original scan" />
-          </aside>
-        )}
-        <div className="review-fields">
+      <ScanSplit preview={preview}>
       <fieldset className="review-fieldset" disabled={readOnly}>
       <ReadOnlyContext.Provider value={readOnly}>
       <div className={`field-list${readOnly ? ' read-only' : ''}`} ref={listRef}>
@@ -309,8 +253,7 @@ export function ReviewScreen({
           )}
         </div>
       </div>
-        </div>
-      </div>
+      </ScanSplit>
     </div>
   );
 }
