@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
+import { startEditing } from './edit-helper';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
 
@@ -136,7 +137,7 @@ test.describe('reports search screen', () => {
     await expect(page.locator('.report-heading-meta')).toContainText('Finalized');
     // A finalized report opens read-only: Edit unlocks it, and only then is there anything to save.
     await expect(page.locator('button:has-text("Save corrections")')).toHaveCount(0);
-    await page.click('.review-actions button:has-text("Edit")');
+    await startEditing(page);
     await expect(page.locator('button:has-text("Save corrections")')).toBeVisible();
     // finalize_report (backend §9) 409s outside extracted/in_review — the
     // button is withheld rather than surfacing that error after the click.
