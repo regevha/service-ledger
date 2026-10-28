@@ -38,3 +38,9 @@ def test_a_cut_off_answer_is_refused(error_cls):
 def test_a_finished_answer_passes():
     raise_if_truncated(SimpleNamespace(stop_reason="tool_use"), error_cls=ExtractionError, noun="extraction")
     raise_if_truncated(SimpleNamespace(), error_cls=ExtractionError, noun="extraction")  # fakes without the field
+
+
+def test_classify_prompt_says_instrument_model_is_always_required():
+    # Live runs (2026-10-28) on a FACSDiscover S8 form: about 3 answers in 8 left
+    # `instrument_model` out, putting the model only in `detected_model`.
+    assert "Always fill `instrument_model`" in classification._CLASSIFY_BODY

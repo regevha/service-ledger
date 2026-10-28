@@ -61,7 +61,8 @@ independently — they are not the same call.
 _CLASSIFY_BODY = """1. Which instrument model this document is for. Look for the "Installed Product" or \
 "System" field, which prints a code and model name (e.g. "648282B3 - ARIA III ACDU \
 6B/3R/3V" is a FACSAria III; "665158 - FACSDiscover S8 ..." is a FACSDiscover S8). \
-Only choose from the allowed options.
+Only choose from the allowed options. Always fill `instrument_model` with one of them, \
+even when `detected_model` says the same thing: both are required.
 
 2. What kind of service visit this is. The most reliable signal is the "Work Order \
 Task Code" field: a code starting T113 ("Repair / Troubleshooting Visit") means \
