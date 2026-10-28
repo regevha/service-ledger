@@ -54,7 +54,11 @@ def translate_attachment(
             models.ExtractionJob.attachment_id == attachment_id,
             models.ExtractionJob.kind == models.ExtractionJobKind.translate,
             models.ExtractionJob.status.in_(
-                [models.ExtractionJobStatus.pending, models.ExtractionJobStatus.translating]
+                [
+                    models.ExtractionJobStatus.pending,
+                    models.ExtractionJobStatus.translating,
+                    models.ExtractionJobStatus.awaiting_approval,
+                ]
             ),
         )
         .first()

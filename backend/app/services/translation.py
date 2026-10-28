@@ -372,6 +372,7 @@ def translation_gate(attachment: Attachment) -> str | None:
         if job.kind == ExtractionJobKind.translate and job.status in (
             ExtractionJobStatus.pending,
             ExtractionJobStatus.translating,
+            ExtractionJobStatus.awaiting_approval,
         ):
             return "This document is being translated — wait for the translation, then review it."
     current = current_translation(attachment)
