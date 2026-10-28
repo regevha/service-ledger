@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # Stops paying for the apps between test rounds without deleting anything.
-# Scales the API and the worker to zero copies; the database keeps running
-# unless you add --with-db. Undo with resume.sh.
+# Stops the API and the worker; the database keeps running unless you add
+# --with-db. Undo with resume.sh.
 #
 # Usage:   ./deploy/azure/pause.sh <name>              apps only, database stays up
 #          ./deploy/azure/pause.sh <name> --with-db    apps and the database
 # Needs:   Azure CLI logged in (az login), the containerapp extension.
 #
 # While paused:
-#   - The API wakes by itself on the first request (a few seconds' cold start). With the
-#     database up it then works; with --with-db it cannot reach the database.
-#   - The worker does not wake by itself: uploads wait at "pending" until resume.sh.
+#   - The address answers nothing; a stopped app does not wake on a request.
+#   - Uploads cannot be made; jobs the worker was running are recovered at its next start.
 #   - Still charged: the database (unless --with-db; its storage always), the file share,
 #     the registry, the log workspace. Azure starts a stopped database again after 7 days.
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 NAME="${1:?usage: pause.sh <name> [--with-db]}"
 [[ "$NAME" =~ ^[a-z][a-z0-9-]{2,13}$ ]] || { echo "name must be 3-14 chars: lowercase letters, digits, hyphens, starting with a letter" >&2; exit 1; }
@@ -28,28 +28,23 @@ RG="rg-$NAME"
 SUB_SHORT="$(az account show --query id -o tsv | tr -d '-' | cut -c1-6)"
 PG="pg-${NAME}-${SUB_SHORT}"
 APPS=("api-$NAME" "worker-$NAME")
+# shellcheck source=_apps.sh
+source "$HERE/_apps.sh"
 
 for app in "${APPS[@]}"; do
   az containerapp show -g "$RG" -n "$app" -o none 2>/dev/null || { echo "$app not found in $RG. Is '$NAME' deployed?" >&2; exit 1; }
 done
 
-echo "== Scaling the apps to zero"
+echo "== Stopping the API and the worker"
 for app in "${APPS[@]}"; do
-  az containerapp update -g "$RG" -n "$app" --min-replicas 0 -o none
-  echo "   $app: minimum 0"
+  if [[ "$(app_status "$app")" == "Stopped" ]]; then echo "   $app: already stopped"; continue; fi
+  app_action "$app" stop
 done
-
-echo "   waiting for the running copies to stop..."
+FAILED=0
 for app in "${APPS[@]}"; do
-  COUNT=""
-  for _ in $(seq 1 30); do
-    COUNT="$(az containerapp replica list -g "$RG" -n "$app" --query 'length(@)' -o tsv 2>/dev/null || echo "?")"
-    [[ "$COUNT" == "0" ]] && break
-    sleep 10
-  done
-  if [[ "$COUNT" == "0" ]]; then echo "   $app: stopped"
-  else echo "   $app: still $COUNT running after 5 minutes; it will stop on its own (check: az containerapp replica list -g $RG -n $app -o table)"; fi
+  if wait_app_status "$app" Stopped; then echo "   $app: stopped"; else FAILED=1; fi
 done
+[[ "$FAILED" == "0" ]] || echo "   Check in the portal (the app's Overview page) and run this again." >&2
 
 if [[ "$WITH_DB" == "1" ]]; then
   echo "== Stopping the database $PG"
@@ -66,3 +61,4 @@ fi
 
 echo
 echo "Paused. To start again: ./deploy/azure/resume.sh $NAME"
+exit "$FAILED"
