@@ -18,6 +18,7 @@ import { PlaceCharts } from './PlaceCharts';
 import { ReportsPerInstrumentChart, ReportsPerModelChart } from './ReportCountCharts';
 import { ReportFilterBar } from './ReportFilterBar';
 import { ModelComparisonSection } from './ModelComparison';
+import { FleetList, GROUPS, fleetRows, passRate, type FleetSelection, type GroupBy } from './FleetList';
 
 /**
  * Fleet-wide roll-ups (GET /analytics/fleet) — most-replaced parts, labor
@@ -257,11 +258,25 @@ function FilterBar({ filters, setFilters, instruments }: {
   );
 }
 
+// What choosing a row in the fleet list adds to the page's filters.
+const SELECTION_FILTER: Record<GroupBy, 'model_id' | 'instrument_id' | 'place_id'> = {
+  model: 'model_id',
+  instrument: 'instrument_id',
+  place: 'place_id',
+};
+
 export function AnalyticsScreen() {
   const phone = useMediaQuery('(max-width: 620px)');
-  const [data, setData] = useState<FleetAnalytics | null>(null);
+  // Wide enough for the fleet list to sit beside the charts; narrower, the list and one item's charts take turns.
+  const split = useMediaQuery('(min-width: 900px)');
+  // `fleet` is the whole picture under the page's filters (it feeds the list, which always shows every row);
+  // `detail` is the same request narrowed to the chosen row (it feeds the charts while a row is chosen).
+  const [fleet, setFleet] = useState<FleetAnalytics | null>(null);
+  const [detail, setDetail] = useState<FleetAnalytics | null>(null);
   const [filters, setFilters] = useState<AnalyticsFilters>({});
   const [instruments, setInstruments] = useState<Instrument[]>([]);
+  const [groupBy, setGroupBy] = useState<GroupBy>('model');
+  const [chosen, setChosen] = useState<FleetSelection>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -280,13 +295,29 @@ export function AnalyticsScreen() {
   const backwards = Boolean(filters.date_from && filters.date_to && filters.date_from > filters.date_to);
   const filterKey = JSON.stringify(filters);
 
-  const { loading, error } = useAsyncEffect(
+  const { loading: fleetLoading, error: fleetError } = useAsyncEffect(
     async (isCancelled) => {
       if (backwards) return; // the server refuses it; the page says so instead
       const result = await getFleetAnalytics(filters);
-      if (!isCancelled()) setData(result);
+      if (!isCancelled()) setFleet(result);
     },
     [filterKey],
+    'Could not load fleet analytics.'
+  );
+
+  // A chosen row that the filters have since removed from the list is no longer chosen.
+  const selection =
+    chosen && fleet && fleetRows(fleet, chosen.kind).some((r) => r.id === chosen.id) ? chosen : null;
+  const detailFilters: AnalyticsFilters = selection ? { ...filters, [SELECTION_FILTER[selection.kind]]: selection.id } : filters;
+  const detailKey = JSON.stringify(detailFilters);
+
+  const { loading: detailLoading, error: detailError } = useAsyncEffect(
+    async (isCancelled) => {
+      if (backwards || !selection) return;
+      const result = await getFleetAnalytics(detailFilters);
+      if (!isCancelled()) setDetail(result);
+    },
+    [detailKey, Boolean(selection)],
     'Could not load fleet analytics.'
   );
 
@@ -303,7 +334,7 @@ export function AnalyticsScreen() {
   }
 
   // Only the first load replaces the page; after that the controls stay put and the figures refresh.
-  if (!data && loading) {
+  if (!fleet && fleetLoading) {
     return (
       <div className="section">
         <div className="working-panel">
@@ -314,17 +345,53 @@ export function AnalyticsScreen() {
     );
   }
 
-  if (!data) {
+  if (!fleet) {
     return (
       <div className="section">
-        <div className="banner banner-warn">{error ?? 'Could not load fleet analytics.'}</div>
+        <div className="banner banner-warn">{fleetError ?? 'Could not load fleet analytics.'}</div>
       </div>
     );
   }
 
-  const totalUnitsReplaced = data.parts_replaced.reduce((sum, p) => sum + p.total_qty, 0);
-  const totalReports = data.labor_hours_by_instrument.reduce((sum, r) => sum + r.report_count, 0);
+  const loading = fleetLoading || (selection !== null && detailLoading);
+  const error = fleetError ?? (selection ? detailError : null);
+  // The charts show the chosen row's numbers, or the whole fleet's when nothing is chosen.
+  const data = selection ? detail : fleet;
   const filtered = Object.values(filters).some(Boolean);
+  const groupLabel = GROUPS.find((g) => g.kind === (selection?.kind ?? groupBy))!;
+  // Beside the charts on a wide screen; on a narrower one the list shows until a row is chosen, then gives way to it.
+  const showList = split || selection === null;
+
+  const choose = (next: FleetSelection) => {
+    setChosen(next);
+    // The list stays where it is; the charts below it change, so go to them.
+    if (next && !split) window.scrollTo({ top: 0 });
+  };
+
+  const list = (
+    <FleetList
+      data={fleet}
+      groupBy={groupBy}
+      setGroupBy={(g) => {
+        setGroupBy(g);
+        setChosen(null);
+      }}
+      selection={selection}
+      onSelect={choose}
+      loading={fleetLoading}
+      limit={split ? undefined : 5}
+    />
+  );
+
+  const totalUnitsReplaced = data ? data.parts_replaced.reduce((sum, p) => sum + p.total_qty, 0) : 0;
+  const totalReports = data ? data.labor_hours_by_instrument.reduce((sum, r) => sum + r.report_count, 0) : 0;
+  const passing = data
+    ? Object.values(data.pass_fail_by_report_type ?? {}).reduce(
+        (t, b) => ({ pass: t.pass + b.pass_count, fail: t.fail + b.fail_count, other: t.other + b.other_count }),
+        { pass: 0, fail: 0, other: 0 }
+      )
+    : null;
+  const rate = passing ? passRate(passing.pass, passing.fail, passing.other) : null;
 
   return (
     <div className="section">
@@ -346,60 +413,98 @@ export function AnalyticsScreen() {
       {error && <div className="banner banner-warn">{error}</div>}
 
       <p className="hint-text" data-testid="analytics-basis" aria-live="polite">
-        {loading ? 'Updating…' : `Based on ${data.finalized_report_count} finalized report${data.finalized_report_count === 1 ? '' : 's'}${filtered ? ' matching the filters' : ''}.`}
+        {loading
+          ? 'Updating…'
+          : data
+            ? `Based on ${data.finalized_report_count} finalized report${data.finalized_report_count === 1 ? '' : 's'}${selection ? ` for ${selection.name}` : ''}${filtered ? ' matching the filters' : ''}.`
+            : ''}
       </p>
 
-      {!loading && data.finalized_report_count === 0 && filtered && (
+      {!loading && fleet.finalized_report_count === 0 && filtered && (
         <div className="empty-hint">No finalized reports match these filters.</div>
       )}
 
-      <div className="stat-row">
-        <div className="stat-tile">
-          <span className="stat-value">{formatHours(data.total_labor_hours)}</span>
-          <span className="stat-label">Total labor hours</span>
-        </div>
-        <div className="stat-tile">
-          <span className="stat-value">{totalUnitsReplaced}</span>
-          <span className="stat-label">Units replaced ({data.parts_replaced.length} distinct parts)</span>
-        </div>
-        <div className="stat-tile">
-          <span className="stat-value">{totalReports}</span>
-          <span className="stat-label">Repair/PM reports counted</span>
+      <div className={`analytics-split${showList && split ? ' with-list' : ''}`}>
+        {showList && list}
+        <div className="analytics-detail">
+          {selection && (
+            <div className="analytics-detail-head">
+              {!split && (
+                <button type="button" className="link-button analytics-back" onClick={() => setChosen(null)}>
+                  ← {groupLabel.all}
+                </button>
+              )}
+              <div className="analytics-detail-title">{selection.name}</div>
+              {split && (
+                <button type="button" className="btn small" onClick={() => setChosen(null)}>
+                  Back to whole fleet
+                </button>
+              )}
+            </div>
+          )}
+
+          {!data ? (
+            <div className="working-panel">
+              <div className="spinner" />
+              <div>Loading {selection?.name}…</div>
+            </div>
+          ) : (
+            <>
+              <div className="stat-row">
+                <div className="stat-tile">
+                  <span className="stat-value">{formatHours(data.total_labor_hours)}</span>
+                  <span className="stat-label">Total labor hours</span>
+                </div>
+                <div className="stat-tile">
+                  <span className="stat-value">{totalUnitsReplaced}</span>
+                  <span className="stat-label">Units replaced ({data.parts_replaced.length} distinct parts)</span>
+                </div>
+                <div className="stat-tile">
+                  <span className="stat-value">{totalReports}</span>
+                  <span className="stat-label">Repair/PM reports counted</span>
+                </div>
+                <div className="stat-tile" data-testid="stat-pass-rate">
+                  <span className="stat-value">{rate === null ? '–' : `${rate}%`}</span>
+                  <span className="stat-label">Pass rate (repair and PM)</span>
+                </div>
+              </div>
+
+              <ChartSection title="Most replaced parts" defaultOpen>
+                <PartsChart parts={data.parts_replaced} />
+              </ChartSection>
+
+              <ChartSection title="Labor hours by instrument">
+                <LaborHoursByInstrumentChart
+                  rows={data.labor_hours_by_instrument}
+                  withoutHours={data.reports_without_labor_hours ?? 0}
+                />
+              </ChartSection>
+
+              <ChartSection title={`${filters.status ? 'Reports' : 'Finalized reports'} per instrument`}>
+                <ReportsPerInstrumentChart rows={data.report_counts_by_instrument ?? []} />
+              </ChartSection>
+
+              <ChartSection title={`${filters.status ? 'Reports' : 'Finalized reports'} per instrument model`}>
+                <ReportsPerModelChart rows={data.report_counts_by_model ?? []} />
+              </ChartSection>
+
+              <ChartSection title="By place (institution, faculty, room)">
+                <PlaceCharts rows={data.place_rollups ?? []} reportsLabel={filters.status ? 'Reports' : 'Finalized reports'} />
+              </ChartSection>
+
+              <ChartSection title="Labor hours by fault category (repair only)">
+                <LaborHoursByFaultCategoryChart byCategory={data.labor_hours_by_fault_category} />
+              </ChartSection>
+
+              <ChartSection title="Pass / fail rate">
+                <PassFailSection byReportType={data.pass_fail_by_report_type} />
+              </ChartSection>
+
+              <ModelComparisonSection filters={detailFilters} />
+            </>
+          )}
         </div>
       </div>
-
-      <ChartSection title="Most replaced parts" defaultOpen>
-        <PartsChart parts={data.parts_replaced} />
-      </ChartSection>
-
-      <ChartSection title="Labor hours by instrument">
-        <LaborHoursByInstrumentChart
-          rows={data.labor_hours_by_instrument}
-          withoutHours={data.reports_without_labor_hours ?? 0}
-        />
-      </ChartSection>
-
-      <ChartSection title={`${filters.status ? 'Reports' : 'Finalized reports'} per instrument`}>
-        <ReportsPerInstrumentChart rows={data.report_counts_by_instrument ?? []} />
-      </ChartSection>
-
-      <ChartSection title={`${filters.status ? 'Reports' : 'Finalized reports'} per instrument model`}>
-        <ReportsPerModelChart rows={data.report_counts_by_model ?? []} />
-      </ChartSection>
-
-      <ChartSection title="By place (institution, faculty, room)">
-        <PlaceCharts rows={data.place_rollups ?? []} reportsLabel={filters.status ? 'Reports' : 'Finalized reports'} />
-      </ChartSection>
-
-      <ChartSection title="Labor hours by fault category (repair only)">
-        <LaborHoursByFaultCategoryChart byCategory={data.labor_hours_by_fault_category} />
-      </ChartSection>
-
-      <ChartSection title="Pass / fail rate">
-        <PassFailSection byReportType={data.pass_fail_by_report_type} />
-      </ChartSection>
-
-      <ModelComparisonSection filters={filters} />
     </div>
   );
 }

@@ -874,6 +874,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extraction-jobs/{job_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Extraction Job
+         * @description VIEW_PROMPTS: the person read the prompt and pressed Send. The job goes
+         *     back to the queue and this time the Claude call is made.
+         */
+        post: operations["approve_extraction_job_extraction_jobs__job_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extraction-jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Extraction Job
+         * @description VIEW_PROMPTS: the person pressed Cancel; nothing is sent to Claude.
+         */
+        post: operations["cancel_extraction_job_extraction_jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/attachments/{attachment_id}/translate": {
         parameters: {
             query?: never;
@@ -1235,6 +1276,10 @@ export interface components {
             } | null;
             /** Error Message */
             error_message?: string | null;
+            /** Prompt Preview */
+            prompt_preview?: {
+                [key: string]: unknown;
+            } | null;
             /** Started At */
             started_at: string | null;
             /** Completed At */
@@ -1854,6 +1899,21 @@ export interface components {
             report_count: number;
             /** Total Labor Hours */
             total_labor_hours: number;
+            /**
+             * Pass Count
+             * @default 0
+             */
+            pass_count: number;
+            /**
+             * Fail Count
+             * @default 0
+             */
+            fail_count: number;
+            /**
+             * Other Count
+             * @default 0
+             */
+            other_count: number;
         };
         /** PlaceUpdate */
         PlaceUpdate: {
@@ -1884,6 +1944,26 @@ export interface components {
             serial_number: string;
             /** Report Count */
             report_count: number;
+            /**
+             * Total Labor Hours
+             * @default 0
+             */
+            total_labor_hours: number;
+            /**
+             * Pass Count
+             * @default 0
+             */
+            pass_count: number;
+            /**
+             * Fail Count
+             * @default 0
+             */
+            fail_count: number;
+            /**
+             * Other Count
+             * @default 0
+             */
+            other_count: number;
         };
         /**
          * ReportCountByModelOut
@@ -1892,10 +1972,32 @@ export interface components {
         ReportCountByModelOut: {
             /** Model */
             model: string;
+            /** Model Id */
+            model_id?: string | null;
             /** Unit Count */
             unit_count: number;
             /** Report Count */
             report_count: number;
+            /**
+             * Total Labor Hours
+             * @default 0
+             */
+            total_labor_hours: number;
+            /**
+             * Pass Count
+             * @default 0
+             */
+            pass_count: number;
+            /**
+             * Fail Count
+             * @default 0
+             */
+            fail_count: number;
+            /**
+             * Other Count
+             * @default 0
+             */
+            other_count: number;
         };
         /**
          * ReportCreate
@@ -4102,6 +4204,68 @@ export interface operations {
         };
     };
     get_extraction_job_extraction_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_extraction_job_extraction_jobs__job_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_extraction_job_extraction_jobs__job_id__cancel_post: {
         parameters: {
             query?: never;
             header?: never;

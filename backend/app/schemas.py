@@ -993,14 +993,28 @@ class ReportCountByInstrumentOut(BaseModel):
     institution: str | None = None
     serial_number: str
     report_count: int
+    # What the fleet list beside the charts shows per row: the hours added up for this
+    # instrument and how its repair / preventive maintenance reports came out
+    # (the same buckets as PassFailBreakdownOut).
+    total_labor_hours: float = 0.0
+    pass_count: int = 0
+    fail_count: int = 0
+    other_count: int = 0
 
 
 class ReportCountByModelOut(BaseModel):
     """The same counts added up per instrument model, with how many units of the model are listed."""
 
     model: str
+    # The model record (instrument_models.id) when the units have one: what the
+    # `model_id` filter takes, so the page can narrow itself to this model.
+    model_id: uuid.UUID | None = None
     unit_count: int
     report_count: int
+    total_labor_hours: float = 0.0
+    pass_count: int = 0
+    fail_count: int = 0
+    other_count: int = 0
 
 
 class PassFailBreakdownOut(BaseModel):
@@ -1029,6 +1043,9 @@ class PlaceRollupOut(BaseModel):
     instrument_count: int
     report_count: int
     total_labor_hours: float
+    pass_count: int = 0
+    fail_count: int = 0
+    other_count: int = 0
 
 
 class FleetAnalyticsOut(BaseModel):
