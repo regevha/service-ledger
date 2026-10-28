@@ -37,11 +37,11 @@ MY_IP="${MY_IP:-$(curl -fsS https://api.ipify.org)}"
 FW_RULE="tmp-backup-$$"
 open_database() {
   echo "== Opening the database to $MY_IP for this run"
-  az postgres flexible-server firewall-rule create -g "$RG" -n "$PG" --rule-name "$FW_RULE" \
+  az postgres flexible-server firewall-rule create -g "$RG" --server-name "$PG" --name "$FW_RULE" \
     --start-ip-address "$MY_IP" --end-ip-address "$MY_IP" -o none
   sleep 15   # the rule takes a moment to apply
 }
 close_database() {
-  az postgres flexible-server firewall-rule delete -g "$RG" -n "$PG" --rule-name "$FW_RULE" --yes -o none 2>/dev/null || \
+  az postgres flexible-server firewall-rule delete -g "$RG" --server-name "$PG" --name "$FW_RULE" --yes -o none 2>/dev/null || \
     echo "Could not remove the firewall rule $FW_RULE; delete it in the portal (server $PG, Networking)." >&2
 }
