@@ -985,7 +985,7 @@ export function mergeInstrumentModel(
 }
 
 export type Place = components['schemas']['PlaceOut'];
-export type PlaceKind = components['schemas']['PlaceKind'];
+export type PlaceKind = Place['kind'];
 
 export function listPlaces(): Promise<Place[]> {
   return apiFetch('/places');
