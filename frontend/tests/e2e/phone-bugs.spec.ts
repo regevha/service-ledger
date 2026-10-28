@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
+import { startEditing } from './edit-helper';
 import { uniquePdf } from './unique-upload';
 import { createNumericTemplate } from './numeric-fixture';
 import { BACKEND_PORT } from '../../playwright.config';
@@ -76,7 +77,7 @@ test.describe('on a phone', () => {
   test('the Saved toast does not cover the save bar', async ({ page, request }) => {
     const { reportId } = await seed(request);
     await page.goto(`/#/reports/${reportId}`);
-    await page.click('.review-actions button:has-text("Edit")');
+    await startEditing(page);
     await page.click('.review-actions button:has-text("Save corrections")');
     const toast = page.locator('.toast');
     await expect(toast).toBeVisible();
@@ -107,7 +108,7 @@ test.describe('on a phone', () => {
     const lot = page.locator('.field', { hasText: 'Cst beads lot' }).locator('input, textarea').first();
     await expect(lot).toHaveValue('LOT-ORIG', { timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
-    await page.click('.review-actions button:has-text("Edit")');
+    await startEditing(page);
     await lot.fill('LOT-CHANGED');
     await page.click('.review-actions button:has-text("Cancel")');
     await expect(page.locator('.review-actions button:has-text("Edit")')).toBeVisible();
@@ -121,7 +122,7 @@ test.describe('on a phone', () => {
     await expect(page.locator('.field-list.read-only')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('.field-list .date-input-pick')).toBeHidden();
     await expect(page.locator('.field-list .field-note').first()).toBeHidden();
-    await page.click('.review-actions button:has-text("Edit")');
+    await startEditing(page);
     await expect(page.locator('.field-list .date-input-pick')).toBeVisible();
     await expect(page.locator('.field-list .field-note').first()).toBeVisible();
   });
