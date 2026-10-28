@@ -605,6 +605,9 @@ export function IntakeFlow({
   const [attachmentId, setAttachmentId] = useState<string | null>(null);
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [fieldConfidences, setFieldConfidences] = useState<Record<string, number>>({});
+  // Fields marked as checked on Review & finalize. Kept here so a save, which swaps the screen for the
+  // "Saving…" panel, does not bring the flags back. Cleared whenever a fresh extraction replaces the values.
+  const [checkedFields, setCheckedFields] = useState<ReadonlySet<string>>(() => new Set());
   // Measured in the browser, from submitting the extraction to the job finishing; shown on Review & finalize only.
   const [extractionSeconds, setExtractionSeconds] = useState<number | null>(null);
   const [fields, setFields] = useState<Record<string, unknown>>({});
@@ -655,6 +658,7 @@ export function IntakeFlow({
     setAttachmentId(null);
     setTemplate(null);
     setFieldConfidences({});
+    setCheckedFields(new Set());
     setExtractionSeconds(null);
     setFields({});
     setReportDate(null);
@@ -735,6 +739,7 @@ export function IntakeFlow({
       const refreshed = await getReport(reportId);
       setReport(refreshed);
       setFieldConfidences(job.field_confidences ?? {});
+      setCheckedFields(new Set());
       setExtractionSeconds(elapsedSeconds);
       setFields(refreshed.extracted_fields ?? {});
       setReportDate(refreshed.report_date);
@@ -1115,6 +1120,8 @@ export function IntakeFlow({
           scanAttachmentId={attachmentId ?? undefined}
           pdfUrl={report ? reportPdfUrl(report.id) : undefined}
           extractionSeconds={extractionSeconds}
+          checkedFields={checkedFields}
+          onMarkChecked={(name) => setCheckedFields((prev) => new Set(prev).add(name))}
         />
       )}
 

@@ -45,6 +45,8 @@ export function ReviewScreen({
   onCancelEdit,
   linksInMenu = false,
   extractionSeconds,
+  checkedFields,
+  onMarkChecked,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
@@ -97,11 +99,16 @@ export function ReviewScreen({
   linksInMenu?: boolean;
   // How long reading the document into these fields took, in seconds. Null or undefined: nothing to say.
   extractionSeconds?: number | null;
+  // Fields the technician marked as checked. The live intake flow owns this set, because this screen is
+  // replaced by the "Saving…" panel while a save runs and would otherwise forget it. Left out, the screen keeps its own.
+  checkedFields?: ReadonlySet<string>;
+  onMarkChecked?: (name: string) => void;
 }) {
   // A low-confidence field stays flagged until the technician explicitly marks it checked.
   // Editing the value does not count: they may have typed over it without looking at the scan.
-  const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
-  const markChecked = (name: string) => setChecked((prev) => new Set(prev).add(name));
+  const [ownChecked, setOwnChecked] = useState<ReadonlySet<string>>(() => new Set());
+  const checked = checkedFields ?? ownChecked;
+  const markChecked = (name: string) => (onMarkChecked ? onMarkChecked(name) : setOwnChecked((prev) => new Set(prev).add(name)));
   const isFlagged = (name: string) => {
     const confidence = fieldConfidences[name];
     return confidence !== undefined && confidence < fieldConfidenceThreshold && !checked.has(name);

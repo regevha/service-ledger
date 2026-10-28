@@ -254,4 +254,9 @@ test('flagged fields are listed above the fields and clear only when marked as c
   await expect(page.locator('.field.pending')).toHaveCount(n - 1);
   if (n === 1) await expect(strip).toHaveCount(0);
   else await expect(strip).toContainText(`${n - 1} field`);
+
+  // Saving swaps the screen for the "Saving…" panel and back; a checked field must stay checked.
+  await page.getByRole('button', { name: 'Save corrections' }).click();
+  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await expect(page.locator('.field.pending')).toHaveCount(n - 1);
 });
