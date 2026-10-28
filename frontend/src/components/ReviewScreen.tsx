@@ -45,6 +45,9 @@ export function ReviewScreen({
   onCancelEdit,
   linksInMenu = false,
   extractionSeconds,
+  busy = null,
+  saveError = null,
+  onRetrySave,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
@@ -97,6 +100,12 @@ export function ReviewScreen({
   linksInMenu?: boolean;
   // How long reading the document into these fields took, in seconds. Null or undefined: nothing to say.
   extractionSeconds?: number | null;
+  // A save or finalize request is in flight. The screen stays where it is (so the scan view, the
+  // "checked" marks and the scroll position survive); the buttons just show the progress and wait.
+  busy?: 'save' | 'finalize' | null;
+  // Why the last save or finalize failed. Shown on this screen with a retry; nothing typed is lost.
+  saveError?: string | null;
+  onRetrySave?: () => void;
 }) {
   // A low-confidence field stays flagged until the technician explicitly marks it checked.
   // Editing the value does not count: they may have typed over it without looking at the scan.
@@ -181,6 +190,24 @@ export function ReviewScreen({
         </Notice>
       )}
 
+      {saveError && (
+        <div role="alert">
+          <Notice
+            tone="crit"
+            id="save-error"
+            actions={
+              onRetrySave && (
+                <button type="button" className="btn small" onClick={onRetrySave} disabled={busy !== null}>
+                  Try again
+                </button>
+              )
+            }
+          >
+            {saveError}
+          </Notice>
+        </div>
+      )}
+
       {!readOnly && flaggedCount > 0 && (
         <div className="attention-strip" data-testid="attention-strip" role="status">
           <span className="attention-strip-count">
@@ -259,7 +286,7 @@ export function ReviewScreen({
 
       </fieldset>
 
-      <div className="review-actions">
+      <div className="review-actions" aria-busy={busy !== null}>
         <div className="review-actions-status">
           {readOnly ? (
             <span>Finalized. Press Edit to change it.</span>
@@ -292,16 +319,16 @@ export function ReviewScreen({
           ) : (
             <>
               {onCancelEdit && (
-                <button className="btn review-cancel-edit" onClick={onCancelEdit}>
+                <button className="btn review-cancel-edit" onClick={onCancelEdit} disabled={busy !== null}>
                   Cancel
                 </button>
               )}
-              <button className="btn" onClick={onSave}>
-                Save corrections
+              <button className="btn" onClick={onSave} disabled={busy !== null}>
+                {busy === 'save' ? 'Saving…' : 'Save corrections'}
               </button>
               {onFinalize && (
-                <button className="btn primary" onClick={onFinalize}>
-                  Save &amp; finalize report
+                <button className="btn primary" onClick={onFinalize} disabled={busy !== null}>
+                  {busy === 'finalize' ? 'Finalizing…' : <>Save &amp; finalize report</>}
                 </button>
               )}
             </>

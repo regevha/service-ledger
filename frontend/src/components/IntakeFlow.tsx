@@ -39,6 +39,8 @@ import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
 import { AddInstrumentPanel } from './AddInstrumentPanel';
 import { Notice } from './Notice';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { reviewSnapshot } from '../reviewSnapshot';
 import { ReviewScreen } from './ReviewScreen';
 import { PhoneScanSwitch, ScanSplit, ScanToggleButton, useScanPreview } from './ScanPreview';
 import { TranslationReview } from './TranslationReview';
@@ -86,12 +88,8 @@ function templateApplies(template: ReportTemplate, waiting: WaitingForTemplate):
 function StepBar({ phase }: { phase: Phase }) {
   // Every "working" phase before the review screen (upload, classify,
   // resolve-template, extract) counts as step 1 ("Classify") below — there's
-  // no separate step for those sub-stages. But handleSaveFields's two
-  // "working" labels ("Saving corrections…"/"Saving and finalizing…") fire
-  // *from* the review screen, not before it, so without checking for them
-  // here they'd fall through to the same step-1 default and the bar would
-  // visibly jump backward from "Review & finalize" to "Classify" while a
-  // save/finalize is in flight.
+  // no separate step for those sub-stages. Saving and finalizing do not
+  // change the phase: the review screen stays in place while they run.
   const stepIndex =
     phase.name === 'done'
       ? 3 // all three steps finished
@@ -99,7 +97,7 @@ function StepBar({ phase }: { phase: Phase }) {
       ? 0
       : phase.name === 'review-translation' || phase.name === 'confirm-classification' || (phase.name === 'working' && phase.label.includes('lassif'))
         ? 1
-        : phase.name === 'review' || (phase.name === 'working' && phase.label.includes('aving'))
+        : phase.name === 'review'
           ? 2
           : phase.name === 'working'
             ? 1
@@ -609,6 +607,15 @@ export function IntakeFlow({
   const [extractionSeconds, setExtractionSeconds] = useState<number | null>(null);
   const [fields, setFields] = useState<Record<string, unknown>>({});
   const [reportDate, setReportDate] = useState<string | null>(null);
+  // What the form held when it was last extracted or saved; the form differs from it exactly when
+  // there are unsaved edits (see reviewSnapshot).
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  // A save or finalize request in flight, and why the last one failed. Both live on the review screen
+  // itself, so a failure keeps the form, the scan view and the "checked" marks where they were.
+  const [saving, setSaving] = useState<'save' | 'finalize' | null>(null);
+  const [saveError, setSaveError] = useState<{ message: string; finalize: boolean } | null>(null);
+  const dirty = phase.name === 'review' && savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
+  useUnsavedChangesGuard(dirty);
 
   // The report that asked for a template of its own, until one is saved.
   const waitingRef = useRef<WaitingForTemplate | null>(null);
@@ -658,6 +665,9 @@ export function IntakeFlow({
     setExtractionSeconds(null);
     setFields({});
     setReportDate(null);
+    setSavedSnapshot(null);
+    setSaving(null);
+    setSaveError(null);
     setDuplicates({});
     waitingRef.current = null;
     setGenericNoticeDismissed(false);
@@ -738,6 +748,8 @@ export function IntakeFlow({
       setExtractionSeconds(elapsedSeconds);
       setFields(refreshed.extracted_fields ?? {});
       setReportDate(refreshed.report_date);
+      setSavedSnapshot(reviewSnapshot(refreshed.extracted_fields ?? {}, refreshed.report_date));
+      setSaveError(null);
       setPhase({ name: 'review' });
     });
   }
@@ -963,16 +975,24 @@ export function IntakeFlow({
   }
 
   async function handleSaveFields(finalize: boolean) {
-    if (!report) return;
-    setPhase({ name: 'working', label: finalize ? 'Saving and finalizing…' : 'Saving corrections…' });
-    await attempt('Saving failed unexpectedly.', () => void handleSaveFields(finalize), async () => {
+    if (!report || saving) return;
+    setSaving(finalize ? 'finalize' : 'save');
+    setSaveError(null);
+    // What is being saved is what the form holds now. Edits made while the request runs stay unsaved.
+    const sent = reviewSnapshot(fields, reportDate);
+    try {
       const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
+      setSavedSnapshot(sent);
       let final = updated;
       if (finalize) final = await finalizeReport(report.id);
       setReport(final);
-      setPhase(finalize ? { name: 'done' } : { name: 'review' });
-      if (!finalize) showToast('Saved');
-    });
+      if (finalize) setPhase({ name: 'done' });
+      else showToast('Saved');
+    } catch (e) {
+      setSaveError({ message: e instanceof ApiError ? e.message : 'Saving failed unexpectedly.', finalize });
+    } finally {
+      setSaving(null);
+    }
   }
 
   const reviewInstrument = report?.instrument_id ? instruments.find((inst) => inst.id === report.instrument_id) : undefined;
@@ -1005,9 +1025,8 @@ export function IntakeFlow({
         <WorkingPanel
           label={phase.label}
           fileName={file?.name}
-          // Saving happens from the review screen: no "reading" hint, and nothing to cancel back out of.
-          slow={liveClaude && !phase.label.includes('aving')}
-          onCancel={phase.label.includes('aving') ? undefined : onCancel}
+          slow={liveClaude}
+          onCancel={onCancel}
         />
       )}
 
@@ -1115,6 +1134,9 @@ export function IntakeFlow({
           scanAttachmentId={attachmentId ?? undefined}
           pdfUrl={report ? reportPdfUrl(report.id) : undefined}
           extractionSeconds={extractionSeconds}
+          busy={saving}
+          saveError={saveError?.message ?? null}
+          onRetrySave={saveError ? () => void handleSaveFields(saveError.finalize) : undefined}
         />
       )}
 
