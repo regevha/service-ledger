@@ -108,7 +108,8 @@ test('editing a number[detector] field (per-detector add/edit/remove) persists t
   await expect(field.locator('.number-map-row', { hasText: 'item_1' })).toBeVisible();
 
   await page.click('button:has-text("Save corrections")');
-  await expect(page.locator('.working-panel')).toHaveCount(0, { timeout: 15_000 });
+  // The screen stays in place while saving, so the "Saved" message is what says the request finished.
+  await expect(page.locator('.toast')).toHaveText('Saved', { timeout: 15_000 });
 
   const saved = await (await request.get(`${API_BASE}/reports/${reportId}`)).json();
   const savedMap = saved.extracted_fields.baseline_cv_percent as Record<string, number>;
@@ -193,7 +194,8 @@ test('editing an object[] field (add/edit/remove rows) persists through Save cor
   await expect(dataRows).toHaveCount(2);
 
   await page.click('button:has-text("Save corrections")');
-  await expect(page.locator('.working-panel')).toHaveCount(0, { timeout: 15_000 });
+  // The screen stays in place while saving, so the "Saved" message is what says the request finished.
+  await expect(page.locator('.toast')).toHaveText('Saved', { timeout: 15_000 });
 
   const saved = await (await request.get(`${API_BASE}/reports/${reportId}`)).json();
   expect(saved.extracted_fields.components_replaced).toEqual([
