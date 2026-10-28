@@ -138,7 +138,7 @@ def test_a_listed_identifier_that_differs_is_still_reported_missing():
 def test_the_translation_prompt_asks_for_identifiers_as_printed_and_for_signature_state():
     from app.services.translation import _PROMPT
 
-    assert "not 50173BE" in _PROMPT
+    assert "not 12345AB" in _PROMPT
     assert 'write each one as "signed" or "blank"' in _PROMPT
     assert "does not make it signed" in _PROMPT
 

@@ -160,6 +160,15 @@ def call_claude_tool(
     return response
 
 
+def raise_if_truncated(response: Any, *, error_cls: type[LiveClaudeError], noun: str) -> None:
+    """A reply cut off at max_tokens has a tool call with missing fields, which
+    would otherwise be read as "not on the form" (confidence 0). Refuse it."""
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        raise error_cls(
+            f"The {noun} was cut off because the answer was too long. Nothing was saved."
+        )
+
+
 def extract_tool_use(
     response: Any,
     *,

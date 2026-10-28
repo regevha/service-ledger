@@ -94,6 +94,9 @@ class Settings(BaseSettings):
     # typical text call, hence the generous timeout.
     anthropic_timeout_seconds: float = 90.0
     anthropic_max_retries: int = 2
+    # Output limit of one extract call. A template with long tables (labor, parts,
+    # detector values) needs room: a cut-off answer is refused, not half-used.
+    extract_max_tokens: int = 8192
 
     # Hebrew translation (docs: claude/proposal-hebrew-translation.md). A
     # document counts as Hebrew when more than this share of its letters are
