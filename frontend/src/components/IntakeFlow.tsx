@@ -40,6 +40,7 @@ import { AddInstrumentPanel } from './AddInstrumentPanel';
 import { Notice } from './Notice';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { ReviewScreen } from './ReviewScreen';
+import { PhoneScanSwitch, ScanSplit, ScanToggleButton, useScanPreview } from './ScanPreview';
 import { TranslationReview } from './TranslationReview';
 
 /**
@@ -292,6 +293,9 @@ function ConfirmClassificationScreen({
   onConfirm,
   onInstrumentAdded,
   busy,
+  originalScanUrl,
+  scanInlineUrl,
+  scanAttachmentId,
 }: {
   classification: ClassificationResult;
   instruments: Instrument[];
@@ -303,7 +307,12 @@ function ConfirmClassificationScreen({
   onConfirm: () => void;
   onInstrumentAdded: (instrument: Instrument) => void;
   busy: boolean;
+  // The uploaded document, shown the same way as on the review screen.
+  originalScanUrl?: string;
+  scanInlineUrl?: string;
+  scanAttachmentId?: string;
 }) {
+  const preview = useScanPreview(scanInlineUrl, scanAttachmentId);
   const serial = classification.instrument_serial ?? null;
   const match: SerialMatch = classification.serial_match ?? 'not_read';
   const noteType = classification.report_type_note as ReportType | null | undefined;
@@ -313,10 +322,26 @@ function ConfirmClassificationScreen({
       <AddInstrumentPanel classification={classification} busy={busy} onAdded={onInstrumentAdded} />
     )}
     <div className="section">
-      <div className="section-title">Detected from the document</div>
-      <p className="hint-text">
-        Check the instrument and the report type, then continue.
-      </p>
+      <div className="section-title-row">
+        <div>
+          <div className="section-title">Detected from the document</div>
+          <p className="hint-text">
+            Check the instrument and the report type, then continue.
+          </p>
+        </div>
+        <div className="section-title-actions">
+          <ScanToggleButton preview={preview} />
+          {originalScanUrl && !(preview.phone && preview.phoneScan) && (
+            <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
+              View original scan
+            </a>
+          )}
+        </div>
+      </div>
+
+      <PhoneScanSwitch preview={preview} />
+
+      <ScanSplit preview={preview}>
 
       <div className="read-row" id="read-model">
         <div className="crow-top">
@@ -429,6 +454,7 @@ function ConfirmClassificationScreen({
           Confirm &amp; continue to extraction →
         </button>
       </div>
+      </ScanSplit>
     </div>
     </>
   );
@@ -1005,6 +1031,9 @@ export function IntakeFlow({
           onConfirm={() => void handleConfirmClassification()}
           onInstrumentAdded={() => void handleInstrumentAdded()}
           busy={false}
+          originalScanUrl={attachmentId ? attachmentFileUrl(attachmentId) : undefined}
+          scanInlineUrl={attachmentId ? attachmentFileUrl(attachmentId, { inline: true }) : undefined}
+          scanAttachmentId={attachmentId ?? undefined}
         />
       )}
 
