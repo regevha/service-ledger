@@ -229,3 +229,29 @@ test('text "Remove" buttons in the template editor stay inside their card', asyn
   expect(remove!.x + remove!.width).toBeLessThanOrEqual(card!.x + card!.width);
   expect(remove!.width).toBeGreaterThan(40); // the word, not a 28px circle
 });
+
+test('flagged fields are listed above the fields and clear only when marked as checked', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
+  await page.click('button:has-text("Upload & classify")');
+  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  const n = await page.locator('.field.pending').count();
+  test.skip(n === 0, 'the stub flagged nothing on this run');
+
+  const strip = page.getByTestId('attention-strip');
+  await expect(strip).toContainText(`${n} field`);
+  const stripBox = await strip.boundingBox();
+  const listBox = await page.locator('.field-list').boundingBox();
+  expect(stripBox!.y).toBeLessThan(listBox!.y);
+
+  // Typing over a flagged value does not clear the flag.
+  const first = page.locator('.field.pending').first();
+  const input = first.locator('input, textarea').first();
+  if (await input.count()) await input.fill('1');
+  await expect(page.locator('.field.pending')).toHaveCount(n);
+
+  await first.getByRole('button', { name: 'Mark as checked' }).click();
+  await expect(page.locator('.field.pending')).toHaveCount(n - 1);
+  if (n === 1) await expect(strip).toHaveCount(0);
+  else await expect(strip).toContainText(`${n - 1} field`);
+});
