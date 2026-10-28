@@ -40,6 +40,7 @@ from app.services.claude_client import (
     is_sample_document as _is_sample_document,
     call_claude_tool,
     extract_tool_use,
+    raise_if_truncated,
     get_client as _get_client,
     stable_unit as _stable_unit,
 )
@@ -53,13 +54,16 @@ settings = get_settings()
 _EXTRACT_TOOL_NAME = "record_extraction"
 
 _EXTRACT_PROMPT_HEADER = """This is a scanned service report (the notes below about dates and sign-offs are written for BD Care Work Order Service Reports; on another maker's report use the equivalent fields). Extract exactly the fields listed \
-in the tool schema below, and only those fields — nothing else on the page.
+below under "Fields to extract", and only those fields — nothing else on the page.
 
-For each field, give:
-- `value`: read directly from the document. If the field's content genuinely isn't \
+The tool takes a flat answer: for each field, one entry named exactly like the field, \
+and a second entry named like the field plus "__confidence" (for example `labor_hours` \
+and `labor_hours__confidence`). Do not nest the value and the confidence together under \
+one key, and do not wrap the whole answer under another key.
+- `<field>`: read directly from the document. If the field's content genuinely isn't \
 present on the form, use an empty string ("" for text, [] for lists, or the type's \
 natural empty value) rather than inventing something, and give it a low confidence.
-- `confidence`: 0 to 1, reflecting how sure you actually are — a clean, unambiguous, \
+- `<field>__confidence`: 0 to 1, reflecting how sure you actually are — a clean, unambiguous, \
 directly-printed value deserves 0.85+; anything inferred, illegible, or genuinely \
 absent from the form deserves meaningfully lower. Don't default to a high number.
 
@@ -71,14 +75,14 @@ the date they signed or logged an entry — quote logs are often written as \
 "<note>. By <name> on <date>", and that attribution is not part of the fault, work, \
 or note content any field is asking for. Crop tightly to only the content the field \
 actually asks for. For example, a Subject line reading "11 Month Recurring / \
-SMX0457374" contains a contract number after the slash — extract only "11 Month \
-Recurring". Likewise a quote reading "Air bubble in bleach line. By Shachar on \
+SMX0000001" contains a contract number after the slash — extract only "11 Month \
+Recurring". Likewise a quote reading "Air bubble in bleach line. By A. Engineer on \
 18/04/2021" contains a technician sign-off — extract only "Air bubble in bleach \
 line".
 
 Serial numbers: the Subject and Description lines are typed by hand and can carry a \
-serial with a typo (for example "S/N R6651580000057" on a form whose Installed Product \
-box shows MP6651580000057). The instrument's serial is stored separately, so do not copy \
+serial with a typo (for example "S/N R1000000000042" on a form whose Installed Product \
+box shows MP1000000000042). The instrument's serial is stored separately, so do not copy \
 a serial number or an "S/N ..." phrase from those lines into a field's value; describe \
 what was done without it.
 
@@ -309,7 +313,7 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> Extractio
         client=_get_client(),
         request_kwargs=dict(
             model=settings.anthropic_model,
-            max_tokens=4096,
+            max_tokens=settings.extract_max_tokens,
             tools=[tool],
             tool_choice={"type": "tool", "name": _EXTRACT_TOOL_NAME},
             messages=[
@@ -330,6 +334,7 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> Extractio
         noun="extraction",
     )
 
+    raise_if_truncated(response, error_cls=ExtractionError, noun="extraction")
     tool_use = extract_tool_use(
         response,
         error_cls=ExtractionError,
