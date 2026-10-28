@@ -2970,3 +2970,37 @@ button.fleet-row:hover {
 .prompt-review-text { white-space: pre-wrap; word-break: break-word; background: rgba(127, 127, 127, 0.12); padding: 10px; border-radius: 6px; font-size: 0.85rem; max-height: 40vh; overflow: auto; }
 .prompt-review-doc code { word-break: break-all; }
 .prompt-review-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; position: sticky; bottom: 0; }
+
+.attention-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--warn-soft, #fbf1dc);
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+}
+.attention-strip-count {
+  font-weight: 600;
+  color: var(--warn);
+}
+.attention-strip-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.attention-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  min-height: 32px;
+  color: inherit;
+  cursor: pointer;
+}
+.mark-checked {
+  margin: 4px 0 6px;
+}

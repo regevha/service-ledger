@@ -952,6 +952,16 @@ export function IntakeFlow({
     await resolveAndExtract(report.id, attachmentId, instrument.model, pickReportType, instrument.id, instrument.instrument_type);
   }
 
+  // Back from Review & finalize to Classify. Picking the instrument and type
+  // again re-reads the document, which replaces any edits made on the review
+  // screen, so the button says so.
+  function backToClassification() {
+    if (!classification) return;
+    if (!pickInstrumentId && report?.instrument_id) setPickInstrumentId(report.instrument_id);
+    if (report?.report_type) setPickReportType(report.report_type);
+    setPhase({ name: 'confirm-classification' });
+  }
+
   async function handleSaveFields(finalize: boolean) {
     if (!report) return;
     setPhase({ name: 'working', label: finalize ? 'Saving and finalizing…' : 'Saving corrections…' });
@@ -1074,6 +1084,18 @@ export function IntakeFlow({
           {reviewInstrument.model} can ask for the fields its forms carry; saving one reads this report again and replaces what is on
           screen, so make corrections after, not before.
         </Notice>
+      )}
+
+      {phase.name === 'review' && classification && (
+        <button
+          type="button"
+          className="btn small back-link"
+          data-testid="back-to-classify"
+          title="Change the instrument or report type. Reading the document again replaces edits made here."
+          onClick={backToClassification}
+        >
+          ← Back to Classify
+        </button>
       )}
 
       {phase.name === 'review' && template && (

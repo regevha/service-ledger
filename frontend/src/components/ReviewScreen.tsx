@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { DateInput } from './DateInput';
 import { Notice } from './Notice';
@@ -98,9 +98,13 @@ export function ReviewScreen({
   // How long reading the document into these fields took, in seconds. Null or undefined: nothing to say.
   extractionSeconds?: number | null;
 }) {
+  // A low-confidence field stays flagged until the technician explicitly marks it checked.
+  // Editing the value does not count: they may have typed over it without looking at the scan.
+  const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
+  const markChecked = (name: string) => setChecked((prev) => new Set(prev).add(name));
   const isFlagged = (name: string) => {
     const confidence = fieldConfidences[name];
-    return confidence !== undefined && confidence < fieldConfidenceThreshold;
+    return confidence !== undefined && confidence < fieldConfidenceThreshold && !checked.has(name);
   };
   const reportDateConfidence = fieldConfidences.report_date;
   const reportDateFlagged = isFlagged('report_date');
@@ -121,6 +125,18 @@ export function ReviewScreen({
   // "Next ↓" walks the fields that need attention, one press at a time, wrapping round.
   const listRef = useRef<HTMLDivElement>(null);
   const nextFlagged = useRef(-1);
+  function goToField(name: string) {
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-field="${name}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.querySelector<HTMLElement>('input, textarea, select')?.focus({ preventScroll: true });
+  }
+  const flaggedList = [
+    ...(reportDateFlagged ? [{ name: 'report_date', label: 'Service date' }] : []),
+    ...template.field_schema.fields
+      .filter((f) => isFlagged(f.name))
+      .map((f) => ({ name: f.name, label: fieldLabel(f.name, f.unit) })),
+  ];
   function goToNextFlagged() {
     const els = listRef.current?.querySelectorAll<HTMLElement>('.field.pending');
     if (!els || els.length === 0) return;
@@ -165,13 +181,28 @@ export function ReviewScreen({
         </Notice>
       )}
 
+      {!readOnly && flaggedCount > 0 && (
+        <div className="attention-strip" data-testid="attention-strip" role="status">
+          <span className="attention-strip-count">
+            {flaggedCount} field{flaggedCount === 1 ? '' : 's'} need{flaggedCount === 1 ? 's' : ''} attention
+          </span>
+          <span className="attention-strip-chips">
+            {flaggedList.map((f) => (
+              <button key={f.name} type="button" className="attention-chip" onClick={() => goToField(f.name)}>
+                {f.label}
+              </button>
+            ))}
+          </span>
+        </div>
+      )}
+
       <PhoneScanSwitch preview={preview} />
 
       <ScanSplit preview={preview}>
       <fieldset className="review-fieldset" disabled={readOnly}>
       <ReadOnlyContext.Provider value={readOnly}>
       <div className={`field-list${readOnly ? ' read-only' : ''}`} ref={listRef}>
-        <div className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}>
+        <div className={`field ${reportDateFlagged ? 'pending' : 'ok'}`} data-field="report_date">
           <div className="field-top">
             <label className="field-label" htmlFor="review-report-date">
               Service date
@@ -184,6 +215,11 @@ export function ReviewScreen({
               />
             )}
           </div>
+          {reportDateFlagged && !readOnly && (
+            <button type="button" className="btn small mark-checked" onClick={() => markChecked('report_date')}>
+              Mark as checked
+            </button>
+          )}
           <DateInput id="review-report-date" value={reportDate ?? ''} onChange={(v) => onReportDateChange(v || null)} />
           <div className="field-note">The date the service visit was carried out.</div>
         </div>
@@ -191,7 +227,7 @@ export function ReviewScreen({
           const confidence = fieldConfidences[field.name];
           const flagged = isFlagged(field.name);
           return (
-            <div className={`field ${flagged ? 'pending' : 'ok'}`} key={field.name}>
+            <div className={`field ${flagged ? 'pending' : 'ok'}`} key={field.name} data-field={field.name}>
               <div className="field-top">
                 <span className="field-label">
                   <span className="badge-mini" style={{ background: flagged ? 'var(--warn)' : 'var(--good)' }}>
@@ -208,6 +244,11 @@ export function ReviewScreen({
                   />
                 )}
               </div>
+              {flagged && !readOnly && (
+                <button type="button" className="btn small mark-checked" onClick={() => markChecked(field.name)}>
+                  Mark as checked
+                </button>
+              )}
               <FieldControl field={field} value={fields[field.name]} onChange={(v) => onChange(field.name, v)} />
               {field.notes && <div className="field-note">{field.notes}</div>}
             </div>
