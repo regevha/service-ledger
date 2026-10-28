@@ -3,6 +3,7 @@ import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { finalizeFromReview } from './finalize-helper';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The confident case (§4): a document with no marker in its filename gets a
@@ -31,7 +32,7 @@ test('upload → auto-classify → extract → review → finalize', async ({ pa
   const fieldCount = await page.locator('.field-list .field').count();
   expect(fieldCount).toBeGreaterThan(0);
 
-  await page.click('button:has-text("Save & finalize report")');
+  await finalizeFromReview(page);
   await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.success-panel')).toContainText('finalized');
 
