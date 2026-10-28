@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { test, expect } from './coverage';
 import { uniqueFixture, uniquePdf } from './unique-upload';
 import { fieldLabel } from '../../src/fieldLabels';
+import { reviewSnapshot } from '../../src/reviewSnapshot';
 import { BACKEND_PORT } from '../../playwright.config';
 import { createNumericModel } from './numeric-fixture';
 
@@ -254,4 +255,170 @@ test('flagged fields are listed above the fields and clear only when marked as c
   await expect(page.locator('.field.pending')).toHaveCount(n - 1);
   if (n === 1) await expect(strip).toHaveCount(0);
   else await expect(strip).toContainText(`${n - 1} field`);
+});
+
+// Saving without leaving the screen, and not losing edits (PR 1 of the review-and-finalize plan).
+
+const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+
+async function openIntakeReview(page: import('@playwright/test').Page) {
+  await page.goto('/');
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(CONFIDENT_SCAN));
+  await page.click('button:has-text("Upload & classify")');
+  await page.waitForSelector('.field-list', { timeout: 30_000 });
+}
+
+// Whether the stub flags any field varies from run to run. Reporting the service date at 10% confidence
+// makes at least one field flagged every time, for specs that need something to be flagged.
+async function flagServiceDate(page: import('@playwright/test').Page) {
+  await page.route('**/extraction-jobs/*', async (route) => {
+    const response = await route.fetch();
+    const job = await response.json();
+    if (job && typeof job === 'object') job.field_confidences = { ...(job.field_confidences ?? {}), report_date: 0.1 };
+    await route.fulfill({ response, json: job });
+  });
+}
+
+// The first text box or number box among the fields: something safe to type into.
+const editable = (page: import('@playwright/test').Page) =>
+  page.locator('.field-list textarea, .field-list input[type="number"]').first();
+
+// What the browser would do on reload or close: is leaving being questioned?
+async function leavingIsGuarded(page: import('@playwright/test').Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+}
+
+test('reviewSnapshot: same content is equal in any key order; a changed value or date is not', () => {
+  expect(reviewSnapshot({ a: 1, b: { x: 1, y: 2 } }, '2026-10-01')).toBe(reviewSnapshot({ b: { y: 2, x: 1 }, a: 1 }, '2026-10-01'));
+  expect(reviewSnapshot({ a: 1 }, null)).toBe(reviewSnapshot({ a: 1 }, null));
+  expect(reviewSnapshot({ a: 1 }, null)).not.toBe(reviewSnapshot({ a: 2 }, null));
+  expect(reviewSnapshot({ a: 1 }, '2026-10-01')).not.toBe(reviewSnapshot({ a: 1 }, '2026-10-02'));
+  expect(reviewSnapshot({ a: [1, 2] }, null)).not.toBe(reviewSnapshot({ a: [2, 1] }, null));
+  // A key that is not set counts the same as one set to undefined.
+  expect(reviewSnapshot({ a: 1, b: undefined }, null)).toBe(reviewSnapshot({ a: 1 }, null));
+});
+
+test('saving corrections keeps the review screen: typed values and checked marks survive', async ({ page }) => {
+  await flagServiceDate(page);
+  await openIntakeReview(page);
+  const flagged = await page.locator('.field.pending').count();
+  expect(flagged).toBeGreaterThan(0);
+  await page.locator('.field.pending').first().getByRole('button', { name: 'Mark as checked' }).click();
+  await editable(page).fill('12');
+
+  await page.click('button:has-text("Save corrections")');
+  await expect(page.locator('.toast')).toHaveText('Saved');
+  await expect(page.locator('.working-panel')).toHaveCount(0);
+  // The mark is still there (the field did not come back flagged) and so is what was typed.
+  await expect(page.locator('.field.pending')).toHaveCount(flagged - 1);
+  await expect(editable(page)).toHaveValue('12');
+});
+
+test('a failed save stays on the screen with the reason and a Try again; nothing typed is lost', async ({ page }) => {
+  let failNext = true;
+  await page.route('**/reports/*/fields', (route) => {
+    if (route.request().method() === 'PATCH' && failNext) {
+      failNext = false;
+      return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ detail: 'Simulated save failure' }) });
+    }
+    return route.continue();
+  });
+  await openIntakeReview(page);
+  await editable(page).fill('12');
+
+  await page.click('button:has-text("Save corrections")');
+  const error = page.locator('#save-error');
+  await expect(error).toContainText('Simulated save failure');
+  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.locator('button:has-text("Start over")')).toHaveCount(0);
+  await expect(editable(page)).toHaveValue('12');
+  await expect(page.locator('button:has-text("Save corrections")')).toBeEnabled();
+  expect(await leavingIsGuarded(page)).toBe(true); // still unsaved
+
+  await error.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.locator('.toast')).toHaveText('Saved');
+  await expect(page.locator('#save-error')).toHaveCount(0);
+  await expect(editable(page)).toHaveValue('12');
+  expect(await leavingIsGuarded(page)).toBe(false);
+});
+
+test('a failed finalize stays on the screen, and Try again finalizes', async ({ page }) => {
+  let failNext = true;
+  await page.route('**/reports/*/finalize', (route) => {
+    if (failNext) {
+      failNext = false;
+      return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'Simulated finalize failure' }) });
+    }
+    return route.continue();
+  });
+  await openIntakeReview(page);
+  await editable(page).fill('12');
+
+  await page.click('button:has-text("Save & finalize report")');
+  await expect(page.locator('#save-error')).toContainText('Simulated finalize failure');
+  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(editable(page)).toHaveValue('12');
+
+  await page.locator('#save-error').getByRole('button', { name: 'Try again' }).click();
+  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+});
+
+test('reloading or closing the page asks first only while there are unsaved edits', async ({ page }) => {
+  await openIntakeReview(page);
+  expect(await leavingIsGuarded(page)).toBe(false);
+
+  await editable(page).fill('12');
+  expect(await leavingIsGuarded(page)).toBe(true);
+
+  await page.click('button:has-text("Save corrections")');
+  await expect(page.locator('.toast')).toHaveText('Saved');
+  expect(await leavingIsGuarded(page)).toBe(false);
+
+  // Marking a flagged field as checked changes no value, so it is not an unsaved edit.
+  const flagged = page.locator('.field.pending');
+  if ((await flagged.count()) > 0) {
+    await flagged.first().getByRole('button', { name: 'Mark as checked' }).click();
+    expect(await leavingIsGuarded(page)).toBe(false);
+  }
+});
+
+test('a saved draft: edits are guarded until saved, and saving keeps the screen', async ({ page, request }) => {
+  const marker = `E2E-Guard-${Date.now()}`;
+  await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker });
+  await openFromList(page, marker);
+  expect(await leavingIsGuarded(page)).toBe(false);
+
+  const text = page.locator('.field-list textarea').first();
+  await text.fill('Edited on the saved report');
+  expect(await leavingIsGuarded(page)).toBe(true);
+
+  await page.click('button:has-text("Save corrections")');
+  await expect(page.locator('.toast')).toHaveText('Saved');
+  await expect(page.locator('.working-panel')).toHaveCount(0);
+  await expect(text).toHaveValue('Edited on the saved report');
+  expect(await leavingIsGuarded(page)).toBe(false);
+});
+
+test('a finalized report being edited: guarded until saved, then read-only again', async ({ page, request }) => {
+  const marker = `E2E-GuardFinal-${Date.now()}`;
+  await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
+  await openFromList(page, marker);
+  await page.click('.review-actions button:has-text("Edit")');
+  await page.locator('.field-list textarea').first().fill('Changed after finalizing');
+  expect(await leavingIsGuarded(page)).toBe(true);
+
+  await page.click('button:has-text("Save corrections")');
+  await expect(page.locator('.review-actions button:has-text("Edit")')).toBeVisible({ timeout: 20_000 });
+  expect(await leavingIsGuarded(page)).toBe(false);
+
+  // Cancelling an edit throws the changes away, so there is nothing left to guard.
+  await page.click('.review-actions button:has-text("Edit")');
+  await page.locator('.field-list textarea').first().fill('Never saved');
+  expect(await leavingIsGuarded(page)).toBe(true);
+  await page.click('.review-actions button:has-text("Cancel")');
+  expect(await leavingIsGuarded(page)).toBe(false);
 });
