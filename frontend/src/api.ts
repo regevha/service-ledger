@@ -302,13 +302,24 @@ export interface ReportCountByInstrument {
   institution?: string | null;
   serial_number: string;
   report_count: number;
+  /** Hours and how the repair / preventive maintenance reports came out, for the fleet list's row. */
+  total_labor_hours?: number;
+  pass_count?: number;
+  fail_count?: number;
+  other_count?: number;
 }
 
 /** The same counts added up per instrument model. */
 export interface ReportCountByModel {
   model: string;
+  /** The model record's id: what the model_id filter takes. Null for units with no model record. */
+  model_id?: string | null;
   unit_count: number;
   report_count: number;
+  total_labor_hours?: number;
+  pass_count?: number;
+  fail_count?: number;
+  other_count?: number;
 }
 
 export interface PassFailBreakdown {
