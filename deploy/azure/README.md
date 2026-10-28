@@ -57,6 +57,16 @@ After a code change (merged or on your branch), roll it out without recreating a
 
 It builds the frontend and a new image (tagged with the commit and the time), runs the migration with that image and waits for it, then points the API and the worker at the new image. The database, attachments, password and API key are untouched. If the migration fails, the apps keep running the old image. To go back, check out the earlier commit and run it again. Not yet run against real Azure.
 
+## Pausing between test rounds
+
+```
+./deploy/azure/pause.sh sl-test              # stops the API and the worker; the database keeps running
+./deploy/azure/pause.sh sl-test --with-db    # the database is stopped too
+./deploy/azure/resume.sh sl-test             # database first (if stopped) and waits for it, then the apps
+```
+
+Nothing is deleted. The apps are stopped with the Container Apps stop operation (the same one `restore.sh` uses, in `_apps.sh`), so while paused the address answers nothing: a stopped app does not wake on a request. Jobs the worker was running are recovered when it starts again. Still charged: the database (its compute unless stopped, its storage always), the file share, the registry and the log workspace. Azure starts a stopped database again by itself after 7 days. Not yet run against real Azure.
+
 ## Backing up and restoring
 
 ```
