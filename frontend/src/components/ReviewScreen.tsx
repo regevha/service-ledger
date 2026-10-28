@@ -8,6 +8,11 @@ import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
 import type { ReportTemplate } from '../api';
 
+/** "Extracted in 14.2 s": how long reading the document took. Under a tenth of a second (the demo reader) says so. */
+function extractionTimeText(seconds: number): string {
+  return seconds < 0.05 ? 'Extracted in under 0.1 s' : `Extracted in ${seconds.toFixed(1)} s`;
+}
+
 /**
  * The field-by-field review/correction UI (§5) — shared between the live
  * intake flow (IntakeFlow.tsx, right after extraction) and an
@@ -39,6 +44,7 @@ export function ReviewScreen({
   onEdit,
   onCancelEdit,
   linksInMenu = false,
+  extractionSeconds,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
@@ -89,6 +95,8 @@ export function ReviewScreen({
   onCancelEdit?: () => void;
   // On a phone the report screen's "⋯" menu carries these two links instead.
   linksInMenu?: boolean;
+  // How long reading the document into these fields took, in seconds. Null or undefined: nothing to say.
+  extractionSeconds?: number | null;
 }) {
   const isFlagged = (name: string) => {
     const confidence = fieldConfidences[name];
@@ -127,7 +135,13 @@ export function ReviewScreen({
       <div className="section-title-row">
         <div>
           <div className="section-title report-heading">{heading}</div>
-          {meta && <div className="report-heading-meta">{meta}</div>}
+          {(meta || extractionSeconds != null) && (
+            <div className="report-heading-meta">
+              {meta}
+              {meta && extractionSeconds != null && ' · '}
+              {extractionSeconds != null && <span data-testid="extraction-time">{extractionTimeText(extractionSeconds)}</span>}
+            </div>
+          )}
         </div>
         <div className="section-title-actions">
           <ScanToggleButton preview={preview} />
