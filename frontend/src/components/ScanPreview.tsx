@@ -23,13 +23,15 @@ function writeScanPref(on: boolean) {
 /**
  * How the original document is shown next to a form: beside it on a wide
  * screen (with a Show/Hide button), and behind a Fields | Scan switch on a
- * phone. Shared by the "Classify" confirmation and the "Review & finalize"
+ * phone or tablet. Shared by the "Classify" confirmation and the "Review & finalize"
  * screen, so both show the document the same way and remember the same
  * Show/Hide choice.
  */
 export function useScanPreview(scanInlineUrl?: string, scanAttachmentId?: string) {
   const wide = useMediaQuery('(min-width: 900px)');
   const phone = useMediaQuery('(max-width: 620px)');
+  // Below the side-by-side width (phones and tablets) the scan sits behind the Fields | Scan switch.
+  const narrow = useMediaQuery('(max-width: 899px)');
   const [scanOpen, setScanOpen] = useState(readScanPref);
   const [phoneView, setPhoneView] = useState<'fields' | 'scan'>('fields');
   return {
@@ -46,8 +48,8 @@ export function useScanPreview(scanInlineUrl?: string, scanAttachmentId?: string
     scanAttachmentId,
     // Side by side with the form (wide screens only).
     showScan: Boolean(scanInlineUrl) && wide && scanOpen,
-    // The phone's page-image view, reached through the Fields | Scan switch.
-    phoneScan: phone && Boolean(scanAttachmentId),
+    // The page-image view, reached through the Fields | Scan switch, wherever the scan cannot sit beside the form.
+    phoneScan: narrow && Boolean(scanAttachmentId),
   };
 }
 
@@ -63,7 +65,7 @@ export function ScanToggleButton({ preview }: { preview: ScanPreviewState }) {
   );
 }
 
-/** On a phone: the Fields | Scan switch, and the scan pages while "Scan" is chosen. */
+/** Below 900px (phone or tablet): the Fields | Scan switch, and the scan pages while "Scan" is chosen. */
 export function PhoneScanSwitch({ preview }: { preview: ScanPreviewState }) {
   if (!preview.phoneScan || !preview.scanAttachmentId) return null;
   return (
