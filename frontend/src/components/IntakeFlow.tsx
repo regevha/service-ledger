@@ -958,7 +958,7 @@ export function IntakeFlow({
   function backToClassification() {
     if (!classification) return;
     if (!pickInstrumentId && report?.instrument_id) setPickInstrumentId(report.instrument_id);
-    if (report?.report_type) setPickReportType(report.report_type);
+    if (template?.report_type) setPickReportType(template.report_type);
     setPhase({ name: 'confirm-classification' });
   }
 
