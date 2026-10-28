@@ -5,6 +5,7 @@ import { test, expect } from './coverage';
 import { uniqueFixture, uniquePdf } from './unique-upload';
 import { fieldLabel } from '../../src/fieldLabels';
 import { reviewSnapshot } from '../../src/reviewSnapshot';
+import { finalizeFromReview } from './finalize-helper';
 import { BACKEND_PORT } from '../../playwright.config';
 import { createNumericModel } from './numeric-fixture';
 
@@ -347,6 +348,7 @@ test('a failed save stays on the screen with the reason and a Try again; nothing
 });
 
 test('a failed finalize stays on the screen, and Try again finalizes', async ({ page }) => {
+  await flagServiceDate(page);
   let failNext = true;
   await page.route('**/reports/*/finalize', (route) => {
     if (failNext) {
@@ -358,7 +360,7 @@ test('a failed finalize stays on the screen, and Try again finalizes', async ({ 
   await openIntakeReview(page);
   await editable(page).fill('12');
 
-  await page.click('button:has-text("Save & finalize report")');
+  await finalizeFromReview(page);
   await expect(page.locator('#save-error')).toContainText('Simulated finalize failure');
   await expect(page.locator('.field-list')).toBeVisible();
   await expect(editable(page)).toHaveValue('12');
@@ -421,4 +423,63 @@ test('a finalized report being edited: guarded until saved, then read-only again
   expect(await leavingIsGuarded(page)).toBe(true);
   await page.click('.review-actions button:has-text("Cancel")');
   expect(await leavingIsGuarded(page)).toBe(false);
+});
+
+// Finalizing with fields still flagged asks first (PR 2 of the review-and-finalize plan).
+
+test('finalizing with flagged fields asks first; Review them goes to the first flagged field', async ({ page }) => {
+  await flagServiceDate(page);
+  await openIntakeReview(page);
+  const flagged = await page.locator('.field.pending').count();
+  expect(flagged).toBeGreaterThan(0);
+
+  await page.click('button:has-text("Save & finalize report")');
+  const confirm = page.locator('#finalize-confirm');
+  await expect(confirm).toBeVisible();
+  await expect(confirm).toContainText(`${flagged} field${flagged === 1 ? '' : 's'} still need${flagged === 1 ? 's' : ''} attention`);
+  await expect(page.locator('.success-panel')).toHaveCount(0); // nothing was finalized yet
+
+  await confirm.getByRole('button', { name: 'Review them' }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(page.locator('.field-list')).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.closest('.field')?.className ?? ''))
+    .toContain('pending');
+  await expect(page.locator('.field.pending')).toHaveCount(flagged); // reviewing does not check anything off
+});
+
+test('Escape closes the question, and "Finalize anyway" finalizes', async ({ page }) => {
+  await flagServiceDate(page);
+  await openIntakeReview(page);
+  expect(await page.locator('.field.pending').count()).toBeGreaterThan(0);
+
+  await page.click('button:has-text("Save & finalize report")');
+  await expect(page.locator('#finalize-confirm')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#finalize-confirm')).toHaveCount(0);
+  await expect(page.locator('.success-panel')).toHaveCount(0);
+
+  await page.click('button:has-text("Save & finalize report")');
+  await page.getByRole('button', { name: 'Finalize anyway' }).click();
+  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+});
+
+test('with nothing flagged, finalizing goes straight through with no question', async ({ page }) => {
+  await flagServiceDate(page); // flagged at first, so the check-off loop below is exercised on every run
+  await openIntakeReview(page);
+  // Check every flagged field off, one at a time (each press removes one from the list).
+  while ((await page.locator('.field.pending').count()) > 0) {
+    await page.locator('.field.pending').first().getByRole('button', { name: 'Mark as checked' }).click();
+  }
+  await page.click('button:has-text("Save & finalize report")');
+  await expect(page.locator('#finalize-confirm')).toHaveCount(0);
+  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+});
+
+test('finalizing twice at the API returns the report quietly, so a retry after a lost reply works', async ({ request }) => {
+  const marker = `E2E-Twice-${Date.now()}`;
+  const id = await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
+  const again = await request.post(`${API_BASE}/reports/${id}/finalize`);
+  expect(again.status()).toBe(200);
+  expect((await again.json()).status).toBe('finalized');
 });

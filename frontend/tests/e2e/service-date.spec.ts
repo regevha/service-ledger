@@ -3,6 +3,7 @@ import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { finalizeFromReview } from './finalize-helper';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 
@@ -41,7 +42,7 @@ test('the extracted service date is shown on review, can be corrected, and is sa
   await expect(page.locator('#placeholder-notice')).toBeVisible();
 
   await dateInput.fill('2025-03-14');
-  await page.click('button:has-text("Save & finalize report")');
+  await finalizeFromReview(page);
   await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
 
   // The corrected date is what's stored — and the date filter finds it.
