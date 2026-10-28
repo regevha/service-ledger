@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     worker_poll_interval_seconds: float = 0.5
 
     use_live_claude: bool = False
+    # Stub mode only (ignored when use_live_claude is true). Off: extraction
+    # invents plausible values per field type, for demos and the e2e fixtures.
+    # On: extraction reads the PDF's own text instead (services/text_extraction.py)
+    # and leaves what it cannot read empty at confidence 0. A document with no
+    # text layer then fails with a message asking for an API key.
+    stub_extract_from_text: bool = False
     anthropic_api_key: str = ""
     # Was a literal "claude-sonnet-5" duplicated separately inside both
     # classification.py's and extraction.py's messages.create() calls, with

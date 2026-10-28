@@ -46,6 +46,7 @@ from app.services.claude_client import (
 from app.services.documents import UnsupportedDocumentError
 from app.services.translation import source_block
 from app.services.errors import ExtractionError
+from app.services.text_extraction import text_extract
 
 logger = logging.getLogger("app.services.extraction")
 settings = get_settings()
@@ -414,7 +415,22 @@ def _stub_extract(attachment: Attachment, template: ReportTemplate) -> Extractio
     return ExtractionResult(extracted_fields, field_confidences, report_date)
 
 
+def _text_layer_extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
+    """Stub mode with STUB_EXTRACT_FROM_TEXT: the template's fields read from
+    the PDF's own text (services/text_extraction.py), nothing invented."""
+    try:
+        with open(attachment.file_path, "rb") as f:
+            data = f.read()
+    except OSError as e:
+        raise ExtractionError(f"The stored file could not be read: {e}") from e
+    fields = template.field_schema.get("fields", [])
+    extracted_fields, field_confidences, report_date = text_extract(data, fields)
+    return ExtractionResult(extracted_fields, field_confidences, report_date)
+
+
 def extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
     if settings.use_live_claude:
         return _live_extract(attachment, template)
+    if settings.stub_extract_from_text:
+        return _text_layer_extract(attachment, template)
     return _stub_extract(attachment, template)
