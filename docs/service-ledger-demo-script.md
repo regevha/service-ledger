@@ -15,7 +15,7 @@ Everything below runs against the deterministic stub classifier/extractor (no `A
 
 ## Before you start: prep checklist
 
-Everything in this walkthrough runs against a deterministic stub classifier/extractor (`USE_LIVE_CLAUDE=false`, the default), not the live Claude API — same code path, same UI, but free and exactly repeatable. Say this once, near the top, so no one wonders why extraction is instant or thinks the values are made up on the spot.
+Everything in this walkthrough runs against a deterministic stub classifier/extractor (`USE_LIVE_CLAUDE=false`, the default), not the live Claude API — same code path, same UI, but free and exactly repeatable. Say this once, near the top, so no one wonders why extraction is instant or thinks the values are made up on the spot. The demo's placeholder files only get made-up values with `STUB_EXTRACT_FROM_TEXT=false` in the backend's and the worker's environment; since the default is now `true`, stub extraction reads a real PDF's own text and a placeholder with no text fails.
 
 - **Postgres running** (`service postgresql start` if it isn't — nothing else works without it).
 - **Backend running:** `uvicorn app.main:app --reload` (port 8000).

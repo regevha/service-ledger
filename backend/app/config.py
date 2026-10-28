@@ -80,6 +80,13 @@ class Settings(BaseSettings):
     view_prompts: bool = False
 
     use_live_claude: bool = False
+    # Stub mode only (ignored when use_live_claude is true). On (the default):
+    # extraction reads the PDF's own text (services/text_extraction.py) and
+    # leaves what it cannot read empty at confidence 0; a document with no text
+    # layer fails with a message asking for an API key. Off: extraction invents
+    # plausible values per field type, for demos and the e2e fixtures (the
+    # test suite and Playwright set it to false).
+    stub_extract_from_text: bool = True
     anthropic_api_key: str = ""
     # Was a literal "claude-sonnet-5" duplicated separately inside both
     # classification.py's and extraction.py's messages.create() calls, with

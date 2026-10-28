@@ -26,6 +26,10 @@ os.environ.setdefault(
 # credit and immediately fail on invalid PDF content. USE_LIVE_CLAUDE is only
 # ever meant to be live for the running dev server, never for the test suite.
 os.environ["USE_LIVE_CLAUDE"] = "false"
+# Same reason: stub extraction now reads the PDF's text by default, and these
+# tests upload placeholder files and assert the invented demo values. The tests
+# of the text reader (test_text_extraction.py) switch it on themselves.
+os.environ["STUB_EXTRACT_FROM_TEXT"] = "false"
 
 from app import seed_instruments, seed_templates  # noqa: E402
 from app.db import Base, get_db  # noqa: E402

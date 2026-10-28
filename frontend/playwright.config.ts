@@ -71,7 +71,7 @@ export default defineConfig({
       // app.main's own startup lifespan reseeds the instrument fleet +
       // report templates the moment this boots, so reset_db.py only has to
       // clear rows, never restore them.
-      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false python3 -m app.testing.reset_db && DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT}"`,
+      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false STUB_EXTRACT_FROM_TEXT=false python3 -m app.testing.reset_db && DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false STUB_EXTRACT_FROM_TEXT=false uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT}"`,
       cwd: '../backend',
       url: `http://localhost:${BACKEND_PORT}/health`,
       reuseExistingServer: false,
@@ -86,7 +86,7 @@ export default defineConfig({
       // No `url`: a polling worker has no HTTP endpoint to health-check
       // against, so Playwright just launches it and moves on; the backend
       // entry above is still what gates "servers are ready."
-      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false python3 -m app.worker"`,
+      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false STUB_EXTRACT_FROM_TEXT=false python3 -m app.worker"`,
       cwd: '../backend',
       reuseExistingServer: false,
       stdout: 'pipe',
