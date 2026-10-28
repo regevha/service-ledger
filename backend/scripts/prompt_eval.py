@@ -3,6 +3,7 @@ prompt change can be judged on evidence instead of a guess.
 
     python -m scripts.prompt_eval CASES_DIR            # live: calls Claude (needs ANTHROPIC_API_KEY)
     python -m scripts.prompt_eval CASES_DIR --dry-run  # no call: builds each prompt and prints its hash
+    python -m scripts.prompt_eval CASES_DIR --repeat 5 # every case 5 times: how often an answer is refused or wrong
 
 CASES_DIR holds one `<name>.expected.json` per case, next to the PDF it names
 (see prompt_eval_example.json for the format). Keep it OUTSIDE the repository:
@@ -30,6 +31,7 @@ from app.config import get_settings
 from app.seed_instruments import INSTRUMENTS
 from app.seed_templates import TEMPLATE_ROWS
 from app.services import claude_client, classification, extraction, prompt_gate
+from app.services.errors import LiveClaudeError
 
 
 def _norm(value):
@@ -102,14 +104,19 @@ def run_case(path: Path, dry_run: bool) -> tuple[list[tuple[str, bool, object, o
         hashes["classify"] = _prompt_hash(_preview_of(call))
         if not dry_run:
             settings.view_prompts = False
-            read = classification.DocumentRead(*call())
-            got = {
+            try:
+                read = classification.DocumentRead(*call())
+            except LiveClaudeError as e:
+                # A refused answer (missing field, cut off) is a result, not a crash.
+                checks.append(("classify.answer", False, str(e), "a usable answer"))
+                read = None
+            got = read and {
                 "instrument_model": read.instrument.value,
                 "report_type": read.report_type.value,
                 "serial": read.serial.value if read.serial else None,
                 "work_order": read.work_order_number,
             }
-            for key, want in spec["classify"].items():
+            for key, want in spec["classify"].items() if got else []:
                 checks.append((f"classify.{key}", _same(got.get(key), want), got.get(key), want))
 
     if "extract" in spec:
@@ -121,7 +128,11 @@ def run_case(path: Path, dry_run: bool) -> tuple[list[tuple[str, bool, object, o
         hashes["extract"] = _prompt_hash(_preview_of(call))
         if not dry_run:
             settings.view_prompts = False
-            result = call()
+            try:
+                result = call()
+            except LiveClaudeError as e:
+                checks.append(("extract.answer", False, str(e), "a usable answer"))
+                return checks, hashes
             for name, want in (ex.get("fields") or {}).items():
                 checks.append((f"extract.{name}", _same(result.extracted_fields.get(name), want),
                                result.extracted_fields.get(name), want))
@@ -136,6 +147,7 @@ def main() -> int:
     parser.add_argument("cases_dir", type=Path)
     parser.add_argument("--dry-run", action="store_true", help="build the prompts and print their hashes; no Claude call")
     parser.add_argument("--only", help="run only the case files whose name contains this text")
+    parser.add_argument("--repeat", type=int, default=1, help="run every case this many times (shows how often an answer is refused or wrong)")
     parser.add_argument("--out", type=Path, help="also write the results as JSON here")
     args = parser.parse_args()
 
@@ -150,7 +162,7 @@ def main() -> int:
 
     passed = failed = 0
     report = []
-    for path in files:
+    for path in [p for p in files for _ in range(1 if args.dry_run else max(args.repeat, 1))]:
         checks, hashes = run_case(path, args.dry_run)
         print(f"\n{path.name}  prompts: " + ", ".join(f"{k}={v}" for k, v in hashes.items()))
         for name, ok, got, want in checks:
