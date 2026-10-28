@@ -1,5 +1,5 @@
 """Reading a template's fields from a service report's own text, no model
-(services/text_extraction.py, the STUB_EXTRACT_FROM_TEXT option of stub mode).
+(services/text_extraction.py, the STUB_EXTRACT_FROM_TEXT option of stub mode, on by default).
 
 The PDFs are synthetic, built with reportlab, and laid out the way the two real
 BD Care Work Order forms extract with pypdf: the label printed after its value
@@ -19,7 +19,6 @@ import pytest
 from reportlab.pdfgen import canvas
 
 from app import seed_templates
-from app.config import get_settings
 from app.services import extraction
 from app.services.errors import ExtractionError
 from app.services.text_extraction import date_order, extract_from_text, text_extract
@@ -274,8 +273,20 @@ def _template(fields):
     return SimpleNamespace(field_schema={"fields": fields})
 
 
-def test_the_option_is_off_by_default():
-    assert get_settings().stub_extract_from_text is False
+def test_the_option_is_on_by_default(monkeypatch):
+    # conftest sets STUB_EXTRACT_FROM_TEXT=false for the rest of the suite; the
+    # default itself is what a deployment without the variable gets.
+    from app.config import Settings
+
+    monkeypatch.delenv("STUB_EXTRACT_FROM_TEXT", raising=False)
+    assert Settings(_env_file=None).stub_extract_from_text is True
+
+
+def test_the_environment_can_turn_it_off(monkeypatch):
+    from app.config import Settings
+
+    monkeypatch.setenv("STUB_EXTRACT_FROM_TEXT", "false")
+    assert Settings(_env_file=None).stub_extract_from_text is False
 
 
 def test_with_the_option_off_stub_mode_still_invents_values(tmp_path, monkeypatch):
