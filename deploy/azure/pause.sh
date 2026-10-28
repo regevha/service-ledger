@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
-# Stops paying for the apps between test rounds without deleting anything.
-# Stops the API and the worker; the database keeps running unless you add
-# --with-db. Undo with resume.sh.
+# Stops paying for the apps and the database between test rounds without
+# deleting anything. Stops the API and the worker, then the database, unless
+# you add --keep-db. Undo with resume.sh.
 #
-# Usage:   ./deploy/azure/pause.sh <name>              apps only, database stays up
-#          ./deploy/azure/pause.sh <name> --with-db    apps and the database
+# Usage:   ./deploy/azure/pause.sh <name>              apps and the database
+#          ./deploy/azure/pause.sh <name> --keep-db    apps only, database stays up
 # Needs:   Azure CLI logged in (az login), the containerapp extension.
 #
 # While paused:
 #   - The address answers nothing; a stopped app does not wake on a request.
 #   - Uploads cannot be made; jobs the worker was running are recovered at its next start.
-#   - Still charged: the database (unless --with-db; its storage always), the file share,
+#   - Still charged: the database (unless stopped; its storage always), the file share,
 #     the registry, the log workspace. Azure starts a stopped database again after 7 days.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-NAME="${1:?usage: pause.sh <name> [--with-db]}"
+NAME="${1:?usage: pause.sh <name> [--keep-db]}"
 [[ "$NAME" =~ ^[a-z][a-z0-9-]{2,13}$ ]] || { echo "name must be 3-14 chars: lowercase letters, digits, hyphens, starting with a letter" >&2; exit 1; }
-WITH_DB=0
+WITH_DB=1
 case "${2:-}" in
   "") ;;
-  --with-db) WITH_DB=1 ;;
-  *) echo "unknown option: $2 (only --with-db)" >&2; exit 1 ;;
+  --keep-db) WITH_DB=0 ;;
+  *) echo "unknown option: $2 (only --keep-db)" >&2; exit 1 ;;
 esac
 
 RG="rg-$NAME"
