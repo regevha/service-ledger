@@ -330,3 +330,37 @@ def get_extraction_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(404, "Extraction job not found")
     return job
+
+
+@router.post("/extraction-jobs/{job_id}/approve", response_model=schemas.ExtractionJobOut)
+def approve_extraction_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
+    """VIEW_PROMPTS: the person read the prompt and pressed Send. The job goes
+    back to the queue and this time the Claude call is made."""
+    job = db.get(models.ExtractionJob, job_id)
+    if not job:
+        raise HTTPException(404, "Extraction job not found")
+    if job.status != models.ExtractionJobStatus.awaiting_approval:
+        raise HTTPException(409, "This job is not waiting for approval.")
+    job.params = {**(job.params or {}), "prompt_approved": True}
+    job.status = models.ExtractionJobStatus.pending
+    db.commit()
+    db.refresh(job)
+    logger.info("Prompt approved for %s job %s", job.kind.value, job.id)
+    return job
+
+
+@router.post("/extraction-jobs/{job_id}/cancel", response_model=schemas.ExtractionJobOut)
+def cancel_extraction_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
+    """VIEW_PROMPTS: the person pressed Cancel; nothing is sent to Claude."""
+    job = db.get(models.ExtractionJob, job_id)
+    if not job:
+        raise HTTPException(404, "Extraction job not found")
+    if job.status != models.ExtractionJobStatus.awaiting_approval:
+        raise HTTPException(409, "This job is not waiting for approval.")
+    job.status = models.ExtractionJobStatus.failed
+    job.error_message = "Cancelled before the prompt was sent to Claude."
+    job.completed_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(job)
+    logger.info("Prompt cancelled for %s job %s", job.kind.value, job.id)
+    return job

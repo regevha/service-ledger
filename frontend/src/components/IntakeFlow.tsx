@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { PromptReview } from './PromptReview';
 import {
   deleteReport,
   ApiError,
@@ -16,6 +17,8 @@ import {
   getReportTemplate,
   getTranslation,
   pollExtractionJob,
+  setPromptApprovalHandler,
+  type PromptPreview,
   reportPdfUrl,
   translateAttachment,
   updateReportFields,
@@ -551,6 +554,22 @@ export function IntakeFlow({
   instrumentsRef.current = instruments;
   const [translation, setTranslation] = useState<Translation | null>(null);
   const [translationBusy, setTranslationBusy] = useState(false);
+  // VIEW_PROMPTS (debug): the prompt waiting for Send/Cancel, and how to answer it.
+  const [promptReview, setPromptReview] = useState<{ preview: PromptPreview; answer: (send: boolean) => void } | null>(null);
+  useEffect(() => {
+    setPromptApprovalHandler(
+      (preview) => new Promise<boolean>((resolve) => {
+        setPromptReview({
+          preview,
+          answer: (send) => {
+            setPromptReview(null);
+            resolve(send);
+          },
+        });
+      })
+    );
+    return () => setPromptApprovalHandler(null);
+  }, []);
 
   const [technicianName, setTechnicianName] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -919,6 +938,14 @@ export function IntakeFlow({
   return (
     <>
       <StepBar phase={phase} />
+
+      {promptReview && (
+        <PromptReview
+          preview={promptReview.preview}
+          onSend={() => promptReview.answer(true)}
+          onCancel={() => promptReview.answer(false)}
+        />
+      )}
 
       {instrumentsError && <div className="banner banner-warn">{instrumentsError}</div>}
 
