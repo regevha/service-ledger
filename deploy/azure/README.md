@@ -60,12 +60,12 @@ It builds the frontend and a new image (tagged with the commit and the time), ru
 ## Pausing between test rounds
 
 ```
-./deploy/azure/pause.sh sl-test              # stops the API and the worker; the database keeps running
-./deploy/azure/pause.sh sl-test --with-db    # the database is stopped too
+./deploy/azure/pause.sh sl-test              # stops the API, the worker, and the database
+./deploy/azure/pause.sh sl-test --keep-db    # apps only; the database keeps running
 ./deploy/azure/resume.sh sl-test             # database first (if stopped) and waits for it, then the apps
 ```
 
-Nothing is deleted. The apps are stopped with the Container Apps stop operation (the same one `restore.sh` uses, in `_apps.sh`), so while paused the address answers nothing: a stopped app does not wake on a request. Jobs the worker was running are recovered when it starts again. Still charged: the database (its compute unless stopped, its storage always), the file share, the registry and the log workspace. Azure starts a stopped database again by itself after 7 days. Not yet run against real Azure.
+Nothing is deleted. The apps are stopped with the Container Apps stop operation (the same one `restore.sh` uses, in `_apps.sh`), so while paused the address answers nothing: a stopped app does not wake on a request. Jobs the worker was running are recovered when it starts again. Stopping the database does not touch its data; Azure starts a stopped database again by itself after 7 days, so a long pause may need `pause.sh` run again. Still charged regardless: the database's storage, the file share, the registry and the log workspace. Run against real Azure so far: `pause.sh` for the apps (confirmed with a 404 on the app's address); not yet the database stop, or `resume.sh`.
 
 ## Backing up and restoring
 
