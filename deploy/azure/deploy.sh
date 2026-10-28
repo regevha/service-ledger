@@ -42,6 +42,20 @@ SHARE="attachments"
 ENV_NAME="cae-$NAME"
 LAW="log-$NAME"
 
+# Re-running resumes a first deploy that stopped half way: steps whose resource
+# already exists are skipped. It never touches a deployment that is running
+# (the apps hold the passwords and the data); releases go through update.sh.
+exists() { "$@" -o none >/dev/null 2>&1; }
+if exists az containerapp show -g "$RG" -n "api-$NAME" || exists az containerapp show -g "$RG" -n "worker-$NAME"; then
+  echo "$NAME is already deployed (api-$NAME or worker-$NAME exists in $RG). deploy.sh only sets up a new" >&2
+  echo "environment or finishes one that stopped half way. To release new code: ./deploy/azure/update.sh $NAME" >&2
+  exit 1
+fi
+if exists az group show -n "$RG"; then
+  echo "Resource group $RG exists without the apps: resuming. Existing resources are kept; the database"
+  echo "admin password is reset, because the one from the earlier run was never stored."
+fi
+
 if [[ "$INGRESS" == "external" ]]; then
   echo "INGRESS=external makes the app reachable from the internet. It is protected only by one shared password"
   echo "(no accounts, everyone who knows it can change everything)."
@@ -62,8 +76,12 @@ echo "== Log analytics + Container Apps environment"
 az monitor log-analytics workspace create -g "$RG" -n "$LAW" -l "$LOCATION" -o none
 LAW_ID="$(az monitor log-analytics workspace show -g "$RG" -n "$LAW" --query customerId -o tsv)"
 LAW_KEY="$(az monitor log-analytics workspace get-shared-keys -g "$RG" -n "$LAW" --query primarySharedKey -o tsv)"
-az containerapp env create -g "$RG" -n "$ENV_NAME" -l "$LOCATION" \
-  --logs-workspace-id "$LAW_ID" --logs-workspace-key "$LAW_KEY" -o none
+if exists az containerapp env show -g "$RG" -n "$ENV_NAME"; then
+  echo "   environment $ENV_NAME exists, keeping it"
+else
+  az containerapp env create -g "$RG" -n "$ENV_NAME" -l "$LOCATION" \
+    --logs-workspace-id "$LAW_ID" --logs-workspace-key "$LAW_KEY" -o none
+fi
 # Creation continues in the background; wait until it is ready or the next steps are refused.
 echo "   waiting for the environment to be provisioned..."
 ENV_STATE=""
@@ -75,25 +93,48 @@ done
 [[ "$ENV_STATE" == "Succeeded" ]] || { echo "Container Apps environment is not ready (state: ${ENV_STATE:-unknown}). Check: az containerapp env show -g $RG -n $ENV_NAME" >&2; exit 1; }
 
 echo "== Storage account and file share for attachments"
-az storage account create -g "$RG" -n "$STORAGE" -l "$LOCATION" --sku Standard_LRS --kind StorageV2 \
-  --min-tls-version TLS1_2 --allow-blob-public-access false -o none
+if exists az storage account show -g "$RG" -n "$STORAGE"; then
+  echo "   storage account $STORAGE exists, keeping it"
+else
+  az storage account create -g "$RG" -n "$STORAGE" -l "$LOCATION" --sku Standard_LRS --kind StorageV2 \
+    --min-tls-version TLS1_2 --allow-blob-public-access false -o none
+fi
 STORAGE_KEY="$(az storage account keys list -g "$RG" -n "$STORAGE" --query '[0].value' -o tsv)"
-az storage share-rm create -g "$RG" --storage-account "$STORAGE" -n "$SHARE" --quota 20 -o none
+if [[ "$(az storage share-rm exists -g "$RG" --storage-account "$STORAGE" -n "$SHARE" --query exists -o tsv)" == "true" ]]; then
+  echo "   file share $SHARE exists, keeping it"
+else
+  az storage share-rm create -g "$RG" --storage-account "$STORAGE" -n "$SHARE" --quota 20 -o none
+fi
+# Safe to repeat: points the environment at the share with the current key.
 az containerapp env storage set -g "$RG" -n "$ENV_NAME" --storage-name attachments \
   --azure-file-account-name "$STORAGE" --azure-file-account-key "$STORAGE_KEY" \
   --azure-file-share-name "$SHARE" --access-mode ReadWrite -o none
 
 echo "== PostgreSQL Flexible Server (smallest burstable size)"
 PG_PASSWORD="$(openssl rand -hex 24)"      # hex only, so it is safe inside a URL
-az postgres flexible-server create -g "$RG" -n "$PG" -l "$LOCATION" --version 16 \
-  --tier Burstable --sku-name Standard_B1ms --storage-size 32 \
-  --admin-user "$PG_ADMIN" --admin-password "$PG_PASSWORD" \
-  --public-access 0.0.0.0 --yes -o none     # 0.0.0.0 = allow Azure services only, not the internet
-az postgres flexible-server db create -g "$RG" --server-name "$PG" --name "$PG_DB" -o none
+if exists az postgres flexible-server show -g "$RG" -n "$PG"; then
+  # Left over from an earlier run that stopped before the apps (which would hold the password) were created.
+  echo "   server $PG exists, keeping it and setting a new admin password"
+  az postgres flexible-server update -g "$RG" -n "$PG" --admin-password "$PG_PASSWORD" -o none
+else
+  az postgres flexible-server create -g "$RG" -n "$PG" -l "$LOCATION" --version 16 \
+    --tier Burstable --sku-name Standard_B1ms --storage-size 32 \
+    --admin-user "$PG_ADMIN" --admin-password "$PG_PASSWORD" \
+    --public-access 0.0.0.0 --yes -o none     # 0.0.0.0 = allow Azure services only, not the internet
+fi
+if exists az postgres flexible-server db show -g "$RG" --server-name "$PG" --database-name "$PG_DB"; then
+  echo "   database $PG_DB exists, keeping it"
+else
+  az postgres flexible-server db create -g "$RG" --server-name "$PG" --name "$PG_DB" -o none
+fi
 DATABASE_URL="postgresql+psycopg2://${PG_ADMIN}:${PG_PASSWORD}@${PG}.postgres.database.azure.com:5432/${PG_DB}?sslmode=require"
 
 echo "== Container registry"
-az acr create -g "$RG" -n "$ACR" --sku Basic --admin-enabled true -o none
+if exists az acr show -g "$RG" -n "$ACR"; then
+  echo "   registry $ACR exists, keeping it"
+else
+  az acr create -g "$RG" -n "$ACR" --sku Basic --admin-enabled true -o none
+fi
 ACR_SERVER="$(az acr show -g "$RG" -n "$ACR" --query loginServer -o tsv)"
 ACR_USER="$(az acr credential show -n "$ACR" --query username -o tsv)"
 ACR_PASS="$(az acr credential show -n "$ACR" --query 'passwords[0].value' -o tsv)"
@@ -156,6 +197,11 @@ YAML
 }
 
 echo "== One-off migration job (alembic upgrade head)"
+if exists az containerapp job show -g "$RG" -n "job-migrate-$NAME"; then
+  # It holds the old database password; recreating it is simpler than patching it, and it keeps no data.
+  echo "   replacing the migration job left by an earlier run"
+  az containerapp job delete -g "$RG" -n "job-migrate-$NAME" --yes -o none
+fi
 az containerapp job create -g "$RG" -n "job-migrate-$NAME" --environment "$ENV_NAME" \
   --trigger-type Manual --replica-timeout 600 --replica-retry-limit 1 \
   --image "$IMAGE" --registry-server "$ACR_SERVER" --registry-username "$ACR_USER" --registry-password "$ACR_PASS" \
