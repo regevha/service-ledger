@@ -1,4 +1,5 @@
 import { test, expect } from './coverage';
+import { seedReport } from './helpers/api';
 
 // Layout regressions from the 2026-10-24 UI review: the table captions must sit
 // over their columns (header and rows are separate grids, so an "auto" column
@@ -20,7 +21,9 @@ async function maxColumnDrift(page: import('@playwright/test').Page, head: strin
 }
 
 for (const width of [1440, 1100]) {
-  test(`table captions line up with their columns at ${width}px`, async ({ page }) => {
+  test(`table captions line up with their columns at ${width}px`, async ({ page, request }) => {
+    // The Reports table needs a row to measure; nothing else in the run is relied on to leave one.
+    await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-TableLayout-${Date.now()}` });
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/');
 

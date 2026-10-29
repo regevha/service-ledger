@@ -1,12 +1,10 @@
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE } from './helpers/api';
 
 // "Delete" on the Instruments tab: a confirmation that says how many reports go
 // with the instrument, then the instrument and all its reports are gone. Each
 // test makes its own uniquely named instrument.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function createInstrument(request: import('@playwright/test').APIRequestContext, name: string) {
   const res = await request.post(`${API_BASE}/instruments`, {

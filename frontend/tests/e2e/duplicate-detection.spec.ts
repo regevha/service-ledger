@@ -1,7 +1,6 @@
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
+import { TIMEOUT } from './timeouts';
+import { API_BASE, waitForExtraction } from './helpers/api';
 
 // A document that is already on file is flagged (backend/app/services/duplicates.py),
 // and the exact same file as a report that was already read is refused and
@@ -25,7 +24,7 @@ async function uploadAndClassify(page: import('@playwright/test').Page, name: st
   await page.click('button:has-text("Upload & classify")');
   // Either end of classification: straight through to review, or the manual
   // confirm step (which other specs' extra instruments can cause).
-  await expect(page.locator('#review-report-date, .class-row').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#review-report-date, .class-row').first()).toBeVisible({ timeout: TIMEOUT.flow });
 }
 
 test('the same file as a report that was never read is flagged, not refused', async ({ page, request }) => {
@@ -64,11 +63,7 @@ test('the same file as a report that was already read is refused and opens the e
     })
   ).json();
   const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
+  await waitForExtraction(request, job.id);
   expect((await (await request.get(`${API_BASE}/reports/${first.id}`)).json()).status).toBe('extracted');
 
   // Loading the same bytes again through the UI is turned away…
@@ -81,7 +76,7 @@ test('the same file as a report that was already read is refused and opens the e
     buffer: Buffer.from(bytes),
   });
   await page.click('button:has-text("Upload & classify")');
-  await expect(page.locator('#already-on-file-notice')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#already-on-file-notice')).toBeVisible({ timeout: TIMEOUT.flow });
 
   // …and leaves no empty draft behind from the refused attempt.
   const mine = await (await request.get(`${API_BASE}/reports`, { params: { technician: 'E2E Second Try' } })).json();
@@ -89,7 +84,7 @@ test('the same file as a report that was already read is refused and opens the e
 
   // The button opens the report that already holds the file.
   await page.click('button:has-text("Open existing report")');
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('.view-tab.active')).toHaveText('Reports');
 });
 

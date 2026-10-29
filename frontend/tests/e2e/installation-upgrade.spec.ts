@@ -1,5 +1,6 @@
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
+import { TIMEOUT } from './timeouts';
 
 import { finalizeFromReview } from './finalize-helper';
 // Installation / upgrade is a report type of its own (BD task code T107). The
@@ -17,14 +18,14 @@ test('a technician can confirm a report as an installation / upgrade and review 
     buffer: uniquePdf('%PDF-1.4 software upgrade'),
   });
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.class-row', { timeout: 30_000 });
+  await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
 
   const typeSelect = page.locator('select:has(option:has-text("Installation / upgrade"))');
   await typeSelect.selectOption({ label: 'Installation / upgrade' });
   await page.click('button:has-text("Confirm & continue")');
 
   const fields = page.locator('.field-list');
-  await expect(fields).toBeVisible({ timeout: 30_000 });
+  await expect(fields).toBeVisible({ timeout: TIMEOUT.flow });
   await expect(fields).toContainText('Service description');
   await expect(fields).toContainText('Parts used');
   await expect(fields).toContainText('Verification result');
@@ -32,7 +33,7 @@ test('a technician can confirm a report as an installation / upgrade and review 
   await expect(fields).not.toContainText('Fault category');
 
   await finalizeFromReview(page);
-  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.success-panel')).toBeVisible({ timeout: TIMEOUT.ui });
 
   // It is filterable by its type in the reports list.
   await page.click('.view-tab:has-text("Reports")');
