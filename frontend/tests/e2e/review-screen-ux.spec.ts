@@ -8,7 +8,7 @@ import { reviewSnapshot } from '../../src/reviewSnapshot';
 import { finalizeFromReview } from './finalize-helper';
 import { createNumericModel } from './numeric-fixture';
 import { TIMEOUT } from './timeouts';
-import { seedReport } from './helpers/api';
+import { seedReport, API_BASE } from './helpers/api';
 import { openReviewFromList } from './helpers/ui';
 
 // The review screen as the 2026-10-24 UI review asked for it: the scan beside the fields, an action
