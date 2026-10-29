@@ -1,6 +1,7 @@
 import { test, expect } from './coverage';
 import { startEditing } from './edit-helper';
 import { TIMEOUT } from './timeouts';
+import { finalizeFromReview } from './finalize-helper';
 import { seedReport } from './helpers/api';
 
 // The reports search/list screen (§7/§9) — filters, the empty state, and the
@@ -113,7 +114,7 @@ test.describe('reports search screen', () => {
     const finalizeButton = page.locator('button:has-text("Save & finalize report")');
     await expect(finalizeButton).toBeVisible();
 
-    await finalizeButton.click();
+    await finalizeFromReview(page);
     await expect(page.locator('.report-heading-meta')).toContainText('Finalized', { timeout: TIMEOUT.ui });
     await expect(page.locator('button:has-text("Save & finalize report")')).toHaveCount(0);
   });

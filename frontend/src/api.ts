@@ -123,6 +123,8 @@ export interface TemplateField {
   notes: string | null;
   options?: string[];
   item_schema?: ItemSchemaColumn[];
+  /** Filled in by a person, not printed on the form: the model only suggests it, and Review always asks to check it. */
+  filled_by_person?: boolean;
 }
 
 export interface ReportTemplate {
@@ -675,6 +677,7 @@ export interface TemplateFieldPayload {
   notes?: string | null;
   options?: string[];
   item_schema?: ItemSchemaColumn[];
+  filled_by_person?: boolean;
 }
 
 export interface TemplateCreatePayload {
