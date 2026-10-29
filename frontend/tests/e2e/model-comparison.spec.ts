@@ -1,7 +1,8 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
 import { createNumericTemplate } from './numeric-fixture';
+import { TIMEOUT } from './timeouts';
+import { API_BASE, seedReport } from './helpers/api';
 
 // "Compare units of the same model" on the Analytics tab: the side-by-side
 // table of every serial of a model and the one-line-per-unit trend chart.
@@ -9,54 +10,32 @@ import { createNumericTemplate } from './numeric-fixture';
 // counts and values hold regardless of what other specs left in the shared
 // database.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
-
 async function createUnit(request: APIRequestContext, model: string, serial: string, name: string) {
   const res = await request.post(`${API_BASE}/instruments`, { data: { name, model, manufacturer: 'E2E Maker', serial_number: serial } });
   expect(res.status()).toBe(201);
   return (await res.json()).id as string;
 }
 
-async function finalizedReading(
-  request: APIRequestContext,
-  opts: { instrumentId: string; model: string; pressure: number; reportDate: string },
-) {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model: opts.model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: opts.instrumentId, template_id: templates[0].id },
-  });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: {
-        file: {
-          name: 'seed.pdf',
-          mimeType: 'application/pdf',
-          buffer: Buffer.from(`%PDF-1.4 seed ${Date.now()}-${Math.random()}`),
-        },
-      },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: { fluidics_pressure_psi: opts.pressure }, report_date: opts.reportDate },
-  });
-  expect((await request.post(`${API_BASE}/reports/${report.id}/finalize`)).status()).toBe(200);
-}
-
 async function openComparison(page: Page, model: string) {
   await page.goto('/');
   await page.click('.view-tab:has-text("Analytics")');
   const picker = page.getByLabel('Model to compare');
-  await expect(picker).toBeVisible({ timeout: 15_000 });
+  await expect(picker).toBeVisible({ timeout: TIMEOUT.ui });
   await picker.selectOption(model);
+}
+
+async function finalizedReading(
+  request: APIRequestContext,
+  opts: { instrumentId: string; model: string; pressure: number; reportDate: string },
+) {
+  await seedReport(request, {
+    instrumentId: opts.instrumentId,
+    model: opts.model,
+    reportType: 'installation_upgrade',
+    fields: { fluidics_pressure_psi: opts.pressure },
+    reportDate: opts.reportDate,
+    finalize: true,
+  });
 }
 
 test('two units of one model are compared in a table and on one chart', async ({ page, request }) => {

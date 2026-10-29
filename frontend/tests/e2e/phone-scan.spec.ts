@@ -1,13 +1,11 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { createNumericTemplate } from './numeric-fixture';
-import { BACKEND_PORT } from '../../playwright.config';
+import { createNumericModel } from './numeric-fixture';
+import { seedReport as seedReportWith, API_BASE } from './helpers/api';
 
 // Phone review of 2026-10-25, item 11 and the owner's choice of a "⋯" menu: on a phone the scan is
 // shown as page images behind a Fields | Scan switch, and the report's rarer actions live in a menu.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 // The shared fixture PDFs are fake bytes; page rendering needs a real (here: two blank pages) document.
 // PDFium rebuilds a missing cross-reference table, so none is written.
 const TWO_PAGE_PDF =
@@ -18,28 +16,17 @@ const TWO_PAGE_PDF =
   'trailer<</Root 1 0 R/Size 5>>\n%%EOF';
 
 async function seedReport(request: APIRequestContext): Promise<{ reportId: string; attachmentId: string }> {
-  const model = `E2E-Scan-${Date.now()}`;
-  const inst = await (
-    await request.post(`${API_BASE}/instruments`, {
-      data: { name: model, model, manufacturer: 'E2E Maker', serial_number: `SN-${model}` },
-    })
-  ).json();
-  await createNumericTemplate(request, model);
-  const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: inst.id, template_id: templates[0].id },
+  const model = await createNumericModel(request, 'E2E-Scan');
+  const { reportId, attachmentId } = await seedReportWith(request, {
+    model,
+    reportType: 'installation_upgrade',
+    extract: false,
+    file: { name: 'two-pages.pdf', contents: TWO_PAGE_PDF },
   });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, { multipart: { file: { name: 'two-pages.pdf', mimeType: 'application/pdf', buffer: uniquePdf(TWO_PAGE_PDF) } } })
-  ).json();
-  return { reportId: report.id, attachmentId: attachment.id };
+  return { reportId, attachmentId };
 }
 
-test.describe('scan and report menu on a phone', () => {
-  test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
+test.describe('scan and report menu on a phone', { tag: '@phone' }, () => {
 
   test('the Scan tab shows every page as an image, and + / - zoom it', async ({ page, request }) => {
     const { reportId, attachmentId } = await seedReport(request);

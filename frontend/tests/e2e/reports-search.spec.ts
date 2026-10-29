@@ -1,8 +1,7 @@
-import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
 import { startEditing } from './edit-helper';
-import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
+import { seedReport } from './helpers/api';
 
 // The reports search/list screen (§7/§9) — filters, the empty state, and the
 // click-through into the review screen for an already-created report.
@@ -13,54 +12,6 @@ import { BACKEND_PORT } from '../../playwright.config';
 // unique marker string, and assertions look for that marker among the
 // visible rows rather than asserting an absolute row count — which stays
 // correct regardless of what other specs in the same run created.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
-
-async function seedReport(
-  request: APIRequestContext,
-  opts: { model: string; reportType: string; technician: string; finalize: boolean }
-) {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: opts.technician } })).json();
-
-  const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
-  const instrument = instruments.find((i: { model: string }) => i.model === opts.model);
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: opts.reportType, model: opts.model } })
-  ).json();
-  const template = templates[0];
-
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: instrument.id, template_id: template.id },
-  });
-
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
-    })
-  ).json();
-  // §3/§9: extract only enqueues a job now — app.worker (booted alongside
-  // this suite's dedicated backend, see playwright.config.ts) runs it in
-  // the background, so seeding has to wait for that job to finish before
-  // the report is actually in "extracted" status.
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  await waitForJob(request, job.id);
-
-  if (opts.finalize) {
-    await request.post(`${API_BASE}/reports/${report.id}/finalize`);
-  }
-
-  return report.id as string;
-}
-
-async function waitForJob(request: APIRequestContext, jobId: string, timeoutMs = 30_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const job = await (await request.get(`${API_BASE}/extraction-jobs/${jobId}`)).json();
-    if (job.status === 'succeeded' || job.status === 'failed') return;
-    if (Date.now() >= deadline) throw new Error(`extraction job ${jobId} did not finish within ${timeoutMs}ms`);
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-}
 
 test.describe('reports search screen', () => {
   test('filters by report type and status, and shows an empty state', async ({ page, request }) => {
@@ -133,7 +84,7 @@ test.describe('reports search screen', () => {
     await page.waitForSelector('.report-table');
     await page.click(`.report-row-body:has-text("${marker}")`);
 
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.report-heading-meta')).toContainText('Finalized');
     // A finalized report opens read-only: Edit unlocks it, and only then is there anything to save.
     await expect(page.locator('button:has-text("Save corrections")')).toHaveCount(0);
@@ -157,13 +108,13 @@ test.describe('reports search screen', () => {
     await page.waitForSelector('.report-table');
     await page.click(`.report-row-body:has-text("${marker}")`);
 
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.report-heading-meta')).toContainText('Extracted');
     const finalizeButton = page.locator('button:has-text("Save & finalize report")');
     await expect(finalizeButton).toBeVisible();
 
     await finalizeButton.click();
-    await expect(page.locator('.report-heading-meta')).toContainText('Finalized', { timeout: 15_000 });
+    await expect(page.locator('.report-heading-meta')).toContainText('Finalized', { timeout: TIMEOUT.ui });
     await expect(page.locator('button:has-text("Save & finalize report")')).toHaveCount(0);
   });
 });
