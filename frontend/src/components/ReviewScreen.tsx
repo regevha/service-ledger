@@ -102,9 +102,14 @@ export function ReviewScreen({
   // Editing the value does not count: they may have typed over it without looking at the scan.
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
   const markChecked = (name: string) => setChecked((prev) => new Set(prev).add(name));
+  // Fields a person fills in (not printed on the form): the model's value is only a
+  // suggestion, so it is flagged whatever its confidence, until marked as checked.
+  const personFields = new Set(template.field_schema.fields.filter((f) => f.filled_by_person).map((f) => f.name));
   const isFlagged = (name: string) => {
+    if (checked.has(name)) return false;
+    if (personFields.has(name) && !readOnly) return true;
     const confidence = fieldConfidences[name];
-    return confidence !== undefined && confidence < fieldConfidenceThreshold && !checked.has(name);
+    return confidence !== undefined && confidence < fieldConfidenceThreshold;
   };
   const reportDateConfidence = fieldConfidences.report_date;
   const reportDateFlagged = isFlagged('report_date');
@@ -236,12 +241,18 @@ export function ReviewScreen({
                   {fieldLabel(field.name, field.unit)}
                   {field.unit && <span className="field-unit"> ({field.unit})</span>}
                 </span>
-                {confidence !== undefined && (
-                  <ConfidenceBadge
-                    confidence={confidence}
-                    threshold={fieldConfidenceThreshold}
-                    label={placeholderValues ? 'placeholder' : undefined}
-                  />
+                {personFields.has(field.name) && !readOnly ? (
+                  <span className={`badge ${flagged ? 'badge-warn' : 'badge-good'}`} data-testid="person-field-badge">
+                    {flagged ? 'suggested, check it' : 'checked'}
+                  </span>
+                ) : (
+                  confidence !== undefined && (
+                    <ConfidenceBadge
+                      confidence={confidence}
+                      threshold={fieldConfidenceThreshold}
+                      label={placeholderValues ? 'placeholder' : undefined}
+                    />
+                  )
                 )}
               </div>
               {flagged && !readOnly && (

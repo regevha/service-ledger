@@ -56,6 +56,7 @@ REPAIR_FIELDS = [
         "type": "enum",
         "unit": None,
         "notes": "lab-manager-assigned, not on the source form",
+        "filled_by_person": True,
         "options": ["fluidics", "optics", "electronics", "software"],
     },
     {
@@ -63,6 +64,7 @@ REPAIR_FIELDS = [
         "type": "enum",
         "unit": None,
         "notes": "lab-manager-assigned, not on the source form",
+        "filled_by_person": True,
         "options": ["pass", "fail", "not retested"],
     },
 ]
@@ -125,6 +127,7 @@ PM_FIELDS = [
         "type": "enum",
         "unit": None,
         "notes": "lab-manager-assigned, not on the source form — mirrors repair's retest_result",
+        "filled_by_person": True,
         "options": ["pass", "fail", "not verified"],
     },
 ]
@@ -167,6 +170,7 @@ INSTALL_UPGRADE_FIELDS = [
         "type": "enum",
         "unit": None,
         "notes": "lab-manager-assigned, not on the source form — mirrors preventive maintenance",
+        "filled_by_person": True,
         "options": ["pass", "fail", "not verified"],
     },
 ]
@@ -234,6 +238,7 @@ _CYTEK_COMMON = [
         "type": "enum",
         "unit": None,
         "notes": "lab-manager-assigned, not on the source form",
+        "filled_by_person": True,
         "options": ["pass", "fail", "not verified"],
     },
 ]
@@ -286,6 +291,7 @@ CYTOFLEX_S_REPAIR_FIELDS = [
         "type": "enum",
         "unit": None,
         "notes": "lab-manager-assigned, not on the source form",
+        "filled_by_person": True,
         "options": ["fluidics", "optics", "electronics", "software"],
     },
     {
@@ -293,6 +299,7 @@ CYTOFLEX_S_REPAIR_FIELDS = [
         "type": "enum",
         "unit": None,
         "notes": "lab-manager-assigned, not on the source form",
+        "filled_by_person": True,
         "options": ["pass", "fail", "not retested"],
     },
 ]
