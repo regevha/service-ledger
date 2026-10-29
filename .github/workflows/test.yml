@@ -95,7 +95,10 @@ jobs:
   frontend:
     name: Frontend (Playwright e2e)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The run takes about 10 minutes and grows with every spec. Past about 13, split the specs
+    # across shards (`--shard=1/2`), each with its own job and its own Postgres service: the suite
+    # shares one database, so shards cannot share one.
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -154,7 +157,7 @@ jobs:
       - name: Run Playwright e2e suite with coverage
         # test:e2e:coverage runs the same suite against an Istanbul-instrumented
         # build and ends with `nyc report --check-coverage`, so this step fails
-        # when line coverage drops below 88% or branch coverage below 70% (the
+        # when line coverage drops below 88% or branch coverage below 75% (the
         # thresholds live in frontend/package.json — raise them as coverage
         # improves). The table is printed in the log.
         working-directory: frontend
@@ -173,12 +176,153 @@ jobs:
           fi
 
       - name: Upload traces/screenshots on failure
-        # playwright.config.ts only configures the 'list' reporter (no HTML
-        # report directory), but still writes retain-on-failure traces and
-        # only-on-failure screenshots to the default test-results/ output dir.
+        # playwright.config.ts writes an HTML report to playwright-report/ and
+        # retain-on-failure traces and only-on-failure screenshots to
+        # test-results/ (the report links to both). Open the report with
+        # `npx playwright show-report <unzipped folder>`.
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-test-results
-          path: frontend/test-results/
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+
+  built:
+    name: Built page behind the password (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # The production build of the page, served by the backend behind the shared password
+    # (frontend/playwright.built.config.ts). Runs on every push and pull request. The post-deploy
+    # smoke check (deploy/smoke.sh) does not run here: it needs a deployed address.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: service_ledger
+          POSTGRES_PASSWORD: service_ledger_dev
+          POSTGRES_DB: service_ledger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Create service_ledger_e2e database
+        run: psql -d service_ledger -c "CREATE DATABASE service_ledger_e2e;"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright's Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the built-page suite
+        # The config builds the page itself (an empty API base, into a temp folder), so there is no
+        # separate build step.
+        working-directory: frontend
+        run: npm run test:e2e:built
+
+      - name: Upload report and traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-built-results
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+
+  webkit:
+    name: Phone tests in WebKit (Playwright, nightly)
+    # Only on the daily schedule and on "Run workflow": it needs its own browser download and
+    # WebKit's rendering is not what a change under review is likely to break.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: service_ledger
+          POSTGRES_PASSWORD: service_ledger_dev
+          POSTGRES_DB: service_ledger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Create service_ledger_e2e database
+        run: psql -d service_ledger -c "CREATE DATABASE service_ledger_e2e;"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright's WebKit
+        working-directory: frontend
+        run: npx playwright install --with-deps webkit
+
+      - name: Run the phone tests in WebKit
+        working-directory: frontend
+        env:
+          E2E_WEBKIT: "1"
+        run: npx playwright test --project=phone-webkit
+
+      - name: Upload report and traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-webkit-results
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
           retention-days: 7

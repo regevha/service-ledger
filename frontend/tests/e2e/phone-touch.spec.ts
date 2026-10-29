@@ -1,5 +1,6 @@
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
+import { API_BASE } from './helpers/api';
 
 // Phone review of 2026-10-25, item 8 and 19: controls are big enough for a thumb, the tab labels are
 // readable, and the keyboard leaves serial and part numbers alone.
@@ -21,16 +22,17 @@ async function tooSmall(page: import('@playwright/test').Page): Promise<string[]
   });
 }
 
-test.describe('on a phone', () => {
-  test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
+test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('buttons, selects and text boxes are at least 44px high on every tab', async ({ page, request }) => {
     // A report in the list, so the sort buttons above the cards are measured too.
-    await request.post(`http://localhost:${BACKEND_PORT}/reports`, { data: { technician_name: `E2E-Touch-${Date.now()}` } });
+    await request.post(`${API_BASE}/reports`, { data: { technician_name: `E2E-Touch-${Date.now()}` } });
     await page.goto('/');
     for (const tab of TABS) {
       await page.click(`.view-tab:has-text("${tab}")`);
-      await page.waitForTimeout(400);
+      // The tab is selected and its data has arrived, so every control is on the page to be measured.
+      await expect(page.locator('.view-tab.active')).toContainText(tab);
+      await page.waitForLoadState('networkidle');
       // Open the filters where there are some, so their controls are measured too.
       const show = page.locator('button:has-text("Show filters")');
       if (await show.count()) await show.first().click();
@@ -65,6 +67,6 @@ test('on a wide screen the compact buttons are unchanged', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/#/templates');
   const small = page.locator('.btn.small').first();
-  await expect(small).toBeVisible({ timeout: 15_000 });
+  await expect(small).toBeVisible({ timeout: TIMEOUT.ui });
   expect((await small.boundingBox())!.height).toBeLessThan(40);
 });

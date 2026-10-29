@@ -2,6 +2,7 @@ import { test, expect } from './coverage';
 import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TIMEOUT } from './timeouts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -23,7 +24,7 @@ test('an unreachable backend surfaces a clear connection error', async ({ page }
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
-  await expect(page.locator('.banner-crit')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.banner-crit')).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('.banner-crit')).toContainText('Could not reach the backend');
   await expect(page.locator('button:has-text("Start over")')).toBeVisible();
   await expect(page.locator('button:has-text("Try again")')).toBeVisible();
@@ -41,12 +42,12 @@ test('a failed classification surfaces the backend error and Try again re-attemp
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
-  await expect(page.locator('.banner-crit')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.banner-crit')).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('.banner-crit')).toContainText('Simulated classification failure');
   expect(classifyAttempts).toBe(1);
 
   await page.click('button:has-text("Try again")');
-  await expect(page.locator('.banner-crit')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.banner-crit')).toBeVisible({ timeout: TIMEOUT.ui });
   expect(classifyAttempts).toBe(2);
 
   await page.click('button:has-text("Start over")');
@@ -64,7 +65,7 @@ test('a file that is not a PDF or an image is refused with the reason', async ({
   });
   await page.click('button:has-text("Upload & classify")');
 
-  await expect(page.locator('.banner-crit')).toContainText('Unsupported file type', { timeout: 15_000 });
+  await expect(page.locator('.banner-crit')).toContainText('Unsupported file type', { timeout: TIMEOUT.ui });
   await expect(page.locator('.banner-crit')).toContainText('PDF');
   await expect(page.locator('button:has-text("Start over")')).toBeVisible();
 });
@@ -82,6 +83,6 @@ test('an image scan is accepted, not just a PDF', async ({ page }) => {
 
   // Past the upload step: it reaches classification (the manual pick or the
   // review screen, depending on how many instruments share the guessed model).
-  await page.waitForSelector('.field-list, .class-row', { timeout: 30_000 });
+  await page.waitForSelector('.field-list, .class-row', { timeout: TIMEOUT.flow });
   await expect(page.locator('.banner-crit')).toHaveCount(0);
 });

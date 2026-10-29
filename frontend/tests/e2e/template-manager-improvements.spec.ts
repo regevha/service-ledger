@@ -1,6 +1,6 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE } from './helpers/api';
 
 // The Templates tab's safeguards and conveniences: the form says what is wrong
 // before you save, a template can be duplicated as a starting point, and a
@@ -8,8 +8,6 @@ import { BACKEND_PORT } from '../../playwright.config';
 // and cannot be deleted. Also exercises the field/column editing controls
 // (reorder, remove, change type, rename) and the screen's error paths. Every
 // template here has a unique model, as the suite shares one database.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 const textField = (name: string) => ({ name, type: 'text', unit: null, notes: null });
 

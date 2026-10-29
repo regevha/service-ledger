@@ -1,4 +1,5 @@
 import { test, expect } from './coverage';
+import { TIMEOUT } from './timeouts';
 
 // The filters can be folded away (to save room on a phone or tablet) and leave a one-line summary.
 
@@ -7,7 +8,7 @@ for (const tab of ['reports', 'analytics']) {
     await page.setViewportSize({ width: 820, height: 1180 });
     await page.goto(`/#/${tab}`);
     const inputs = page.getByLabel('Lab manager', { exact: true });
-    await expect(inputs).toBeVisible({ timeout: 15_000 });
+    await expect(inputs).toBeVisible({ timeout: TIMEOUT.ui });
 
     await inputs.fill('Dana');
     await page.getByLabel('Report type', { exact: true }).selectOption('repair');

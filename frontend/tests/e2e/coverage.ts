@@ -1,6 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { deleteReports, listReportIds } from './helpers/api';
 
 /**
  * Drop-in replacement for `test` from '@playwright/test'. Normally identical;
@@ -8,7 +9,7 @@ import path from 'node:path';
  * counters the instrumented app keeps in `window.__coverage__` from every page
  * the test opened, and writes them to .nyc_output/ for `nyc report` to merge.
  */
-export const test = base.extend<{ _coverage: void; _scanPaneOff: void }>({
+export const test = base.extend<{ _coverage: void; _scanPaneOff: void; _reportCleanup: void }>({
   // Headless Chromium has no PDF viewer, so an inline scan <iframe> is a download in flight that can
   // interrupt typing in the form beside it. Tests start with the scan pane hidden (the per-viewer
   // "Hide scan" preference); the specs that exercise the pane turn it back on with showScanPane().
@@ -22,6 +23,19 @@ export const test = base.extend<{ _coverage: void; _scanPaneOff: void }>({
         }
       });
       await use();
+    },
+    { auto: true },
+  ],
+  // Every spec shares one database for the whole run, so reports a test made would pile up and show
+  // in the next test's lists, counts and status filters. Whatever reports exist when a test ends that
+  // did not exist when it began are deleted, however they were made (the screen or the API) and
+  // whether the test passed. Reports made before the first test (a beforeAll) are left alone.
+  _reportCleanup: [
+    async ({ request }, use) => {
+      const before = new Set(await listReportIds(request));
+      await use();
+      const created = (await listReportIds(request)).filter((id) => !before.has(id));
+      await deleteReports(request, created);
     },
     { auto: true },
   ],

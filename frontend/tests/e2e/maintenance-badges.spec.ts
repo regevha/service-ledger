@@ -1,14 +1,11 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE, seedReport } from './helpers/api';
 
 // Models plan step 4, part A: each instrument shows whether its maintenance is
 // overdue (model's service interval + newest finalized preventive-maintenance
 // report), in the list, on its page and on the model page; the list filters by
 // state; and the manufacturer follows the model.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function setup(request: APIRequestContext, model: string) {
   const unit = await (
@@ -27,21 +24,16 @@ async function maintenanceReport(request: APIRequestContext, model: string, inst
       data: { instrument_type: 'facs', report_type: 'preventive_maintenance', model, fields: [{ name: 'summary', type: 'text' }] },
     })
   ).json();
-  const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: 'Dana Levi' } })).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, { data: { instrument_id: instrumentId, template_id: template.id } });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 maintenance badge') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, { data: { extracted_fields: { summary: 'Yearly service' }, report_date: day } });
-  expect((await request.post(`${API_BASE}/reports/${report.id}/finalize`)).status()).toBe(200);
+  await seedReport(request, {
+    instrumentId,
+    model,
+    reportType: 'preventive_maintenance',
+    templateId: template.id,
+    technician: 'Dana Levi',
+    fields: { summary: 'Yearly service' },
+    reportDate: day,
+    finalize: true,
+  });
 }
 
 test('overdue shows on the list, the instrument page and the model page; the filter finds it', async ({ page, request }) => {
