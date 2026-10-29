@@ -40,6 +40,9 @@ test('a double click on Save & finalize in the intake flow makes one finalized r
   await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 
   await page.locator(SAVE_AND_FINALIZE).dblclick();
+  // Fields the scan left flagged make the screen ask "Finalize anyway?" first; answer it with a double click too.
+  const anyway = page.getByRole('button', { name: 'Finalize anyway' });
+  if (await anyway.isVisible().catch(() => false)) await anyway.dblclick();
   await expect(page.getByTestId('intake-success')).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.getByTestId('intake-error')).toHaveCount(0);
 
@@ -49,7 +52,7 @@ test('a double click on Save & finalize in the intake flow makes one finalized r
   expect(mine[0].status).toBe('finalized');
 });
 
-test('finalizing a report that another page already finalized shows the refusal and leaves it finalized', async ({ browser, request }) => {
+test('finalizing a report that another page already finalized succeeds quietly and keeps the first finalize time', async ({ browser, request }) => {
   const marker = `E2E-TwoPages-${Date.now()}`;
   const { reportId } = await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker });
 
@@ -64,9 +67,15 @@ test('finalizing a report that another page already finalized shows the refusal 
     await first.locator(SAVE_AND_FINALIZE).click();
     await expect(first.locator('.review-actions')).toContainText('Finalized', { timeout: TIMEOUT.ui });
 
-    // The second page still shows the old state. Its attempt is refused and says so.
+    // The second page still shows the old state. Finalizing again is not an error: the report is
+    // returned as it is, and the screen shows it finalized.
+    const finalizedAt = (await (await request.get(`${API_BASE}/reports/${reportId}`)).json()).finalized_at;
     await second.locator(SAVE_AND_FINALIZE).click();
-    await expect(second.locator('#save-error')).toContainText("Cannot finalize a report in status 'finalized'", { timeout: TIMEOUT.ui });
+    const anyway = second.getByRole('button', { name: 'Finalize anyway' });
+    if (await anyway.isVisible().catch(() => false)) await anyway.click();
+    await expect(second.locator('.review-actions')).toContainText('Finalized', { timeout: TIMEOUT.ui });
+    await expect(second.locator('#save-error')).toHaveCount(0);
+    expect((await (await request.get(`${API_BASE}/reports/${reportId}`)).json()).finalized_at).toBe(finalizedAt);
   } finally {
     await first.context().close();
     await second.context().close();
