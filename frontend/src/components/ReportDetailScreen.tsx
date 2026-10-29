@@ -21,6 +21,7 @@ import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { searchableSegments } from '../searchHighlight';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { useConfirmLeave, useNavigationGuard } from '../navigationGuard';
 import { reviewSnapshot } from '../reviewSnapshot';
 import { ReviewScreen } from './ReviewScreen';
 import { RowMenu } from './RowMenu';
@@ -86,6 +87,7 @@ export function ReportDetailScreen({
   const [saveError, setSaveError] = useState<{ message: string; finalize: boolean } | null>(null);
   const dirty = savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
   useUnsavedChangesGuard(dirty);
+  const confirmLeave = useConfirmLeave();
 
   useEffect(() => {
     let cancelled = false;
@@ -134,8 +136,8 @@ export function ReportDetailScreen({
     'Could not load report.'
   );
 
-  async function handleSave(finalize: boolean) {
-    if (!report || saving) return;
+  async function handleSave(finalize: boolean): Promise<boolean> {
+    if (!report || saving) return false;
     setSaving(finalize ? 'finalize' : 'save');
     setSaveError(null);
     // What is being saved is what the form holds now. Edits made while the request runs stay unsaved.
@@ -148,12 +150,17 @@ export function ReportDetailScreen({
       setEditing(false);
       setDuplicatesNonce((n) => n + 1); // a save can change what matches
       showToast(finalize ? 'Saved and finalized' : 'Saved');
+      return true;
     } catch (e) {
       setSaveError({ message: e instanceof ApiError ? e.message : 'Saving failed unexpectedly.', finalize });
+      return false;
     } finally {
       setSaving(null);
     }
   }
+
+  // The app asks before a tab, the Back button or one of this screen's own links would throw unsaved edits away.
+  useNavigationGuard('reports', dirty, () => handleSave(false));
 
   async function handleDelete() {
     if (!report) return;
@@ -179,11 +186,11 @@ export function ReportDetailScreen({
     <div className="section">
       <div className="detail-nav-row">
         <div className="detail-nav-links">
-          <button className="btn small back-link" onClick={onBack}>
+          <button className="btn small back-link" onClick={() => confirmLeave(onBack)}>
             ← Back to reports
           </button>
           {instrument && !phone && (
-            <button className="btn small" onClick={() => onViewInstrument(instrument.id)}>
+            <button className="btn small" onClick={() => confirmLeave(() => onViewInstrument(instrument.id))}>
               View instrument: {instrument.model} ({instrument.serial_number}) →
             </button>
           )}
@@ -238,7 +245,7 @@ export function ReportDetailScreen({
                 {onOpenReport && (
                   <>
                     {' '}
-                    <button type="button" className="btn small" onClick={() => onOpenReport(d)}>
+                    <button type="button" className="btn small" onClick={() => confirmLeave(() => onOpenReport(d))}>
                       Open that report
                     </button>
                   </>
@@ -284,7 +291,7 @@ export function ReportDetailScreen({
               {instrument && phone && (
                 <>
                   {' · '}
-                  <button type="button" className="link-button" onClick={() => onViewInstrument(instrument.id)}>
+                  <button type="button" className="link-button" onClick={() => confirmLeave(() => onViewInstrument(instrument.id))}>
                     {`${instrument.model} (${instrument.serial_number}) →`}
                   </button>
                 </>

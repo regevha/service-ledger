@@ -1,8 +1,6 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
+import { API_BASE } from './helpers/api';
 
 // Comparing two templates side by side (phase 1 of the template-comparison
 // proposal): read-only, same instrument type only, started from a row's
