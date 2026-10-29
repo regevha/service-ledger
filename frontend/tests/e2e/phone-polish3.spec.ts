@@ -1,12 +1,11 @@
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
+import { API_BASE } from './helpers/api';
 
 // Phone review 2 (2026-10-26), the third group: one sort menu, the page without a card inside a card,
 // Delete in a menu on Instruments, a tidy Templates header, Analytics bars with the number on the name's line,
 // and the wording of the upload box.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const PHONE = { width: 412, height: 915 };
 
 test.describe('on a phone', () => {

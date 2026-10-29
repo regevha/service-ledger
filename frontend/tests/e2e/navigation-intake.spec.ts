@@ -2,14 +2,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from './coverage';
 import { uniqueFixture } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
+import { API_BASE } from './helpers/api';
 
 // UI review items #16-#19: the processing panel (what is being read, how long, a way out), the
 // success screen (where to go next), the one-line classify instruction, and the address bar
 // following the app (Refresh, Back and bookmarks).
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 

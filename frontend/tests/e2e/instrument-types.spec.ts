@@ -1,9 +1,7 @@
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
+import { API_BASE } from './helpers/api';
 
 // A second kind of instrument: a type is added from the instrument form, an
 // instrument is created with it, and a report for that instrument says

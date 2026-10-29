@@ -1,9 +1,7 @@
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
+import { API_BASE } from './helpers/api';
 
 // A model alone can't tell two units of one model apart, so a fleet with
 // several FACSAria IIIs used to send every upload to the manual pick. The

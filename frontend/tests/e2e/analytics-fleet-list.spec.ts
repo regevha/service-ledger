@@ -1,5 +1,5 @@
 import { test, expect } from './coverage';
-import { seedFinalizedReport } from './seed-report';
+import { seedReport } from './helpers/api';
 import { TIMEOUT } from './timeouts';
 
 // The fleet list beside the Analytics charts: choosing a row narrows every chart to it, the list keeps
@@ -7,16 +7,18 @@ import { TIMEOUT } from './timeouts';
 // charts in turn. Like fleet-analytics.spec.ts this suite shares its database with other specs, so the
 // assertions are about what changes when a row is chosen, not about fleet-wide totals.
 
-async function seedTwoModels(request: Parameters<typeof seedFinalizedReport>[0]) {
-  await seedFinalizedReport(request, {
+async function seedTwoModels(request: Parameters<typeof seedReport>[0]) {
+  await seedReport(request, {
+    finalize: true,
     model: 'FACSAria III',
     reportType: 'repair',
-    extractedFields: { labor_hours: 4, retest_result: 'pass' },
+    fields: { labor_hours: 4, retest_result: 'pass' },
   });
-  await seedFinalizedReport(request, {
+  await seedReport(request, {
+    finalize: true,
     model: 'LSRFortessa',
     reportType: 'repair',
-    extractedFields: { labor_hours: 2, retest_result: 'fail' },
+    fields: { labor_hours: 2, retest_result: 'fail' },
   });
 }
 

@@ -1,15 +1,14 @@
-import { type APIRequestContext, type Page } from '@playwright/test';
+import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
 import { textPdf } from './text-pdf';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
+import { openReportFromList } from './helpers/ui';
+import { API_BASE } from './helpers/api';
 
 // The persistent duplicate indicator on a saved report's screen: whenever a
 // report is opened later (not only during intake), a banner names any other
 // report that holds the same scan, or the same work-order number on the same
 // instrument, and offers to open it. Each test uses its own unique marker.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 // Every unit a test makes is removed afterwards (deleting an instrument deletes
 // its reports). These reports are confirmed to a template but never extracted,
@@ -53,13 +52,6 @@ async function reportWithWorkOrder(
   return report.id as string;
 }
 
-async function openReport(page: Page, technician: string) {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
-  await page.waitForSelector('.report-table, .empty-hint');
-  await page.click(`.report-row-body:has-text("${technician}")`);
-}
-
 test('a saved report with the same work order on the same instrument shows a duplicate banner that opens the other one', async ({ page, request }) => {
   const model = `DUP-${Date.now()}`;
   const unit = await createUnit(request, model, `${model}-A`);
@@ -70,7 +62,7 @@ test('a saved report with the same work order on the same instrument shows a dup
   const secondId = await reportWithWorkOrder(request, { instrumentId: unit, model, workOrder: wo, technician: second, extraLine: 'rescan' });
   expect((await (await request.get(`${API_BASE}/reports/${secondId}/duplicates`)).json()).length).toBe(1);
 
-  await openReport(page, second);
+  await openReportFromList(page, second);
 
   const banner = page.locator('#saved-duplicate-notice');
   await expect(banner).toContainText('Possible duplicate');
@@ -105,7 +97,7 @@ test('the same work order on a different instrument shows no banner', async ({ p
   const onB = await reportWithWorkOrder(request, { instrumentId: b, model, workOrder: wo, technician, extraLine: 'other unit' });
   expect(await (await request.get(`${API_BASE}/reports/${onB}/duplicates`)).json()).toEqual([]);
 
-  await openReport(page, technician);
+  await openReportFromList(page, technician);
 
   await expect(page.locator('.field-list, .empty-hint').first()).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('#saved-duplicate-notice')).toHaveCount(0);
