@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TIMEOUT } from './timeouts';
 
+import { finalizeFromReview } from './finalize-helper';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The confident case (§4): a document with no marker in its filename gets a
@@ -32,7 +33,7 @@ test('upload → auto-classify → extract → review → finalize', async ({ pa
   const fieldCount = await page.locator('.field-list .field').count();
   expect(fieldCount).toBeGreaterThan(0);
 
-  await page.click('button:has-text("Save & finalize report")');
+  await finalizeFromReview(page);
   await expect(page.getByTestId('intake-success')).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.getByTestId('intake-success')).toContainText('finalized');
 

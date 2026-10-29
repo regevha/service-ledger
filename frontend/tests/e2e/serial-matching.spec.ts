@@ -2,6 +2,7 @@ import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { TIMEOUT } from './timeouts';
 import { API_BASE } from './helpers/api';
+import { finalizeFromReview } from './finalize-helper';
 
 // A model alone can't tell two units of one model apart, so a fleet with
 // several FACSAria IIIs used to send every upload to the manual pick. The
@@ -35,7 +36,7 @@ test('a document naming a serial number is assigned to that unit even when its m
     await expect(page.locator('#review-report-date')).toBeVisible({ timeout: TIMEOUT.flow });
     await expect(page.locator('#serial-notice')).toContainText(`Matched to FACSAria III (${serial})`);
 
-    await page.click('button:has-text("Save & finalize report")');
+    await finalizeFromReview(page);
     await expect(page.locator('.success-panel')).toBeVisible({ timeout: TIMEOUT.ui });
 
     // The report belongs to that unit, not to the other Aria.
