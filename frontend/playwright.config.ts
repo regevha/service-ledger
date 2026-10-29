@@ -75,6 +75,14 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true },
       grep: /@phone/,
     },
+    // The same phone tests in WebKit, with an iPhone profile: Safari on iOS is the browser most phones
+    // in a lab run, and it differs from Chromium in exactly the places the phone tests care about
+    // (viewport units, sticky bars, form controls, scrolling). Off by default because it needs its own
+    // browser download; the scheduled CI job turns it on with E2E_WEBKIT=1 after
+    // `npx playwright install --with-deps webkit`.
+    ...(process.env.E2E_WEBKIT === '1'
+      ? [{ name: 'phone-webkit', use: { ...devices['iPhone 14'] }, grep: /@phone/ }]
+      : []),
   ],
 
   webServer: [

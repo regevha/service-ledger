@@ -40,6 +40,29 @@ test('a Hebrew document waits for review; QC pages are listed and can be include
   await expect(page.locator('textarea[aria-label="English translation"]')).toContainText('Page 2 included');
 });
 
+test('the review is laid out left to right: the Hebrew original on the left, the English beside it', async ({ page }) => {
+  // The app is an English interface that shows a Hebrew document. The page and the English text must
+  // stay left to right (a right-to-left page would flip the two panes and the buttons), and the
+  // Hebrew stays inside its own pane, the scan.
+  await upload(page, `hebrew-direction-${Date.now()}.pdf`);
+  await expect(page.locator('#translation-review')).toBeVisible({ timeout: TIMEOUT.flow });
+
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).direction)).toBe('ltr');
+  const english = page.locator('textarea[aria-label="English translation"]');
+  await expect(english).toHaveAttribute('dir', 'ltr');
+  expect(await english.evaluate((el) => getComputedStyle(el).direction)).toBe('ltr');
+
+  const original = await page.locator('iframe.translation-original').boundingBox();
+  const translated = await english.boundingBox();
+  expect(original, 'the original pane is showing').not.toBeNull();
+  expect(translated, 'the English pane is showing').not.toBeNull();
+  expect(original!.x, 'the original is to the left of the English').toBeLessThan(translated!.x);
+
+  // Nothing sticks out sideways because of the text direction.
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test('the original beside the English is served for display, not as a download', async ({ page, request }) => {
   // Found on 2026-10-16 with the Cytek PDF (pages are images): the original
   // pane stayed blank because the file came back as an attachment, which a
