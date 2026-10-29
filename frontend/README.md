@@ -266,6 +266,15 @@ deleted. With `SMOKE_STUB=1` (stub extractor only) it also runs a full upload
 and finalize. It uses plain HTTP requests, no browser, and does not run in CI.
 The deploy and update scripts should call it as their last step.
 
+### Accessibility scans
+
+`tests/e2e/accessibility.spec.ts` runs axe-core (WCAG 2 A and AA) on the
+intake screen, reports list, review screen and analytics. Problems already
+there are listed in `KNOWN` in that file, with the screens and why; a new
+problem fails the test, and a listed one that has been fixed fails it too, so
+remove it from the list. Automated rules catch only part of what matters; this
+is a floor, not an audit.
+
 ### Selectors
 
 New specs find elements by role, label or `data-testid`, not by CSS class
