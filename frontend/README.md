@@ -244,6 +244,10 @@ other test runs only in the `chromium` desktop project. Don't add a
 `test.use({ viewport, hasTouch, isMobile })` to a tagged describe, the project
 provides it. Run just the phone tests with `npx playwright test --project=phone`.
 
+The same tests also run in WebKit (an iPhone profile) as the `phone-webkit` project, which is off
+unless `E2E_WEBKIT=1` and needs `npx playwright install --with-deps webkit`. CI runs it
+only on the daily schedule and on "Run workflow".
+
 ### Built page behind the password
 
 `npm run test:e2e:built` runs against what is deployed: the production build of
