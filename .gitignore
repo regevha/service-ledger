@@ -23,8 +23,10 @@ node_modules/
 frontend/.nyc_output/
 frontend/coverage/
 
-# e2e sign-in session (tests/e2e/auth-setup.ts)
-frontend/tests/e2e/.auth/
+# Run artifacts of the backend test suite: Playwright's last-run record, and the
+# attachment files the pytest suite writes (tests/storage/ is its upload folder).
+backend/test-results/
+backend/tests/storage/
 
 backend/storage/debug-claude/
 

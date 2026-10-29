@@ -173,12 +173,15 @@ jobs:
           fi
 
       - name: Upload traces/screenshots on failure
-        # playwright.config.ts only configures the 'list' reporter (no HTML
-        # report directory), but still writes retain-on-failure traces and
-        # only-on-failure screenshots to the default test-results/ output dir.
+        # playwright.config.ts writes an HTML report to playwright-report/ and
+        # retain-on-failure traces and only-on-failure screenshots to
+        # test-results/ (the report links to both). Open the report with
+        # `npx playwright show-report <unzipped folder>`.
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-test-results
-          path: frontend/test-results/
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
           retention-days: 7

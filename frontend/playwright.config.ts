@@ -45,8 +45,14 @@ export default defineConfig({
   // by name in the output instead of vanishing into a manual re-run. Locally
   // nothing is retried, so a flake is never hidden while developing.
   retries: process.env.CI ? 1 : 0,
+  // A committed test.only would silently shrink the run to one test and still pass, so CI refuses it.
+  forbidOnly: !!process.env.CI,
   // On CI the github reporter also turns each failure into an annotation on the check run, readable without the raw log.
-  reporter: process.env.CI ? [['list'], ['github']] : [['list']],
+  // The HTML report (written to playwright-report/, never opened automatically) carries each failure's trace
+  // and screenshot in one browsable page; CI uploads it when a run fails.
+  reporter: process.env.CI
+    ? [['list'], ['github'], ['html', { open: 'never' }]]
+    : [['list'], ['html', { open: 'never' }]],
   timeout: 60_000,
 
   use: {
