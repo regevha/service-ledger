@@ -1,5 +1,5 @@
 import { test, expect } from './coverage';
-import { seedFinalizedReport } from './seed-report';
+import { seedReport } from './helpers/api';
 import { TIMEOUT } from './timeouts';
 
 // The Analytics tab (GET /analytics/fleet) — a smoke check that the tab
@@ -20,20 +20,22 @@ const UNIQUE_PART_QTY = 5000;
 test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail counts', async ({ page, request }) => {
   const uniquePart = `E2E-Part-${Date.now()}`;
 
-  await seedFinalizedReport(request, {
+  await seedReport(request, {
+    finalize: true,
     model: 'FACSAria III',
     reportType: 'repair',
-    extractedFields: {
+    fields: {
       labor_hours: 4,
       fault_category: 'fluidics',
       retest_result: 'pass',
       components_replaced: [{ part_name: uniquePart, part_number: 'E2E-1', qty: UNIQUE_PART_QTY }],
     },
   });
-  await seedFinalizedReport(request, {
+  await seedReport(request, {
+    finalize: true,
     model: 'LSRFortessa',
     reportType: 'preventive_maintenance',
-    extractedFields: { labor_hours: 2.5, verification_result: 'fail' },
+    fields: { labor_hours: 2.5, verification_result: 'fail' },
   });
 
   await page.goto('/');

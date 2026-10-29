@@ -1,13 +1,10 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
 import { createNumericTemplate } from './numeric-fixture';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE, seedReport } from './helpers/api';
 
 // Models plan step 3: a model's page shows its instruments side by side (last service date, report
 // counts) and its newest reports, with links to the instrument and the report.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function makeUnit(request: APIRequestContext, model: string, tag: string) {
   const r = await request.post(`${API_BASE}/instruments`, {
@@ -17,38 +14,25 @@ async function makeUnit(request: APIRequestContext, model: string, tag: string) 
   return r.json();
 }
 
-async function finalizedReport(request: APIRequestContext, model: string, instrumentId: string, day: string) {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: 'Dana Levi' } })).json();
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: instrumentId, template_id: templates[0].id },
-  });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 model page') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: { cst_beads_lot: 'LOT-1' }, report_date: day },
-  });
-  expect((await request.post(`${API_BASE}/reports/${report.id}/finalize`)).status()).toBe(200);
-  return report.id as string;
-}
-
 async function openModelPage(page: Page, model: string) {
   await page.goto('/');
   await page.click('.view-tab:has-text("Instruments")');
   await page.click('.sub-switch button:has-text("Models")');
   await page.locator('.model-name', { hasText: new RegExp(`^${model}$`) }).click();
   await expect(page.locator('#model-page')).toBeVisible();
+}
+
+async function finalizedReport(request: APIRequestContext, model: string, instrumentId: string, day: string) {
+  const { reportId } = await seedReport(request, {
+    instrumentId,
+    model,
+    reportType: 'installation_upgrade',
+    technician: 'Dana Levi',
+    fields: { cst_beads_lot: 'LOT-1' },
+    reportDate: day,
+    finalize: true,
+  });
+  return reportId;
 }
 
 test('the model page lists its instruments with last service and its reports, with links', async ({ page, request }) => {

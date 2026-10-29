@@ -2,14 +2,12 @@ import type { Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { isIsoDay } from '../../src/isoDay';
 import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
+import { API_BASE } from './helpers/api';
 
 // UI review items #20-#25: destructive actions that look destructive, a quieter Templates row,
 // labelled fields in the template editor, required fields marked on the new-instrument form,
 // stacked phone cards that say what each value is, and one date format everywhere.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function color(page: Page, selector: string): Promise<string> {
   return page.locator(selector).first().evaluate((el) => getComputedStyle(el).color);

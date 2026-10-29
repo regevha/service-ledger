@@ -3,11 +3,10 @@ import { test, expect } from './coverage';
 import { uniqueFixture, uniquePdf } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
+import { API_BASE } from './helpers/api';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const SAMPLE = path.join(__dirname, 'fixtures', 'sample-work-order.pdf');
 
 // Suggesting a template of its own for a report that has none (phase 1 of the

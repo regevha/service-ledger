@@ -1,43 +1,12 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
 import { createNumericTemplate } from './numeric-fixture';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
+import { seedReport, API_BASE } from './helpers/api';
 
 // Phone review of 2026-10-25 (Galaxy A55, 412 x 915): bugs and filter defaults.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const PHONE = { width: 412, height: 915 };
-
-async function seedFinalized(
-  request: APIRequestContext,
-  opts: { instrumentId: string; model: string; fields: Record<string, unknown>; reportDate: string }
-): Promise<string> {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model: opts.model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: opts.instrumentId, template_id: templates[0].id },
-  });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 phone') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: opts.fields, report_date: opts.reportDate },
-  });
-  await request.post(`${API_BASE}/reports/${report.id}/finalize`);
-  return report.id as string;
-}
 
 async function newInstrument(request: APIRequestContext, marker: string): Promise<string> {
   const res = await request.post(`${API_BASE}/instruments`, {
@@ -55,6 +24,14 @@ async function openInstrument(page: Page, instrumentId: string) {
   if (await bar.count()) await bar.click();
   await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
+}
+
+async function seedFinalized(
+  request: APIRequestContext,
+  opts: { instrumentId: string; model: string; fields: Record<string, unknown>; reportDate: string }
+): Promise<string> {
+  const { reportId } = await seedReport(request, { ...opts, reportType: 'installation_upgrade', finalize: true });
+  return reportId;
 }
 
 test.describe('filters on a phone', () => {
