@@ -110,7 +110,12 @@ export function ReviewScreen({
   // A low-confidence field stays flagged until the technician explicitly marks it checked.
   // Editing the value does not count: they may have typed over it without looking at the scan.
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
-  const markChecked = (name: string) => setChecked((prev) => new Set(prev).add(name));
+  const markChecked = (name: string) => {
+    setChecked((prev) => new Set(prev).add(name));
+    // The button disappears once the field is checked; keep the keyboard where it was, on the field.
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-field="${name}"]`);
+    el?.querySelector<HTMLElement>('input, textarea, select')?.focus({ preventScroll: true });
+  };
   const isFlagged = (name: string) => {
     const confidence = fieldConfidences[name];
     return confidence !== undefined && confidence < fieldConfidenceThreshold && !checked.has(name);
@@ -237,7 +242,13 @@ export function ReviewScreen({
           </span>
           <span className="attention-strip-chips">
             {flaggedList.map((f) => (
-              <button key={f.name} type="button" className="attention-chip" onClick={() => goToField(f.name)}>
+              <button
+                key={f.name}
+                type="button"
+                className="attention-chip"
+                aria-label={`Go to ${f.label}`}
+                onClick={() => goToField(f.name)}
+              >
                 {f.label}
               </button>
             ))}
@@ -251,11 +262,17 @@ export function ReviewScreen({
       <fieldset className="review-fieldset" disabled={readOnly}>
       <ReadOnlyContext.Provider value={readOnly}>
       <div className={`field-list${readOnly ? ' read-only' : ''}`} ref={listRef}>
-        <div className={`field ${reportDateFlagged ? 'pending' : 'ok'}`} data-field="report_date">
+        <div
+          className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}
+          data-field="report_date"
+          role="group"
+          aria-labelledby="review-report-date-label"
+        >
           <div className="field-top">
-            <label className="field-label" htmlFor="review-report-date">
+            <label className="field-label" id="review-report-date-label" htmlFor="review-report-date">
               Service date
             </label>
+            {reportDateFlagged && !readOnly && <span className="sr-only">Needs checking.</span>}
             {reportDateConfidence !== undefined && (
               <ConfidenceBadge
                 confidence={reportDateConfidence}
@@ -265,7 +282,12 @@ export function ReviewScreen({
             )}
           </div>
           {reportDateFlagged && !readOnly && (
-            <button type="button" className="btn small mark-checked" onClick={() => markChecked('report_date')}>
+            <button
+              type="button"
+              className="btn small mark-checked"
+              aria-label="Mark as checked: Service date"
+              onClick={() => markChecked('report_date')}
+            >
               Mark as checked
             </button>
           )}
@@ -276,15 +298,22 @@ export function ReviewScreen({
           const confidence = fieldConfidences[field.name];
           const flagged = isFlagged(field.name);
           return (
-            <div className={`field ${flagged ? 'pending' : 'ok'}`} key={field.name} data-field={field.name}>
+            <div
+              className={`field ${flagged ? 'pending' : 'ok'}`}
+              key={field.name}
+              data-field={field.name}
+              role="group"
+              aria-labelledby={`review-field-${i}-label`}
+            >
               <div className="field-top">
-                <span className="field-label">
+                <span className="field-label" id={`review-field-${i}-label`}>
                   <span className="badge-mini" style={{ background: flagged ? 'var(--warn)' : 'var(--good)' }}>
                     {i + 1}
                   </span>{' '}
                   {fieldLabel(field.name, field.unit)}
                   {field.unit && <span className="field-unit"> ({field.unit})</span>}
                 </span>
+                {flagged && !readOnly && <span className="sr-only">Needs checking.</span>}
                 {confidence !== undefined && (
                   <ConfidenceBadge
                     confidence={confidence}
@@ -294,7 +323,12 @@ export function ReviewScreen({
                 )}
               </div>
               {flagged && !readOnly && (
-                <button type="button" className="btn small mark-checked" onClick={() => markChecked(field.name)}>
+                <button
+                  type="button"
+                  className="btn small mark-checked"
+                  aria-label={`Mark as checked: ${fieldLabel(field.name, field.unit)}`}
+                  onClick={() => markChecked(field.name)}
+                >
                   Mark as checked
                 </button>
               )}
