@@ -95,7 +95,10 @@ jobs:
   frontend:
     name: Frontend (Playwright e2e)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The run takes about 10 minutes and grows with every spec. Past about 13, split the specs
+    # across shards (`--shard=1/2`), each with its own job and its own Postgres service: the suite
+    # shares one database, so shards cannot share one.
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -154,7 +157,7 @@ jobs:
       - name: Run Playwright e2e suite with coverage
         # test:e2e:coverage runs the same suite against an Istanbul-instrumented
         # build and ends with `nyc report --check-coverage`, so this step fails
-        # when line coverage drops below 88% or branch coverage below 70% (the
+        # when line coverage drops below 88% or branch coverage below 75% (the
         # thresholds live in frontend/package.json — raise them as coverage
         # improves). The table is printed in the log.
         working-directory: frontend
