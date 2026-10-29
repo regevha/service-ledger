@@ -45,8 +45,14 @@ export default defineConfig({
   // by name in the output instead of vanishing into a manual re-run. Locally
   // nothing is retried, so a flake is never hidden while developing.
   retries: process.env.CI ? 1 : 0,
+  // A committed test.only would silently shrink the run to one test and still pass, so CI refuses it.
+  forbidOnly: !!process.env.CI,
   // On CI the github reporter also turns each failure into an annotation on the check run, readable without the raw log.
-  reporter: process.env.CI ? [['list'], ['github']] : [['list']],
+  // The HTML report (written to playwright-report/, never opened automatically) carries each failure's trace
+  // and screenshot in one browsable page; CI uploads it when a run fails.
+  reporter: process.env.CI
+    ? [['list'], ['github'], ['html', { open: 'never' }]]
+    : [['list'], ['html', { open: 'never' }]],
   timeout: 60_000,
 
   use: {
@@ -63,7 +69,34 @@ export default defineConfig({
     },
   },
 
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Two projects over the same specs. Tests tagged @phone (the describes in the
+  // phone-*.spec.ts files) run only in the phone project, at a 412x915 touch
+  // viewport; everything else runs only in the desktop one. A test that must
+  // change the viewport itself (to compare phone and wide layouts) still calls
+  // page.setViewportSize.
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, grepInvert: /@phone|@visual/ },
+    {
+      name: 'phone',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true },
+      grep: /@phone/,
+    },
+    // Screenshot comparisons (visual.spec.ts), Chromium only. Their baseline images are made on the CI
+    // runner by the "Update visual baselines" workflow (which sets E2E_VISUAL=1). Until those images are
+    // committed there is nothing to compare against, so the project is left out and the @visual tests
+    // simply do not run, here or in CI.
+    ...(process.env.E2E_VISUAL === '1' || existsSync('tests/e2e/visual.spec.ts-snapshots')
+      ? [{ name: 'visual', use: { ...devices['Desktop Chrome'] }, grep: /@visual/ }]
+      : []),
+    // The same phone tests in WebKit, with an iPhone profile: Safari on iOS is the browser most phones
+    // in a lab run, and it differs from Chromium in exactly the places the phone tests care about
+    // (viewport units, sticky bars, form controls, scrolling). Off by default because it needs its own
+    // browser download; the scheduled CI job turns it on with E2E_WEBKIT=1 after
+    // `npx playwright install --with-deps webkit`.
+    ...(process.env.E2E_WEBKIT === '1'
+      ? [{ name: 'phone-webkit', use: { ...devices['iPhone 14'] }, grep: /@phone/ }]
+      : []),
+  ],
 
   webServer: [
     {

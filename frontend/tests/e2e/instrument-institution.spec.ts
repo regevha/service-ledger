@@ -1,11 +1,9 @@
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE } from './helpers/api';
 
 // "Institution" on an instrument (the university or company it belongs to): typed on the form,
 // shown under the name in the list and on the instrument's page, editable, and shown next to the
 // instrument in the Analytics hours chart.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 test('institution: set on create, shown in the list, changed and cleared on edit', async ({ page }) => {
   const name = `E2E-Inst-${Date.now()}`;

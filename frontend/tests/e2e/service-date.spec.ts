@@ -2,7 +2,9 @@ import { test, expect } from './coverage';
 import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TIMEOUT } from './timeouts';
 
+import { finalizeFromReview } from './finalize-helper';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 
@@ -23,7 +25,7 @@ test('the extracted service date is shown on review, can be corrected, and is sa
   // to (instrument-management.spec.ts adds two instruments sharing a model),
   // so depending on run order this may stop at the manual pick. Either path
   // ends on the same review screen, which is what this test is about.
-  await page.waitForSelector('.field-list, .class-row', { timeout: 30_000 });
+  await page.waitForSelector('.field-list, .class-row', { timeout: TIMEOUT.flow });
   if (await page.locator('.class-row').count()) {
     const instrumentSelect = page.locator('.class-row select').first();
     const firstInstrument = await instrumentSelect.locator('option:not([disabled])').first().getAttribute('value');
@@ -32,7 +34,7 @@ test('the extracted service date is shown on review, can be corrected, and is sa
   }
 
   const dateInput = page.locator('#review-report-date');
-  await expect(dateInput).toBeVisible({ timeout: 30_000 });
+  await expect(dateInput).toBeVisible({ timeout: TIMEOUT.flow });
   // Stub extraction always reads some date within the past year.
   await expect(dateInput).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
   // The suite runs without an API key, so the badge says "placeholder" rather
@@ -41,8 +43,8 @@ test('the extracted service date is shown on review, can be corrected, and is sa
   await expect(page.locator('#placeholder-notice')).toBeVisible();
 
   await dateInput.fill('2025-03-14');
-  await page.click('button:has-text("Save & finalize report")');
-  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+  await finalizeFromReview(page);
+  await expect(page.locator('.success-panel')).toBeVisible({ timeout: TIMEOUT.ui });
 
   // The corrected date is what's stored — and the date filter finds it.
   await page.click('.view-tab:has-text("Reports")');

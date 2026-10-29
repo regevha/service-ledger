@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, getAppConfig, listInstruments, type AppConfig, type Instrument, type ReportTemplate } from './api';
 import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { InstrumentManagerScreen } from './components/InstrumentManager';
 import { IntakeFlow } from './components/IntakeFlow';
 import { ReportsListScreen } from './components/ReportsListScreen';
 import { TemplateManagerScreen } from './components/TemplateManager';
+import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
+import { NavigationGuardContext, type LeaveGuard } from './navigationGuard';
 import type { TemplateRequest } from './templateRequest';
 import './App.css';
 import { ToastHost } from './components/ToastHost';
@@ -82,27 +84,87 @@ export default function App() {
   const [templateRequest, setTemplateRequest] = useState<TemplateRequest | null>(null);
   const [templateCreated, setTemplateCreated] = useState<{ template: ReportTemplate; nonce: number } | null>(null);
 
-  // Go to a screen: the address bar changes (a new history entry) and the app follows it.
-  const navigate = useCallback((next: View, sub = '') => {
-    // A pending template request only lives while the Templates tab is showing it.
-    if (next !== 'templates') setTemplateRequest(null);
-    const hash = `#/${next}${sub ? `/${sub}` : ''}`;
-    if (window.location.hash !== hash) window.location.hash = hash;
-    setRoute((r) => (r.view === next && r.sub === sub ? r : { view: next, sub }));
+  // The screen on show reports its unsaved edits here (see navigationGuard.ts). Leaving it, by a tab, by the
+  // browser's Back button or by one of its own buttons, asks first: Stay, Discard changes, or Save and leave.
+  const guardRef = useRef<LeaveGuard | null>(null);
+  const [pendingLeave, setPendingLeave] = useState<{ run: () => void; message: string; revert?: () => void } | null>(null);
+  const [leaveSaving, setLeaveSaving] = useState(false);
+  // The address the app is actually showing. The address bar can run ahead of it while the question is open.
+  const shownHash = useRef(window.location.hash);
+
+  const requestLeave = useCallback((run: () => void, opts: { message?: string; target?: View; revert?: () => void } = {}) => {
+    const guard = guardRef.current;
+    // The intake flow stays mounted on its own tab, so going there loses nothing.
+    const losesEdits = guard?.dirty === true && !(guard.scope === 'new' && opts.target === 'new');
+    if (!losesEdits) {
+      run();
+      return;
+    }
+    setPendingLeave({ run, message: opts.message ?? 'You have changes on this screen that are not saved.', revert: opts.revert });
   }, []);
+
+  // Go to a screen: the address bar changes (a new history entry) and the app follows it.
+  // `force` skips the question, for moves that lose nothing (the intake flow keeps its state while the
+  // Templates tab builds a template for it).
+  const navigate = useCallback(
+    (next: View, sub = '', opts: { force?: boolean } = {}) => {
+      const hash = `#/${next}${sub ? `/${sub}` : ''}`;
+      const go = () => {
+        // A pending template request only lives while the Templates tab is showing it.
+        if (next !== 'templates') setTemplateRequest(null);
+        shownHash.current = hash;
+        if (window.location.hash !== hash) window.location.hash = hash;
+        setRoute((r) => (r.view === next && r.sub === sub ? r : { view: next, sub }));
+      };
+      if (opts.force || window.location.hash === hash) go();
+      else requestLeave(go, { target: next });
+    },
+    [requestLeave]
+  );
   const selectView = (next: View) => navigate(next);
 
   // Back, Forward, or an edited address.
   useEffect(() => {
     const onHash = () => {
-      const next = parseHash(window.location.hash);
-      if (next.view !== 'templates') setTemplateRequest(null);
-      setRoute(next);
+      const hash = window.location.hash;
+      if (hash === shownHash.current) return; // navigate() already moved the app there
+      const previous = shownHash.current;
+      const next = parseHash(hash);
+      requestLeave(
+        () => {
+          shownHash.current = hash;
+          if (next.view !== 'templates') setTemplateRequest(null);
+          setRoute(next);
+        },
+        // Staying puts the address bar back where the screen still is.
+        { target: next.view, revert: () => window.history.replaceState(null, '', previous || '#/') }
+      );
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
-  }, []);
+  }, [requestLeave]);
 
+  const guardApi = useMemo(
+    () => ({
+      setGuard: (guard: LeaveGuard | null) => {
+        guardRef.current = guard;
+      },
+      confirmLeave: (leave: () => void, message?: string) => requestLeave(leave, { message }),
+    }),
+    [requestLeave]
+  );
+
+  async function saveAndLeave() {
+    const pending = pendingLeave;
+    if (!pending) return;
+    setLeaveSaving(true);
+    const saved = (await guardRef.current?.save()) ?? false;
+    setLeaveSaving(false);
+    setPendingLeave(null);
+    // A failed save is shown on the screen itself, which is why the person stays.
+    if (saved) pending.run();
+    else pending.revert?.();
+  }
 
   // A callback (not just an effect) because the Instruments tab creates and
   // edits rows in place — after a save there, this same list needs to
@@ -150,6 +212,7 @@ export default function App() {
   }, []);
 
   return (
+    <NavigationGuardContext.Provider value={guardApi}>
     <div className="wrap">
       <div className="masthead">
         <span className="mark" /> ServiceLedger
@@ -198,7 +261,7 @@ export default function App() {
               templateCreated={templateCreated}
               onCreateTemplate={(request) => {
                 setTemplateRequest(request);
-                navigate('templates');
+                navigate('templates', '', { force: true });
               }}
               onOpenReport={(reportId) => navigate('reports', reportId)}
               onViewInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
@@ -216,7 +279,7 @@ export default function App() {
               // Saved or cancelled, the waiting report is on the New report tab:
               // after a save it reads itself again with the new template.
               if (saved) setTemplateCreated({ template: saved, nonce: Date.now() });
-              navigate('new');
+              navigate('new', '', { force: true });
             }}
           />
         )}
@@ -237,6 +300,24 @@ export default function App() {
           />
         )}
       </div>
+
+      {pendingLeave && (
+        <UnsavedChangesDialog
+          message={pendingLeave.message}
+          busy={leaveSaving}
+          onStay={() => {
+            pendingLeave.revert?.();
+            setPendingLeave(null);
+          }}
+          onDiscard={() => {
+            const run = pendingLeave.run;
+            setPendingLeave(null);
+            run();
+          }}
+          onSave={() => void saveAndLeave()}
+        />
+      )}
     </div>
+    </NavigationGuardContext.Provider>
   );
 }

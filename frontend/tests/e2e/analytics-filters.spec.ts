@@ -1,7 +1,7 @@
-import { type APIRequestContext, type Page } from '@playwright/test';
+import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
+import { seedReport, API_BASE } from './helpers/api';
+import { openAnalytics } from './helpers/ui';
 
 // The filter bar on the Analytics tab (instrument, report type, date range),
 // which applies to the whole page. The filtering itself is covered by
@@ -12,44 +12,14 @@ import { BACKEND_PORT } from '../../playwright.config';
 // spec uses (2001), so a date range isolates them from whatever else this
 // run has already finalized.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const QTY = 7000;
 
+// A finalized report for `opts.model`; resolves to that instrument's id.
 async function seedFinalizedReport(
   request: APIRequestContext,
   opts: { model: string; reportType: string; reportDate: string; fields: Record<string, unknown> }
 ): Promise<string> {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
-  const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
-  const instrument = instruments.find((i: { model: string }) => i.model === opts.model);
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: opts.reportType, model: opts.model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: instrument.id, template_id: templates[0].id },
-  });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: opts.fields, report_date: opts.reportDate },
-  });
-  await request.post(`${API_BASE}/reports/${report.id}/finalize`);
-  return instrument.id as string;
-}
-
-async function openAnalytics(page: Page) {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Analytics")');
-  await expect(page.getByTestId('analytics-filters')).toBeVisible({ timeout: 15_000 });
+  return (await seedReport(request, { ...opts, finalize: true })).instrumentId;
 }
 
 test('the filters narrow the whole Analytics page and can be cleared', async ({ page, request }) => {
@@ -139,7 +109,8 @@ test('the model comparison follows the filters too', async ({ page, request }) =
 test('the manufacturer filter limits the page to that maker and the instrument list follows it', async ({ page, request }) => {
   const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
   const makers: string[] = Array.from(new Set(instruments.map((i: { manufacturer: string | null }) => i.manufacturer?.trim()).filter(Boolean)));
-  test.skip(makers.length < 2, 'needs instruments from two manufacturers');
+  // The seeded fleet has BD, Cytek and Beckman Coulter units, so this holds on every run.
+  expect(makers.length, 'the seeded fleet has instruments from several manufacturers').toBeGreaterThan(1);
   const [maker] = makers;
   const ofMaker = instruments.filter((i: { manufacturer: string | null }) => i.manufacturer?.trim() === maker);
 

@@ -62,7 +62,10 @@ export default defineConfig({
 
   webServer: [
     {
-      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false python3 -m app.testing.reset_db && DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=true ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY}' uvicorn app.main:app --host 0.0.0.0 --port ${LIVE_BACKEND_PORT}"`,
+      // The key goes in through `env`, never into the command string: a command line is visible
+      // in process listings and can end up in logs, an environment variable is not.
+      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=false python3 -m app.testing.reset_db && DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=true uvicorn app.main:app --host 0.0.0.0 --port ${LIVE_BACKEND_PORT}"`,
+      env: { ANTHROPIC_API_KEY },
       cwd: '../backend',
       url: `http://localhost:${LIVE_BACKEND_PORT}/health`,
       reuseExistingServer: false,
@@ -73,7 +76,8 @@ export default defineConfig({
     {
       // The worker is what actually calls classify()/extract() (§3) — it
       // needs USE_LIVE_CLAUDE=true and the real key too, not just the backend.
-      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=true ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY}' python3 -m app.worker"`,
+      command: `bash -c "DATABASE_URL='${E2E_DATABASE_URL}' USE_LIVE_CLAUDE=true python3 -m app.worker"`,
+      env: { ANTHROPIC_API_KEY },
       cwd: '../backend',
       reuseExistingServer: false,
       stdout: 'pipe',

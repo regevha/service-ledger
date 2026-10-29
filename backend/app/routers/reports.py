@@ -373,10 +373,15 @@ def update_report_fields(report_id: uuid.UUID, payload: schemas.ReportFieldsUpda
 def finalize_report(report_id: uuid.UUID, db: Session = Depends(get_db)):
     """§9: mark a report finalized. §5: a report is meant to reach this from
     extracted/in_review — finalizing a bare draft would just freeze an empty
-    record, so that's rejected rather than silently allowed."""
+    record, so that's rejected rather than silently allowed. Finalizing a
+    report that already is finalized returns it unchanged."""
     report = db.get(models.Report, report_id)
     if not report:
         raise HTTPException(404, "Report not found")
+    if report.status == models.ReportStatus.finalized:
+        # Finalizing twice (a retry after the reply was lost, a double click) is not an error and
+        # changes nothing: the report keeps the time it was first finalized.
+        return report
     if report.status not in (models.ReportStatus.extracted, models.ReportStatus.in_review):
         raise HTTPException(409, f"Cannot finalize a report in status '{report.status.value}'")
     report.status = models.ReportStatus.finalized
