@@ -67,6 +67,17 @@ def _template(db, report_type: models.ReportType, model: str | None = None) -> m
     )
 
 
+def test_finalizing_a_finalized_report_again_changes_nothing(client, run_worker, monkeypatch):
+    """A retry after a lost reply, or a double click, must not turn into a 409 "cannot finalize"."""
+    report, _ = _finalized_report(client, run_worker, monkeypatch)
+    again = client.post(f"/reports/{report['id']}/finalize")
+    assert again.status_code == 200
+    body = again.json()
+    assert body["status"] == "finalized"
+    assert body["finalized_at"] == report["finalized_at"]
+    assert body["extracted_fields"] == report["extracted_fields"]
+
+
 # ---------- finalized reports can't be changed by classify/extract/confirm ----------
 
 

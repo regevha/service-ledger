@@ -1,51 +1,30 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { createNumericTemplate } from './numeric-fixture';
-import { BACKEND_PORT } from '../../playwright.config';
+import { startEditing } from './edit-helper';
+import { createNumericModel } from './numeric-fixture';
+import { TIMEOUT } from './timeouts';
+import { seedReport } from './helpers/api';
 
 // Phone review 2 (2026-10-26): the Fields | Scan switch in dark mode, the toast, the instrument's report
 // history rows, Cancel while editing a finalized report, and how a read-only report looks.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const PHONE = { width: 412, height: 915 };
 const LONG_NAME = 'Demo - FACSAria III preventive maintenance with a rather long title (WO-04271950)';
 
 async function seed(request: APIRequestContext): Promise<{ reportId: string; instrumentId: string }> {
-  const model = `E2E-PhoneBugs-${Date.now()}`;
-  const instrument = await (
-    await request.post(`${API_BASE}/instruments`, {
-      data: { name: model, model, manufacturer: 'E2E Maker', serial_number: `SN-${model}` },
-    })
-  ).json();
-  await createNumericTemplate(request, model);
-  const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: LONG_NAME } })).json();
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: instrument.id, template_id: templates[0].id },
+  const model = await createNumericModel(request, 'E2E-PhoneBugs');
+  const { reportId, instrumentId } = await seedReport(request, {
+    model,
+    reportType: 'installation_upgrade',
+    technician: LONG_NAME,
+    fields: { cst_beads_lot: 'LOT-ORIG' },
+    reportDate: '2026-05-09',
+    finalize: true,
   });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 phone bugs') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: { cst_beads_lot: 'LOT-ORIG' }, report_date: '2026-05-09' },
-  });
-  expect((await request.post(`${API_BASE}/reports/${report.id}/finalize`)).status()).toBe(200);
-  return { reportId: report.id, instrumentId: instrument.id };
+  return { reportId, instrumentId };
 }
 
-test.describe('on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('dark mode: the selected Fields | Scan button is readable', async ({ browser, request }) => {
     const { reportId } = await seed(request);
@@ -53,7 +32,7 @@ test.describe('on a phone', () => {
     const page = await context.newPage();
     await page.goto(`/#/reports/${reportId}`);
     const active = page.locator('.view-switch-button.active');
-    await expect(active).toBeVisible({ timeout: 15_000 });
+    await expect(active).toBeVisible({ timeout: TIMEOUT.ui });
     const lum = (rgb: string) => {
       const [r, g, b] = (rgb.match(/[\d.]+/g) ?? ['0', '0', '0']).slice(0, 3).map((v) => {
         const c = Number(v) / 255;
@@ -76,7 +55,7 @@ test.describe('on a phone', () => {
   test('the Saved toast does not cover the save bar', async ({ page, request }) => {
     const { reportId } = await seed(request);
     await page.goto(`/#/reports/${reportId}`);
-    await page.click('.review-actions button:has-text("Edit")');
+    await startEditing(page);
     await page.click('.review-actions button:has-text("Save corrections")');
     const toast = page.locator('.toast');
     await expect(toast).toBeVisible();
@@ -89,7 +68,7 @@ test.describe('on a phone', () => {
     const { instrumentId } = await seed(request);
     await page.goto(`/#/reports/instrument/${instrumentId}`);
     const row = page.locator('.instrument-report-row-body').first();
-    await expect(row).toBeVisible({ timeout: 15_000 });
+    await expect(row).toBeVisible({ timeout: TIMEOUT.ui });
     const type = await row.locator('[data-label="Type"]').boundingBox();
     const date = await row.locator('[data-label="Report date"]').boundingBox();
     const tech = await row.locator('[data-label="Lab manager"]').boundingBox();
@@ -105,9 +84,9 @@ test.describe('on a phone', () => {
     page.on('request', (r) => r.method() === 'PATCH' && r.url().includes('/fields') && patches++);
     await page.goto(`/#/reports/${reportId}`);
     const lot = page.locator('.field', { hasText: 'Cst beads lot' }).locator('input, textarea').first();
-    await expect(lot).toHaveValue('LOT-ORIG', { timeout: 15_000 });
+    await expect(lot).toHaveValue('LOT-ORIG', { timeout: TIMEOUT.ui });
     await expect(page.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
-    await page.click('.review-actions button:has-text("Edit")');
+    await startEditing(page);
     await lot.fill('LOT-CHANGED');
     await page.click('.review-actions button:has-text("Cancel")');
     await expect(page.locator('.review-actions button:has-text("Edit")')).toBeVisible();
@@ -118,10 +97,10 @@ test.describe('on a phone', () => {
   test('a finalized report reads as text: no calendar button and no extraction notes, until Edit', async ({ page, request }) => {
     const { reportId } = await seed(request);
     await page.goto(`/#/reports/${reportId}`);
-    await expect(page.locator('.field-list.read-only')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.field-list.read-only')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.field-list .date-input-pick')).toBeHidden();
     await expect(page.locator('.field-list .field-note').first()).toBeHidden();
-    await page.click('.review-actions button:has-text("Edit")');
+    await startEditing(page);
     await expect(page.locator('.field-list .date-input-pick')).toBeVisible();
     await expect(page.locator('.field-list .field-note').first()).toBeVisible();
   });

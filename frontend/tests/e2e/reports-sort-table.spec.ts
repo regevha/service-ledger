@@ -1,12 +1,10 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE } from './helpers/api';
 
 // Sorting the Reports table by clicking a column header. The rules themselves
 // (blank cells last, status by progress, ties keep their order) are covered on
 // plain data in report-sort.spec.ts; this checks the table behaves.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function reportFor(request: APIRequestContext, technician: string) {
   const res = await request.post(`${API_BASE}/reports`, { data: { technician_name: technician } });

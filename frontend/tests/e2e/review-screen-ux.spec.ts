@@ -1,53 +1,35 @@
-import { type APIRequestContext } from '@playwright/test';
+import { type Page } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from './coverage';
-import { uniqueFixture, uniquePdf } from './unique-upload';
+import { startEditing } from './edit-helper';
+import { uniqueFixture } from './unique-upload';
 import { fieldLabel } from '../../src/fieldLabels';
-import { BACKEND_PORT } from '../../playwright.config';
+import { reviewSnapshot } from '../../src/reviewSnapshot';
+import { finalizeFromReview } from './finalize-helper';
 import { createNumericModel } from './numeric-fixture';
+import { TIMEOUT } from './timeouts';
+import { seedReport, API_BASE } from './helpers/api';
+import { openReviewFromList } from './helpers/ui';
 
 // The review screen as the 2026-10-24 UI review asked for it: the scan beside the fields, an action
 // bar that stays in view, readable field names, a finalized report that is read-only until Edit,
 // and the parts table readable on a phone.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-async function seedReport(
-  request: APIRequestContext,
-  opts: { model: string; reportType: string; technician: string; finalize?: boolean }
-): Promise<string> {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: opts.technician } })).json();
-  const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
-  const instrument = instruments.find((i: { model: string }) => i.model === opts.model);
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: opts.reportType, model: opts.model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: instrument.id, template_id: templates[0].id },
-  });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let i = 0; i < 150; i++) {
-    const j = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (j.status === 'succeeded' || j.status === 'failed') break;
-    await new Promise((r) => setTimeout(r, 200));
-  }
-  if (opts.finalize) await request.post(`${API_BASE}/reports/${report.id}/finalize`);
-  return report.id as string;
-}
-
-async function openFromList(page: import('@playwright/test').Page, marker: string) {
+// A scan whose stub read always has flagged fields. For an ordinary scan the stub's confidence per
+// field comes from a hash of the stored file's unique name, so how many fields are flagged changes
+// from run to run (a test that needs flagged fields could not rely on it). For the sample work order
+// the stub always flags root_cause and components_replaced, which are blank on the real document.
+// It lands on the manual-confirm step first, because its report type is below the threshold.
+async function readSampleWorkOrder(page: Page) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
-  await page.waitForSelector('.report-table');
-  await page.click(`.report-row-body:has-text("${marker}")`);
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'sample-work-order.pdf')));
+  await page.click('button:has-text("Upload & classify")');
+  await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
+  await page.click('button:has-text("Confirm & continue")');
+  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 }
 
 test('fieldLabel: readable names, abbreviations in capitals, no unit said twice', () => {
@@ -67,7 +49,7 @@ test('field names read as words, not as stored names', async ({ page, request })
   const marker = `E2E-Labels-${Date.now()}`;
   const model = await createNumericModel(request, 'E2E-Labels');
   await seedReport(request, { model, reportType: 'installation_upgrade', technician: marker });
-  await openFromList(page, marker);
+  await openReviewFromList(page, marker);
   const list = page.locator('.field-list');
   await expect(list).toContainText('CST beads lot');
   await expect(list).toContainText('PMT voltages');
@@ -87,7 +69,7 @@ test.describe('scan beside the fields', () => {
         localStorage.setItem('sl.review.showScan', 'on');
       }
     });
-    await openFromList(page, marker);
+    await openReviewFromList(page, marker);
 
     const scan = page.locator('.review-scan');
     await expect(scan).toBeVisible();
@@ -103,7 +85,7 @@ test.describe('scan beside the fields', () => {
     await page.reload();
     await page.click('.view-tab:has-text("Reports")');
     await page.click(`.report-row-body:has-text("${marker}")`);
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.review-scan')).toHaveCount(0);
     await page.click('button:has-text("Show scan")');
     await expect(page.locator('.review-scan')).toBeVisible();
@@ -113,7 +95,7 @@ test.describe('scan beside the fields', () => {
     const marker = `E2E-ScanNarrow-${Date.now()}`;
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker });
     await page.setViewportSize({ width: 800, height: 900 });
-    await openFromList(page, marker);
+    await openReviewFromList(page, marker);
     await expect(page.locator('.review-scan')).toHaveCount(0);
     await expect(page.locator('a:has-text("View original scan")')).toBeVisible();
     await expect(page.locator('button:has-text("Hide scan")')).toHaveCount(0);
@@ -124,7 +106,7 @@ test('the action bar stays in view while a long form scrolls', async ({ page, re
   const marker = `E2E-Sticky-${Date.now()}`;
   await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker });
   await page.setViewportSize({ width: 1000, height: 500 });
-  await openFromList(page, marker);
+  await openReviewFromList(page, marker);
   const bar = page.locator('.review-actions');
   const box = await bar.boundingBox();
   expect(box!.y + box!.height).toBeLessThanOrEqual(500);
@@ -132,13 +114,10 @@ test('the action bar stays in view while a long form scrolls', async ({ page, re
 });
 
 test('"Next" jumps to the fields that need attention', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
-  await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await readSampleWorkOrder(page);
   const flagged = page.locator('.field.pending');
   const n = await flagged.count();
-  test.skip(n === 0, 'the stub flagged nothing on this run');
+  expect(n, 'the sample work order always has flagged fields').toBeGreaterThanOrEqual(2);
   await expect(page.locator('.review-actions-status')).toContainText(`${n} field`);
   for (let i = 0; i < n; i++) {
     await page.click('.review-actions button:has-text("Next")');
@@ -151,14 +130,14 @@ test('"Next" jumps to the fields that need attention', async ({ page }) => {
 test('a finalized report is read-only until Edit, and locks again after saving', async ({ page, request }) => {
   const marker = `E2E-ReadOnly-${Date.now()}`;
   await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
-  await openFromList(page, marker);
+  await openReviewFromList(page, marker);
 
   const firstText = page.locator('.field-list textarea').first();
   await expect(firstText).toBeDisabled();
   await expect(page.locator('button:has-text("Save corrections")')).toHaveCount(0);
   await expect(page.locator('.review-actions')).toContainText('Finalized');
 
-  await page.click('.review-actions button:has-text("Edit")');
+  await startEditing(page);
   await expect(firstText).toBeEnabled();
   await firstText.fill('Corrected after finalizing');
   await page.click('button:has-text("Save corrections")');
@@ -170,13 +149,35 @@ test('a finalized report is read-only until Edit, and locks again after saving',
   await expect(page.locator('.review-actions button:has-text("Edit")')).toBeVisible();
 });
 
+test('Edit on a finalized report asks first; Cancel and Escape leave it locked', async ({ page, request }) => {
+  const marker = `E2E-EditConfirm-${Date.now()}`;
+  await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
+  await openReviewFromList(page, marker);
+  const firstText = page.locator('.field-list textarea').first();
+
+  await page.click('.review-actions button:has-text("Edit")');
+  const confirm = page.locator('#edit-confirm');
+  await expect(confirm).toContainText('finalized');
+  await expect(confirm.getByRole('button', { name: 'Edit anyway' })).toBeFocused();
+  await expect(firstText).toBeDisabled();
+
+  await confirm.getByRole('button', { name: 'Cancel' }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(firstText).toBeDisabled();
+
+  await page.click('.review-actions button:has-text("Edit")');
+  await page.keyboard.press('Escape');
+  await expect(confirm).toHaveCount(0);
+  await expect(firstText).toBeDisabled();
+});
+
 test('the banner lines up with the fields instead of being inset twice', async ({ page }) => {
   // Below 900px the scan pane is gone and the fields use the full width, so the two edges compare directly.
   await page.setViewportSize({ width: 800, height: 900 });
   await page.goto('/');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await page.waitForSelector('.field-list', { timeout: TIMEOUT.flow });
   const banner = page.locator('#placeholder-notice');
   await expect(banner).toBeVisible();
   const [b, l] = await Promise.all([banner.boundingBox(), page.locator('.field-list').boundingBox()]);
@@ -188,7 +189,7 @@ test('phone: each part is a small labelled card, not a row of squeezed boxes', a
   const marker = `E2E-PhoneParts-${Date.now()}`;
   await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker });
   await page.setViewportSize({ width: 390, height: 844 });
-  await openFromList(page, marker);
+  await openReviewFromList(page, marker);
   const field = page.locator('.field', { hasText: 'Components replaced' });
   await expect(field.locator('.object-array-head')).toBeHidden();
   const cell = field.locator('.object-array-row > span[data-label]').first();
@@ -205,7 +206,7 @@ test('the per-detector rows stay compact and each can be removed by name', async
   const model = await createNumericModel(request, 'E2E-Detectors');
   await seedReport(request, { model, reportType: 'installation_upgrade', technician: marker });
   await page.setViewportSize({ width: 1400, height: 900 });
-  await openFromList(page, marker);
+  await openReviewFromList(page, marker);
   const row = page.locator('.field', { hasText: 'Baseline CV' }).locator('.number-map-row').first();
   const [label, input, remove] = await Promise.all([
     row.locator('label, span').first().boundingBox(),
@@ -231,12 +232,9 @@ test('text "Remove" buttons in the template editor stay inside their card', asyn
 });
 
 test('flagged fields are listed above the fields and clear only when marked as checked', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
-  await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await readSampleWorkOrder(page);
   const n = await page.locator('.field.pending').count();
-  test.skip(n === 0, 'the stub flagged nothing on this run');
+  expect(n, 'the sample work order always has flagged fields').toBeGreaterThanOrEqual(2);
 
   const strip = page.getByTestId('attention-strip');
   await expect(strip).toContainText(`${n} field`);
@@ -254,4 +252,230 @@ test('flagged fields are listed above the fields and clear only when marked as c
   await expect(page.locator('.field.pending')).toHaveCount(n - 1);
   if (n === 1) await expect(strip).toHaveCount(0);
   else await expect(strip).toContainText(`${n - 1} field`);
+});
+
+// Saving without leaving the screen, and not losing edits (PR 1 of the review-and-finalize plan).
+
+const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+
+async function openIntakeReview(page: import('@playwright/test').Page) {
+  await page.goto('/');
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(CONFIDENT_SCAN));
+  await page.click('button:has-text("Upload & classify")');
+  await page.waitForSelector('.field-list', { timeout: 30_000 });
+}
+
+// Whether the stub flags any field varies from run to run. Reporting the service date at 10% confidence
+// makes at least one field flagged every time, for specs that need something to be flagged.
+async function flagServiceDate(page: import('@playwright/test').Page) {
+  await page.route('**/extraction-jobs/*', async (route) => {
+    const response = await route.fetch();
+    const job = await response.json();
+    if (job && typeof job === 'object') job.field_confidences = { ...(job.field_confidences ?? {}), report_date: 0.1 };
+    await route.fulfill({ response, json: job });
+  });
+}
+
+// The first text box or number box among the fields: something safe to type into.
+const editable = (page: import('@playwright/test').Page) =>
+  page.locator('.field-list textarea, .field-list input[type="number"]').first();
+
+// What the browser would do on reload or close: is leaving being questioned?
+async function leavingIsGuarded(page: import('@playwright/test').Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+}
+
+test('reviewSnapshot: same content is equal in any key order; a changed value or date is not', () => {
+  expect(reviewSnapshot({ a: 1, b: { x: 1, y: 2 } }, '2026-10-01')).toBe(reviewSnapshot({ b: { y: 2, x: 1 }, a: 1 }, '2026-10-01'));
+  expect(reviewSnapshot({ a: 1 }, null)).toBe(reviewSnapshot({ a: 1 }, null));
+  expect(reviewSnapshot({ a: 1 }, null)).not.toBe(reviewSnapshot({ a: 2 }, null));
+  expect(reviewSnapshot({ a: 1 }, '2026-10-01')).not.toBe(reviewSnapshot({ a: 1 }, '2026-10-02'));
+  expect(reviewSnapshot({ a: [1, 2] }, null)).not.toBe(reviewSnapshot({ a: [2, 1] }, null));
+  // A key that is not set counts the same as one set to undefined.
+  expect(reviewSnapshot({ a: 1, b: undefined }, null)).toBe(reviewSnapshot({ a: 1 }, null));
+});
+
+test('saving corrections keeps the review screen: typed values and checked marks survive', async ({ page }) => {
+  await flagServiceDate(page);
+  await openIntakeReview(page);
+  const flagged = await page.locator('.field.pending').count();
+  expect(flagged).toBeGreaterThan(0);
+  await page.locator('.field.pending').first().getByRole('button', { name: 'Mark as checked' }).click();
+  await editable(page).fill('12');
+
+  await page.click('button:has-text("Save corrections")');
+  await expect(page.locator('.toast')).toHaveText('Saved');
+  await expect(page.locator('.working-panel')).toHaveCount(0);
+  // The mark is still there (the field did not come back flagged) and so is what was typed.
+  await expect(page.locator('.field.pending')).toHaveCount(flagged - 1);
+  await expect(editable(page)).toHaveValue('12');
+});
+
+test('a failed save stays on the screen with the reason and a Try again; nothing typed is lost', async ({ page }) => {
+  let failNext = true;
+  await page.route('**/reports/*/fields', (route) => {
+    if (route.request().method() === 'PATCH' && failNext) {
+      failNext = false;
+      return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ detail: 'Simulated save failure' }) });
+    }
+    return route.continue();
+  });
+  await openIntakeReview(page);
+  await editable(page).fill('12');
+
+  await page.click('button:has-text("Save corrections")');
+  const error = page.locator('#save-error');
+  await expect(error).toContainText('Simulated save failure');
+  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.locator('button:has-text("Start over")')).toHaveCount(0);
+  await expect(editable(page)).toHaveValue('12');
+  await expect(page.locator('button:has-text("Save corrections")')).toBeEnabled();
+  expect(await leavingIsGuarded(page)).toBe(true); // still unsaved
+
+  await error.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.locator('.toast')).toHaveText('Saved');
+  await expect(page.locator('#save-error')).toHaveCount(0);
+  await expect(editable(page)).toHaveValue('12');
+  expect(await leavingIsGuarded(page)).toBe(false);
+});
+
+test('a failed finalize stays on the screen, and Try again finalizes', async ({ page }) => {
+  await flagServiceDate(page);
+  let failNext = true;
+  await page.route('**/reports/*/finalize', (route) => {
+    if (failNext) {
+      failNext = false;
+      return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'Simulated finalize failure' }) });
+    }
+    return route.continue();
+  });
+  await openIntakeReview(page);
+  await editable(page).fill('12');
+
+  await finalizeFromReview(page);
+  await expect(page.locator('#save-error')).toContainText('Simulated finalize failure');
+  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(editable(page)).toHaveValue('12');
+
+  await page.locator('#save-error').getByRole('button', { name: 'Try again' }).click();
+  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+});
+
+test('reloading or closing the page asks first only while there are unsaved edits', async ({ page }) => {
+  await openIntakeReview(page);
+  expect(await leavingIsGuarded(page)).toBe(false);
+
+  await editable(page).fill('12');
+  expect(await leavingIsGuarded(page)).toBe(true);
+
+  await page.click('button:has-text("Save corrections")');
+  await expect(page.locator('.toast')).toHaveText('Saved');
+  expect(await leavingIsGuarded(page)).toBe(false);
+
+  // Marking a flagged field as checked changes no value, so it is not an unsaved edit.
+  const flagged = page.locator('.field.pending');
+  if ((await flagged.count()) > 0) {
+    await flagged.first().getByRole('button', { name: 'Mark as checked' }).click();
+    expect(await leavingIsGuarded(page)).toBe(false);
+  }
+});
+
+test('a saved draft: edits are guarded until saved, and saving keeps the screen', async ({ page, request }) => {
+  const marker = `E2E-Guard-${Date.now()}`;
+  await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker });
+  await openReviewFromList(page, marker);
+  expect(await leavingIsGuarded(page)).toBe(false);
+
+  const text = page.locator('.field-list textarea').first();
+  await text.fill('Edited on the saved report');
+  expect(await leavingIsGuarded(page)).toBe(true);
+
+  await page.click('button:has-text("Save corrections")');
+  await expect(page.locator('.toast')).toHaveText('Saved');
+  await expect(page.locator('.working-panel')).toHaveCount(0);
+  await expect(text).toHaveValue('Edited on the saved report');
+  expect(await leavingIsGuarded(page)).toBe(false);
+});
+
+test('a finalized report being edited: guarded until saved, then read-only again', async ({ page, request }) => {
+  const marker = `E2E-GuardFinal-${Date.now()}`;
+  await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
+  await openReviewFromList(page, marker);
+  await startEditing(page);
+  await page.locator('.field-list textarea').first().fill('Changed after finalizing');
+  expect(await leavingIsGuarded(page)).toBe(true);
+
+  await page.click('button:has-text("Save corrections")');
+  await expect(page.locator('.review-actions button:has-text("Edit")')).toBeVisible({ timeout: 20_000 });
+  expect(await leavingIsGuarded(page)).toBe(false);
+
+  // Cancelling an edit throws the changes away, so there is nothing left to guard.
+  await startEditing(page);
+  await page.locator('.field-list textarea').first().fill('Never saved');
+  expect(await leavingIsGuarded(page)).toBe(true);
+  await page.click('.review-actions button:has-text("Cancel")');
+  expect(await leavingIsGuarded(page)).toBe(false);
+});
+
+// Finalizing with fields still flagged asks first (PR 2 of the review-and-finalize plan).
+
+test('finalizing with flagged fields asks first; Review them goes to the first flagged field', async ({ page }) => {
+  await flagServiceDate(page);
+  await openIntakeReview(page);
+  const flagged = await page.locator('.field.pending').count();
+  expect(flagged).toBeGreaterThan(0);
+
+  await page.click('button:has-text("Save & finalize report")');
+  const confirm = page.locator('#finalize-confirm');
+  await expect(confirm).toBeVisible();
+  await expect(confirm).toContainText(`${flagged} field${flagged === 1 ? '' : 's'} still need${flagged === 1 ? 's' : ''} attention`);
+  await expect(page.locator('.success-panel')).toHaveCount(0); // nothing was finalized yet
+
+  await confirm.getByRole('button', { name: 'Review them' }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(page.locator('.field-list')).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.closest('.field')?.className ?? ''))
+    .toContain('pending');
+  await expect(page.locator('.field.pending')).toHaveCount(flagged); // reviewing does not check anything off
+});
+
+test('Escape closes the question, and "Finalize anyway" finalizes', async ({ page }) => {
+  await flagServiceDate(page);
+  await openIntakeReview(page);
+  expect(await page.locator('.field.pending').count()).toBeGreaterThan(0);
+
+  await page.click('button:has-text("Save & finalize report")');
+  await expect(page.locator('#finalize-confirm')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#finalize-confirm')).toHaveCount(0);
+  await expect(page.locator('.success-panel')).toHaveCount(0);
+
+  await page.click('button:has-text("Save & finalize report")');
+  await page.getByRole('button', { name: 'Finalize anyway' }).click();
+  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+});
+
+test('with nothing flagged, finalizing goes straight through with no question', async ({ page }) => {
+  await flagServiceDate(page); // flagged at first, so the check-off loop below is exercised on every run
+  await openIntakeReview(page);
+  // Check every flagged field off, one at a time (each press removes one from the list).
+  while ((await page.locator('.field.pending').count()) > 0) {
+    await page.locator('.field.pending').first().getByRole('button', { name: 'Mark as checked' }).click();
+  }
+  await page.click('button:has-text("Save & finalize report")');
+  await expect(page.locator('#finalize-confirm')).toHaveCount(0);
+  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+});
+
+test('finalizing twice at the API returns the report quietly, so a retry after a lost reply works', async ({ request }) => {
+  const marker = `E2E-Twice-${Date.now()}`;
+  const { reportId } = await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
+  const again = await request.post(`${API_BASE}/reports/${reportId}/finalize`);
+  expect(again.status()).toBe(200);
+  expect((await again.json()).status).toBe('finalized');
 });

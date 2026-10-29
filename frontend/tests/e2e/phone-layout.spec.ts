@@ -1,42 +1,13 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
 import { createNumericTemplate } from './numeric-fixture';
-import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
+import { startEditing } from './edit-helper';
+import { seedReport, API_BASE } from './helpers/api';
 
 // Phone review of 2026-10-25 (Galaxy A55, 412 x 915): bugs and filter defaults.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const PHONE = { width: 412, height: 915 };
-
-async function seedFinalized(
-  request: APIRequestContext,
-  opts: { instrumentId: string; model: string; fields: Record<string, unknown>; reportDate: string }
-): Promise<string> {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model: opts.model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: opts.instrumentId, template_id: templates[0].id },
-  });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 phone') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: opts.fields, report_date: opts.reportDate },
-  });
-  await request.post(`${API_BASE}/reports/${report.id}/finalize`);
-  return report.id as string;
-}
 
 async function newInstrument(request: APIRequestContext, marker: string): Promise<string> {
   const res = await request.post(`${API_BASE}/instruments`, {
@@ -56,13 +27,20 @@ async function openInstrument(page: Page, instrumentId: string) {
   await page.click('button:has-text("View instrument details")');
 }
 
-test.describe('filters on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+async function seedFinalized(
+  request: APIRequestContext,
+  opts: { instrumentId: string; model: string; fields: Record<string, unknown>; reportDate: string }
+): Promise<string> {
+  const { reportId } = await seedReport(request, { ...opts, reportType: 'installation_upgrade', finalize: true });
+  return reportId;
+}
+
+test.describe('filters on a phone', { tag: '@phone' }, () => {
 
   test('Reports and Analytics start with the filters folded, and From / To are labelled when opened', async ({ page }) => {
     for (const tab of ['reports', 'analytics']) {
       await page.goto(`/#/${tab}`);
-      await expect(page.locator('.filters-summary-text')).toHaveText('No filters', { timeout: 15_000 });
+      await expect(page.locator('.filters-summary-text')).toHaveText('No filters', { timeout: TIMEOUT.ui });
       await expect(page.getByLabel('Lab manager', { exact: true })).toHaveCount(0);
     }
     await page.goto('/#/reports');
@@ -83,12 +61,11 @@ test.describe('filters on a phone', () => {
 test('on a wide screen the filters still start open and the From / To captions are not shown', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/#/reports');
-  await expect(page.getByLabel('Lab manager', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByLabel('Lab manager', { exact: true })).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('.date-pair-label').first()).toBeHidden();
 });
 
-test.describe('a finalized report on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('a finalized report on a phone', { tag: '@phone' }, () => {
 
   test('the date is drawn once and a long text is shown whole', async ({ page, request }) => {
     const marker = `E2E-Phone-Read-${Date.now()}`;
@@ -101,7 +78,7 @@ test.describe('a finalized report on a phone', () => {
       reportDate: '2026-09-08',
     });
     await page.goto(`/#/reports/${reportId}`);
-    await expect(page.locator('.field-list.read-only').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.field-list.read-only').first()).toBeVisible({ timeout: TIMEOUT.ui });
 
     // The browser's own date box stays invisible, so only the app's YYYY-MM-DD text shows.
     const native = page.locator('.date-input-native').first();
@@ -116,15 +93,14 @@ test.describe('a finalized report on a phone', () => {
     expect(client).toBeGreaterThan(100);
 
     // Editing brings the normal, resizable box back.
-    await page.click('button:has-text("Edit")');
+    await startEditing(page);
     const editBox = page.locator('.field-list textarea').first();
     const editHeight = await editBox.evaluate((el) => el.clientHeight);
     expect(editHeight).toBeLessThan(client);
   });
 });
 
-test.describe('the instrument page on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('the instrument page on a phone', { tag: '@phone' }, () => {
 
   test('the date in the "Most recent activity" tile stays on one line', async ({ page, request }) => {
     const marker = `E2E-Phone-Tile-${Date.now()}`;

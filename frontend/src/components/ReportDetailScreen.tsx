@@ -20,6 +20,9 @@ import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { searchableSegments } from '../searchHighlight';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { useConfirmLeave, useNavigationGuard } from '../navigationGuard';
+import { reviewSnapshot } from '../reviewSnapshot';
 import { ReviewScreen } from './ReviewScreen';
 import { RowMenu } from './RowMenu';
 import { SearchMatches } from './SearchMatches';
@@ -75,6 +78,16 @@ export function ReportDetailScreen({
   const [highlightOn, setHighlightOn] = useState(true);
   // A finalized report opens read-only; Edit unlocks it, and saving locks it again.
   const [editing, setEditing] = useState(false);
+  // What the form held when it was loaded or last saved; the form differs from it exactly when there
+  // are unsaved edits (see reviewSnapshot).
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  // A save or finalize request in flight, and why the last one failed. Both are shown on the review
+  // screen itself, so a failure keeps the form and the scan view where they were.
+  const [saving, setSaving] = useState<'save' | 'finalize' | null>(null);
+  const [saveError, setSaveError] = useState<{ message: string; finalize: boolean } | null>(null);
+  const dirty = savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
+  useUnsavedChangesGuard(dirty);
+  const confirmLeave = useConfirmLeave();
 
   useEffect(() => {
     let cancelled = false;
@@ -90,8 +103,8 @@ export function ReportDetailScreen({
     };
   }, [item.id, duplicatesNonce]);
 
-  // `setError` is reused below by handleSave — a failure saving corrections
-  // lands in this same banner rather than a second, separate error state.
+  // `setError` is reused below by handleDelete — a failure deleting lands in
+  // this same banner. A failed save is shown on the review screen instead.
   const { loading, error, setError } = useAsyncEffect(
     async (isCancelled) => {
       const r = await getReport(item.id);
@@ -99,6 +112,7 @@ export function ReportDetailScreen({
       setReport(r);
       setFields(r.extracted_fields ?? {});
       setReportDate(r.report_date);
+      setSavedSnapshot(reviewSnapshot(r.extracted_fields ?? {}, r.report_date));
       // Fetch the report's own template_id directly (GET /report-templates/
       // {id}), not re-resolve "the" template for its instrument model +
       // report type (findTemplate) the way this used to. resolve_template's
@@ -122,22 +136,31 @@ export function ReportDetailScreen({
     'Could not load report.'
   );
 
-  async function handleSave(finalize: boolean) {
-    if (!report) return;
-    setBusyLabel(finalize ? 'Saving and finalizing…' : 'Saving corrections…');
+  async function handleSave(finalize: boolean): Promise<boolean> {
+    if (!report || saving) return false;
+    setSaving(finalize ? 'finalize' : 'save');
+    setSaveError(null);
+    // What is being saved is what the form holds now. Edits made while the request runs stay unsaved.
+    const sent = reviewSnapshot(fields, reportDate);
     try {
       const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
+      setSavedSnapshot(sent);
       const final = finalize ? await finalizeReport(report.id) : updated;
       setReport(final);
       setEditing(false);
       setDuplicatesNonce((n) => n + 1); // a save can change what matches
       showToast(finalize ? 'Saved and finalized' : 'Saved');
+      return true;
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Saving failed unexpectedly.');
+      setSaveError({ message: e instanceof ApiError ? e.message : 'Saving failed unexpectedly.', finalize });
+      return false;
     } finally {
-      setBusyLabel(null);
+      setSaving(null);
     }
   }
+
+  // The app asks before a tab, the Back button or one of this screen's own links would throw unsaved edits away.
+  useNavigationGuard('reports', dirty, () => handleSave(false));
 
   async function handleDelete() {
     if (!report) return;
@@ -163,11 +186,11 @@ export function ReportDetailScreen({
     <div className="section">
       <div className="detail-nav-row">
         <div className="detail-nav-links">
-          <button className="btn small back-link" onClick={onBack}>
+          <button className="btn small back-link" onClick={() => confirmLeave(onBack)}>
             ← Back to reports
           </button>
           {instrument && !phone && (
-            <button className="btn small" onClick={() => onViewInstrument(instrument.id)}>
+            <button className="btn small" onClick={() => confirmLeave(() => onViewInstrument(instrument.id))}>
               View instrument: {instrument.model} ({instrument.serial_number}) →
             </button>
           )}
@@ -222,7 +245,7 @@ export function ReportDetailScreen({
                 {onOpenReport && (
                   <>
                     {' '}
-                    <button type="button" className="btn small" onClick={() => onOpenReport(d)}>
+                    <button type="button" className="btn small" onClick={() => confirmLeave(() => onOpenReport(d))}>
                       Open that report
                     </button>
                   </>
@@ -268,7 +291,7 @@ export function ReportDetailScreen({
               {instrument && phone && (
                 <>
                   {' · '}
-                  <button type="button" className="link-button" onClick={() => onViewInstrument(instrument.id)}>
+                  <button type="button" className="link-button" onClick={() => confirmLeave(() => onViewInstrument(instrument.id))}>
                     {`${instrument.model} (${instrument.serial_number}) →`}
                   </button>
                 </>
@@ -283,6 +306,9 @@ export function ReportDetailScreen({
           scanAttachmentId={report.attachments[0]?.id}
           linksInMenu
           readOnly={report.status === 'finalized' && !editing}
+          busy={saving}
+          saveError={saveError?.message ?? null}
+          onRetrySave={saveError ? () => void handleSave(saveError.finalize) : undefined}
           onEdit={() => setEditing(true)}
           onCancelEdit={
             report.status === 'finalized' && editing

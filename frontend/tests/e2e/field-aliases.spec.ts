@@ -1,8 +1,6 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
+import { API_BASE } from './helpers/api';
 
 // Field aliases (phase 2 of the template-comparison proposal): a hand-kept list
 // of sets of field names that mean the same thing, edited on the Templates tab,
