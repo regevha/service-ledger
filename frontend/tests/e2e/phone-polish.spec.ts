@@ -26,8 +26,7 @@ async function seed(request: APIRequestContext): Promise<{ reportId: string; ins
   return { reportId, instrumentId, model };
 }
 
-test.describe('on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('an empty value in a finalized report shows a dash; editing brings the blank box back', async ({ page, request }) => {
     const { reportId } = await seed(request);

@@ -34,8 +34,7 @@ async function seedFinalized(
   return reportId;
 }
 
-test.describe('filters on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('filters on a phone', { tag: '@phone' }, () => {
 
   test('Reports and Analytics start with the filters folded, and From / To are labelled when opened', async ({ page }) => {
     for (const tab of ['reports', 'analytics']) {
@@ -65,8 +64,7 @@ test('on a wide screen the filters still start open and the From / To captions a
   await expect(page.locator('.date-pair-label').first()).toBeHidden();
 });
 
-test.describe('a finalized report on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('a finalized report on a phone', { tag: '@phone' }, () => {
 
   test('the date is drawn once and a long text is shown whole', async ({ page, request }) => {
     const marker = `E2E-Phone-Read-${Date.now()}`;
@@ -101,8 +99,7 @@ test.describe('a finalized report on a phone', () => {
   });
 });
 
-test.describe('the instrument page on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('the instrument page on a phone', { tag: '@phone' }, () => {
 
   test('the date in the "Most recent activity" tile stays on one line', async ({ page, request }) => {
     const marker = `E2E-Phone-Tile-${Date.now()}`;
