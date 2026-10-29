@@ -40,6 +40,7 @@ import { AddInstrumentPanel } from './AddInstrumentPanel';
 import { Notice } from './Notice';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { useConfirmLeave, useNavigationGuard } from '../navigationGuard';
 import { reviewSnapshot } from '../reviewSnapshot';
 import { ReviewScreen } from './ReviewScreen';
 import { PhoneScanSwitch, ScanSplit, ScanToggleButton, useScanPreview } from './ScanPreview';
@@ -618,6 +619,7 @@ export function IntakeFlow({
   const [saveError, setSaveError] = useState<{ message: string; finalize: boolean } | null>(null);
   const dirty = phase.name === 'review' && savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
   useUnsavedChangesGuard(dirty);
+  const confirmLeave = useConfirmLeave();
 
   // The report that asked for a template of its own, until one is saved.
   const waitingRef = useRef<WaitingForTemplate | null>(null);
@@ -971,13 +973,15 @@ export function IntakeFlow({
   // screen, so the button says so.
   function backToClassification() {
     if (!classification) return;
-    if (!pickInstrumentId && report?.instrument_id) setPickInstrumentId(report.instrument_id);
-    if (template?.report_type) setPickReportType(template.report_type);
-    setPhase({ name: 'confirm-classification' });
+    confirmLeave(() => {
+      if (!pickInstrumentId && report?.instrument_id) setPickInstrumentId(report.instrument_id);
+      if (template?.report_type) setPickReportType(template.report_type);
+      setPhase({ name: 'confirm-classification' });
+    }, 'Going back to Classify and reading the document again replaces edits that are not saved.');
   }
 
-  async function handleSaveFields(finalize: boolean) {
-    if (!report || saving) return;
+  async function handleSaveFields(finalize: boolean): Promise<boolean> {
+    if (!report || saving) return false;
     setSaving(finalize ? 'finalize' : 'save');
     setSaveError(null);
     // What is being saved is what the form holds now. Edits made while the request runs stay unsaved.
@@ -990,12 +994,17 @@ export function IntakeFlow({
       setReport(final);
       if (finalize) setPhase({ name: 'done' });
       else showToast('Saved');
+      return true;
     } catch (e) {
       setSaveError({ message: e instanceof ApiError ? e.message : 'Saving failed unexpectedly.', finalize });
+      return false;
     } finally {
       setSaving(null);
     }
   }
+
+  // The app asks before a tab, the Back button or "Back to Classify" would throw unsaved edits away.
+  useNavigationGuard('new', dirty, () => handleSaveFields(false));
 
   const reviewInstrument = report?.instrument_id ? instruments.find((inst) => inst.id === report.instrument_id) : undefined;
 
