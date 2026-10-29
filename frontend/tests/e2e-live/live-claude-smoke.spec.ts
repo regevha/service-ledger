@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { existsSync } from 'node:fs';
 
+import { finalizeFromReview } from '../e2e/finalize-helper';
 // A one-spec, opt-in sanity check that the real Claude API path works end to
 // end through the actual UI — upload -> classify -> (manual confirm if
 // needed) -> extract -> review -> finalize. Everything in tests/e2e/ runs
@@ -59,7 +60,7 @@ test('upload -> classify -> extract -> review -> finalize against the real Claud
   const fieldCount = await page.locator('.field-list .field').count();
   expect(fieldCount).toBeGreaterThan(0);
 
-  await page.click('button:has-text("Save & finalize report")');
+  await finalizeFromReview(page);
   await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.success-panel')).toContainText('finalized');
 });

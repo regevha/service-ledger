@@ -5,6 +5,7 @@ import { uniqueFixture } from './unique-upload';
 import { TIMEOUT } from './timeouts';
 import { API_BASE, seedReport } from './helpers/api';
 
+import { finalizeFromReview } from './finalize-helper';
 // UI review items #16-#19: the processing panel (what is being read, how long, a way out), the
 // success screen (where to go next), the one-line classify instruction, and the address bar
 // following the app (Refresh, Back and bookmarks).
@@ -18,7 +19,7 @@ async function finalizeOne(page: import('@playwright/test').Page, technician: st
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
   await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
-  await page.click('button:has-text("Save & finalize report")');
+  await finalizeFromReview(page);
   await expect(page.getByTestId('intake-success')).toBeVisible({ timeout: TIMEOUT.ui });
 }
 
@@ -120,7 +121,7 @@ test.describe('intake flow', () => {
     await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
     await page.click('button:has-text("Upload & classify")');
     await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
-    await page.click('button:has-text("Save & finalize report")');
+    await finalizeFromReview(page);
     // The form is still there; the buttons say what is happening and cannot be pressed twice.
     await expect(page.locator('button:has-text("Finalizing…")')).toBeDisabled();
     await expect(page.locator('button:has-text("Save corrections")')).toBeDisabled();
