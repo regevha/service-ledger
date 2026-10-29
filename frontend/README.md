@@ -289,6 +289,18 @@ The intake screen (`IntakeFlow`) already has stable test ids (`intake-dropzone`,
 `intake-open-report`, `intake-view-instrument`, `intake-error`, `class-row`);
 other screens are moved over when their specs are next edited, not all at once.
 
+### Live-Claude check, weekly in CI
+
+`.github/workflows/live-claude.yml` runs the live smoke test below every Monday
+and on demand ("Run workflow" in the Actions tab). It needs two repository
+secrets: `ANTHROPIC_API_KEY` (use a key with a low monthly spend limit) and
+`LIVE_SMOKE_FIXTURE_B64`, a real scan encoded with `base64 -w0 scan.pdf`. The
+scan stays in the secret and never enters the repository. If a secret is
+missing the run fails on purpose, so the check is never silently skipped. It
+asserts the shape of what came back (job succeeded, confidences between 0 and
+1, report finalized with fields), not exact values. Locally:
+`ANTHROPIC_API_KEY=... LIVE_SMOKE_FIXTURE_PATH=scan.pdf npm run test:e2e:live`.
+
 ### Live-Claude smoke test (real API, opt-in)
 
 `tests/e2e-live/live-claude-smoke.spec.ts` runs the same upload→classify→
