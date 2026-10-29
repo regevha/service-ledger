@@ -1,0 +1,87 @@
+name: Update visual baselines
+
+# Screenshot baselines (frontend/tests/e2e/visual.spec.ts-snapshots/) must be drawn on the same kind
+# of machine that compares them, so they are made here, on the CI runner, never on a laptop. Run this
+# from the Actions tab on the branch you are working on (after a deliberate change to a chart or to
+# the review layout, or the first time). It commits the new images to that branch: look at them in
+# the pull request before merging, they are the new truth.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PGHOST: localhost
+  PGPORT: 5432
+  PGUSER: service_ledger
+  PGPASSWORD: service_ledger_dev
+
+jobs:
+  baselines:
+    name: Draw baselines
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: service_ledger
+          POSTGRES_PASSWORD: service_ledger_dev
+          POSTGRES_DB: service_ledger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Create service_ledger_e2e database
+        run: psql -d service_ledger -c "CREATE DATABASE service_ledger_e2e;"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright's Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Draw the baseline images
+        working-directory: frontend
+        env:
+          E2E_VISUAL: "1"
+        run: npx playwright test --project=visual --update-snapshots
+
+      - name: Commit the images to this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/tests/e2e/visual.spec.ts-snapshots
+          if git diff --cached --quiet; then
+            echo "The images are unchanged."
+          else
+            git commit -m "Update visual baselines"
+            git push
+          fi
