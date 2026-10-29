@@ -20,6 +20,8 @@ import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { searchableSegments } from '../searchHighlight';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { reviewSnapshot } from '../reviewSnapshot';
 import { ReviewScreen } from './ReviewScreen';
 import { RowMenu } from './RowMenu';
 import { SearchMatches } from './SearchMatches';
@@ -75,6 +77,15 @@ export function ReportDetailScreen({
   const [highlightOn, setHighlightOn] = useState(true);
   // A finalized report opens read-only; Edit unlocks it, and saving locks it again.
   const [editing, setEditing] = useState(false);
+  // What the form held when it was loaded or last saved; the form differs from it exactly when there
+  // are unsaved edits (see reviewSnapshot).
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  // A save or finalize request in flight, and why the last one failed. Both are shown on the review
+  // screen itself, so a failure keeps the form and the scan view where they were.
+  const [saving, setSaving] = useState<'save' | 'finalize' | null>(null);
+  const [saveError, setSaveError] = useState<{ message: string; finalize: boolean } | null>(null);
+  const dirty = savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
+  useUnsavedChangesGuard(dirty);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,8 +101,8 @@ export function ReportDetailScreen({
     };
   }, [item.id, duplicatesNonce]);
 
-  // `setError` is reused below by handleSave — a failure saving corrections
-  // lands in this same banner rather than a second, separate error state.
+  // `setError` is reused below by handleDelete — a failure deleting lands in
+  // this same banner. A failed save is shown on the review screen instead.
   const { loading, error, setError } = useAsyncEffect(
     async (isCancelled) => {
       const r = await getReport(item.id);
@@ -99,6 +110,7 @@ export function ReportDetailScreen({
       setReport(r);
       setFields(r.extracted_fields ?? {});
       setReportDate(r.report_date);
+      setSavedSnapshot(reviewSnapshot(r.extracted_fields ?? {}, r.report_date));
       // Fetch the report's own template_id directly (GET /report-templates/
       // {id}), not re-resolve "the" template for its instrument model +
       // report type (findTemplate) the way this used to. resolve_template's
@@ -123,19 +135,23 @@ export function ReportDetailScreen({
   );
 
   async function handleSave(finalize: boolean) {
-    if (!report) return;
-    setBusyLabel(finalize ? 'Saving and finalizing…' : 'Saving corrections…');
+    if (!report || saving) return;
+    setSaving(finalize ? 'finalize' : 'save');
+    setSaveError(null);
+    // What is being saved is what the form holds now. Edits made while the request runs stay unsaved.
+    const sent = reviewSnapshot(fields, reportDate);
     try {
       const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
+      setSavedSnapshot(sent);
       const final = finalize ? await finalizeReport(report.id) : updated;
       setReport(final);
       setEditing(false);
       setDuplicatesNonce((n) => n + 1); // a save can change what matches
       showToast(finalize ? 'Saved and finalized' : 'Saved');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Saving failed unexpectedly.');
+      setSaveError({ message: e instanceof ApiError ? e.message : 'Saving failed unexpectedly.', finalize });
     } finally {
-      setBusyLabel(null);
+      setSaving(null);
     }
   }
 
@@ -283,6 +299,9 @@ export function ReportDetailScreen({
           scanAttachmentId={report.attachments[0]?.id}
           linksInMenu
           readOnly={report.status === 'finalized' && !editing}
+          busy={saving}
+          saveError={saveError?.message ?? null}
+          onRetrySave={saveError ? () => void handleSave(saveError.finalize) : undefined}
           onEdit={() => setEditing(true)}
           onCancelEdit={
             report.status === 'finalized' && editing
