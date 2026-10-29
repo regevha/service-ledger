@@ -1,12 +1,10 @@
 import { type APIRequestContext } from '@playwright/test';
 import { expect } from '@playwright/test';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE } from './helpers/api';
 
 // The seeded templates carry no per-detector or pressure fields (the calibration templates that did
 // are gone), so specs that chart numbers or edit per-detector maps make their own model and a
 // template for it. The model is new, so nothing else in the shared database is affected.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 export const NUMERIC_FIELDS = [
   { name: 'cst_beads_lot', type: 'text', unit: null, notes: 'lot number, for traceability' },

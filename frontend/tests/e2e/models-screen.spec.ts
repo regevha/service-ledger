@@ -1,11 +1,9 @@
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE } from './helpers/api';
 
 // Instrument models as records of their own (models plan, step 2): a Models list under the
 // Instruments tab, a model suggestion on the instrument form, rename / merge / delete that say
 // exactly what they change.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function makeUnit(request: import('@playwright/test').APIRequestContext, model: string, tag: string, manufacturer = 'E2E Maker') {
   const r = await request.post(`${API_BASE}/instruments`, {
