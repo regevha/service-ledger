@@ -23,8 +23,7 @@ async function seed(request: APIRequestContext): Promise<{ reportId: string; ins
   return { reportId, instrumentId };
 }
 
-test.describe('on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('dark mode: the selected Fields | Scan button is readable', async ({ browser, request }) => {
     const { reportId } = await seed(request);
