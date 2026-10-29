@@ -1,6 +1,7 @@
-import { type APIRequestContext } from '@playwright/test';
+import { type APIRequestContext, expect } from '@playwright/test';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 export const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
@@ -30,11 +31,12 @@ export async function seedFinalizedReport(
     })
   ).json();
   const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
+  await expect
+    .poll(async () => (await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json()).status, {
+      intervals: [200],
+      timeout: TIMEOUT.flow,
+    })
+    .toMatch(/^(succeeded|failed)$/);
 
   await request.patch(`${API_BASE}/reports/${report.id}/fields`, { data: { extracted_fields: opts.extractedFields } });
   await request.post(`${API_BASE}/reports/${report.id}/finalize`);

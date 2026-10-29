@@ -2,6 +2,7 @@ import { test, expect } from './coverage';
 import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TIMEOUT } from './timeouts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -23,7 +24,7 @@ test('upload → auto-classify → extract → review → finalize', async ({ pa
   await page.click('button:has-text("Upload & classify")');
 
   // No manual-confirm detour expected for this fixture.
-  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: 30_000 });
+  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: TIMEOUT.flow });
   await expect(page.locator('.class-row')).toHaveCount(0);
   await expect(page.locator('.banner-crit')).toHaveCount(0);
 
@@ -32,7 +33,7 @@ test('upload → auto-classify → extract → review → finalize', async ({ pa
   expect(fieldCount).toBeGreaterThan(0);
 
   await page.click('button:has-text("Save & finalize report")');
-  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.success-panel')).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('.success-panel')).toContainText('finalized');
 
   // "Start another report" returns to a clean intake screen — the state

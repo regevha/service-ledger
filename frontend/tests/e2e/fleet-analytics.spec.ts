@@ -1,5 +1,6 @@
 import { test, expect } from './coverage';
 import { seedFinalizedReport } from './seed-report';
+import { TIMEOUT } from './timeouts';
 
 // The Analytics tab (GET /analytics/fleet) — a smoke check that the tab
 // renders real numbers end to end through the UI. The aggregation math
@@ -39,7 +40,7 @@ test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail 
   await page.click('.view-tab:has-text("Analytics")');
 
   await expect(page.locator('.section-title')).toContainText('Fleet analytics');
-  await expect(page.locator('.stat-tile')).toHaveCount(4, { timeout: 15_000 });
+  await expect(page.locator('.stat-tile')).toHaveCount(4, { timeout: TIMEOUT.ui });
 
   // This run added at least 4 + 2.5 = 6.5 hours — the fleet-wide total may
   // be higher if other specs already finalized reports in this same run.

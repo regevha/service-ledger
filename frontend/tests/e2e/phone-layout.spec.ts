@@ -3,6 +3,7 @@ import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { createNumericTemplate } from './numeric-fixture';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 // Phone review of 2026-10-25 (Galaxy A55, 412 x 915): bugs and filter defaults.
 
@@ -62,7 +63,7 @@ test.describe('filters on a phone', () => {
   test('Reports and Analytics start with the filters folded, and From / To are labelled when opened', async ({ page }) => {
     for (const tab of ['reports', 'analytics']) {
       await page.goto(`/#/${tab}`);
-      await expect(page.locator('.filters-summary-text')).toHaveText('No filters', { timeout: 15_000 });
+      await expect(page.locator('.filters-summary-text')).toHaveText('No filters', { timeout: TIMEOUT.ui });
       await expect(page.getByLabel('Lab manager', { exact: true })).toHaveCount(0);
     }
     await page.goto('/#/reports');
@@ -83,7 +84,7 @@ test.describe('filters on a phone', () => {
 test('on a wide screen the filters still start open and the From / To captions are not shown', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/#/reports');
-  await expect(page.getByLabel('Lab manager', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByLabel('Lab manager', { exact: true })).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('.date-pair-label').first()).toBeHidden();
 });
 
@@ -101,7 +102,7 @@ test.describe('a finalized report on a phone', () => {
       reportDate: '2026-09-08',
     });
     await page.goto(`/#/reports/${reportId}`);
-    await expect(page.locator('.field-list.read-only').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.field-list.read-only').first()).toBeVisible({ timeout: TIMEOUT.ui });
 
     // The browser's own date box stays invisible, so only the app's YYYY-MM-DD text shows.
     const native = page.locator('.date-input-native').first();

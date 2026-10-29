@@ -1,6 +1,7 @@
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
@@ -33,11 +34,11 @@ test('a document naming a serial number is assigned to that unit even when its m
     await page.click('button:has-text("Upload & classify")');
 
     // Straight through to review: no manual pick, even though two FACSAria IIIs exist.
-    await expect(page.locator('#review-report-date')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('#review-report-date')).toBeVisible({ timeout: TIMEOUT.flow });
     await expect(page.locator('#serial-notice')).toContainText(`Matched to FACSAria III (${serial})`);
 
     await page.click('button:has-text("Save & finalize report")');
-    await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.success-panel')).toBeVisible({ timeout: TIMEOUT.ui });
 
     // The report belongs to that unit, not to the other Aria.
     await page.click('.view-tab:has-text("Reports")');
@@ -62,7 +63,7 @@ test('the confirm screen shows the model and the serial as separate fields', asy
     buffer: uniquePdf('%PDF-1.4 x'),
   });
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.class-row', { timeout: 30_000 });
+  await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
 
   await expect(page.locator('#read-model')).toContainText('LSRFortessa');
   await expect(page.locator('#read-serial')).toContainText('P648282B3003');

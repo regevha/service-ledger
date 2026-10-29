@@ -1,4 +1,4 @@
-import { type APIRequestContext } from '@playwright/test';
+import { type APIRequestContext, type Page } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from './coverage';
@@ -6,6 +6,7 @@ import { uniqueFixture, uniquePdf } from './unique-upload';
 import { fieldLabel } from '../../src/fieldLabels';
 import { BACKEND_PORT } from '../../playwright.config';
 import { createNumericModel } from './numeric-fixture';
+import { TIMEOUT } from './timeouts';
 
 // The review screen as the 2026-10-24 UI review asked for it: the scan beside the fields, an action
 // bar that stays in view, readable field names, a finalized report that is read-only until Edit,
@@ -13,6 +14,20 @@ import { createNumericModel } from './numeric-fixture';
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// A scan whose stub read always has flagged fields. For an ordinary scan the stub's confidence per
+// field comes from a hash of the stored file's unique name, so how many fields are flagged changes
+// from run to run (a test that needs flagged fields could not rely on it). For the sample work order
+// the stub always flags root_cause and components_replaced, which are blank on the real document.
+// It lands on the manual-confirm step first, because its report type is below the threshold.
+async function readSampleWorkOrder(page: Page) {
+  await page.goto('/');
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'sample-work-order.pdf')));
+  await page.click('button:has-text("Upload & classify")');
+  await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
+  await page.click('button:has-text("Confirm & continue")');
+  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
+}
 
 async function seedReport(
   request: APIRequestContext,
@@ -47,7 +62,7 @@ async function openFromList(page: import('@playwright/test').Page, marker: strin
   await page.click('.view-tab:has-text("Reports")');
   await page.waitForSelector('.report-table');
   await page.click(`.report-row-body:has-text("${marker}")`);
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
 }
 
 test('fieldLabel: readable names, abbreviations in capitals, no unit said twice', () => {
@@ -103,7 +118,7 @@ test.describe('scan beside the fields', () => {
     await page.reload();
     await page.click('.view-tab:has-text("Reports")');
     await page.click(`.report-row-body:has-text("${marker}")`);
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.review-scan')).toHaveCount(0);
     await page.click('button:has-text("Show scan")');
     await expect(page.locator('.review-scan')).toBeVisible();
@@ -132,13 +147,10 @@ test('the action bar stays in view while a long form scrolls', async ({ page, re
 });
 
 test('"Next" jumps to the fields that need attention', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
-  await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await readSampleWorkOrder(page);
   const flagged = page.locator('.field.pending');
   const n = await flagged.count();
-  test.skip(n === 0, 'the stub flagged nothing on this run');
+  expect(n, 'the sample work order always has flagged fields').toBeGreaterThanOrEqual(2);
   await expect(page.locator('.review-actions-status')).toContainText(`${n} field`);
   for (let i = 0; i < n; i++) {
     await page.click('.review-actions button:has-text("Next")');
@@ -176,7 +188,7 @@ test('the banner lines up with the fields instead of being inset twice', async (
   await page.goto('/');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await page.waitForSelector('.field-list', { timeout: TIMEOUT.flow });
   const banner = page.locator('#placeholder-notice');
   await expect(banner).toBeVisible();
   const [b, l] = await Promise.all([banner.boundingBox(), page.locator('.field-list').boundingBox()]);
@@ -231,12 +243,9 @@ test('text "Remove" buttons in the template editor stay inside their card', asyn
 });
 
 test('flagged fields are listed above the fields and clear only when marked as checked', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
-  await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await readSampleWorkOrder(page);
   const n = await page.locator('.field.pending').count();
-  test.skip(n === 0, 'the stub flagged nothing on this run');
+  expect(n, 'the sample work order always has flagged fields').toBeGreaterThanOrEqual(2);
 
   const strip = page.getByTestId('attention-strip');
   await expect(strip).toContainText(`${n} field`);

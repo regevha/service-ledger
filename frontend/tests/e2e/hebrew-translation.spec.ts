@@ -1,5 +1,6 @@
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
+import { TIMEOUT } from './timeouts';
 
 // The Hebrew translation review (docs: proposal-hebrew-translation.md). In
 // stub mode a file whose name contains "hebrew" is "translated" with a fixed
@@ -22,7 +23,7 @@ test('a Hebrew document waits for review; QC pages are listed and can be include
   await upload(page, `hebrew-review-${Date.now()}.pdf`);
 
   const review = page.locator('#translation-review');
-  await expect(review).toBeVisible({ timeout: 30_000 });
+  await expect(review).toBeVisible({ timeout: TIMEOUT.flow });
   await expect(page.locator('#ignored-pages')).toContainText('page');
   await expect(page.locator('#ignored-pages')).toContainText('2, 3');
   await expect(page.locator('#identifier-check')).toContainText('identifiers');
@@ -33,7 +34,7 @@ test('a Hebrew document waits for review; QC pages are listed and can be include
 
   // Ask for page 2 to be included: translated again, page 3 still ignored.
   await page.click('button:has-text("Include page 2")');
-  await expect(page.locator('#included-pages')).toContainText('2', { timeout: 30_000 });
+  await expect(page.locator('#included-pages')).toContainText('2', { timeout: TIMEOUT.flow });
   await expect(page.locator('#ignored-pages')).toContainText('page 3');
   await expect(page.locator('#ignored-pages')).not.toContainText('2, 3');
   await expect(page.locator('textarea[aria-label="English translation"]')).toContainText('Page 2 included');
@@ -44,7 +45,7 @@ test('the original beside the English is served for display, not as a download',
   // pane stayed blank because the file came back as an attachment, which a
   // browser refuses to show in an iframe.
   await upload(page, `hebrew-inline-${Date.now()}.pdf`);
-  await expect(page.locator('#translation-review')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#translation-review')).toBeVisible({ timeout: TIMEOUT.flow });
 
   const src = await page.locator('iframe.translation-original').getAttribute('src');
   expect(src).toContain('/file?inline=1');
@@ -59,7 +60,7 @@ test('the original beside the English is served for display, not as a download',
 test('editing the English shows durations in decimal hours and accepting continues to the report', async ({ page }) => {
   await upload(page, `hebrew-edit-${Date.now()}.pdf`);
   const box = page.locator('textarea[aria-label="English translation"]');
-  await expect(box).toBeVisible({ timeout: 30_000 });
+  await expect(box).toBeVisible({ timeout: TIMEOUT.flow });
 
   // Not edited yet: the plain accept button.
   await expect(page.locator('button:has-text("Accept & continue")')).toBeVisible();
@@ -69,16 +70,16 @@ test('editing the English shows durations in decimal hours and accepting continu
   await expect(page.locator('#translation-durations')).not.toContainText('12:00');
 
   await page.click('button:has-text("Accept my edits & continue")');
-  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: 30_000 });
+  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: TIMEOUT.flow });
   await expect(page.locator('.banner-crit')).toHaveCount(0);
   await expect(page.locator('#translation-review')).toHaveCount(0);
 });
 
 test('discarding the translation goes on with the original document', async ({ page }) => {
   await upload(page, `hebrew-discard-${Date.now()}.pdf`);
-  await expect(page.locator('#translation-review')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#translation-review')).toBeVisible({ timeout: TIMEOUT.flow });
   await page.click('button:has-text("Discard and use the original")');
-  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: 30_000 });
+  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: TIMEOUT.flow });
   await expect(page.locator('.banner-crit')).toHaveCount(0);
   await expect(page.locator('#translation-review')).toHaveCount(0);
 });
@@ -86,11 +87,11 @@ test('discarding the translation goes on with the original document', async ({ p
 test('an instrument that is not in the fleet is added on the spot and the document is classified again', async ({ page }) => {
   const serial = `E2E${Date.now()}`;
   await upload(page, `hebrew-othermaker-${serial}-scan.pdf`);
-  await expect(page.locator('#translation-review')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#translation-review')).toBeVisible({ timeout: TIMEOUT.flow });
   await page.click('button:has-text("Accept & continue")');
 
   const panel = page.locator('#add-instrument-panel');
-  await expect(panel).toBeVisible({ timeout: 30_000 });
+  await expect(panel).toBeVisible({ timeout: TIMEOUT.flow });
   await expect(panel).toContainText('not in your fleet');
   await expect(page.locator('#read-model')).toContainText('not in your fleet');
   await expect(page.locator('#read-issuer')).toContainText('almog diagnostic');
@@ -109,10 +110,10 @@ test('an instrument that is not in the fleet is added on the spot and the docume
   // Classified again: now matched by serial. The new instrument takes the type of the existing
   // "Cytek Aurora" model (a flow cytometer), so the report finds its template and goes straight
   // to review, without the add panel.
-  await expect(page.locator('#serial-notice')).toContainText(`Matched to Cytek Aurora (${serial})`, { timeout: 30_000 });
+  await expect(page.locator('#serial-notice')).toContainText(`Matched to Cytek Aurora (${serial})`, { timeout: TIMEOUT.flow });
   await expect(page.locator('.banner-crit')).toHaveCount(0);
   await expect(page.locator('#add-instrument-panel')).toHaveCount(0);
-  await expect(page.locator('.field-list').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.field-list').first()).toBeVisible({ timeout: TIMEOUT.flow });
 
   // The new instrument is in the fleet list with its distributor.
   await page.click('.view-tab:has-text("Instruments")');
@@ -122,6 +123,6 @@ test('an instrument that is not in the fleet is added on the spot and the docume
 
 test('a document that is not Hebrew goes straight to classification', async ({ page }) => {
   await upload(page, `plain-english-${Date.now()}.pdf`);
-  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: 30_000 });
+  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: TIMEOUT.flow });
   await expect(page.locator('#translation-review')).toHaveCount(0);
 });
