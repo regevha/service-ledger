@@ -161,6 +161,8 @@ def _field_to_dict(field: schemas.TemplateFieldIn) -> dict:
         # does preserve JSON array element order, so the column order a
         # template author chose survives the round trip through the DB.
         out["item_schema"] = [{"name": col.name, "type": col.type.value} for col in field.item_schema]
+    if field.filled_by_person:
+        out["filled_by_person"] = True
     return out
 
 

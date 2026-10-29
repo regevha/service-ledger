@@ -614,6 +614,10 @@ class TemplateFieldIn(BaseModel):
     notes: str | None = None
     options: list[str] | None = None
     item_schema: list[ItemSchemaColumn] | None = None
+    # Filled in by a person, not printed on the form (fault category, retest
+    # result). The model still suggests a value, but the review screen always
+    # asks for it to be checked, whatever the confidence.
+    filled_by_person: bool = False
 
     @model_validator(mode="after")
     def _check_shape(self) -> "TemplateFieldIn":

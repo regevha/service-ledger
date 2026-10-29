@@ -162,7 +162,7 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
   // field ended up in that same screen position instead of following the
   // row the user was actually typing into. fieldKeys is a locally-invented,
   // per-row identity — never sent to the backend (fieldToPayload only ever
-  // reads name/type/unit/notes/options/item_schema off a field) — kept in
+  // reads name/type/unit/notes/options/item_schema/filled_by_person off a field) — kept in
   // lockstep with `fields` by this component's own add/remove/move handlers,
   // the only things that ever change its length or order.
   const [fieldKeys, setFieldKeys] = useState<number[]>(() => fields.map((_, i) => i));
@@ -173,7 +173,7 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
   }
   function changeType(i: number, type: FieldType) {
     const current = fields[i];
-    onChange(fields.map((f, j) => (i === j ? { ...defaultFieldFor(type), name: current.name, unit: current.unit, notes: current.notes } : f)));
+    onChange(fields.map((f, j) => (i === j ? { ...defaultFieldFor(type), name: current.name, unit: current.unit, notes: current.notes, filled_by_person: current.filled_by_person } : f)));
   }
   function removeField(i: number) {
     onChange(fields.filter((_, j) => j !== i));
@@ -266,6 +266,14 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
               />
             </label>
           </div>
+          <label className="schema-field-check">
+            <input
+              type="checkbox"
+              checked={Boolean(field.filled_by_person)}
+              onChange={(e) => updateField(i, { filled_by_person: e.target.checked || undefined })}
+            />
+            Filled in by a person: not on the form, so the reading is only a suggestion and Review always asks to check it
+          </label>
           {field.name.trim() !== '' && (
             <div className="schema-field-preview">
               Shown as <b>{fieldLabel(field.name, field.unit ?? undefined)}</b>
@@ -300,6 +308,7 @@ function fieldToPayload(field: TemplateField): TemplateFieldPayload {
     notes: field.notes || null,
     ...(field.options ? { options: field.options } : {}),
     ...(field.item_schema ? { item_schema: field.item_schema } : {}),
+    ...(field.filled_by_person ? { filled_by_person: true } : {}),
   };
 }
 
