@@ -362,7 +362,7 @@ test('reloading or closing the page asks first only while there are unsaved edit
 test('a saved draft: edits are guarded until saved, and saving keeps the screen', async ({ page, request }) => {
   const marker = `E2E-Guard-${Date.now()}`;
   await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker });
-  await openFromList(page, marker);
+  await openReviewFromList(page, marker);
   expect(await leavingIsGuarded(page)).toBe(false);
 
   const text = page.locator('.field-list textarea').first();
@@ -379,7 +379,7 @@ test('a saved draft: edits are guarded until saved, and saving keeps the screen'
 test('a finalized report being edited: guarded until saved, then read-only again', async ({ page, request }) => {
   const marker = `E2E-GuardFinal-${Date.now()}`;
   await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
-  await openFromList(page, marker);
+  await openReviewFromList(page, marker);
   await page.click('.review-actions button:has-text("Edit")');
   await page.locator('.field-list textarea').first().fill('Changed after finalizing');
   expect(await leavingIsGuarded(page)).toBe(true);

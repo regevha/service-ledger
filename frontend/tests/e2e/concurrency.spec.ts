@@ -66,7 +66,7 @@ test('finalizing a report that another page already finalized shows the refusal 
 
     // The second page still shows the old state. Its attempt is refused and says so.
     await second.locator(SAVE_AND_FINALIZE).click();
-    await expect(second.locator('.banner-warn')).toContainText("Cannot finalize a report in status 'finalized'", { timeout: TIMEOUT.ui });
+    await expect(second.locator('#save-error')).toContainText("Cannot finalize a report in status 'finalized'", { timeout: TIMEOUT.ui });
   } finally {
     await first.context().close();
     await second.context().close();
