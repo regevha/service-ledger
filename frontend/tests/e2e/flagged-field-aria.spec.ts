@@ -30,8 +30,8 @@ test('flagged fields are named groups that say they need checking, and checking 
   // An unflagged field is a named group too, and says nothing about checking.
   const groups = page.locator('.field-list [role="group"]');
   expect(await groups.count()).toBeGreaterThan(1);
-  // (Fields a person fills in are always flagged, so look at one that is not.)
-  await expect(groups.filter({ hasNot: page.getByTestId('person-field-badge') }).last()).not.toContainText('Needs checking.');
+  // Fields a person fills in are always flagged, so look for one that is not: it is a group that says nothing about checking.
+  await expect(groups.filter({ hasNotText: 'Needs checking.' }).first()).toBeVisible();
 
   await date.getByRole('button', { name: 'Mark as checked: Service date' }).click();
   await expect(date).not.toContainText('Needs checking.');

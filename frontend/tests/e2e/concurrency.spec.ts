@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { test, expect } from './coverage';
 import { uniqueFixture } from './unique-upload';
 import { TIMEOUT } from './timeouts';
+import { finalizeFromReview } from './finalize-helper';
 import { API_BASE, seedReport } from './helpers/api';
 import { openReviewFromList } from './helpers/ui';
 
@@ -64,7 +65,7 @@ test('finalizing a report that another page already finalized succeeds quietly a
     await expect(first.locator(SAVE_AND_FINALIZE)).toBeVisible();
     await expect(second.locator(SAVE_AND_FINALIZE)).toBeVisible();
 
-    await first.locator(SAVE_AND_FINALIZE).click();
+    await finalizeFromReview(first);
     await expect(first.locator('.review-actions')).toContainText('Finalized', { timeout: TIMEOUT.ui });
 
     // The second page still shows the old state. Finalizing again is not an error: the report is
