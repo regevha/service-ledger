@@ -2,6 +2,7 @@ import { test, expect } from './coverage';
 import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TIMEOUT } from './timeouts';
 
 // The phone's five tabs are a bar at the bottom of the screen with icons; a save shows a short "Saved" message.
 
@@ -49,7 +50,7 @@ test.describe('on a phone', () => {
     await page.click('.view-tab:has-text("New report")');
     await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
     await page.click('button:has-text("Upload & classify")');
-    await page.waitForSelector('.field-list', { timeout: 30_000 });
+    await page.waitForSelector('.field-list', { timeout: TIMEOUT.flow });
     await page.click('button:has-text("Save corrections")');
     const toast = page.locator('.toast');
     await expect(toast).toHaveText('Saved');

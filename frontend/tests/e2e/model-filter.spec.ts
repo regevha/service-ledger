@@ -1,6 +1,7 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 // The model filter: every unit of one model record. The Reports and Analytics tabs share one filter
 // bar, which now has a Model choice (the instrument choice narrows to it); the Instruments list has
@@ -107,13 +108,13 @@ test('Analytics: the same Model choice narrows the charts, and a maker change dr
   const b = await unitWithReport(request, stamp, 'B');
   await page.goto('/#/analytics');
   const bar = page.getByTestId('analytics-filters');
-  await expect(bar).toBeVisible({ timeout: 15_000 });
+  await expect(bar).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(bar.getByLabel('Model', { exact: true })).toBeVisible();
 
   // These reports are not finalized, so count every status.
   await bar.getByLabel('Status').selectOption('all');
   const perInstrument = page.getByTestId('reports-per-instrument-chart');
-  await expect(perInstrument).toContainText(a.name, { timeout: 15_000 });
+  await expect(perInstrument).toContainText(a.name, { timeout: TIMEOUT.ui });
   await expect(perInstrument).toContainText(b.name);
 
   await bar.getByLabel('Model', { exact: true }).selectOption({ label: a.model });

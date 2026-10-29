@@ -3,6 +3,7 @@ import { test, expect } from './coverage';
 import { isIsoDay } from '../../src/isoDay';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 // UI review items #20-#25: destructive actions that look destructive, a quieter Templates row,
 // labelled fields in the template editor, required fields marked on the new-instrument form,
@@ -46,7 +47,7 @@ test.describe('destructive actions', () => {
     await page.setViewportSize({ width: 1300, height: 800 });
     await page.goto(`/#/reports/${report.id}`);
     const del = page.locator('.detail-nav-row button:has-text("Delete report")');
-    await expect(del).toBeVisible({ timeout: 15_000 });
+    await expect(del).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(del).toHaveClass(/danger/);
     const [delBox, backBox, row] = await Promise.all([
       del.boundingBox(),
@@ -237,7 +238,7 @@ test.describe('dates read YYYY-MM-DD everywhere', () => {
     await page.goto('/#/new');
     await page.locator('input[type="file"]').setInputFiles({ name: 'confident-scan.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 datefmt') });
     await page.click('button:has-text("Upload & classify")');
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
     await expect(page.locator('#review-report-date')).toHaveAttribute('placeholder', 'YYYY-MM-DD');
   });
 });

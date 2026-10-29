@@ -2,6 +2,7 @@ import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 // The filter bar on the Analytics tab (instrument, report type, date range),
 // which applies to the whole page. The filtering itself is covered by
@@ -49,7 +50,7 @@ async function seedFinalizedReport(
 async function openAnalytics(page: Page) {
   await page.goto('/');
   await page.click('.view-tab:has-text("Analytics")');
-  await expect(page.getByTestId('analytics-filters')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('analytics-filters')).toBeVisible({ timeout: TIMEOUT.ui });
 }
 
 test('the filters narrow the whole Analytics page and can be cleared', async ({ page, request }) => {
@@ -139,7 +140,8 @@ test('the model comparison follows the filters too', async ({ page, request }) =
 test('the manufacturer filter limits the page to that maker and the instrument list follows it', async ({ page, request }) => {
   const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
   const makers: string[] = Array.from(new Set(instruments.map((i: { manufacturer: string | null }) => i.manufacturer?.trim()).filter(Boolean)));
-  test.skip(makers.length < 2, 'needs instruments from two manufacturers');
+  // The seeded fleet has BD, Cytek and Beckman Coulter units, so this holds on every run.
+  expect(makers.length, 'the seeded fleet has instruments from several manufacturers').toBeGreaterThan(1);
   const [maker] = makers;
   const ofMaker = instruments.filter((i: { manufacturer: string | null }) => i.manufacturer?.trim() === maker);
 

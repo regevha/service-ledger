@@ -2,6 +2,7 @@ import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { BACKEND_PORT } from '../../playwright.config';
 import { createNumericTemplate } from './numeric-fixture';
+import { TIMEOUT } from './timeouts';
 
 // "Compare units of the same model" on the Analytics tab: the side-by-side
 // table of every serial of a model and the one-line-per-unit trend chart.
@@ -55,7 +56,7 @@ async function openComparison(page: Page, model: string) {
   await page.goto('/');
   await page.click('.view-tab:has-text("Analytics")');
   const picker = page.getByLabel('Model to compare');
-  await expect(picker).toBeVisible({ timeout: 15_000 });
+  await expect(picker).toBeVisible({ timeout: TIMEOUT.ui });
   await picker.selectOption(model);
 }
 

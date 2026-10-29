@@ -1,6 +1,7 @@
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
@@ -67,10 +68,10 @@ test('a new instrument type can be added, used, and shows a clear message when i
       buffer: uniquePdf('%PDF-1.4 microscope'),
     });
     await page.click('button:has-text("Upload & classify")');
-    await page.waitForSelector('.class-row', { timeout: 30_000 });
+    await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
     await page.click('button:has-text("Confirm & continue")');
     await expect(page.getByText(new RegExp(`There is no .* template for ${typeName} / E2E-Talos yet`))).toBeVisible({
-      timeout: 15_000,
+      timeout: TIMEOUT.ui,
     });
   } finally {
     await request.delete(`${API_BASE}/instruments/${created.id}`);
