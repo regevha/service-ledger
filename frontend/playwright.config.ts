@@ -69,12 +69,19 @@ export default defineConfig({
   // change the viewport itself (to compare phone and wide layouts) still calls
   // page.setViewportSize.
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, grepInvert: /@phone/ },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, grepInvert: /@phone|@visual/ },
     {
       name: 'phone',
       use: { ...devices['Desktop Chrome'], viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true },
       grep: /@phone/,
     },
+    // Screenshot comparisons (visual.spec.ts), Chromium only. Their baseline images are made on the CI
+    // runner by the "Update visual baselines" workflow (which sets E2E_VISUAL=1). Until those images are
+    // committed there is nothing to compare against, so the project is left out and the @visual tests
+    // simply do not run, here or in CI.
+    ...(process.env.E2E_VISUAL === '1' || existsSync('tests/e2e/visual.spec.ts-snapshots')
+      ? [{ name: 'visual', use: { ...devices['Desktop Chrome'] }, grep: /@visual/ }]
+      : []),
     // The same phone tests in WebKit, with an iPhone profile: Safari on iOS is the browser most phones
     // in a lab run, and it differs from Chromium in exactly the places the phone tests care about
     // (viewport units, sticky bars, form controls, scrolling). Off by default because it needs its own
