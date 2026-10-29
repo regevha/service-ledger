@@ -1,7 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
+import { seedReport } from './helpers/api';
 
 // The instrument detail page (App.tsx's InstrumentDetailScreen) — reached
 // from the Reports tab's instrument filter via "View instrument details",
@@ -16,39 +15,19 @@ import { BACKEND_PORT } from '../../playwright.config';
 // — assertions check that this run's report appears, not exact fleet-wide
 // counts, which would be flaky depending on run order.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
-
 async function seedFinalizedReport(
   request: APIRequestContext,
   opts: { model: string; serial?: string; reportType: string; technician: string; extractedFields: Record<string, unknown> }
 ): Promise<{ reportId: string; instrumentId: string }> {
-  const report = await (
-    await request.post(`${API_BASE}/reports`, { data: { technician_name: opts.technician } })
-  ).json();
-  const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
-  const instrument = instruments.find(
-    (i: { model: string; serial_number: string }) => i.model === opts.model && (!opts.serial || i.serial_number === opts.serial)
-  );
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: opts.reportType, model: opts.model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: instrument.id, template_id: templates[0].id },
+  const { reportId, instrumentId } = await seedReport(request, {
+    model: opts.model,
+    serial: opts.serial,
+    reportType: opts.reportType,
+    technician: opts.technician,
+    fields: opts.extractedFields,
+    finalize: true,
   });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, { data: { extracted_fields: opts.extractedFields } });
-  await request.post(`${API_BASE}/reports/${report.id}/finalize`);
-  return { reportId: report.id as string, instrumentId: instrument.id as string };
+  return { reportId, instrumentId };
 }
 
 test('instrument detail page: reached from the reports filter, shows history, and nav stack unwinds correctly', async ({

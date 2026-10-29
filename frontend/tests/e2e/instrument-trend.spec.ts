@@ -1,8 +1,7 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
 import { createNumericTemplate } from './numeric-fixture';
+import { seedReport, API_BASE } from './helpers/api';
 
 // The instrument detail page's trend chart (InstrumentTrendChart.tsx) — the
 // real, generalized version of docs/instrument-timeline-demo.html's
@@ -18,36 +17,6 @@ import { createNumericTemplate } from './numeric-fixture';
 // fleet: this suite has no per-test truncation, and the stub classifier gives
 // other specs' uploads a hash-picked instrument and report type, so no model
 // in the seeded fleet is safe to assert exact counts on.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
-
-async function seedNumericReport(
-  request: APIRequestContext,
-  opts: { instrumentId: string; model: string; extractedFields: Record<string, unknown>; reportDate: string }
-): Promise<void> {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model: opts.model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: opts.instrumentId, template_id: templates[0].id },
-  });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: opts.extractedFields, report_date: opts.reportDate },
-  });
-  await request.post(`${API_BASE}/reports/${report.id}/finalize`);
-}
 
 async function createInstrument(request: APIRequestContext, marker: string): Promise<{ id: string; name: string }> {
   const instrument = await (
@@ -65,6 +34,20 @@ async function openInstrumentDetail(page: import('@playwright/test').Page, instr
   await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
   await expect(page.locator('.trend-section')).toBeVisible();
+}
+
+async function seedNumericReport(
+  request: APIRequestContext,
+  opts: { instrumentId: string; model: string; extractedFields: Record<string, unknown>; reportDate: string }
+): Promise<void> {
+  await seedReport(request, {
+    instrumentId: opts.instrumentId,
+    model: opts.model,
+    reportType: 'installation_upgrade',
+    fields: opts.extractedFields,
+    reportDate: opts.reportDate,
+    finalize: true,
+  });
 }
 
 test('trend chart: multi-series detector map, hover tooltip, table view, and switching to a flat field', async ({

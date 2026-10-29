@@ -1,41 +1,11 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
 import { createNumericTemplate } from './numeric-fixture';
+import { TIMEOUT } from './timeouts';
+import { seedReport, API_BASE } from './helpers/api';
 
 // UI review items #26-#28: charts drawn at the size they are shown (so their text matches the page)
 // with years on the date axis, Analytics bars that line up, and the active tab joined to its card.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
-
-async function seedNumericReport(
-  request: APIRequestContext,
-  opts: { instrumentId: string; model: string; extractedFields: Record<string, unknown>; reportDate: string }
-): Promise<void> {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model: opts.model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: opts.instrumentId, template_id: templates[0].id },
-  });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: opts.extractedFields, report_date: opts.reportDate },
-  });
-  await request.post(`${API_BASE}/reports/${report.id}/finalize`);
-}
 
 async function instrumentWithTrend(request: APIRequestContext, marker: string, dates: string[]): Promise<string> {
   const instrument = await (
@@ -60,8 +30,22 @@ const DATES = ['2025-10-15', '2025-12-15', '2026-02-15', '2026-04-15', '2026-06-
 
 async function openTrend(page: Page, instrumentId: string) {
   await page.goto(`/#/reports/instrument/${instrumentId}`);
-  await expect(page.locator('.trend-section')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.trend-section')).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('.trend-chart-wrap svg')).toBeVisible();
+}
+
+async function seedNumericReport(
+  request: APIRequestContext,
+  opts: { instrumentId: string; model: string; extractedFields: Record<string, unknown>; reportDate: string }
+): Promise<void> {
+  await seedReport(request, {
+    instrumentId: opts.instrumentId,
+    model: opts.model,
+    reportType: 'installation_upgrade',
+    fields: opts.extractedFields,
+    reportDate: opts.reportDate,
+    finalize: true,
+  });
 }
 
 test.describe('trend chart', () => {

@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { dropProblem } from '../../src/uploadFiles';
+import { TIMEOUT } from './timeouts';
 
 // Dragging a scan onto the upload box on the New report tab. A real drag can't be
 // scripted, so these dispatch the same drag events a browser would, carrying a real
@@ -39,7 +40,7 @@ test('dropping a PDF on the upload box selects it, and it can be read', async ({
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Upload & classify' }).click();
-  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: 30_000 });
+  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: TIMEOUT.flow });
 });
 
 test('the highlight goes away when the drag leaves the box', async ({ page }) => {

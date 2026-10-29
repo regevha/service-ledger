@@ -2,7 +2,9 @@ import { test, expect } from './coverage';
 import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TIMEOUT } from './timeouts';
 
+import { finalizeFromReview } from './finalize-helper';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The uncertain case (§4): the stub special-cases any filename containing
@@ -22,7 +24,7 @@ test('uncertain report type routes through manual confirm before extracting', as
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
-  await page.waitForSelector('.class-row', { timeout: 30_000 });
+  await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
   await expect(page.locator('.class-row')).toHaveCount(2);
 
   // Instrument: confident (§4's stub reproduces 0.96). Report type: below
@@ -41,7 +43,7 @@ test('uncertain report type routes through manual confirm before extracting', as
   await expect(typeRow.locator('.badge-warn')).toBeVisible();
 
   await page.click('button:has-text("Confirm & continue")');
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 
   // The stub's real BD Care values for this exact fixture (§5) — root_cause
   // and components_replaced are genuinely blank on the source document, not
@@ -58,6 +60,6 @@ test('uncertain report type routes through manual confirm before extracting', as
 
   // A human fills in the blank the model correctly declined to guess.
   await rootCauseField.locator('textarea').fill('Sample injector O-ring degraded');
-  await page.click('button:has-text("Save & finalize report")');
-  await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
+  await finalizeFromReview(page);
+  await expect(page.locator('.success-panel')).toBeVisible({ timeout: TIMEOUT.ui });
 });
