@@ -12,7 +12,7 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 test('review screen shows how long the extraction took', async ({ page }) => {
   await page.goto('/');
   await page.click('.view-tab:has-text("New report")');
-  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
+  await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.field-list', { timeout: TIMEOUT.flow });
 
@@ -22,11 +22,11 @@ test('review screen shows how long the extraction took', async ({ page }) => {
 test('review screen can go back to Classify', async ({ page }) => {
   await page.goto('/');
   await page.click('.view-tab:has-text("New report")');
-  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
+  await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.field-list', { timeout: TIMEOUT.flow });
 
   await page.getByTestId('back-to-classify').click();
-  await expect(page.locator('.class-row').first()).toBeVisible();
+  await expect(page.getByTestId('class-row').first()).toBeVisible();
   await expect(page.locator('.field-list')).toHaveCount(0);
 });

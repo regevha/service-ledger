@@ -236,6 +236,16 @@ sudo -u postgres createdb service_ledger_e2e
 sudo -u postgres psql -c "ALTER DATABASE service_ledger_e2e OWNER TO service_ledger;"
 ```
 
+### Selectors
+
+New specs find elements by role, label or `data-testid`, not by CSS class
+names: `getByRole('button', { name: 'Cancel' })`, `getByLabel(...)`,
+`getByTestId('intake-success')`. Class names are styling and change with it.
+The intake screen (`IntakeFlow`) already has stable test ids (`intake-dropzone`,
+`intake-file-input`, `intake-working`, `intake-cancel`, `intake-success`,
+`intake-open-report`, `intake-view-instrument`, `intake-error`, `class-row`);
+other screens are moved over when their specs are next edited, not all at once.
+
 ### Live-Claude smoke test (real API, opt-in)
 
 `tests/e2e-live/live-claude-smoke.spec.ts` runs the same upload→classify→
