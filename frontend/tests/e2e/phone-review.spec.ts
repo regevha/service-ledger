@@ -1,18 +1,17 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniqueFixture, uniquePdf } from './unique-upload';
+import { uniqueFixture } from './unique-upload';
 import { createNumericTemplate } from './numeric-fixture';
-import { BACKEND_PORT } from '../../playwright.config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TIMEOUT } from './timeouts';
+import { seedReport, API_BASE } from './helpers/api';
 
 // Phone review of 2026-10-25, items 9, 10, 12 and 13: long notices fold to two lines, the save bar
 // is one row, the report header is compact and says what the report is.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const PHONE = { width: 412, height: 915 };
 
 async function reachReview(page: import('@playwright/test').Page) {
@@ -25,33 +24,18 @@ async function reachReview(page: import('@playwright/test').Page) {
 }
 
 async function seedFinalized(request: APIRequestContext, marker: string): Promise<{ reportId: string; instrumentName: string }> {
-  const inst = await (
-    await request.post(`${API_BASE}/instruments`, {
-      data: { name: marker, model: marker, manufacturer: 'E2E Maker', serial_number: `SN-${marker}` },
-    })
-  ).json();
-  await createNumericTemplate(request, marker);
-  const report = await (await request.post(`${API_BASE}/reports`, { data: {} })).json();
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model: marker } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, { data: { instrument_id: inst.id, template_id: templates[0].id } });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 phone-review') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: { fluidics_pressure_psi: 6 }, report_date: '2026-09-08' },
+  await request.post(`${API_BASE}/instruments`, {
+    data: { name: marker, model: marker, manufacturer: 'E2E Maker', serial_number: `SN-${marker}` },
   });
-  await request.post(`${API_BASE}/reports/${report.id}/finalize`);
-  return { reportId: report.id as string, instrumentName: marker };
+  await createNumericTemplate(request, marker);
+  const { reportId } = await seedReport(request, {
+    model: marker,
+    reportType: 'installation_upgrade',
+    fields: { fluidics_pressure_psi: 6 },
+    reportDate: '2026-09-08',
+    finalize: true,
+  });
+  return { reportId, instrumentName: marker };
 }
 
 test.describe('on a phone', () => {

@@ -1,13 +1,12 @@
-import { type APIRequestContext, type Page } from '@playwright/test';
+import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
+import { clearSavedFilters, API_BASE } from './helpers/api';
+import { openReports } from './helpers/ui';
 
 // The model filter: every unit of one model record. The Reports and Analytics tabs share one filter
 // bar, which now has a Model choice (the instrument choice narrows to it); the Instruments list has
 // its own; saved filters keep the model; the CSV export follows it.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 type Unit = { id: string; name: string; serial: string; model: string; technician: string };
 
@@ -33,17 +32,6 @@ async function unitWithReport(request: APIRequestContext, stamp: number, tag: st
   });
   expect(confirmed.ok()).toBeTruthy();
   return { id: instrument.id, name, serial, model, technician };
-}
-
-async function clearSavedFilters(request: APIRequestContext) {
-  const { items } = await (await request.get(`${API_BASE}/saved-report-filters`)).json();
-  for (const item of items) await request.delete(`${API_BASE}/saved-report-filters/${item.id}`);
-}
-
-async function openReports(page: Page) {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
-  await page.waitForSelector('.report-table, .empty-hint');
 }
 
 test.beforeEach(async ({ request }) => clearSavedFilters(request));

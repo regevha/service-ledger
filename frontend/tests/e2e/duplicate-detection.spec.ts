@@ -1,8 +1,6 @@
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
+import { API_BASE, waitForExtraction } from './helpers/api';
 
 // A document that is already on file is flagged (backend/app/services/duplicates.py),
 // and the exact same file as a report that was already read is refused and
@@ -65,11 +63,7 @@ test('the same file as a report that was already read is refused and opens the e
     })
   ).json();
   const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
+  await waitForExtraction(request, job.id);
   expect((await (await request.get(`${API_BASE}/reports/${first.id}`)).json()).status).toBe('extracted');
 
   // Loading the same bytes again through the UI is turned away…
