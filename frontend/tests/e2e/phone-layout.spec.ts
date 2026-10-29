@@ -2,6 +2,7 @@ import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { createNumericTemplate } from './numeric-fixture';
 import { TIMEOUT } from './timeouts';
+import { startEditing } from './edit-helper';
 import { seedReport, API_BASE } from './helpers/api';
 
 // Phone review of 2026-10-25 (Galaxy A55, 412 x 915): bugs and filter defaults.
@@ -92,7 +93,7 @@ test.describe('a finalized report on a phone', { tag: '@phone' }, () => {
     expect(client).toBeGreaterThan(100);
 
     // Editing brings the normal, resizable box back.
-    await page.click('button:has-text("Edit")');
+    await startEditing(page);
     const editBox = page.locator('.field-list textarea').first();
     const editHeight = await editBox.evaluate((el) => el.clientHeight);
     expect(editHeight).toBeLessThan(client);
