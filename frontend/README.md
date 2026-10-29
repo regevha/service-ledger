@@ -236,6 +236,14 @@ sudo -u postgres createdb service_ledger_e2e
 sudo -u postgres psql -c "ALTER DATABASE service_ledger_e2e OWNER TO service_ledger;"
 ```
 
+### Phone tests
+
+Phone-sized tests are tagged `@phone` (`test.describe('...', { tag: '@phone' }, ...)`)
+and run only in the `phone` Playwright project (412x915, touch, mobile); every
+other test runs only in the `chromium` desktop project. Don't add a
+`test.use({ viewport, hasTouch, isMobile })` to a tagged describe, the project
+provides it. Run just the phone tests with `npx playwright test --project=phone`.
+
 ### Selectors
 
 New specs find elements by role, label or `data-testid`, not by CSS class

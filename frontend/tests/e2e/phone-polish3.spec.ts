@@ -8,8 +8,7 @@ import { API_BASE, seedReport } from './helpers/api';
 
 const PHONE = { width: 412, height: 915 };
 
-test.describe('on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('Reports: one Sort by menu replaces the row of column names, and it sorts', async ({ page, request }) => {
     await request.post(`${API_BASE}/reports`, { data: { technician_name: `E2E-Sort-${Date.now()}` } });

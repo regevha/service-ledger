@@ -26,8 +26,7 @@ async function seedReport(request: APIRequestContext): Promise<{ reportId: strin
   return { reportId, attachmentId };
 }
 
-test.describe('scan and report menu on a phone', () => {
-  test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
+test.describe('scan and report menu on a phone', { tag: '@phone' }, () => {
 
   test('the Scan tab shows every page as an image, and + / - zoom it', async ({ page, request }) => {
     const { reportId, attachmentId } = await seedReport(request);

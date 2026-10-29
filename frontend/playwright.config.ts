@@ -63,7 +63,19 @@ export default defineConfig({
     },
   },
 
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Two projects over the same specs. Tests tagged @phone (the describes in the
+  // phone-*.spec.ts files) run only in the phone project, at a 412x915 touch
+  // viewport; everything else runs only in the desktop one. A test that must
+  // change the viewport itself (to compare phone and wide layouts) still calls
+  // page.setViewportSize.
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, grepInvert: /@phone/ },
+    {
+      name: 'phone',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true },
+      grep: /@phone/,
+    },
+  ],
 
   webServer: [
     {

@@ -22,8 +22,7 @@ async function tooSmall(page: import('@playwright/test').Page): Promise<string[]
   });
 }
 
-test.describe('on a phone', () => {
-  test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
+test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('buttons, selects and text boxes are at least 44px high on every tab', async ({ page, request }) => {
     // A report in the list, so the sort buttons above the cards are measured too.

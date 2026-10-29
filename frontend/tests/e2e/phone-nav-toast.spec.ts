@@ -10,8 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 const PHONE = { width: 412, height: 915 };
 
-test.describe('on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('the tabs are a bar at the bottom, five equal buttons with an icon and a label', async ({ page }) => {
     await page.goto('/');

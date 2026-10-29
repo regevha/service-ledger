@@ -5,8 +5,7 @@ import { API_BASE } from './helpers/api';
 // Analytics on a phone is a short list of headings you open one at a time (the first starts open);
 // on a wide screen every chart is simply shown.
 
-test.describe('on a phone', () => {
-  test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
+test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('the charts are folding sections: the first is open, the others open when tapped', async ({ page }) => {
     await page.goto('/#/analytics');

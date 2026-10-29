@@ -38,8 +38,7 @@ async function seedFinalized(request: APIRequestContext, marker: string): Promis
   return { reportId, instrumentName: marker };
 }
 
-test.describe('on a phone', () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('a long notice shows two lines and a More button that opens it', async ({ page }) => {
     // A narrow phone, so the notice is more than two lines whatever the fonts of the machine are.
