@@ -1,48 +1,26 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { createNumericTemplate } from './numeric-fixture';
-import { BACKEND_PORT } from '../../playwright.config';
+import { createNumericModel } from './numeric-fixture';
 import { TIMEOUT } from './timeouts';
+import { seedReport } from './helpers/api';
 
 // Phone review 2 (2026-10-26): the Fields | Scan switch in dark mode, the toast, the instrument's report
 // history rows, Cancel while editing a finalized report, and how a read-only report looks.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const PHONE = { width: 412, height: 915 };
 const LONG_NAME = 'Demo - FACSAria III preventive maintenance with a rather long title (WO-04271950)';
 
 async function seed(request: APIRequestContext): Promise<{ reportId: string; instrumentId: string }> {
-  const model = `E2E-PhoneBugs-${Date.now()}`;
-  const instrument = await (
-    await request.post(`${API_BASE}/instruments`, {
-      data: { name: model, model, manufacturer: 'E2E Maker', serial_number: `SN-${model}` },
-    })
-  ).json();
-  await createNumericTemplate(request, model);
-  const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: LONG_NAME } })).json();
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'installation_upgrade', model } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: instrument.id, template_id: templates[0].id },
+  const model = await createNumericModel(request, 'E2E-PhoneBugs');
+  const { reportId, instrumentId } = await seedReport(request, {
+    model,
+    reportType: 'installation_upgrade',
+    technician: LONG_NAME,
+    fields: { cst_beads_lot: 'LOT-ORIG' },
+    reportDate: '2026-05-09',
+    finalize: true,
   });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 phone bugs') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: { cst_beads_lot: 'LOT-ORIG' }, report_date: '2026-05-09' },
-  });
-  expect((await request.post(`${API_BASE}/reports/${report.id}/finalize`)).status()).toBe(200);
-  return { reportId: report.id, instrumentId: instrument.id };
+  return { reportId, instrumentId };
 }
 
 test.describe('on a phone', () => {

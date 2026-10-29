@@ -1,8 +1,8 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
+import { seedReport } from './helpers/api';
+import { openReports } from './helpers/ui';
 
 // Free-text search on the Reports list: finalized reports only, excerpts under
 // each result, matched words highlighted when a result is opened.
@@ -10,51 +10,19 @@ import { TIMEOUT } from './timeouts';
 // Like reports-search.spec.ts, every report carries a unique marker word and
 // assertions look for that marker among the rows, never absolute counts.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
-
-async function waitForJob(request: APIRequestContext, jobId: string): Promise<void> {
-  const deadline = Date.now() + 30_000;
-  for (;;) {
-    const job = await (await request.get(`${API_BASE}/extraction-jobs/${jobId}`)).json();
-    if (job.status === 'succeeded' || job.status === 'failed') return;
-    if (Date.now() >= deadline) throw new Error('extraction job did not finish');
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-}
-
 /** A repair report on a Fortessa with the given text, finalized or left extracted (a draft-like state). */
 async function seedTextReport(
   request: APIRequestContext,
   opts: { technician: string; workPerformed: string; finalize: boolean }
-) {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: opts.technician } })).json();
-  const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
-  const instrument = instruments.find((i: { model: string }) => i.model === 'LSRFortessa');
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'repair', model: 'LSRFortessa' } })
-  ).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: instrument.id, template_id: templates[0].id },
+): Promise<string> {
+  const { reportId } = await seedReport(request, {
+    model: 'LSRFortessa',
+    reportType: 'repair',
+    technician: opts.technician,
+    fields: { work_performed: opts.workPerformed },
+    finalize: opts.finalize,
   });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 text search') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  await waitForJob(request, job.id);
-  const patched = await request.patch(`${API_BASE}/reports/${report.id}/fields`, {
-    data: { extracted_fields: { work_performed: opts.workPerformed } },
-  });
-  expect(patched.ok()).toBeTruthy();
-  if (opts.finalize) expect((await request.post(`${API_BASE}/reports/${report.id}/finalize`)).ok()).toBeTruthy();
-  return report.id as string;
-}
-
-async function openReports(page: import('@playwright/test').Page) {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
-  await page.waitForSelector('.report-table, .empty-hint');
+  return reportId;
 }
 
 test('search finds finalized reports with an excerpt, skips drafts, and highlights on open', async ({ page, request }) => {

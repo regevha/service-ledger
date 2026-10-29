@@ -1,12 +1,11 @@
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
+import { API_BASE, seedReport } from './helpers/api';
 
 // Phone review 2 (2026-10-26), the third group: one sort menu, the page without a card inside a card,
 // Delete in a menu on Instruments, a tidy Templates header, Analytics bars with the number on the name's line,
 // and the wording of the upload box.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const PHONE = { width: 412, height: 915 };
 
 test.describe('on a phone', () => {
@@ -77,7 +76,9 @@ test.describe('on a phone', () => {
   });
 });
 
-test('on a wide screen: Delete stays a button, the sort row stays, the old wording stays', async ({ page }) => {
+test('on a wide screen: Delete stays a button, the sort row stays, the old wording stays', async ({ page, request }) => {
+  // The sort row only shows above a list with reports in it.
+  await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-WideSort-${Date.now()}` });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/#/instruments');
   await expect(page.getByRole('button', { name: 'Delete', exact: true }).first()).toBeVisible({ timeout: TIMEOUT.ui });

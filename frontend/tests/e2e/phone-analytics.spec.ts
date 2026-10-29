@@ -1,6 +1,6 @@
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
 import { TIMEOUT } from './timeouts';
+import { API_BASE } from './helpers/api';
 
 // Analytics on a phone is a short list of headings you open one at a time (the first starts open);
 // on a wide screen every chart is simply shown.
@@ -51,7 +51,7 @@ test.describe('on a phone', () => {
     // A model with two units, so the comparison section exists.
     const model = `E2E-Fold-${Date.now()}`;
     for (const n of [1, 2]) {
-      await request.post(`http://localhost:${BACKEND_PORT}/instruments`, {
+      await request.post(`${API_BASE}/instruments`, {
         data: { name: `${model}-${n}`, model, manufacturer: 'E2E Maker', serial_number: `SN-${model}-${n}` },
       });
     }

@@ -1,27 +1,15 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
+import { clearSavedFilters, API_BASE } from './helpers/api';
+import { openReports } from './helpers/ui';
 
 // Saved filters on the Reports list: a short global list (at most five) of named
 // combinations of the six filters. The list is shared by every spec in this
 // run, so each test clears it first and leaves it empty.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
-
-async function clearSavedFilters(request: APIRequestContext) {
-  const { items } = await (await request.get(`${API_BASE}/saved-report-filters`)).json();
-  for (const item of items) await request.delete(`${API_BASE}/saved-report-filters/${item.id}`);
-}
-
 async function reportFor(request: APIRequestContext, technician: string) {
   const res = await request.post(`${API_BASE}/reports`, { data: { technician_name: technician } });
   expect(res.status()).toBe(201);
-}
-
-async function openReports(page: Page) {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
-  await page.waitForSelector('.report-table, .empty-hint');
 }
 
 async function saveCurrent(page: Page, name: string) {
