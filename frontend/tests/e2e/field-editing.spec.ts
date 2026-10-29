@@ -3,6 +3,7 @@ import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
 import { createNumericModel } from './numeric-fixture';
+import { TIMEOUT } from './timeouts';
 
 // FieldEditor.tsx renders one interactive control per field_schema type
 // (§5), but until now no e2e spec ever touched the array/map controls'
@@ -69,7 +70,7 @@ async function openReport(page: import('@playwright/test').Page, marker: string)
   await page.click('.view-tab:has-text("Reports")');
   await page.waitForSelector('.report-table');
   await page.click(`.report-row-body:has-text("${marker}")`);
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
 }
 
 test('editing a number[detector] field (per-detector add/edit/remove) persists through Save corrections', async ({
@@ -108,7 +109,7 @@ test('editing a number[detector] field (per-detector add/edit/remove) persists t
   await expect(field.locator('.number-map-row', { hasText: 'item_1' })).toBeVisible();
 
   await page.click('button:has-text("Save corrections")');
-  await expect(page.locator('.working-panel')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator('.working-panel')).toHaveCount(0, { timeout: TIMEOUT.ui });
 
   const saved = await (await request.get(`${API_BASE}/reports/${reportId}`)).json();
   const savedMap = saved.extracted_fields.baseline_cv_percent as Record<string, number>;
@@ -193,7 +194,7 @@ test('editing an object[] field (add/edit/remove rows) persists through Save cor
   await expect(dataRows).toHaveCount(2);
 
   await page.click('button:has-text("Save corrections")');
-  await expect(page.locator('.working-panel')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator('.working-panel')).toHaveCount(0, { timeout: TIMEOUT.ui });
 
   const saved = await (await request.get(`${API_BASE}/reports/${reportId}`)).json();
   expect(saved.extracted_fields.components_replaced).toEqual([

@@ -5,6 +5,7 @@ import { createNumericTemplate } from './numeric-fixture';
 import { BACKEND_PORT } from '../../playwright.config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TIMEOUT } from './timeouts';
 
 // Phone review of 2026-10-25, items 9, 10, 12 and 13: long notices fold to two lines, the save bar
 // is one row, the report header is compact and says what the report is.
@@ -19,7 +20,7 @@ async function reachReview(page: import('@playwright/test').Page) {
   await page.click('.view-tab:has-text("New report")');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list, .banner-crit', { timeout: 30_000 });
+  await page.waitForSelector('.field-list, .banner-crit', { timeout: TIMEOUT.flow });
   await expect(page.locator('#placeholder-notice')).toBeVisible();
 }
 
@@ -98,7 +99,7 @@ test.describe('on a phone', () => {
     const { reportId, instrumentName } = await seedFinalized(request, `E2E-Phone-Head-${Date.now()}`);
     await page.goto(`/#/reports/${reportId}`);
     const del = page.locator('.detail-nav-row').getByRole('button', { name: 'Report actions' });
-    await expect(del).toBeVisible({ timeout: 15_000 });
+    await expect(del).toBeVisible({ timeout: TIMEOUT.ui });
     const [back, delBox] = await Promise.all([page.locator('.detail-nav-row .back-link').boundingBox(), del.boundingBox()]);
     expect(Math.abs(back!.y - delBox!.y)).toBeLessThan(3);
     // No full-width button any more: the instrument is a link on the line under the heading.

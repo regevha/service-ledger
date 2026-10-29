@@ -1,5 +1,6 @@
 import { test, expect } from './coverage';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
@@ -25,7 +26,7 @@ async function uploadAndClassify(page: import('@playwright/test').Page, name: st
   await page.click('button:has-text("Upload & classify")');
   // Either end of classification: straight through to review, or the manual
   // confirm step (which other specs' extra instruments can cause).
-  await expect(page.locator('#review-report-date, .class-row').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#review-report-date, .class-row').first()).toBeVisible({ timeout: TIMEOUT.flow });
 }
 
 test('the same file as a report that was never read is flagged, not refused', async ({ page, request }) => {
@@ -81,7 +82,7 @@ test('the same file as a report that was already read is refused and opens the e
     buffer: Buffer.from(bytes),
   });
   await page.click('button:has-text("Upload & classify")');
-  await expect(page.locator('#already-on-file-notice')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#already-on-file-notice')).toBeVisible({ timeout: TIMEOUT.flow });
 
   // …and leaves no empty draft behind from the refused attempt.
   const mine = await (await request.get(`${API_BASE}/reports`, { params: { technician: 'E2E Second Try' } })).json();
@@ -89,7 +90,7 @@ test('the same file as a report that was already read is refused and opens the e
 
   // The button opens the report that already holds the file.
   await page.click('button:has-text("Open existing report")');
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('.view-tab.active')).toHaveText('Reports');
 });
 

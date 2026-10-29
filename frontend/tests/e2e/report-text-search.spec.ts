@@ -2,6 +2,7 @@ import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 // Free-text search on the Reports list: finalized reports only, excerpts under
 // each result, matched words highlighted when a result is opened.
@@ -84,7 +85,7 @@ test('search finds finalized reports with an excerpt, skips drafts, and highligh
   // Open the result: the matched word is highlighted above the fields.
   await rows.first().click();
   const matches = page.locator('[data-testid="search-matches"]');
-  await expect(matches).toBeVisible({ timeout: 15_000 });
+  await expect(matches).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(matches.locator('mark')).toHaveText(word);
   await matches.locator('button:has-text("Clear")').click();
   await expect(matches).toHaveCount(0);
