@@ -104,9 +104,9 @@ function StepBar({ phase }: { phase: Phase }) {
             : 0;
   const steps = ['Upload', 'Classify', 'Review & finalize'];
   return (
-    <div className="steps">
+    <div className="steps" data-testid="intake-steps">
       {steps.map((label, i) => (
-        <div key={label} className={`step ${i === stepIndex ? 'active' : ''} ${i < stepIndex ? 'done' : ''}`}>
+        <div key={label} data-testid="intake-step" className={`step ${i === stepIndex ? 'active' : ''} ${i < stepIndex ? 'done' : ''}`}>
           <span className="num">{i < stepIndex ? '✓' : i + 1}</span> {label}
         </div>
       ))}
@@ -148,6 +148,7 @@ function IntakeScreen({
         Scanned original
       </div>
       <label
+        data-testid="intake-dropzone"
         className={`dropzone${dragging ? ' dragging' : ''}`}
         onDragEnter={(e) => {
           if (!hasFiles(e)) return;
@@ -182,6 +183,7 @@ function IntakeScreen({
         <div className="secondary">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one file per report, any instrument, any report type</div>
         <input
           type="file"
+          data-testid="intake-file-input"
           accept={ACCEPTED_TYPES.join(',')}
           hidden
           onChange={(e) => {
@@ -191,7 +193,7 @@ function IntakeScreen({
         />
       </label>
       {dropError && (
-        <div className="drop-error" role="alert">
+        <div className="drop-error" role="alert" data-testid="intake-drop-error">
           {dropError}
         </div>
       )}
@@ -379,7 +381,7 @@ function ConfirmClassificationScreen({
         <div className="field-note">{SERIAL_MATCH_NOTE[match]}</div>
       </div>
 
-      <div className="class-row">
+      <div className="class-row" data-testid="class-row">
         <div className="crow-top">
           <span className="clabel">Instrument</span>
           <ConfidenceBadge
@@ -420,7 +422,7 @@ function ConfirmClassificationScreen({
         </select>
       </div>
 
-      <div className="class-row">
+      <div className="class-row" data-testid="class-row">
         <div className="crow-top">
           <span className="clabel">Report type</span>
           <ConfidenceBadge
@@ -484,19 +486,19 @@ function WorkingPanel({
     return () => clearInterval(timer);
   }, []);
   return (
-    <div className="section working-panel">
+    <div className="section working-panel" data-testid="intake-working">
       <div className="spinner" />
       <div className="working-text">
         <div>{label}</div>
         <div className="working-detail">
-          {fileName && <span className="working-file">{fileName}</span>}
+          {fileName && <span className="working-file" data-testid="intake-working-file">{fileName}</span>}
           <span>{seconds}s</span>
         </div>
         {slow && seconds < 90 && <div className="working-detail">Reading a scan usually takes 10–60 seconds; a translated one takes longer.</div>}
         {slow && seconds >= 90 && <div className="working-detail">Still working — this one is taking longer than usual.</div>}
       </div>
       {onCancel && (
-        <button type="button" className="btn small" onClick={onCancel}>
+        <button type="button" className="btn small" data-testid="intake-cancel" onClick={onCancel}>
           Cancel
         </button>
       )}
@@ -516,18 +518,18 @@ function DoneScreen({
   onViewInstrument?: (instrumentId: string) => void;
 }) {
   return (
-    <div className="section success-panel">
+    <div className="section success-panel" data-testid="intake-success">
       <div className="tick">✓</div>
       <h3>Report finalized</h3>
       <p>{report.finalized_at ? `Saved on ${isoDay(report.finalized_at)}.` : 'Saved.'} It is now part of the instrument's history.</p>
       <div className="cta-row success-actions">
         {onOpenReport && (
-          <button className="btn primary" onClick={() => onOpenReport(report.id)}>
+          <button className="btn primary" data-testid="intake-open-report" onClick={() => onOpenReport(report.id)}>
             Open report
           </button>
         )}
         {onViewInstrument && report.instrument_id && (
-          <button className="btn" onClick={() => onViewInstrument(report.instrument_id!)}>
+          <button className="btn" data-testid="intake-view-instrument" onClick={() => onViewInstrument(report.instrument_id!)}>
             View instrument
           </button>
         )}
@@ -1169,7 +1171,7 @@ export function IntakeFlow({
 
       {phase.name === 'error' && (
         <div className="section">
-          <div className="banner banner-crit">{phase.message}</div>
+          <div className="banner banner-crit" data-testid="intake-error">{phase.message}</div>
           <div className="cta-row">
             <button className="btn" onClick={resetToIntake}>
               Start over

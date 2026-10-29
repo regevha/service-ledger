@@ -236,6 +236,59 @@ sudo -u postgres createdb service_ledger_e2e
 sudo -u postgres psql -c "ALTER DATABASE service_ledger_e2e OWNER TO service_ledger;"
 ```
 
+### Phone tests
+
+Phone-sized tests are tagged `@phone` (`test.describe('...', { tag: '@phone' }, ...)`)
+and run only in the `phone` Playwright project (412x915, touch, mobile); every
+other test runs only in the `chromium` desktop project. Don't add a
+`test.use({ viewport, hasTouch, isMobile })` to a tagged describe, the project
+provides it. Run just the phone tests with `npx playwright test --project=phone`.
+
+The same tests also run in WebKit (an iPhone profile) as the `phone-webkit` project, which is off
+unless `E2E_WEBKIT=1` and needs `npx playwright install --with-deps webkit`. CI runs it
+only on the daily schedule and on "Run workflow".
+
+### Built page behind the password
+
+`npm run test:e2e:built` runs against what is deployed: the production build of
+the page, served by the backend itself (`FRONTEND_DIST_DIR`) on one port
+(8002), behind the shared password, with no Vite server
+(`playwright.built.config.ts`). `tests/e2e-built/gate.spec.ts` checks the
+password gate (no password and a wrong one get 401, the right one gets in,
+`/health` stays open, a scan downloads only with the password); the happy-path,
+manual-confirm, field-editing and reports-search specs are re-run unchanged
+against the built page. The password is a throwaway set in the config. It uses
+the same e2e database as the default suite, so don't run the two at once.
+
+### Smoke check of a deployment
+
+`deploy/smoke.sh <url>` (password in `SMOKE_PASSWORD`) checks a running
+deployment: `/health` is open, the app and API answer 401 without the password,
+the page loads with it, and an uploaded scan downloads with identical bytes
+(which proves the file storage). Records are named `SMOKE-<timestamp>` and
+deleted. With `SMOKE_STUB=1` (stub extractor only) it also runs a full upload
+and finalize. It uses plain HTTP requests, no browser, and does not run in CI.
+The deploy and update scripts should call it as their last step.
+
+### Accessibility scans
+
+`tests/e2e/accessibility.spec.ts` runs axe-core (WCAG 2 A and AA) on the
+intake screen, reports list, review screen and analytics. Problems already
+there are listed in `KNOWN` in that file, with the screens and why; a new
+problem fails the test, and a listed one that has been fixed fails it too, so
+remove it from the list. Automated rules catch only part of what matters; this
+is a floor, not an audit.
+
+### Selectors
+
+New specs find elements by role, label or `data-testid`, not by CSS class
+names: `getByRole('button', { name: 'Cancel' })`, `getByLabel(...)`,
+`getByTestId('intake-success')`. Class names are styling and change with it.
+The intake screen (`IntakeFlow`) already has stable test ids (`intake-dropzone`,
+`intake-file-input`, `intake-working`, `intake-cancel`, `intake-success`,
+`intake-open-report`, `intake-view-instrument`, `intake-error`, `class-row`);
+other screens are moved over when their specs are next edited, not all at once.
+
 ### Live-Claude smoke test (real API, opt-in)
 
 `tests/e2e-live/live-claude-smoke.spec.ts` runs the same upload→classify→
