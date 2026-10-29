@@ -3004,3 +3004,17 @@ button.fleet-row:hover {
 .mark-checked {
   margin: 4px 0 6px;
 }
+
+/* Template editor: "Filled in by a person" under a field's unit and notes. */
+.schema-field-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.schema-field-check input {
+  margin-top: 2px;
+  flex: none;
+}
