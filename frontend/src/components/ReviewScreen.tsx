@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { DateInput } from './DateInput';
 import { Notice } from './Notice';
@@ -146,6 +146,28 @@ export function ReviewScreen({
       .filter((f) => isFlagged(f.name))
       .map((f) => ({ name: f.name, label: fieldLabel(f.name, f.unit) })),
   ];
+  // Pressing "Save & finalize" with fields still flagged asks first, instead of closing the report silently.
+  const [confirmingFinalize, setConfirmingFinalize] = useState(false);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const showFinalizeConfirm = confirmingFinalize && flaggedCount > 0 && !readOnly;
+  useEffect(() => {
+    if (!showFinalizeConfirm) return;
+    confirmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    confirmRef.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+  }, [showFinalizeConfirm]);
+  function requestFinalize() {
+    if (flaggedCount > 0) setConfirmingFinalize(true);
+    else onFinalize?.();
+  }
+  function reviewFlagged() {
+    setConfirmingFinalize(false);
+    if (flaggedList.length > 0) goToField(flaggedList[0].name);
+  }
+  function finalizeAnyway() {
+    setConfirmingFinalize(false);
+    onFinalize?.();
+  }
+
   function goToNextFlagged() {
     const els = listRef.current?.querySelectorAll<HTMLElement>('.field.pending');
     if (!els || els.length === 0) return;
@@ -286,6 +308,30 @@ export function ReviewScreen({
 
       </fieldset>
 
+      {showFinalizeConfirm && (
+        <div
+          className="banner banner-warn finalize-confirm"
+          id="finalize-confirm"
+          role="alertdialog"
+          aria-label="Confirm finalize"
+          ref={confirmRef}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setConfirmingFinalize(false);
+          }}
+        >
+          <div>
+            {flaggedCount} field{flaggedCount === 1 ? '' : 's'} still need{flaggedCount === 1 ? 's' : ''} attention.
+            Finalize anyway? A finalized report goes into search, analytics and exports.
+          </div>
+          <button type="button" className="btn small" onClick={reviewFlagged}>
+            Review them
+          </button>{' '}
+          <button type="button" className="btn small" onClick={finalizeAnyway} disabled={busy !== null}>
+            Finalize anyway
+          </button>
+        </div>
+      )}
+
       <div className="review-actions" aria-busy={busy !== null}>
         <div className="review-actions-status">
           {readOnly ? (
@@ -327,7 +373,7 @@ export function ReviewScreen({
                 {busy === 'save' ? 'Saving…' : 'Save corrections'}
               </button>
               {onFinalize && (
-                <button className="btn primary" onClick={onFinalize} disabled={busy !== null}>
+                <button className="btn primary" onClick={requestFinalize} disabled={busy !== null}>
                   {busy === 'finalize' ? 'Finalizing…' : <>Save &amp; finalize report</>}
                 </button>
               )}

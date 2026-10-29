@@ -1,11 +1,9 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE } from './helpers/api';
 
 // Places as records (places plan, step 2): a Places list under the Instruments tab, suggestions on
 // the instrument form, rename / move / merge / delete that say exactly what they change.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function makeUnit(request: APIRequestContext, tag: string, institution: string | null, location: string | null) {
   const r = await request.post(`${API_BASE}/instruments`, {
