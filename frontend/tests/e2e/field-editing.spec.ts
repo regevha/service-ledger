@@ -1,8 +1,8 @@
-import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
 import { createNumericModel } from './numeric-fixture';
+import { TIMEOUT } from './timeouts';
+import { seedReport, API_BASE } from './helpers/api';
+import { openReviewFromList } from './helpers/ui';
 
 // FieldEditor.tsx renders one interactive control per field_schema type
 // (§5), but until now no e2e spec ever touched the array/map controls'
@@ -23,55 +23,6 @@ import { createNumericModel } from './numeric-fixture';
 // behind, and forcing the template deterministically avoids depending on
 // _stub_classify's file-path hash (§4), which is not controllable from here.
 
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
-
-async function seedReport(
-  request: APIRequestContext,
-  opts: { model: string; reportType: string; technician: string }
-): Promise<{ reportId: string; extractedFields: Record<string, unknown> }> {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: opts.technician } })).json();
-
-  const instruments = await (await request.get(`${API_BASE}/instruments`)).json();
-  const instrument = instruments.find((i: { model: string }) => i.model === opts.model);
-  const templates = await (
-    await request.get(`${API_BASE}/report-templates`, { params: { report_type: opts.reportType, model: opts.model } })
-  ).json();
-  const template = templates[0];
-
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, {
-    data: { instrument_id: instrument.id, template_id: template.id },
-  });
-
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 seed') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  await waitForJob(request, job.id);
-
-  const extracted = await (await request.get(`${API_BASE}/reports/${report.id}`)).json();
-  return { reportId: report.id as string, extractedFields: extracted.extracted_fields };
-}
-
-async function waitForJob(request: APIRequestContext, jobId: string, timeoutMs = 30_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const job = await (await request.get(`${API_BASE}/extraction-jobs/${jobId}`)).json();
-    if (job.status === 'succeeded' || job.status === 'failed') return;
-    if (Date.now() >= deadline) throw new Error(`extraction job ${jobId} did not finish within ${timeoutMs}ms`);
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-}
-
-async function openReport(page: import('@playwright/test').Page, marker: string) {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
-  await page.waitForSelector('.report-table');
-  await page.click(`.report-row-body:has-text("${marker}")`);
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
-}
-
 test('editing a number[detector] field (per-detector add/edit/remove) persists through Save corrections', async ({
   page,
   request,
@@ -89,7 +40,7 @@ test('editing a number[detector] field (per-detector add/edit/remove) persists t
   // per-detector values yet" empty state instead of the real controls.
   expect(Object.keys(extractedFields.baseline_cv_percent as object)).toHaveLength(3);
 
-  await openReport(page, marker);
+  await openReviewFromList(page, marker);
 
   const field = page.locator('.field', { hasText: 'baseline cv' });
   await expect(field.locator('.number-map-row')).toHaveCount(3);
@@ -108,7 +59,8 @@ test('editing a number[detector] field (per-detector add/edit/remove) persists t
   await expect(field.locator('.number-map-row', { hasText: 'item_1' })).toBeVisible();
 
   await page.click('button:has-text("Save corrections")');
-  await expect(page.locator('.working-panel')).toHaveCount(0, { timeout: 15_000 });
+  // The screen stays in place while saving, so the "Saved" message is what says the request finished.
+  await expect(page.locator('.toast')).toHaveText('Saved', { timeout: 15_000 });
 
   const saved = await (await request.get(`${API_BASE}/reports/${reportId}`)).json();
   const savedMap = saved.extracted_fields.baseline_cv_percent as Record<string, number>;
@@ -130,7 +82,7 @@ test('editing an object[] field (add/edit/remove rows) persists through Save cor
   // not just the table's only content.
   expect(extractedFields.components_replaced as unknown[]).toHaveLength(1);
 
-  await openReport(page, marker);
+  await openReviewFromList(page, marker);
 
   const field = page.locator('.field', { hasText: 'Components replaced' });
   const dataRows = field.locator('.object-array-row:not(.object-array-head)');
@@ -193,7 +145,8 @@ test('editing an object[] field (add/edit/remove rows) persists through Save cor
   await expect(dataRows).toHaveCount(2);
 
   await page.click('button:has-text("Save corrections")');
-  await expect(page.locator('.working-panel')).toHaveCount(0, { timeout: 15_000 });
+  // The screen stays in place while saving, so the "Saved" message is what says the request finished.
+  await expect(page.locator('.toast')).toHaveText('Saved', { timeout: 15_000 });
 
   const saved = await (await request.get(`${API_BASE}/reports/${reportId}`)).json();
   expect(saved.extracted_fields.components_replaced).toEqual([

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { DateInput } from './DateInput';
 import { Notice } from './Notice';
@@ -45,6 +45,9 @@ export function ReviewScreen({
   onCancelEdit,
   linksInMenu = false,
   extractionSeconds,
+  busy = null,
+  saveError = null,
+  onRetrySave,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
@@ -97,11 +100,24 @@ export function ReviewScreen({
   linksInMenu?: boolean;
   // How long reading the document into these fields took, in seconds. Null or undefined: nothing to say.
   extractionSeconds?: number | null;
+  // A save or finalize request is in flight. The screen stays where it is (so the scan view, the
+  // "checked" marks and the scroll position survive); the buttons just show the progress and wait.
+  busy?: 'save' | 'finalize' | null;
+  // Why the last save or finalize failed. Shown on this screen with a retry; nothing typed is lost.
+  saveError?: string | null;
+  onRetrySave?: () => void;
 }) {
   // A low-confidence field stays flagged until the technician explicitly marks it checked.
   // Editing the value does not count: they may have typed over it without looking at the scan.
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
-  const markChecked = (name: string) => setChecked((prev) => new Set(prev).add(name));
+  // A finalized report is the record; opening it for changes asks first.
+  const [confirmingEdit, setConfirmingEdit] = useState(false);
+  const markChecked = (name: string) => {
+    setChecked((prev) => new Set(prev).add(name));
+    // The button disappears once the field is checked; keep the keyboard where it was, on the field.
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-field="${name}"]`);
+    el?.querySelector<HTMLElement>('input, textarea, select')?.focus({ preventScroll: true });
+  };
   // Fields a person fills in (not printed on the form): the model's value is only a
   // suggestion, so it is flagged whatever its confidence, until marked as checked.
   const personFields = new Set(template.field_schema.fields.filter((f) => f.filled_by_person).map((f) => f.name));
@@ -142,6 +158,28 @@ export function ReviewScreen({
       .filter((f) => isFlagged(f.name))
       .map((f) => ({ name: f.name, label: fieldLabel(f.name, f.unit) })),
   ];
+  // Pressing "Save & finalize" with fields still flagged asks first, instead of closing the report silently.
+  const [confirmingFinalize, setConfirmingFinalize] = useState(false);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const showFinalizeConfirm = confirmingFinalize && flaggedCount > 0 && !readOnly;
+  useEffect(() => {
+    if (!showFinalizeConfirm) return;
+    confirmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    confirmRef.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+  }, [showFinalizeConfirm]);
+  function requestFinalize() {
+    if (flaggedCount > 0) setConfirmingFinalize(true);
+    else onFinalize?.();
+  }
+  function reviewFlagged() {
+    setConfirmingFinalize(false);
+    if (flaggedList.length > 0) goToField(flaggedList[0].name);
+  }
+  function finalizeAnyway() {
+    setConfirmingFinalize(false);
+    onFinalize?.();
+  }
+
   function goToNextFlagged() {
     const els = listRef.current?.querySelectorAll<HTMLElement>('.field.pending');
     if (!els || els.length === 0) return;
@@ -186,6 +224,24 @@ export function ReviewScreen({
         </Notice>
       )}
 
+      {saveError && (
+        <div role="alert">
+          <Notice
+            tone="crit"
+            id="save-error"
+            actions={
+              onRetrySave && (
+                <button type="button" className="btn small" onClick={onRetrySave} disabled={busy !== null}>
+                  Try again
+                </button>
+              )
+            }
+          >
+            {saveError}
+          </Notice>
+        </div>
+      )}
+
       {!readOnly && flaggedCount > 0 && (
         <div className="attention-strip" data-testid="attention-strip" role="status">
           <span className="attention-strip-count">
@@ -193,7 +249,13 @@ export function ReviewScreen({
           </span>
           <span className="attention-strip-chips">
             {flaggedList.map((f) => (
-              <button key={f.name} type="button" className="attention-chip" onClick={() => goToField(f.name)}>
+              <button
+                key={f.name}
+                type="button"
+                className="attention-chip"
+                aria-label={`Go to ${f.label}`}
+                onClick={() => goToField(f.name)}
+              >
                 {f.label}
               </button>
             ))}
@@ -207,11 +269,17 @@ export function ReviewScreen({
       <fieldset className="review-fieldset" disabled={readOnly}>
       <ReadOnlyContext.Provider value={readOnly}>
       <div className={`field-list${readOnly ? ' read-only' : ''}`} ref={listRef}>
-        <div className={`field ${reportDateFlagged ? 'pending' : 'ok'}`} data-field="report_date">
+        <div
+          className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}
+          data-field="report_date"
+          role="group"
+          aria-labelledby="review-report-date-label"
+        >
           <div className="field-top">
-            <label className="field-label" htmlFor="review-report-date">
+            <label className="field-label" id="review-report-date-label" htmlFor="review-report-date">
               Service date
             </label>
+            {reportDateFlagged && !readOnly && <span className="sr-only">Needs checking.</span>}
             {reportDateConfidence !== undefined && (
               <ConfidenceBadge
                 confidence={reportDateConfidence}
@@ -221,7 +289,12 @@ export function ReviewScreen({
             )}
           </div>
           {reportDateFlagged && !readOnly && (
-            <button type="button" className="btn small mark-checked" onClick={() => markChecked('report_date')}>
+            <button
+              type="button"
+              className="btn small mark-checked"
+              aria-label="Mark as checked: Service date"
+              onClick={() => markChecked('report_date')}
+            >
               Mark as checked
             </button>
           )}
@@ -232,15 +305,22 @@ export function ReviewScreen({
           const confidence = fieldConfidences[field.name];
           const flagged = isFlagged(field.name);
           return (
-            <div className={`field ${flagged ? 'pending' : 'ok'}`} key={field.name} data-field={field.name}>
+            <div
+              className={`field ${flagged ? 'pending' : 'ok'}`}
+              key={field.name}
+              data-field={field.name}
+              role="group"
+              aria-labelledby={`review-field-${i}-label`}
+            >
               <div className="field-top">
-                <span className="field-label">
+                <span className="field-label" id={`review-field-${i}-label`}>
                   <span className="badge-mini" style={{ background: flagged ? 'var(--warn)' : 'var(--good)' }}>
                     {i + 1}
                   </span>{' '}
                   {fieldLabel(field.name, field.unit)}
                   {field.unit && <span className="field-unit"> ({field.unit})</span>}
                 </span>
+                {flagged && !readOnly && <span className="sr-only">Needs checking.</span>}
                 {personFields.has(field.name) && !readOnly ? (
                   <span className={`badge ${flagged ? 'badge-warn' : 'badge-good'}`} data-testid="person-field-badge">
                     {flagged ? 'suggested, check it' : 'checked'}
@@ -256,7 +336,12 @@ export function ReviewScreen({
                 )}
               </div>
               {flagged && !readOnly && (
-                <button type="button" className="btn small mark-checked" onClick={() => markChecked(field.name)}>
+                <button
+                  type="button"
+                  className="btn small mark-checked"
+                  aria-label={`Mark as checked: ${fieldLabel(field.name, field.unit)}`}
+                  onClick={() => markChecked(field.name)}
+                >
                   Mark as checked
                 </button>
               )}
@@ -270,7 +355,57 @@ export function ReviewScreen({
 
       </fieldset>
 
-      <div className="review-actions">
+      {confirmingEdit && onEdit && readOnly && (
+        <div
+          className="banner banner-warn"
+          id="edit-confirm"
+          role="alertdialog"
+          aria-label="Edit a finalized report"
+          onKeyDown={(e) => e.key === 'Escape' && setConfirmingEdit(false)}
+        >
+          <span>This report is finalized. Changes you save replace the finalized values.</span>{' '}
+          <button
+            type="button"
+            className="btn small"
+            autoFocus
+            onClick={() => {
+              setConfirmingEdit(false);
+              onEdit();
+            }}
+          >
+            Edit anyway
+          </button>
+          <button type="button" className="btn small" onClick={() => setConfirmingEdit(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {showFinalizeConfirm && (
+        <div
+          className="banner banner-warn finalize-confirm"
+          id="finalize-confirm"
+          role="alertdialog"
+          aria-label="Confirm finalize"
+          ref={confirmRef}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setConfirmingFinalize(false);
+          }}
+        >
+          <div>
+            {flaggedCount} field{flaggedCount === 1 ? '' : 's'} still need{flaggedCount === 1 ? 's' : ''} attention.
+            Finalize anyway? A finalized report goes into search, analytics and exports.
+          </div>
+          <button type="button" className="btn small" onClick={reviewFlagged}>
+            Review them
+          </button>{' '}
+          <button type="button" className="btn small" onClick={finalizeAnyway} disabled={busy !== null}>
+            Finalize anyway
+          </button>
+        </div>
+      )}
+
+      <div className="review-actions" aria-busy={busy !== null}>
         <div className="review-actions-status">
           {readOnly ? (
             <span>Finalized. Press Edit to change it.</span>
@@ -296,23 +431,23 @@ export function ReviewScreen({
         <div className="review-actions-buttons">
           {readOnly ? (
             onEdit && (
-              <button className="btn" onClick={onEdit}>
+              <button className="btn" onClick={() => setConfirmingEdit(true)} aria-expanded={confirmingEdit}>
                 Edit
               </button>
             )
           ) : (
             <>
               {onCancelEdit && (
-                <button className="btn review-cancel-edit" onClick={onCancelEdit}>
+                <button className="btn review-cancel-edit" onClick={onCancelEdit} disabled={busy !== null}>
                   Cancel
                 </button>
               )}
-              <button className="btn" onClick={onSave}>
-                Save corrections
+              <button className="btn" onClick={onSave} disabled={busy !== null}>
+                {busy === 'save' ? 'Saving…' : 'Save corrections'}
               </button>
               {onFinalize && (
-                <button className="btn primary" onClick={onFinalize}>
-                  Save &amp; finalize report
+                <button className="btn primary" onClick={requestFinalize} disabled={busy !== null}>
+                  {busy === 'finalize' ? 'Finalizing…' : <>Save &amp; finalize report</>}
                 </button>
               )}
             </>

@@ -1,13 +1,10 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE, seedReport } from './helpers/api';
 
 // Models plan step 4, part B: the model page's Reliability section — days between
 // repairs, fault categories, parts — and its honest limits (no averages below 3
 // repairs, undated repairs named).
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function unit(request: APIRequestContext, model: string, tag: string) {
   const r = await request.post(`${API_BASE}/instruments`, {
@@ -33,33 +30,25 @@ async function template(request: APIRequestContext, model: string) {
   return r.json();
 }
 
-async function repair(request: APIRequestContext, instrumentId: string, templateId: string, day: string | null, fault: string, hours: number) {
-  const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: 'Dana Levi' } })).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, { data: { instrument_id: instrumentId, template_id: templateId } });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 reliability') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  const data: Record<string, unknown> = { extracted_fields: { fault_category: fault, labor_hours: hours } };
-  if (day) data.report_date = day;
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, { data });
-  const fin = await request.post(`${API_BASE}/reports/${report.id}/finalize`);
-  expect(fin.status()).toBe(200);
-}
-
 async function openModelPage(page: import('@playwright/test').Page, model: string) {
   await page.goto('/');
   await page.click('.view-tab:has-text("Instruments")');
   await page.click('.sub-switch button:has-text("Models")');
   await page.locator('.model-name', { hasText: new RegExp(`^${model}$`) }).click();
   await expect(page.locator('#model-page')).toBeVisible();
+}
+
+async function repair(request: APIRequestContext, instrumentId: string, templateId: string, day: string | null, fault: string, hours: number) {
+  await seedReport(request, {
+    instrumentId,
+    templateId,
+    model: '',
+    reportType: 'repair',
+    technician: 'Dana Levi',
+    fields: { fault_category: fault, labor_hours: hours },
+    reportDate: day ?? undefined,
+    finalize: true,
+  });
 }
 
 test('with enough repairs the model page shows days between repairs, faults and what it counted', async ({ page, request }) => {

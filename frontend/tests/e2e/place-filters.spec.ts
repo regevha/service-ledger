@@ -1,12 +1,9 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
-import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
+import { API_BASE, seedReport } from './helpers/api';
 
 // Places plan, step 3: filter by place (an institution, faculty or room, with everything inside it)
 // on the Instruments list, the Reports list and the Analytics page, and see figures per place.
-
-const API_BASE = `http://localhost:${BACKEND_PORT}`;
 
 async function unit(request: APIRequestContext, model: string, tag: string, institution: string, room: string) {
   const r = await request.post(`${API_BASE}/instruments`, {
@@ -27,21 +24,18 @@ async function repair(request: APIRequestContext, model: string, instrumentId: s
     ).json();
     templateId = made.id;
   }
-  const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: 'Dana Levi' } })).json();
-  await request.patch(`${API_BASE}/reports/${report.id}/template`, { data: { instrument_id: instrumentId, template_id: templateId } });
-  const attachment = await (
-    await request.post(`${API_BASE}/reports/${report.id}/attachments`, {
-      multipart: { file: { name: 'seed.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 place filter') } },
-    })
-  ).json();
-  const job = await (await request.post(`${API_BASE}/attachments/${attachment.id}/extract`)).json();
-  for (let waited = 0; waited < 30_000; waited += 200) {
-    const polled = await (await request.get(`${API_BASE}/extraction-jobs/${job.id}`)).json();
-    if (polled.status === 'succeeded' || polled.status === 'failed') break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, { data: { extracted_fields: { labor_hours: hours }, report_date: '2001-03-03' } });
-  expect((await request.post(`${API_BASE}/reports/${report.id}/finalize`)).status()).toBe(200);
+  await seedReport(request, {
+    instrumentId,
+    templateId,
+    model,
+    reportType: 'repair',
+    technician: 'Dana Levi',
+    fields: { labor_hours: hours },
+    // 1999: a year no other spec dates reports in. analytics-filters.spec.ts isolates its own reports by the
+    // year 2001 and counts them, so these must stay out of it, whichever spec runs first.
+    reportDate: '1999-03-03',
+    finalize: true,
+  });
 }
 
 test('the Instruments list filters by institution and by room', async ({ page, request }) => {
