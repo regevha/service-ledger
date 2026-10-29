@@ -451,8 +451,8 @@ test('with nothing flagged, finalizing goes straight through with no question', 
 
 test('finalizing twice at the API returns the report quietly, so a retry after a lost reply works', async ({ request }) => {
   const marker = `E2E-Twice-${Date.now()}`;
-  const id = await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
-  const again = await request.post(`${API_BASE}/reports/${id}/finalize`);
+  const { reportId } = await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
+  const again = await request.post(`${API_BASE}/reports/${reportId}/finalize`);
   expect(again.status()).toBe(200);
   expect((await again.json()).status).toBe('finalized');
 });
