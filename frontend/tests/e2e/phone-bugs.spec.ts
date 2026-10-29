@@ -3,6 +3,7 @@ import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { createNumericTemplate } from './numeric-fixture';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 // Phone review 2 (2026-10-26): the Fields | Scan switch in dark mode, the toast, the instrument's report
 // history rows, Cancel while editing a finalized report, and how a read-only report looks.
@@ -53,7 +54,7 @@ test.describe('on a phone', () => {
     const page = await context.newPage();
     await page.goto(`/#/reports/${reportId}`);
     const active = page.locator('.view-switch-button.active');
-    await expect(active).toBeVisible({ timeout: 15_000 });
+    await expect(active).toBeVisible({ timeout: TIMEOUT.ui });
     const lum = (rgb: string) => {
       const [r, g, b] = (rgb.match(/[\d.]+/g) ?? ['0', '0', '0']).slice(0, 3).map((v) => {
         const c = Number(v) / 255;
@@ -89,7 +90,7 @@ test.describe('on a phone', () => {
     const { instrumentId } = await seed(request);
     await page.goto(`/#/reports/instrument/${instrumentId}`);
     const row = page.locator('.instrument-report-row-body').first();
-    await expect(row).toBeVisible({ timeout: 15_000 });
+    await expect(row).toBeVisible({ timeout: TIMEOUT.ui });
     const type = await row.locator('[data-label="Type"]').boundingBox();
     const date = await row.locator('[data-label="Report date"]').boundingBox();
     const tech = await row.locator('[data-label="Lab manager"]').boundingBox();
@@ -105,7 +106,7 @@ test.describe('on a phone', () => {
     page.on('request', (r) => r.method() === 'PATCH' && r.url().includes('/fields') && patches++);
     await page.goto(`/#/reports/${reportId}`);
     const lot = page.locator('.field', { hasText: 'Cst beads lot' }).locator('input, textarea').first();
-    await expect(lot).toHaveValue('LOT-ORIG', { timeout: 15_000 });
+    await expect(lot).toHaveValue('LOT-ORIG', { timeout: TIMEOUT.ui });
     await expect(page.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
     await page.click('.review-actions button:has-text("Edit")');
     await lot.fill('LOT-CHANGED');
@@ -118,7 +119,7 @@ test.describe('on a phone', () => {
   test('a finalized report reads as text: no calendar button and no extraction notes, until Edit', async ({ page, request }) => {
     const { reportId } = await seed(request);
     await page.goto(`/#/reports/${reportId}`);
-    await expect(page.locator('.field-list.read-only')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.field-list.read-only')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.field-list .date-input-pick')).toBeHidden();
     await expect(page.locator('.field-list .field-note').first()).toBeHidden();
     await page.click('.review-actions button:has-text("Edit")');

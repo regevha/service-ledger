@@ -4,6 +4,7 @@ import { uniqueFixture, uniquePdf } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
@@ -38,10 +39,10 @@ async function readSampleAs(page: Page, instrumentId: string) {
   await page.click('.view-tab:has-text("New report")');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(SAMPLE));
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.class-row', { timeout: 30_000 });
+  await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
   await page.locator('.class-row select').first().selectOption(instrumentId);
   await page.click('button:has-text("Confirm & continue")');
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 }
 
 test('a report on the generic template offers a model-specific one, starts from the closest, and is read again', async ({
@@ -80,7 +81,7 @@ test('a report on the generic template offers a model-specific one, starts from 
     await page.click('button:has-text("Create template")');
 
     // Back on the waiting report, which is read again with the new template.
-    await expect(page.locator('.field', { hasText: 'extra check' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.field', { hasText: 'extra check' })).toBeVisible({ timeout: TIMEOUT.flow });
     await expect(page.locator('.field', { hasText: 'family note' })).toBeVisible();
     await expect(page.locator('#generic-template-notice')).toHaveCount(0);
 
@@ -180,10 +181,10 @@ test('a type with no template at all offers to create one and then reads the rep
       buffer: uniquePdf('%PDF-1.4 dead end'),
     });
     await page.click('button:has-text("Upload & classify")');
-    await page.waitForSelector('.class-row', { timeout: 30_000 });
+    await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
     await page.click('button:has-text("Confirm & continue")');
 
-    await expect(page.getByText(new RegExp(`There is no .* template for ${typeName} / ${model} yet`))).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(new RegExp(`There is no .* template for ${typeName} / ${model} yet`))).toBeVisible({ timeout: TIMEOUT.ui });
     await page.locator('#create-template-action').click();
 
     // Prefilled with this type; no template of this type exists, so there is
@@ -195,7 +196,7 @@ test('a type with no template at all offers to create one and then reads the rep
     await page.locator('[aria-label="Field name"]').first().fill('dead_end_note');
     await page.click('button:has-text("Create template")');
 
-    await expect(page.locator('.field', { hasText: 'dead end note' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.field', { hasText: 'dead end note' })).toBeVisible({ timeout: TIMEOUT.flow });
   } finally {
     await request.delete(`${API_BASE}/instruments/${instrument.id}`);
     const templates = await (await request.get(`${API_BASE}/report-templates/all`)).json();

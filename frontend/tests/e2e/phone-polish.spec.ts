@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { uniqueFixture, uniquePdf } from './unique-upload';
 import { createNumericTemplate } from './numeric-fixture';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 // Phone review 2 (2026-10-26): empty values read as a dash, the instrument is a link in a real
 // heading, the instrument page has a real heading, and the new-report review opens like a saved one.
@@ -52,7 +53,7 @@ test.describe('on a phone', () => {
     const { reportId } = await seed(request);
     await page.goto(`/#/reports/${reportId}`);
     const lot = page.locator('.field', { hasText: 'Cst beads lot' }).locator('input, textarea').first();
-    await expect(lot).toHaveAttribute('placeholder', '—', { timeout: 15_000 });
+    await expect(lot).toHaveAttribute('placeholder', '—', { timeout: TIMEOUT.ui });
     await page.click('.review-actions button:has-text("Edit")');
     await expect(lot).not.toHaveAttribute('placeholder', '—');
   });
@@ -61,7 +62,7 @@ test.describe('on a phone', () => {
     const { instrumentId } = await seed(request);
     await page.goto(`/#/reports/instrument/${instrumentId}`);
     const heading = page.locator('.instrument-header .report-heading');
-    await expect(heading).toBeVisible({ timeout: 15_000 });
+    await expect(heading).toBeVisible({ timeout: TIMEOUT.ui });
     expect(await heading.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
     expect(await heading.evaluate((el) => getComputedStyle(el).textTransform)).toBe('none');
     await expect(page.locator('.stat-tile', { hasText: 'Most recent activity' })).toContainText('(uploaded)');

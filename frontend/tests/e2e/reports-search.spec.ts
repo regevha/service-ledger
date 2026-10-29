@@ -2,6 +2,7 @@ import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 // The reports search/list screen (§7/§9) — filters, the empty state, and the
 // click-through into the review screen for an already-created report.
@@ -132,7 +133,7 @@ test.describe('reports search screen', () => {
     await page.waitForSelector('.report-table');
     await page.click(`.report-row-body:has-text("${marker}")`);
 
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.report-heading-meta')).toContainText('Finalized');
     // A finalized report opens read-only: Edit unlocks it, and only then is there anything to save.
     await expect(page.locator('button:has-text("Save corrections")')).toHaveCount(0);
@@ -156,13 +157,13 @@ test.describe('reports search screen', () => {
     await page.waitForSelector('.report-table');
     await page.click(`.report-row-body:has-text("${marker}")`);
 
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.report-heading-meta')).toContainText('Extracted');
     const finalizeButton = page.locator('button:has-text("Save & finalize report")');
     await expect(finalizeButton).toBeVisible();
 
     await finalizeButton.click();
-    await expect(page.locator('.report-heading-meta')).toContainText('Finalized', { timeout: 15_000 });
+    await expect(page.locator('.report-heading-meta')).toContainText('Finalized', { timeout: TIMEOUT.ui });
     await expect(page.locator('button:has-text("Save & finalize report")')).toHaveCount(0);
   });
 });

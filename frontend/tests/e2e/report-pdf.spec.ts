@@ -1,6 +1,7 @@
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 // The "Download PDF" link on the report detail/review screen (§7/§11's
 // single-report PDF export) — present once a template's resolved, and a
@@ -38,7 +39,7 @@ test('report detail screen offers a PDF download for a resolved report', async (
   await page.waitForSelector('.report-table');
   await page.click(`.report-row-body:has-text("${marker}")`);
 
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
 
   const pdfLink = page.locator('a.btn:has-text("Download PDF")');
   await expect(pdfLink).toHaveAttribute('href', `${API_BASE}/reports/${report.id}/pdf`);

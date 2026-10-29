@@ -3,6 +3,7 @@ import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
 import { createNumericTemplate } from './numeric-fixture';
+import { TIMEOUT } from './timeouts';
 
 // UI review items #26-#28: charts drawn at the size they are shown (so their text matches the page)
 // with years on the date axis, Analytics bars that line up, and the active tab joined to its card.
@@ -60,7 +61,7 @@ const DATES = ['2025-10-15', '2025-12-15', '2026-02-15', '2026-04-15', '2026-06-
 
 async function openTrend(page: Page, instrumentId: string) {
   await page.goto(`/#/reports/instrument/${instrumentId}`);
-  await expect(page.locator('.trend-section')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.trend-section')).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('.trend-chart-wrap svg')).toBeVisible();
 }
 

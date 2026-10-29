@@ -2,6 +2,7 @@ import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { textPdf } from './text-pdf';
 import { BACKEND_PORT } from '../../playwright.config';
+import { TIMEOUT } from './timeouts';
 
 // The persistent duplicate indicator on a saved report's screen: whenever a
 // report is opened later (not only during intake), a banner names any other
@@ -86,7 +87,7 @@ test('a saved report with the same work order on the same instrument shows a dup
   await page.click('button:has-text("Confirm delete")');
   await page.waitForSelector('.report-table, .empty-hint');
   await page.click(`.report-row-body:has-text("${second}")`);
-  await expect(page.locator('.field-list, .empty-hint').first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.field-list, .empty-hint').first()).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('#saved-duplicate-notice')).toHaveCount(0);
 });
 
@@ -106,6 +107,6 @@ test('the same work order on a different instrument shows no banner', async ({ p
 
   await openReport(page, technician);
 
-  await expect(page.locator('.field-list, .empty-hint').first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.field-list, .empty-hint').first()).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('#saved-duplicate-notice')).toHaveCount(0);
 });

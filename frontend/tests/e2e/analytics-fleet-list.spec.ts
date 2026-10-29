@@ -1,5 +1,6 @@
 import { test, expect } from './coverage';
 import { seedFinalizedReport } from './seed-report';
+import { TIMEOUT } from './timeouts';
 
 // The fleet list beside the Analytics charts: choosing a row narrows every chart to it, the list keeps
 // showing every row, and "Back to whole fleet" undoes it. A narrow screen shows the list and one item's
@@ -25,7 +26,7 @@ test('on a wide screen the list sits beside the charts and a row narrows them', 
   await page.goto('/#/analytics');
 
   const list = page.getByTestId('fleet-list');
-  await expect(list).toBeVisible({ timeout: 15_000 });
+  await expect(list).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(list.getByRole('tab', { name: 'Model' })).toHaveAttribute('aria-selected', 'true');
   const aria = list.getByTestId('fleet-row').filter({ hasText: 'FACSAria III' });
   const fortessa = list.getByTestId('fleet-row').filter({ hasText: 'LSRFortessa' });
@@ -38,7 +39,7 @@ test('on a wide screen the list sits beside the charts and a row narrows them', 
 
   await aria.click();
   await expect(aria).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByTestId('analytics-basis')).toContainText('for FACSAria III', { timeout: 15_000 });
+  await expect(page.getByTestId('analytics-basis')).toContainText('for FACSAria III', { timeout: TIMEOUT.ui });
   await expect(page.locator('.analytics-detail-title')).toHaveText('FACSAria III');
   // The charts are narrowed to the model...
   await expect(page.locator('.labor-bar', { hasText: 'LSRFortessa' })).toHaveCount(0);
@@ -62,7 +63,7 @@ test('grouping by instrument lists units and choosing one narrows to it', async 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/#/analytics');
   const list = page.getByTestId('fleet-list');
-  await expect(list).toBeVisible({ timeout: 15_000 });
+  await expect(list).toBeVisible({ timeout: TIMEOUT.ui });
 
   await list.getByRole('tab', { name: 'Instrument' }).click();
   await expect(list.getByRole('tab', { name: 'Instrument' })).toHaveAttribute('aria-selected', 'true');
@@ -70,7 +71,7 @@ test('grouping by instrument lists units and choosing one narrows to it', async 
   await expect(rows.first()).toBeVisible();
   const name = (await rows.first().locator('.fleet-row-title').textContent())!;
   await rows.first().click();
-  await expect(page.getByTestId('analytics-basis')).toContainText(`for ${name}`, { timeout: 15_000 });
+  await expect(page.getByTestId('analytics-basis')).toContainText(`for ${name}`, { timeout: TIMEOUT.ui });
   await expect(page.getByTestId('stat-pass-rate')).toBeVisible();
 
   // Changing the grouping clears the choice.
@@ -85,13 +86,13 @@ test.describe('on a phone', () => {
     await seedTwoModels(request);
     await page.goto('/#/analytics');
     const list = page.getByTestId('fleet-list');
-    await expect(list).toBeVisible({ timeout: 15_000 });
+    await expect(list).toBeVisible({ timeout: TIMEOUT.ui });
     // The whole fleet's charts are still there below the list.
     await expect(page.locator('.chart-toggle').first()).toBeVisible();
 
     await list.getByTestId('fleet-row').first().click();
     const back = page.getByRole('button', { name: /^← All models/ });
-    await expect(back).toBeVisible({ timeout: 15_000 });
+    await expect(back).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(list).toHaveCount(0);
     expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
 

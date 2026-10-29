@@ -40,7 +40,9 @@ async function repair(request: APIRequestContext, model: string, instrumentId: s
     if (polled.status === 'succeeded' || polled.status === 'failed') break;
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
-  await request.patch(`${API_BASE}/reports/${report.id}/fields`, { data: { extracted_fields: { labor_hours: hours }, report_date: '2001-03-03' } });
+  // 1999: a year no other spec dates reports in. analytics-filters.spec.ts isolates its own reports by the
+  // year 2001 and counts them, so these must stay out of it, whichever spec runs first.
+  await request.patch(`${API_BASE}/reports/${report.id}/fields`, { data: { extracted_fields: { labor_hours: hours }, report_date: '1999-03-03' } });
   expect((await request.post(`${API_BASE}/reports/${report.id}/finalize`)).status()).toBe(200);
 }
 
