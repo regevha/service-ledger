@@ -1,0 +1,120 @@
+name: Live Claude check
+
+# One real document through the real Claude API, once a week and on demand
+# (frontend/tests/e2e-live/live-claude-smoke.spec.ts). Everything else in CI runs against the
+# deterministic stub, so a changed model, a changed reply format, an expired key or a deprecated
+# model would otherwise only show up when someone uploads a real scan. It costs a few calls a week.
+#
+# Needs two repository secrets (Settings > Secrets and variables > Actions):
+#   ANTHROPIC_API_KEY        a key with a low monthly spend limit, used only for this check
+#   LIVE_SMOKE_FIXTURE_B64   a real scanned service report PDF, base64 encoded (base64 -w0 scan.pdf)
+# The scan is a real third-party record: it lives only in that secret, never in the repository.
+# If either secret is missing the run FAILS, so a check that cannot run is never mistaken for one
+# that passed. A failed scheduled run is reported to the people watching the repository's Actions.
+on:
+  schedule:
+    - cron: "41 4 * * 1" # Mondays 04:41 UTC, about 07:41 in Israel
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never two at once: they share one database and one key.
+concurrency:
+  group: live-claude
+  cancel-in-progress: false
+
+env:
+  PGHOST: localhost
+  PGPORT: 5432
+  PGUSER: service_ledger
+  PGPASSWORD: service_ledger_dev
+
+jobs:
+  live:
+    name: Real Claude API, one document
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: service_ledger
+          POSTGRES_PASSWORD: service_ledger_dev
+          POSTGRES_DB: service_ledger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the secrets exist
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LIVE_SMOKE_FIXTURE_B64: ${{ secrets.LIVE_SMOKE_FIXTURE_B64 }}
+        run: |
+          missing=0
+          for name in ANTHROPIC_API_KEY LIVE_SMOKE_FIXTURE_B64; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository secret $name is not set, so the live Claude check cannot run."
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Create service_ledger_e2e database
+        run: psql -d service_ledger -c "CREATE DATABASE service_ledger_e2e;"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright's Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Write the scan to a temporary file
+        env:
+          LIVE_SMOKE_FIXTURE_B64: ${{ secrets.LIVE_SMOKE_FIXTURE_B64 }}
+        run: |
+          echo "$LIVE_SMOKE_FIXTURE_B64" | base64 -d > "$RUNNER_TEMP/live-scan.pdf"
+          head -c 4 "$RUNNER_TEMP/live-scan.pdf" | grep -q '%PDF' || { echo "::error::LIVE_SMOKE_FIXTURE_B64 does not decode to a PDF."; exit 1; }
+          echo "LIVE_SMOKE_FIXTURE_PATH=$RUNNER_TEMP/live-scan.pdf" >> "$GITHUB_ENV"
+
+      - name: Run the live check
+        working-directory: frontend
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run test:e2e:live
+
+      - name: Upload report and traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-live-results
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
