@@ -111,7 +111,7 @@ test.describe('intake flow', () => {
     await expect(page.getByTestId('intake-working')).toHaveCount(0);
   });
 
-  test('saving offers no Cancel (there is nothing to go back to)', async ({ page }) => {
+  test('while saving: the review screen stays in place, both buttons wait, and there is nothing to cancel', async ({ page }) => {
     await page.route('**/reports/*/finalize', async (route) => {
       await new Promise((r) => setTimeout(r, 1200));
       await route.continue();
@@ -121,8 +121,13 @@ test.describe('intake flow', () => {
     await page.click('button:has-text("Upload & classify")');
     await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
     await page.click('button:has-text("Save & finalize report")');
-    await expect(page.getByTestId('intake-working')).toBeVisible();
-    await expect(page.getByTestId('intake-working').getByRole('button', { name: 'Cancel' })).toHaveCount(0);
+    // The form is still there; the buttons say what is happening and cannot be pressed twice.
+    await expect(page.locator('button:has-text("Finalizing…")')).toBeDisabled();
+    await expect(page.locator('button:has-text("Save corrections")')).toBeDisabled();
+    await expect(page.locator('.field-list')).toBeVisible();
+    await expect(page.locator('.working-panel')).toHaveCount(0);
+    await expect(page.locator('.steps .step.active')).toContainText('Review & finalize');
+    await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
   });
 
   test('the success screen says where to go next: no internal id, ISO date, all steps done', async ({ page }) => {
