@@ -110,6 +110,8 @@ export function ReviewScreen({
   // A low-confidence field stays flagged until the technician explicitly marks it checked.
   // Editing the value does not count: they may have typed over it without looking at the scan.
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
+  // A finalized report is the record; opening it for changes asks first.
+  const [confirmingEdit, setConfirmingEdit] = useState(false);
   const markChecked = (name: string) => {
     setChecked((prev) => new Set(prev).add(name));
     // The button disappears once the field is checked; keep the keyboard where it was, on the field.
@@ -342,6 +344,32 @@ export function ReviewScreen({
 
       </fieldset>
 
+      {confirmingEdit && onEdit && readOnly && (
+        <div
+          className="banner banner-warn"
+          id="edit-confirm"
+          role="alertdialog"
+          aria-label="Edit a finalized report"
+          onKeyDown={(e) => e.key === 'Escape' && setConfirmingEdit(false)}
+        >
+          <span>This report is finalized. Changes you save replace the finalized values.</span>{' '}
+          <button
+            type="button"
+            className="btn small"
+            autoFocus
+            onClick={() => {
+              setConfirmingEdit(false);
+              onEdit();
+            }}
+          >
+            Edit anyway
+          </button>
+          <button type="button" className="btn small" onClick={() => setConfirmingEdit(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
+
       {showFinalizeConfirm && (
         <div
           className="banner banner-warn finalize-confirm"
@@ -392,7 +420,7 @@ export function ReviewScreen({
         <div className="review-actions-buttons">
           {readOnly ? (
             onEdit && (
-              <button className="btn" onClick={onEdit}>
+              <button className="btn" onClick={() => setConfirmingEdit(true)} aria-expanded={confirmingEdit}>
                 Edit
               </button>
             )

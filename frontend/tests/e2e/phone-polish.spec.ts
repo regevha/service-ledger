@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
+import { startEditing } from './edit-helper';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { uniqueFixture } from './unique-upload';
@@ -33,7 +34,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     await page.goto(`/#/reports/${reportId}`);
     const lot = page.locator('.field', { hasText: 'Cst beads lot' }).locator('input, textarea').first();
     await expect(lot).toHaveAttribute('placeholder', '—', { timeout: TIMEOUT.ui });
-    await page.click('.review-actions button:has-text("Edit")');
+    await startEditing(page);
     await expect(lot).not.toHaveAttribute('placeholder', '—');
   });
 

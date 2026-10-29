@@ -2,6 +2,7 @@ import { type Page } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from './coverage';
+import { startEditing } from './edit-helper';
 import { uniqueFixture } from './unique-upload';
 import { fieldLabel } from '../../src/fieldLabels';
 import { reviewSnapshot } from '../../src/reviewSnapshot';
@@ -136,7 +137,7 @@ test('a finalized report is read-only until Edit, and locks again after saving',
   await expect(page.locator('button:has-text("Save corrections")')).toHaveCount(0);
   await expect(page.locator('.review-actions')).toContainText('Finalized');
 
-  await page.click('.review-actions button:has-text("Edit")');
+  await startEditing(page);
   await expect(firstText).toBeEnabled();
   await firstText.fill('Corrected after finalizing');
   await page.click('button:has-text("Save corrections")');
@@ -146,6 +147,28 @@ test('a finalized report is read-only until Edit, and locks again after saving',
   await expect(page.locator('.field-list textarea').first()).toBeDisabled();
   await expect(page.locator('.field-list textarea').first()).toHaveValue('Corrected after finalizing');
   await expect(page.locator('.review-actions button:has-text("Edit")')).toBeVisible();
+});
+
+test('Edit on a finalized report asks first; Cancel and Escape leave it locked', async ({ page, request }) => {
+  const marker = `E2E-EditConfirm-${Date.now()}`;
+  await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
+  await openReviewFromList(page, marker);
+  const firstText = page.locator('.field-list textarea').first();
+
+  await page.click('.review-actions button:has-text("Edit")');
+  const confirm = page.locator('#edit-confirm');
+  await expect(confirm).toContainText('finalized');
+  await expect(confirm.getByRole('button', { name: 'Edit anyway' })).toBeFocused();
+  await expect(firstText).toBeDisabled();
+
+  await confirm.getByRole('button', { name: 'Cancel' }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(firstText).toBeDisabled();
+
+  await page.click('.review-actions button:has-text("Edit")');
+  await page.keyboard.press('Escape');
+  await expect(confirm).toHaveCount(0);
+  await expect(firstText).toBeDisabled();
 });
 
 test('the banner lines up with the fields instead of being inset twice', async ({ page }) => {
@@ -382,7 +405,7 @@ test('a finalized report being edited: guarded until saved, then read-only again
   const marker = `E2E-GuardFinal-${Date.now()}`;
   await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
   await openReviewFromList(page, marker);
-  await page.click('.review-actions button:has-text("Edit")');
+  await startEditing(page);
   await page.locator('.field-list textarea').first().fill('Changed after finalizing');
   expect(await leavingIsGuarded(page)).toBe(true);
 
@@ -391,7 +414,7 @@ test('a finalized report being edited: guarded until saved, then read-only again
   expect(await leavingIsGuarded(page)).toBe(false);
 
   // Cancelling an edit throws the changes away, so there is nothing left to guard.
-  await page.click('.review-actions button:has-text("Edit")');
+  await startEditing(page);
   await page.locator('.field-list textarea').first().fill('Never saved');
   expect(await leavingIsGuarded(page)).toBe(true);
   await page.click('.review-actions button:has-text("Cancel")');
