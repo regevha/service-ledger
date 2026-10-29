@@ -12,6 +12,7 @@
     "test:e2e:ui": "playwright test --ui",
     "codegen": "npx --yes openapi-typescript@7.13.0 openapi.json -o src/generated/api-schema.ts",
     "test:e2e:shuffled": "node scripts/run-e2e-shuffled.mjs",
+    "test:e2e:built": "playwright test --config=playwright.built.config.ts",
     "coverage:report": "nyc report --temp-dir .nyc_output --reporter=text --reporter=html --reporter=json-summary --check-coverage --lines 88 --branches 70 --report-dir coverage",
     "test:e2e:coverage": "rm -rf .nyc_output coverage && COVERAGE=1 playwright test && npm run coverage:report",
     "test:e2e:coverage:shuffled": "rm -rf .nyc_output coverage && COVERAGE=1 node scripts/run-e2e-shuffled.mjs && npm run coverage:report"
