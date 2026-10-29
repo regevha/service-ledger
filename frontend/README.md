@@ -244,6 +244,18 @@ other test runs only in the `chromium` desktop project. Don't add a
 `test.use({ viewport, hasTouch, isMobile })` to a tagged describe, the project
 provides it. Run just the phone tests with `npx playwright test --project=phone`.
 
+### Built page behind the password
+
+`npm run test:e2e:built` runs against what is deployed: the production build of
+the page, served by the backend itself (`FRONTEND_DIST_DIR`) on one port
+(8002), behind the shared password, with no Vite server
+(`playwright.built.config.ts`). `tests/e2e-built/gate.spec.ts` checks the
+password gate (no password and a wrong one get 401, the right one gets in,
+`/health` stays open, a scan downloads only with the password); the happy-path,
+manual-confirm, field-editing and reports-search specs are re-run unchanged
+against the built page. The password is a throwaway set in the config. It uses
+the same e2e database as the default suite, so don't run the two at once.
+
 ### Selectors
 
 New specs find elements by role, label or `data-testid`, not by CSS class
