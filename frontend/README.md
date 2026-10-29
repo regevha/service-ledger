@@ -256,6 +256,16 @@ manual-confirm, field-editing and reports-search specs are re-run unchanged
 against the built page. The password is a throwaway set in the config. It uses
 the same e2e database as the default suite, so don't run the two at once.
 
+### Smoke check of a deployment
+
+`deploy/smoke.sh <url>` (password in `SMOKE_PASSWORD`) checks a running
+deployment: `/health` is open, the app and API answer 401 without the password,
+the page loads with it, and an uploaded scan downloads with identical bytes
+(which proves the file storage). Records are named `SMOKE-<timestamp>` and
+deleted. With `SMOKE_STUB=1` (stub extractor only) it also runs a full upload
+and finalize. It uses plain HTTP requests, no browser, and does not run in CI.
+The deploy and update scripts should call it as their last step.
+
 ### Selectors
 
 New specs find elements by role, label or `data-testid`, not by CSS class
