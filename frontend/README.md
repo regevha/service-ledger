@@ -329,5 +329,5 @@ with Istanbul (`vite-plugin-istanbul`, switched on by `COVERAGE=1` in
 `test` every spec imports — saves each page's `window.__coverage__` after each
 test, and `nyc report` merges them (settings in `.nycrc.json`: every file under
 `src/` counts, generated types and `main.tsx` do not). The run fails below 88%
-lines or 70% branches, and CI runs this command, so a coverage drop fails the
+lines or 75% branches, and CI runs this command, so a coverage drop fails the
 build; raise those numbers in `package.json` when coverage improves. This measures what the browser specs reach; there are no unit tests.
