@@ -438,7 +438,7 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
         except OSError:
             return None
         text = extract_text(data)
-    if not text:
+    if not text.strip():
         return None
     read = read_identifiers(text, sorted({i.model for i in instruments}))
     if not read.recognised:
@@ -483,7 +483,7 @@ def _confident_text_read(attachment: Attachment, instruments: list[Instrument]) 
 def _has_readable_text(attachment: Attachment) -> bool:
     try:
         with open(attachment.file_path, "rb") as f:
-            return bool(extract_text(f.read()))
+            return bool(extract_text(f.read()).strip())
     except OSError:
         return False
 

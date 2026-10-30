@@ -347,3 +347,15 @@ def test_live_a_hebrew_text_layer_still_goes_to_the_model(client, run_worker, li
     attachment = _upload(client, make_pdf(service_report()))
     _classify_job(client, run_worker, attachment["id"])
     assert live_counter.calls == 1
+
+
+def test_a_pdf_whose_text_layer_is_only_blank_space_is_treated_as_a_scan(client, run_worker, monkeypatch):
+    # A PDF built from page images (several photos joined) extracts as newlines only.
+    # That is "nothing to read", not a document the stub cannot read.
+    from app.services import classification
+
+    monkeypatch.setattr(classification, "extract_text", lambda data: "\n\n")
+    attachment = _upload(client, make_pdf([]))
+    job = client.post(f"/attachments/{attachment['id']}/classify").json()
+    run_worker()
+    assert client.get(f"/extraction-jobs/{job['id']}").json()["status"] == "succeeded"
