@@ -22,11 +22,12 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Query, Session, joinedload
 
 from app import models, schemas
 from app.services.field_values import as_choice_list
+from app.services.manufacturers import find_maker
 from app.services.places import subtree_ids
 from app.services.report_filters import apply_report_filters
 from app.models import report_chronological_order
@@ -114,12 +115,17 @@ def _apply_unit_filters(query: Query, filters: AnalyticsFilters) -> Query:
         ids = subtree_ids(query.session, place) if place is not None else []
         query = query.filter(models.Instrument.place_id.in_(ids))
     if filters.manufacturer:
-        query = query.filter(_same_manufacturer(filters.manufacturer))
+        query = query.filter(_same_manufacturer(query.session, filters.manufacturer))
     return query
 
 
-def _same_manufacturer(name: str):
-    return func.lower(func.trim(models.Instrument.manufacturer)) == name.strip().lower()
+def _same_manufacturer(session, name: str):
+    """The instruments made by the maker `name` names: by its name or any other name it is
+    known by ("Becton Dickinson" finds BD's instruments), and, for text no maker has, by
+    the exact text, ignoring case and surrounding spaces."""
+    maker = find_maker(session.query(models.Manufacturer).all(), name)
+    same_text = func.lower(func.trim(models.Instrument.manufacturer)) == name.strip().lower()
+    return or_(same_text, models.Instrument.manufacturer_id == maker.id) if maker else same_text
 
 
 def _apply_filters(query: Query, filters: AnalyticsFilters) -> Query:
@@ -128,7 +134,7 @@ def _apply_filters(query: Query, filters: AnalyticsFilters) -> Query:
     "all" means every status."""
     if filters.manufacturer:
         query = query.filter(
-            models.Report.instrument_id.in_(select(models.Instrument.id).where(_same_manufacturer(filters.manufacturer)))
+            models.Report.instrument_id.in_(select(models.Instrument.id).where(_same_manufacturer(query.session, filters.manufacturer)))
         )
     if filters.status is None:
         status = models.ReportStatus.finalized

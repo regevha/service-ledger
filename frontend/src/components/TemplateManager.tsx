@@ -579,7 +579,7 @@ function TemplateFormScreen({
           <input
             type="text"
             className="text-input"
-            placeholder="e.g. FACSDiscover S8 — blank applies to every model"
+            placeholder="e.g. Aurora — blank applies to every model"
             list="known-models"
             value={model}
             onChange={(e) => setModel(e.target.value)}

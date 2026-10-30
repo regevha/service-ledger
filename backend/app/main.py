@@ -14,6 +14,7 @@ from app.request_trace import RequestTraceMiddleware
 from app.shared_password import SharedPasswordMiddleware
 from app.trace import configure_logging
 from app.services.instrument_types import ensure_default_types
+from app.services.manufacturers import ensure_default_makers
 from app.services.places import PlaceTextError
 from app.routers import (
     analytics,
@@ -22,6 +23,7 @@ from app.routers import (
     places,
     instrument_types,
     instruments,
+    manufacturers,
     report_templates,
     reports,
     saved_filters,
@@ -38,6 +40,7 @@ async def lifespan(app: FastAPI):
     announce_debug_log()
     with SessionLocal() as db:
         ensure_default_types(db)
+        ensure_default_makers(db)
         seed_instruments.seed(db)
         seed_templates.seed(db)
     yield
@@ -108,6 +111,7 @@ async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
 
 
 app.include_router(instrument_types.router)
+app.include_router(manufacturers.router)
 app.include_router(instrument_models.router)
 app.include_router(places.router)
 app.include_router(instruments.router)

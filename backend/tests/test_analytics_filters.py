@@ -231,10 +231,10 @@ def _set_manufacturer(db, serial, name):
 
 def test_the_manufacturer_filter_keeps_that_makers_instruments_and_lists_only_them(client, db_session):
     _data(db_session)
-    _set_manufacturer(db_session, FORTESSA, "BD Biosciences")
+    _set_manufacturer(db_session, FORTESSA, "Acme Optics")
     _set_manufacturer(db_session, ARIA, "Other Maker")
 
-    body = _fleet(client, manufacturer="bd biosciences ")  # case and spaces do not matter
+    body = _fleet(client, manufacturer="acme optics ")  # case and spaces do not matter
     assert body["finalized_report_count"] == 3
     assert body["total_labor_hours"] == 5.0
     assert [r["serial_number"] for r in body["labor_hours_by_instrument"]] == [FORTESSA]
@@ -247,10 +247,10 @@ def test_the_manufacturer_filter_keeps_that_makers_instruments_and_lists_only_th
 
 def test_the_manufacturer_filter_combines_with_the_others_and_reaches_the_comparison(client, db_session):
     _data(db_session)
-    _set_manufacturer(db_session, FORTESSA, "BD Biosciences")
+    _set_manufacturer(db_session, FORTESSA, "Acme Optics")
     _set_manufacturer(db_session, ARIA, "Other Maker")
 
-    body = _fleet(client, manufacturer="BD Biosciences", report_type="repair")
+    body = _fleet(client, manufacturer="Acme Optics", report_type="repair")
     assert body["finalized_report_count"] == 1 and body["total_labor_hours"] == 2.0
 
     models_body = client.get("/analytics/models", params={"manufacturer": "Other Maker"}).json()

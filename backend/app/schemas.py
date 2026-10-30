@@ -57,6 +57,27 @@ class InstrumentTypeCreate(BaseModel):
     display_name: str
 
 
+class ManufacturerOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    aliases: list[str]
+    # Filled by the router: how many instruments and models name this maker.
+    instrument_count: int = 0
+    model_count: int = 0
+
+
+class ManufacturerCreate(BaseModel):
+    name: str
+    aliases: list[str] = []
+
+
+class ManufacturerUpdate(BaseModel):
+    name: str | None = None
+    aliases: list[str] | None = None
+
+
 def _required_text(label: str):
     """A validator body for a field that must hold real text: trimmed, and a
     blank or all-whitespace value is refused (422) rather than stored."""
