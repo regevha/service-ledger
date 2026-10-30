@@ -27,8 +27,8 @@ test('a technician can confirm a report as an installation / upgrade and review 
   const fields = page.locator('.field-list');
   await expect(fields).toBeVisible({ timeout: TIMEOUT.flow });
   await expect(fields).toContainText('Service description');
-  await expect(fields).toContainText('Parts used');
-  await expect(fields).toContainText('Verification result');
+  await expect(fields).toContainText('Components replaced');
+  await expect(fields).toContainText('Labor');
   // The repair template's fields are not on this report.
   await expect(fields).not.toContainText('Fault category');
 
