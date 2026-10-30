@@ -199,6 +199,20 @@ textarea {
 .dropzone.dragging * {
   pointer-events: none;
 }
+.error-details {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.error-details summary {
+  cursor: pointer;
+}
+.error-details code {
+  display: block;
+  margin-top: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .drop-error {
   margin-top: 10px;
   padding: 9px 12px;
