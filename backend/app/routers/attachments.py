@@ -9,7 +9,7 @@ from pathlib import Path
 
 import io
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from sqlalchemy.orm import Session
 
@@ -38,7 +38,7 @@ settings = get_settings()
         }
     },
 )
-async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session = Depends(get_db)):
+async def upload_attachment(report_id: uuid.UUID, file: UploadFile, request: Request, db: Session = Depends(get_db)):
     """§4 step 1 / §9: upload a scanned original. The only entry path for
     MVP (§4) — there is no blank-form fallback."""
     report = db.get(models.Report, report_id)
@@ -51,19 +51,33 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, db: Session 
     # says (a "text/html" upload used to be stored with that type and served
     # straight back from GET /attachments/{id}/file), and Claude needs the
     # real type to read the file (services/documents.py).
-    contents = await file.read()
-    if not contents:
+    # Read in chunks and stop at the limit, so a very large upload is never held
+    # in memory whole. The type (and with it the limit) is known from the first chunk.
+    first = await file.read(_CHUNK_BYTES)
+    if not first:
         raise HTTPException(422, "The uploaded file is empty.")
-    media_type = detect_media_type(contents)
+    media_type = detect_media_type(first)
     if media_type is None:
         raise HTTPException(415, f"Unsupported file type. Upload {ACCEPTED_DESCRIPTION}.")
     limit = settings.max_pdf_upload_bytes if media_type == PDF else settings.max_image_upload_bytes
-    if len(contents) > limit:
+    chunks, size = [first], len(first)
+    while size <= limit:
+        chunk = await file.read(_CHUNK_BYTES)
+        if not chunk:
+            break
+        chunks.append(chunk)
+        size += len(chunk)
+    if size > limit:
+        declared = request.headers.get("content-length")
+        shown = f"{int(declared) / 1048576:.1f} MB" if declared and declared.isdigit() else f"over {limit // 1048576} MB"
         raise HTTPException(
             413,
-            f"This {'PDF' if media_type == PDF else 'image'} is {len(contents) / 1048576:.1f} MB; "
+            f"This {'PDF' if media_type == PDF else 'image'} is {shown}; "
             f"the limit is {limit // 1048576} MB. Reduce its size or resolution and upload it again.",
         )
+    contents = b"".join(chunks)
+    if detect_media_type(contents) != media_type:
+        raise HTTPException(415, f"Unsupported file type. Upload {ACCEPTED_DESCRIPTION}.")
 
     # The exact same file already read under another report: don't store it
     # and don't let it be classified and extracted a second time (two more
@@ -237,6 +251,32 @@ def get_attachment_page_image(
     return Response(buffer.getvalue(), media_type="image/png", headers=headers)
 
 
+_CHUNK_BYTES = 1024 * 1024
+_UNFINISHED = (
+    models.ExtractionJobStatus.pending,
+    models.ExtractionJobStatus.classifying,
+    models.ExtractionJobStatus.extracting,
+    models.ExtractionJobStatus.translating,
+    models.ExtractionJobStatus.awaiting_approval,
+)
+
+
+def _unfinished_job(db: Session, attachment_id: uuid.UUID, kind: models.ExtractionJobKind):
+    """The job of this kind for this attachment that has not finished, if any.
+    Asking again while one runs returns that job instead of queuing a second one
+    (two paid model calls for the same answer, the later overwriting the earlier)."""
+    return (
+        db.query(models.ExtractionJob)
+        .filter(
+            models.ExtractionJob.attachment_id == attachment_id,
+            models.ExtractionJob.kind == kind,
+            models.ExtractionJob.status.in_(_UNFINISHED),
+        )
+        .order_by(models.ExtractionJob.started_at.desc())
+        .first()
+    )
+
+
 @router.post(
     "/attachments/{attachment_id}/classify",
     response_model=schemas.ExtractionJobOut,
@@ -265,6 +305,10 @@ def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db))
     blocked = translation_gate(attachment)
     if blocked:
         raise HTTPException(409, blocked)
+
+    running = _unfinished_job(db, attachment_id, models.ExtractionJobKind.classify)
+    if running is not None:
+        return running
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,
@@ -309,6 +353,10 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
     blocked = translation_gate(attachment)
     if blocked:
         raise HTTPException(409, blocked)
+
+    running = _unfinished_job(db, attachment_id, models.ExtractionJobKind.extract)
+    if running is not None:
+        return running
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,
