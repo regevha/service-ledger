@@ -58,7 +58,7 @@ export function AddInstrumentPanel({
     listInstrumentTypes()
       .then((list) => {
         setTypes(list);
-        setTypeKey((current) => current || list[0]?.key || '');
+        setTypeKey((current) => current || (list.find((t) => t.is_default)?.key ?? list[0]?.key ?? ''));
       })
       .catch(() => setError('Could not load the instrument types.'));
   }, []);

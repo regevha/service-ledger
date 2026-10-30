@@ -34,7 +34,7 @@ def test_create_report_template(client):
 def test_create_report_template_defaults_model_to_any(client):
     client.post("/instrument-types", json={"display_name": "other"})
     # No `model` key at all — distinct from the empty-string/whitespace case
-    # below, which is normalized to the same None. A non-"facs" instrument
+    # below, which is normalized to the same None. A non-"flow_cytometer" instrument
     # type sidesteps seed_templates.py's own None-model installation_upgrade row,
     # which would otherwise collide on the "any model" slot this is testing.
     resp = client.post(
@@ -232,7 +232,7 @@ def test_database_itself_rejects_duplicate_null_model_rows(seeded):
     # the baseline migration's unique index — not just routers/
     # report_templates.py's own check — is what actually closes the
     # concurrent-request race window.
-    dup = ReportTemplate(instrument_type="facs", report_type=ReportType.installation_upgrade, model=None, field_schema={"fields": MIN_FIELDS})
+    dup = ReportTemplate(instrument_type="flow_cytometer", report_type=ReportType.installation_upgrade, model=None, field_schema={"fields": MIN_FIELDS})
     seeded.add(dup)
     try:
         seeded.commit()
@@ -286,7 +286,7 @@ def test_update_report_template_null_fields_rejected(client):
 def test_update_report_template_can_null_out_model(client):
     client.post("/instrument-types", json={"display_name": "other"})
     # instrument_type="other" so nulling the model doesn't collide with
-    # seed_templates.py's own None-model "facs"/repair row.
+    # seed_templates.py's own None-model "flow_cytometer"/repair row.
     created = client.post(
         "/report-templates", json={"instrument_type": "other", "report_type": "repair", "model": "X", "fields": MIN_FIELDS}
     ).json()

@@ -25,7 +25,7 @@ test('a new instrument type can be added, used, and shows a clear message when i
   await page.click('button:has-text("+ New instrument")');
 
   // Flow cytometer is the first type and the default.
-  await expect(page.locator('#instrument-type')).toHaveValue('facs');
+  await expect(page.locator('#instrument-type')).toHaveValue('flow_cytometer');
   // The seeded types are all offered.
   for (const seeded of ['Flow cytometer', 'Electron microscope', 'ImageStream', 'Mass spectrometer', 'PCR machine']) {
     await expect(page.locator('#instrument-type option', { hasText: seeded })).toHaveCount(1);

@@ -23,7 +23,7 @@ async function unitWithReport(request: APIRequestContext, stamp: number, tag: st
   const instrument = await created.json();
   const template = await (
     await request.post(`${API_BASE}/report-templates`, {
-      data: { instrument_type: 'facs', report_type: 'repair', model, fields: [{ name: 'summary', type: 'text' }] },
+      data: { instrument_type: 'flow_cytometer', report_type: 'repair', model, fields: [{ name: 'summary', type: 'text' }] },
     })
   ).json();
   const report = await (await request.post(`${API_BASE}/reports`, { data: { technician_name: technician } })).json();

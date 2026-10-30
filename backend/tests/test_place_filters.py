@@ -21,7 +21,7 @@ def _unit(client, serial, institution=None, location=None):
 def _template(client):
     r = client.post(
         "/report-templates",
-        json={"instrument_type": "facs", "report_type": "repair", "model": "Zeta Filt Model", "fields": [{"name": "labor_hours", "type": "number"}]},
+        json={"instrument_type": "flow_cytometer", "report_type": "repair", "model": "Zeta Filt Model", "fields": [{"name": "labor_hours", "type": "number"}]},
     )
     assert r.status_code in (201, 409), r.text
     return uuid.UUID(client.get("/report-templates", params={"report_type": "repair", "model": "Zeta Filt Model"}).json()[0]["id"])

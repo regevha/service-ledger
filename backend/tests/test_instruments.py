@@ -93,7 +93,7 @@ def test_instrument_trend_excludes_booleans(client, seeded):
 def _numeric_template(db):
     """A template with numeric fields of both kinds — the seeded templates only have labor_hours."""
     template = ReportTemplate(
-        instrument_type="facs",
+        instrument_type="flow_cytometer",
         report_type=ReportType.repair,
         model="Trend test model",
         field_schema={

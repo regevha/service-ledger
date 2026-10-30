@@ -17,7 +17,7 @@ async function unit(request: APIRequestContext, model: string, tag: string) {
 async function template(request: APIRequestContext, model: string) {
   const r = await request.post(`${API_BASE}/report-templates`, {
     data: {
-      instrument_type: 'facs',
+      instrument_type: 'flow_cytometer',
       report_type: 'repair',
       model,
       fields: [

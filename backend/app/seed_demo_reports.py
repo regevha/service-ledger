@@ -37,6 +37,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import SessionLocal
 from app.models import (
+    DEFAULT_INSTRUMENT_TYPE_KEY,
     Attachment,
     ExtractionJob,
     ExtractionJobKind,
@@ -200,7 +201,7 @@ def seed(db: Session) -> list[Report]:
             # report to, so skip it rather than creating an orphaned report.
             continue
         template = resolve_template(
-            db, instrument_type="facs", report_type=spec["report_type"], model=spec["instrument_model"]
+            db, instrument_type=DEFAULT_INSTRUMENT_TYPE_KEY, report_type=spec["report_type"], model=spec["instrument_model"]
         )
         if template is None:
             continue

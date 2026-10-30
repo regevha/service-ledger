@@ -19,7 +19,7 @@ def _model(client, name):
     return next(m for m in client.get("/instrument-models").json() if m["name"] == name)
 
 
-def _template(client, model, report_type="repair", instrument_type="facs"):
+def _template(client, model, report_type="repair", instrument_type="flow_cytometer"):
     r = client.post(
         "/report-templates",
         json={
@@ -153,7 +153,7 @@ def test_instrument_cannot_join_a_model_of_another_type(client):
     client.post("/instrument-models", json={"name": "Zeta PCR", "instrument_type": "pcr_machine"})
     r = client.post(
         "/instruments",
-        json={"name": "X", "model": "Zeta PCR", "serial_number": "S9", "manufacturer": "BD", "instrument_type": "facs"},
+        json={"name": "X", "model": "Zeta PCR", "serial_number": "S9", "manufacturer": "BD", "instrument_type": "flow_cytometer"},
     )
     assert r.status_code == 422
     unit = _make_unit(client, "S1")

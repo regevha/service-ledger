@@ -386,10 +386,14 @@ function TemplateFormScreen({
   const seed = existing ?? copyOf;
   const isCreate = !existing && !copyOf;
   const [types, setTypes] = useState<InstrumentType[]>([]);
-  const [instrumentType, setInstrumentType] = useState(seed?.instrument_type ?? request?.instrumentType ?? 'facs');
+  const [instrumentType, setInstrumentType] = useState(seed?.instrument_type ?? request?.instrumentType ?? '');
   useEffect(() => {
     listInstrumentTypes()
-      .then(setTypes)
+      .then((list) => {
+        setTypes(list);
+        // A new template starts with the default type (an existing one keeps its own).
+        setInstrumentType((current) => current || (list.find((t) => t.is_default)?.key ?? list[0]?.key ?? ''));
+      })
       .catch(() => setTypes([]));
   }, []);
   const [reportType, setReportType] = useState<ReportType>(seed?.report_type ?? request?.reportType ?? 'repair');

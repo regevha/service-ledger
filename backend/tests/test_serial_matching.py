@@ -21,7 +21,7 @@ PDF = ("scan.pdf", b"%PDF-1.4 x", "application/pdf")
 
 
 def _fleet(*pairs):
-    return [SimpleNamespace(model=m, serial_number=s, manufacturer="BD", instrument_type="facs") for m, s in pairs]
+    return [SimpleNamespace(model=m, serial_number=s, manufacturer="BD", instrument_type="flow_cytometer") for m, s in pairs]
 
 
 def _guess(value, confidence=0.97):

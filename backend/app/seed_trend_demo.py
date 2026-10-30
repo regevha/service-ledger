@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import SessionLocal
 from app.models import (
+    DEFAULT_INSTRUMENT_TYPE_KEY,
     Attachment,
     ExtractionJobKind,
     ExtractionJobStatus,
@@ -96,7 +97,7 @@ def seed(db: Session) -> list[Report]:
         # seed_instruments hasn't run yet — nothing to attach these to.
         return []
 
-    template = resolve_template(db, instrument_type="facs", report_type="preventive_maintenance", model=INSTRUMENT_MODEL)
+    template = resolve_template(db, instrument_type=DEFAULT_INSTRUMENT_TYPE_KEY, report_type="preventive_maintenance", model=INSTRUMENT_MODEL)
     if template is None:
         # seed_templates hasn't run yet.
         return []
