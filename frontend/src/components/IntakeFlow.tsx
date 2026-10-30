@@ -373,7 +373,7 @@ function ConfirmClassificationScreen({
   ].filter(Boolean);
   return (
     <>
-    {classification.maker_in_fleet === false && (
+    {(classification.maker_in_fleet === false || (match === 'not_found' && !!serial)) && (
       <AddInstrumentPanel classification={classification} busy={busy} onAdded={onInstrumentAdded} />
     )}
     <div className="section">

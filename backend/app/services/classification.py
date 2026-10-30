@@ -653,6 +653,12 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
         # The serial says one model and the document's model line another: one
         # of the two reads is wrong, so don't pick for the technician.
         matched_instrument = None
+    elif serial_match == "not_found" and serial_read.confidence >= settings.classification_confidence_threshold:
+        # The document prints a serial that no registered unit has. Falling back
+        # to "the only unit of that model" would file the report on an instrument
+        # the document does not name. Stop at the confirm step instead, where the
+        # unit is pre-selected (suggested below) and the instrument can be added.
+        matched_instrument = None
     else:
         # No usable serial (not read, not in the fleet, or read with low
         # confidence): fall back to the model alone, which is only enough when
