@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useRef } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef } from 'react';
 import type { ItemSchemaColumn, TemplateField } from '../api';
 import { fieldLabel } from '../fieldLabels';
 import { DateInput } from './DateInput';
@@ -24,20 +24,45 @@ type LeafType = 'text' | 'number' | 'boolean' | 'date';
 /** True inside a finalized report that is not being edited: empty values then read as a dash, not a blank box. */
 export const ReadOnlyContext = createContext(false);
 
+function fitToText(el: HTMLTextAreaElement) {
+  if (el.closest('.read-only')) {
+    el.style.height = 'auto';
+    // scrollHeight leaves out the border; with box-sizing: border-box the height must include it.
+    el.style.height = `${el.scrollHeight + (el.offsetHeight - el.clientHeight)}px`;
+  } else {
+    el.style.height = '';
+  }
+}
+
 function AutoGrowTextarea({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const readOnly = useContext(ReadOnlyContext);
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (el.closest('.read-only')) {
-      el.style.height = 'auto';
-      // scrollHeight leaves out the border; with box-sizing: border-box the height must include it.
-      el.style.height = `${el.scrollHeight + (el.offsetHeight - el.clientHeight)}px`;
-    } else {
-      el.style.height = '';
-    }
+    if (ref.current) fitToText(ref.current);
   });
+  // The text can re-wrap without a re-render: when the web font finishes loading, or when the
+  // box's width changes (a scrollbar appearing, the phone turning). Fit again then, or the
+  // last lines are cut off.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !readOnly) return;
+    let cancelled = false;
+    let lastWidth = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      // Only a width change re-wraps the text; our own height change must not loop back here.
+      if (el.clientWidth === lastWidth) return;
+      lastWidth = el.clientWidth;
+      fitToText(el);
+    });
+    observer.observe(el);
+    void document.fonts?.ready.then(() => {
+      if (!cancelled) fitToText(el);
+    });
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [readOnly]);
   return <textarea ref={ref} value={value} placeholder={readOnly ? '—' : undefined} onChange={(e) => onChange(e.target.value)} />;
 }
 
