@@ -173,7 +173,7 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
   }
   function changeType(i: number, type: FieldType) {
     const current = fields[i];
-    onChange(fields.map((f, j) => (i === j ? { ...defaultFieldFor(type), name: current.name, unit: current.unit, notes: current.notes, filled_by_person: current.filled_by_person } : f)));
+    onChange(fields.map((f, j) => (i === j ? { ...defaultFieldFor(type), name: current.name, unit: current.unit, notes: current.notes, filled_by_person: current.filled_by_person, optional: current.optional } : f)));
   }
   function removeField(i: number) {
     onChange(fields.filter((_, j) => j !== i));
@@ -274,6 +274,14 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
             />
             Filled in by a person: not on the form, so the reading is only a suggestion and Review always asks to check it
           </label>
+          <label className="schema-field-check">
+            <input
+              type="checkbox"
+              checked={Boolean(field.optional)}
+              onChange={(e) => updateField(i, { optional: e.target.checked || undefined })}
+            />
+            May be left empty: when the form does not state it, an empty value is fine and is not flagged
+          </label>
           {field.name.trim() !== '' && (
             <div className="schema-field-preview">
               Shown as <b>{fieldLabel(field.name, field.unit ?? undefined)}</b>
@@ -309,6 +317,7 @@ function fieldToPayload(field: TemplateField): TemplateFieldPayload {
     ...(field.options ? { options: field.options } : {}),
     ...(field.item_schema ? { item_schema: field.item_schema } : {}),
     ...(field.filled_by_person ? { filled_by_person: true } : {}),
+    ...(field.optional ? { optional: true } : {}),
   };
 }
 

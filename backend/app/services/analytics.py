@@ -26,6 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Query, Session, joinedload
 
 from app import models, schemas
+from app.services.field_values import as_choice_list
 from app.services.places import subtree_ids
 from app.services.report_filters import apply_report_filters
 from app.models import report_chronological_order
@@ -215,10 +216,12 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
                     labor_by_instrument[report.instrument_id] = labor_by_instrument.get(report.instrument_id, 0.0) + labor_hours
                     reports_by_instrument[report.instrument_id] = reports_by_instrument.get(report.instrument_id, 0) + 1
                 if report_type is models.ReportType.repair:
-                    fault_category = fields.get("fault_category")
-                    if isinstance(fault_category, str) and fault_category:
-                        labor_by_fault_category[fault_category] = (
-                            labor_by_fault_category.get(fault_category, 0.0) + labor_hours
+                    # A repair can have several categories; its hours are shared
+                    # equally between them so the chart still adds up to the total.
+                    categories = as_choice_list(fields.get("fault_category"))
+                    for category in categories:
+                        labor_by_fault_category[category] = (
+                            labor_by_fault_category.get(category, 0.0) + labor_hours / len(categories)
                         )
 
     instrument_query = db.query(models.Instrument).order_by(models.Instrument.name)

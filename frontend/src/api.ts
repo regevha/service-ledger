@@ -125,6 +125,8 @@ export interface TemplateField {
   item_schema?: ItemSchemaColumn[];
   /** Filled in by a person, not printed on the form: the model only suggests it, and Review always asks to check it. */
   filled_by_person?: boolean;
+  /** May be left empty: when the form does not state it, an empty value is not flagged on Review. */
+  optional?: boolean;
 }
 
 export interface ReportTemplate {
@@ -662,6 +664,7 @@ export interface TemplateFieldPayload {
   options?: string[];
   item_schema?: ItemSchemaColumn[];
   filled_by_person?: boolean;
+  optional?: boolean;
 }
 
 export interface TemplateCreatePayload {
