@@ -304,6 +304,65 @@ def _live_translate(attachment: Attachment, include_pages: list[int]) -> Transla
     return TranslationResult(language, min(max(share, 0.0), 1.0), text, ignored, identifiers, notes)
 
 
+_LANGUAGE_CHECK_TOOL = "record_language"
+_LANGUAGE_CHECK_PROMPT = (
+    "Which language is this service report written in? Give the main language as a short code "
+    '("he", "en", ...) and your estimate (0 to 1) of the share of the letters on the pages that are Hebrew. '
+    "Do not translate or read anything else."
+)
+_LANGUAGE_CHECK_MAX_TOKENS = 200
+
+
+def _live_hebrew_share(attachment: Attachment) -> float:
+    """A small model call that only asks how Hebrew the document is, so an English
+    photo does not wait for a full translation just to learn that it needs none."""
+    try:
+        document_block = claude_content_block(attachment.file_path)
+    except UnsupportedDocumentError as e:
+        raise TranslationError(str(e)) from e
+    tool = {
+        "name": _LANGUAGE_CHECK_TOOL,
+        "description": "Record the language of this document.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "source_language": {"type": "string"},
+                "hebrew_share": {"type": "number", "minimum": 0, "maximum": 1},
+            },
+            "required": ["source_language", "hebrew_share"],
+        },
+    }
+    response = call_claude_tool(
+        client=_get_client(),
+        request_kwargs=dict(
+            model=settings.anthropic_model,
+            max_tokens=_LANGUAGE_CHECK_MAX_TOKENS,
+            timeout=settings.anthropic_timeout_seconds,
+            tools=[tool],
+            tool_choice={"type": "tool", "name": _LANGUAGE_CHECK_TOOL},
+            messages=[{"role": "user", "content": [document_block, {"type": "text", "text": _LANGUAGE_CHECK_PROMPT}]}],
+        ),
+        error_cls=TranslationError,
+        logger=logger,
+        attachment_path=attachment.file_path,
+        verb="check the language of",
+        gerund="checking the language of",
+        noun="language check",
+    )
+    tool_use = extract_tool_use(
+        response,
+        error_cls=TranslationError,
+        logger=logger,
+        attachment_path=attachment.file_path,
+        gerund="checking the language of",
+        noun="language check",
+    )
+    try:
+        return min(max(float(tool_use.input["hebrew_share"]), 0.0), 1.0)
+    except (KeyError, TypeError, ValueError) as e:
+        raise TranslationError(f"Claude's language check was missing or malformed fields: {e}") from e
+
+
 def translate(attachment: Attachment, include_pages: list[int] | None = None) -> TranslationResult | None:
     """Translate one attachment. See the module docstring for the three outcomes."""
     include = sorted({int(p) for p in (include_pages or [])})
@@ -317,6 +376,8 @@ def translate(attachment: Attachment, include_pages: list[int] | None = None) ->
         return _stub_translate(attachment, include)
     if layer_share is not None and layer_share <= settings.hebrew_letter_threshold and not include:
         return None  # a readable text layer that is not Hebrew: no model call
+    if layer_share is None and not include and _live_hebrew_share(attachment) <= settings.hebrew_letter_threshold:
+        return None  # a scan the model says is not Hebrew: the small check was enough
     result = _live_translate(attachment, include)
     if result.hebrew_share <= settings.hebrew_letter_threshold and not include:
         return None
