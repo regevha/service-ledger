@@ -111,6 +111,14 @@
   border-color: var(--accent);
   color: #fff;
 }
+.step.failed {
+  color: var(--crit);
+}
+.step.failed .num {
+  background: var(--crit);
+  border-color: var(--crit);
+  color: #fff;
+}
 .step.done .num {
   background: var(--good);
   border-color: var(--good);
@@ -174,6 +182,10 @@ textarea {
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
+}
+.dropzone:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .dropzone:hover,
 .dropzone.dragging {
