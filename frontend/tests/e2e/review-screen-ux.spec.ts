@@ -10,7 +10,7 @@ import { finalizeFromReview } from './finalize-helper';
 import { createNumericModel } from './numeric-fixture';
 import { TIMEOUT } from './timeouts';
 import { seedReport, API_BASE } from './helpers/api';
-import { openReviewFromList } from './helpers/ui';
+import { openReviewFromList, confirmClassification } from './helpers/ui';
 
 // The review screen as the 2026-10-24 UI review asked for it: the scan beside the fields, an action
 // bar that stays in view, readable field names, a finalized report that is read-only until Edit,
@@ -28,7 +28,7 @@ async function readSampleWorkOrder(page: Page) {
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'sample-work-order.pdf')));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
-  await page.click('button:has-text("Confirm & continue")');
+  await confirmClassification(page);
   await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 }
 

@@ -3,6 +3,7 @@ import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TIMEOUT } from './timeouts';
+import { confirmClassification } from './helpers/ui';
 
 import { finalizeFromReview } from './finalize-helper';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -42,7 +43,7 @@ test('uncertain report type routes through manual confirm before extracting', as
   await expect(typeRow).toContainText('Report type');
   await expect(typeRow.locator('.badge-warn')).toBeVisible();
 
-  await page.click('button:has-text("Confirm & continue")');
+  await confirmClassification(page);
   await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 
   // The stub's real BD Care values for this exact fixture (§5) — root_cause
