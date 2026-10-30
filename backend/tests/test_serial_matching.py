@@ -129,20 +129,30 @@ def test_several_units_and_no_serial_still_needs_a_manual_pick(client, run_worke
     assert report["instrument_id"] is None
 
 
-def test_a_serial_that_is_not_in_the_fleet_falls_back_to_the_model(client, run_worker, monkeypatch):
-    # One Aria: the model alone is enough, as before — but the unmatched serial is reported.
+def test_a_confidently_read_serial_that_is_not_in_the_fleet_is_not_auto_resolved(client, run_worker, monkeypatch):
+    # One Aria, but the document names a serial no unit has. Filing the report on
+    # the only Aria would attach it to an instrument the document does not name, so
+    # it stops at the confirm step, with the only Aria offered as the starting choice.
     report, result = _classify(client, run_worker, monkeypatch, serial="ZZ-0001")
     assert result["serial_match"] == "not_found"
     assert result["instrument_serial"]["value"] == "ZZ-0001"
-    assert result["resolved_instrument_id"] == _instrument_id(client, "P648282B3003")
-    assert report["instrument_id"] == _instrument_id(client, "P648282B3003")
+    assert result["resolved_instrument_id"] is None
+    assert report["instrument_id"] is None
+    assert result["suggested_instrument_id"] == _instrument_id(client, "P648282B3003")
 
-    # Two Arias: nothing says which, so it is left for the technician.
+    # Two Arias: nothing says which, so nothing is suggested either.
     _add_second_aria(client)
     report2, result2 = _classify(client, run_worker, monkeypatch, serial="ZZ-0001")
     assert result2["serial_match"] == "not_found"
     assert result2["resolved_instrument_id"] is None
     assert result2["suggested_instrument_id"] is None
+
+
+def test_an_unsure_unmatched_serial_still_falls_back_to_the_model(client, run_worker, monkeypatch):
+    # A serial read at low confidence may just be a misread, so the model alone still decides.
+    report, result = _classify(client, run_worker, monkeypatch, serial="ZZ-0001", serial_confidence=0.3)
+    assert result["serial_match"] == "not_found"
+    assert result["resolved_instrument_id"] == _instrument_id(client, "P648282B3003")
 
 
 def test_a_serial_that_contradicts_the_model_is_not_auto_resolved(client, run_worker, monkeypatch):
