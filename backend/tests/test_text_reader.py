@@ -285,3 +285,65 @@ def test_the_work_order_is_stored_without_classifying(client, db_session):
 
     attachment = _upload(client, make_pdf(service_report()))
     assert db_session.get(models.Attachment, attachment["id"]).work_order_number == "90000001"
+
+
+# ---------- live mode: Claude only when the text is not enough ----------
+
+
+class _CountingClient:
+    """Stands in for the Anthropic client; any call is a test failure unless
+    the test expects one."""
+
+    def __init__(self):
+        self.calls = 0
+        self.messages = self
+
+    def create(self, **kwargs):
+        self.calls += 1
+        raise RuntimeError("model called")
+
+
+@pytest.fixture()
+def live_counter(monkeypatch):
+    from app.services import classification
+
+    monkeypatch.setattr(classification.settings, "use_live_claude", True)
+    fake = _CountingClient()
+    monkeypatch.setattr(classification, "_get_client", lambda: fake)
+    return fake
+
+
+def _classify_job(client, run_worker, attachment_id):
+    job = client.post(f"/attachments/{attachment_id}/classify").json()
+    run_worker()
+    return client.get(f"/extraction-jobs/{job['id']}").json()
+
+
+def test_live_a_clear_text_report_makes_no_model_call(client, run_worker, live_counter):
+    attachment = _upload(client, make_pdf(service_report()))
+    done = _classify_job(client, run_worker, attachment["id"])
+    assert done["status"] == "succeeded"
+    assert live_counter.calls == 0
+    assert done["classification"]["reader"] == "text_layer"
+    assert done["classification"]["resolved_instrument_id"]
+
+
+def test_live_a_serial_not_in_the_fleet_still_goes_to_the_model(client, run_worker, live_counter):
+    attachment = _upload(client, make_pdf(service_report(serial="R000000000000")))
+    done = _classify_job(client, run_worker, attachment["id"])
+    assert live_counter.calls == 1 and done["status"] == "failed"
+
+
+def test_live_an_unknown_task_code_still_goes_to_the_model(client, run_worker, live_counter):
+    attachment = _upload(client, make_pdf(service_report(task="T999 Something else")))
+    _classify_job(client, run_worker, attachment["id"])
+    assert live_counter.calls == 1
+
+
+def test_live_a_hebrew_text_layer_still_goes_to_the_model(client, run_worker, live_counter, monkeypatch):
+    from app.services import classification
+
+    monkeypatch.setattr(classification, "is_hebrew_text_layer", lambda attachment: True)
+    attachment = _upload(client, make_pdf(service_report()))
+    _classify_job(client, run_worker, attachment["id"])
+    assert live_counter.calls == 1

@@ -38,7 +38,7 @@ from app.services.duplicates import find_duplicate_report_ids, normalize_work_or
 from app.services.errors import ClassificationError
 from app.services.text_reader import extract_text, read_identifiers
 from app.services.documents import UnsupportedDocumentError
-from app.services.translation import accepted_text, source_block
+from app.services.translation import accepted_text, is_hebrew_text_layer, source_block
 from app.services.templates import resolve_template
 
 logger = logging.getLogger("app.services.classification")
@@ -461,6 +461,25 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
     return DocumentRead(instrument_guess, type_guess, serial, read.work_order_number, source, "text_layer")
 
 
+def _confident_text_read(attachment: Attachment, instruments: list[Instrument]) -> DocumentRead | None:
+    """Live mode: skip the Claude call when the PDF's own text answers every
+    question. That needs a clean English text layer, a serial printed on the
+    page that matches exactly one fleet instrument of the model read, and a
+    task code that maps to a report type. A scan, another maker's form, a
+    Hebrew text layer or anything unclear returns None and goes to Claude."""
+    if is_hebrew_text_layer(attachment):
+        return None
+    read = _text_classify(attachment, instruments)
+    if read is None or read.report_type_source != "task_code" or read.serial is None:
+        return None
+    if read.instrument.confidence < settings.classification_confidence_threshold:
+        return None
+    instrument = match_serial(read.serial, instruments)
+    if instrument is None or instrument.model != read.instrument.value:
+        return None
+    return read
+
+
 def _has_readable_text(attachment: Attachment) -> bool:
     try:
         with open(attachment.file_path, "rb") as f:
@@ -596,7 +615,9 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
     # DocumentRead(*...) so a plain (instrument, type, serial) triple — what
     # these two functions returned before — is still accepted.
     if settings.use_live_claude:
-        document = DocumentRead(*_live_classify(db, attachment, instruments))
+        document = _confident_text_read(attachment, instruments)
+        if document is None:
+            document = DocumentRead(*_live_classify(db, attachment, instruments))
     else:
         document = DocumentRead(*_stub_classify(attachment, instruments))
     instrument_guess, type_guess, serial_read = document.instrument, document.report_type, document.serial
