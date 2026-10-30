@@ -101,7 +101,8 @@ const baseName = (name: string) => name.replace(/\.[^.]+$/, '') || 'photo';
  * left alone (they may be animated and are rare for scans).
  */
 export async function prepareUpload(files: File[]): Promise<File> {
-  if (files.length === 1 && (files[0].type === 'application/pdf' || files[0].type === 'image/gif')) return files[0];
+  // A PDF, a GIF, or anything that is not an image goes up untouched (the server gives a refusal its reason).
+  if (files.length === 1 && !/^image\/(png|jpeg|webp)$/.test(files[0].type)) return files[0];
   const images = await Promise.all(files.map(toJpeg));
   if (images.length === 1) {
     return new File([images[0].bytes as BlobPart], `${baseName(files[0].name)}.jpg`, { type: 'image/jpeg' });
