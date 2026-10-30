@@ -69,7 +69,16 @@ type Phase =
   | { name: 'review' }
   | { name: 'done' }
   | { name: 'already-on-file'; existingReportId: string }
-  | { name: 'error'; message: string; retry: () => void; action?: { label: string; run: () => void } };
+  | {
+      name: 'error';
+      message: string;
+      retry: () => void;
+      /** What the retry button says; "Try again" unless trying again would only repeat the refusal. */
+      retryLabel?: string;
+      action?: { label: string; run: () => void };
+      /** The step that failed (0 upload, 1 classify, 2 review), so the step bar keeps showing it. */
+      step: number;
+    };
 
 /** A report that is waiting for a template to be created (see TemplateRequest). */
 interface WaitingForTemplate {
@@ -88,28 +97,41 @@ function templateApplies(template: ReportTemplate, waiting: WaitingForTemplate):
   );
 }
 
+/** Which of the three steps a phase belongs to: 0 Upload, 1 Classify, 2 Review & finalize, 3 all done. */
+function stepOf(phase: Phase): number {
+  switch (phase.name) {
+    case 'done':
+      return 3;
+    case 'intake':
+    case 'already-on-file':
+      return 0;
+    case 'review':
+      return 2;
+    case 'error':
+      return phase.step;
+    case 'working':
+      // Creating the report and sending the scan are the upload; everything after (the language
+      // check, classifying, resolving the template, reading the fields) is step 2.
+      return /^(Creating report|Uploading)/.test(phase.label) ? 0 : 1;
+    default:
+      return 1; // review-translation, confirm-classification
+  }
+}
+
+const STEP_FAILED = ['The upload failed', 'Reading the document failed', 'Saving the report failed'];
+
 function StepBar({ phase }: { phase: Phase }) {
-  // Every "working" phase before the review screen (upload, classify,
-  // resolve-template, extract) counts as step 1 ("Classify") below — there's
-  // no separate step for those sub-stages. Saving and finalizing do not
-  // change the phase: the review screen stays in place while they run.
-  const stepIndex =
-    phase.name === 'done'
-      ? 3 // all three steps finished
-      : phase.name === 'intake'
-      ? 0
-      : phase.name === 'review-translation' || phase.name === 'confirm-classification' || (phase.name === 'working' && phase.label.includes('lassif'))
-        ? 1
-        : phase.name === 'review'
-          ? 2
-          : phase.name === 'working'
-            ? 1
-            : 0;
+  const stepIndex = stepOf(phase);
+  const failed = phase.name === 'error' ? phase.step : -1;
   const steps = ['Upload', 'Classify', 'Review & finalize'];
   return (
     <div className="steps" data-testid="intake-steps">
       {steps.map((label, i) => (
-        <div key={label} data-testid="intake-step" className={`step ${i === stepIndex ? 'active' : ''} ${i < stepIndex ? 'done' : ''}`}>
+        <div
+          key={label}
+          data-testid="intake-step"
+          className={`step ${i === stepIndex ? 'active' : ''} ${i < stepIndex ? 'done' : ''} ${i === failed ? 'failed' : ''}`}
+        >
           <span className="num">{i < stepIndex ? '✓' : i + 1}</span> {label}
         </div>
       ))}
@@ -139,7 +161,11 @@ function IntakeScreen({
   return (
     <div className="section">
       <div className="section-title">Lab manager</div>
+      <label htmlFor="intake-name" className="sr-only">
+        Your name (optional)
+      </label>
       <input
+        id="intake-name"
         type="text"
         className="text-input"
         placeholder="Your name (optional)"
@@ -188,7 +214,9 @@ function IntakeScreen({
           type="file"
           data-testid="intake-file-input"
           accept={ACCEPTED_TYPES.join(',')}
-          hidden
+          // Visually hidden, not display:none, so the keyboard can reach it (Enter or Space opens the picker).
+          className="sr-only"
+          aria-label="Choose a scan or PDF"
           onChange={(e) => {
             setDropError(null);
             setFile(e.target.files?.[0] ?? null);
@@ -582,6 +610,24 @@ export function IntakeFlow({
   const abortRef = useRef<AbortController>(new AbortController());
   // The job the screen is waiting on, so Cancel can stop it.
   const jobIdRef = useRef<string | null>(null);
+  // The draft report this attempt created, and whether Cancel (rather than leaving the screen) asked
+  // for it to be removed.
+  const draftIdRef = useRef<string | null>(null);
+  const discardDraftRef = useRef(false);
+  // Remove a draft, trying again a few times: a delete that arrives while the upload is still being
+  // stored can be refused once. A draft that is already gone counts as removed.
+  async function discardDraft(reportId: string) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await deleteReport(reportId);
+        break;
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) break;
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+    }
+    if (draftIdRef.current === reportId) draftIdRef.current = null;
+  }
   useEffect(() => {
     cancelledRef.current = false;
     abortRef.current = new AbortController();
@@ -672,6 +718,14 @@ export function IntakeFlow({
     }
   }
 
+  // Back to the upload screen with the name kept and no file chosen.
+  function chooseAnotherFile() {
+    draftIdRef.current = null;
+    setPhase({ name: 'intake' });
+    setFile(null);
+    setReport(null);
+  }
+
   function resetToIntake() {
     setPhase({ name: 'intake' });
     submittedJobs.current.clear();
@@ -737,9 +791,10 @@ export function IntakeFlow({
   // directly for a job that finished with status 'failed', which isn't a
   // thrown exception); `attempt` wraps a step's body so each step below only
   // states its fallback message, its retry, and what it actually does.
-  function failPhase(message: string, retry: () => void, action?: { label: string; run: () => void }) {
+  function failPhase(message: string, retry: () => void, action?: { label: string; run: () => void }, retryLabel?: string) {
     if (cancelledRef.current) return;
-    setPhase({ name: 'error', message, retry, action });
+    // The step that was running stays the one the step bar shows, and names what failed.
+    setPhase((prev) => ({ name: 'error', message, retry, retryLabel, action, step: prev.name === 'error' ? prev.step : stepOf(prev) }));
   }
 
   async function attempt(fallbackMessage: string, retry: () => void, fn: () => Promise<void>) {
@@ -748,7 +803,11 @@ export function IntakeFlow({
       await fn();
     } catch (e) {
       // Cancelled: the person is not waiting for this step any more, so there is nothing to report.
-      if (cancelledRef.current || e instanceof PollAborted) return;
+      if (cancelledRef.current || e instanceof PollAborted) {
+        // A step that was cut off by Cancel may have left the draft behind (its delete raced the step).
+        if (discardDraftRef.current && draftIdRef.current) void discardDraft(draftIdRef.current);
+        return;
+      }
       failPhase(e instanceof ApiError ? e.message : fallbackMessage, retry);
     }
   }
@@ -798,15 +857,17 @@ export function IntakeFlow({
     abortRef.current.abort();
     submittedJobs.current.clear();
     const jobId = jobIdRef.current;
-    const draftId = report && phase.name !== 'review' && phase.name !== 'done' ? report.id : null;
+    discardDraftRef.current = true;
+    const draftId = phase.name !== 'review' && phase.name !== 'done' ? draftIdRef.current : null;
     // Stop the job first: deleting a report whose scan is still being read is refused.
     if (jobId) await cancelExtractionJob(jobId).catch(() => undefined);
-    if (draftId) await deleteReport(draftId).catch(() => undefined);
+    if (draftId) await discardDraft(draftId);
     if (onCancel) {
       onCancel();
     } else {
       resetToIntake();
       cancelledRef.current = false;
+      discardDraftRef.current = false;
       abortRef.current = new AbortController();
     }
   }
@@ -1013,8 +1074,9 @@ export function IntakeFlow({
     setPhase({ name: 'working', label: 'Creating report…' });
     await attempt('Could not create the report.', () => void handleStart(), async () => {
       const newReport = await createReport({ technician_name: technicianName || null });
+      draftIdRef.current = newReport.id;
       if (cancelledRef.current) {
-        await deleteReport(newReport.id).catch(() => undefined);
+        if (discardDraftRef.current) await discardDraft(newReport.id);
         return;
       }
       setReport(newReport);
@@ -1034,14 +1096,24 @@ export function IntakeFlow({
           // created for this attempt is empty and would only clutter the list,
           // so remove it (best effort), then point at the existing report.
           await deleteReport(reportId).catch(() => undefined);
+          draftIdRef.current = null;
           setReport(null);
           setPhase({ name: 'already-on-file', existingReportId: e.existingReportId });
+          return;
+        }
+        if (e instanceof ApiError && [413, 415, 422].includes(e.status)) {
+          // The file itself was refused, so trying the same one again would fail the same way.
+          // The draft made for it holds nothing: remove it and offer another file.
+          await deleteReport(reportId).catch(() => undefined);
+          draftIdRef.current = null;
+          setReport(null);
+          failPhase(e.message, chooseAnotherFile, undefined, 'Choose another file');
           return;
         }
         throw e;
       }
       if (cancelledRef.current) {
-        await deleteReport(reportId).catch(() => undefined);
+        if (discardDraftRef.current) await discardDraft(reportId);
         return;
       }
       setAttachmentId(attachment.id);
@@ -1269,7 +1341,9 @@ export function IntakeFlow({
 
       {phase.name === 'error' && (
         <div className="section">
-          <div className="banner banner-crit" data-testid="intake-error">{phase.message}</div>
+          <div className="banner banner-crit" data-testid="intake-error">
+            <strong>{STEP_FAILED[phase.step] ?? 'Something went wrong'}{file ? ` (${file.name})` : ''}.</strong> {phase.message}
+          </div>
           <div className="cta-row">
             <button className="btn" onClick={resetToIntake}>
               Start over
@@ -1280,7 +1354,7 @@ export function IntakeFlow({
               </button>
             )}
             <button className={phase.action ? 'btn' : 'btn primary'} onClick={phase.retry}>
-              Try again
+              {phase.retryLabel ?? 'Try again'}
             </button>
           </div>
         </div>
