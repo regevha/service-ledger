@@ -62,7 +62,7 @@ def test_seed_marks_every_lab_manager_field_and_nothing_else():
             elif manager:
                 unmarked_manager_fields.append(field["name"])
     assert unmarked_manager_fields == []
-    assert {"fault_category", "retest_result", "verification_result"} <= set(marked)
+    assert {"fault_category"} <= set(marked)
 
 
 def test_migration_marks_and_unmarks_by_the_notes():

@@ -78,7 +78,7 @@ function GroupForm({
               type="text"
               className="text-input"
               aria-label="Field name"
-              placeholder="e.g. retest_result"
+              placeholder="e.g. root_cause"
               value={n}
               onChange={(e) => setNames(names.map((x, j) => (j === i ? e.target.value : x)))}
             />
@@ -97,7 +97,7 @@ function GroupForm({
         + Add name
       </button>
       <div className="muted alias-hint">
-        Case, spaces, underscores and hyphens are ignored, so "Retest result" and "retest_result" are one name. A name can be in
+        Case, spaces, underscores and hyphens are ignored, so "Root cause" and "root_cause" are one name. A name can be in
         only one group.
       </div>
 

@@ -6,7 +6,6 @@ import {
   type AnalyticsFilters,
   type ModelComparison,
   type ModelTrend,
-  type PassFailBreakdown,
   type TrendField,
   type UnitComparison,
 } from '../api';
@@ -33,10 +32,6 @@ function formatHours(hours: number): string {
   return `${hours % 1 === 0 ? hours : hours.toFixed(1)}h`;
 }
 
-function passRate(b: PassFailBreakdown): string {
-  return b.total === 0 ? '—' : `${b.pass_count}/${b.total}`;
-}
-
 function UnitTable({ units }: { units: UnitComparison[] }) {
   return (
     <div className="trend-table-wrap">
@@ -49,8 +44,6 @@ function UnitTable({ units }: { units: UnitComparison[] }) {
             <th>Last report</th>
             <th>Labor hours</th>
             <th>Parts replaced</th>
-            <th title="Repair reports whose retest passed">Repairs passed</th>
-            <th title="Preventive maintenance reports whose verification passed">PM passed</th>
           </tr>
         </thead>
         <tbody>
@@ -69,8 +62,6 @@ function UnitTable({ units }: { units: UnitComparison[] }) {
                 <span className="bar-sublabel"> in {u.labor_report_count}</span>
               </td>
               <td>{u.parts_replaced_qty}</td>
-              <td>{passRate(u.repair_results)}</td>
-              <td>{passRate(u.preventive_maintenance_results)}</td>
             </tr>
           ))}
         </tbody>

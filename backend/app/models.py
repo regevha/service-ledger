@@ -506,7 +506,7 @@ class SavedReportFilter(Base):
 
 class FieldAliasGroup(Base):
     """A set of field names that mean the same thing under different wording
-    ("retest_result" and "verification_result"), kept by hand and shared by
+    ("fault_category" and "fault_type", say), kept by hand and shared by
     everyone (proposal-template-comparison.md, phase 2). It is advice for a
     person comparing templates: nothing renames or merges a field because of
     it, and extraction, the review screen and Analytics never read it. `label`

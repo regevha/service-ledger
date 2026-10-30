@@ -79,7 +79,6 @@ def test_the_report_type_filter_keeps_only_that_type(client, db_session):
     assert repair["finalized_report_count"] == 3
     assert repair["total_labor_hours"] == 14.0
     assert _parts(repair) == {"Lens": 5.0}
-    assert repair["pass_fail_by_report_type"]["preventive_maintenance"]["total"] == 0
 
     installation = _fleet(client, report_type="installation_upgrade")
     assert installation["finalized_report_count"] == 1
@@ -133,8 +132,7 @@ def test_a_filter_that_matches_nothing_gives_zeros_not_an_error(client, db_sessi
     assert body["finalized_report_count"] == 0
     assert body["total_labor_hours"] == 0.0
     assert body["parts_replaced"] == []
-    assert body["pass_fail_by_report_type"]["repair"]["total"] == 0
-    assert body["pass_fail_by_report_type"]["preventive_maintenance"]["total"] == 0
+    assert "pass_fail_by_report_type" not in body
 
 
 def test_dates_the_wrong_way_round_and_bad_values_are_refused_on_every_endpoint(client):

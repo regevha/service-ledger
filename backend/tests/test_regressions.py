@@ -163,7 +163,7 @@ def test_reclassifying_onto_a_different_template_clears_old_fields(client, run_w
         f"/reports/{report['id']}/template",
         json={"instrument_id": report["instrument_id"], "template_id": pm["id"]},
     )
-    client.patch(f"/reports/{report['id']}/fields", json={"extracted_fields": {"verification_result": "pass"}})
+    client.patch(f"/reports/{report['id']}/fields", json={"extracted_fields": {"work_performed": "Checked."}})
 
     client.post(f"/attachments/{attachment['id']}/classify")  # stub still says repair
     run_worker()

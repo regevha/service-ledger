@@ -71,7 +71,6 @@ DEMO_REPORTS = [
             ],
             "labor_hours": 3,
             "fault_category": "fluidics",
-            "retest_result": "pass",
         },
         "field_confidences": {
             "fault_description": 0.9,
@@ -80,7 +79,6 @@ DEMO_REPORTS = [
             "components_replaced": 0.85,
             "labor_hours": 0.9,
             "fault_category": 0.8,
-            "retest_result": 0.6,
         },
     },
     {
@@ -109,48 +107,13 @@ DEMO_REPORTS = [
                 {"qty": 1, "part_name": "Pm Kit Scan/Sort/Calib/LSR", "part_number": "34363910"},
                 {"qty": 1, "part_name": "FACScalibur/LSR II HTS Parts Kit", "part_number": "644788"},
             ],
-            "calibrated_tools": [
-                {
-                    "tool_id": "T-000024",
-                    "tool_name": "Digital Multimeter Generic (Any brand) - 210206006",
-                    "last_calibration_date": "06/05/2026",
-                    "next_calibration_date": "06/05/2027",
-                },
-                {
-                    "tool_id": "T-000031",
-                    "tool_name": "Ophir Laser Power Meter Sensor Head - 959756",
-                    "last_calibration_date": "18/05/2026",
-                    "next_calibration_date": "18/05/2027",
-                },
-                {
-                    "tool_id": "T-000030",
-                    "tool_name": "Ophir Laser Power Meter Display - 958865",
-                    "last_calibration_date": "13/05/2026",
-                    "next_calibration_date": "13/05/2027",
-                },
-                {
-                    "tool_id": "T-000024",
-                    "tool_name": "Digital Multimeter Generic (Any brand) - 57870375",
-                    "last_calibration_date": "17/07/2025",
-                    "next_calibration_date": "17/07/2026",
-                },
-                {
-                    "tool_id": "T-4240-003-01",
-                    "tool_name": "Pressure Meter - 61202/9",
-                    "last_calibration_date": "13/08/2025",
-                    "next_calibration_date": "13/08/2026",
-                },
-            ],
             "labor_hours": 3.75,
-            "verification_result": "pass",
         },
         "field_confidences": {
             "service_description": 0.9,
             "work_performed": 0.9,
             "components_replaced": 0.9,
-            "calibrated_tools": 0.9,
             "labor_hours": 0.9,
-            "verification_result": 0.6,
         },
     },
     {
@@ -170,42 +133,13 @@ DEMO_REPORTS = [
                 "specifications and ready for use."
             ),
             "components_replaced": [{"qty": 1, "part_name": "S8 PM kit", "part_number": "667009"}],
-            "calibrated_tools": [
-                {
-                    "tool_id": "T-000030",
-                    "tool_name": "Ophir Laser Power Meter Display - 958864",
-                    "last_calibration_date": "11/17/2025",
-                    "next_calibration_date": "11/17/2026",
-                },
-                {
-                    "tool_id": "T-4240-003-01",
-                    "tool_name": "Pressure Meter - 41645/4-24",
-                    "last_calibration_date": "03/24/2025",
-                    "next_calibration_date": "03/24/2026",
-                },
-                {
-                    "tool_id": "T-000024",
-                    "tool_name": "Digital Multimeter Generic (Any brand) - 48910623",
-                    "last_calibration_date": "02/03/2025",
-                    "next_calibration_date": "02/03/2027",
-                },
-                {
-                    "tool_id": "T-000031",
-                    "tool_name": "Ophir Laser Power Meter Sensor Head - 959757",
-                    "last_calibration_date": "11/17/2025",
-                    "next_calibration_date": "11/17/2026",
-                },
-            ],
             "labor_hours": 6.25,
-            "verification_result": "pass",
         },
         "field_confidences": {
             "service_description": 0.75,
             "work_performed": 0.9,
             "components_replaced": 0.85,
-            "calibrated_tools": 0.9,
             "labor_hours": 0.9,
-            "verification_result": 0.8,
         },
     },
 ]
