@@ -53,7 +53,7 @@ _CLASSIFY_TOOL_NAME = "record_classification"
 NOT_IN_FLEET = "(not in the fleet)"
 
 _CLASSIFY_INTRO = """This is a scanned service report for one instrument in a fixed fleet. \
-Identify three things and report a confidence (0 to 1) for each \
+Identify the following and report a confidence (0 to 1) for each \
 independently — they are not the same call.
 
 """
