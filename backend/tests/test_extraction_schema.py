@@ -31,6 +31,6 @@ def test_per_detector_template_builds_a_valid_tool_schema():
 
     assert props["baseline_cv_percent"] == {"type": "object", "additionalProperties": {"type": "number"}}
     assert props["baseline_cv_percent__confidence"] == {"type": "number", "minimum": 0, "maximum": 1}
-    assert props["laser_configuration"] == {"type": "array", "items": {"type": "string"}}
+    assert props["laser_configuration"] == {"type": "array", "items": {"type": "string", "enum": ["405nm", "488nm"]}}
     assert "baseline_cv_percent" in tool["input_schema"]["required"]
     assert "baseline_cv_percent__confidence" in tool["input_schema"]["required"]
