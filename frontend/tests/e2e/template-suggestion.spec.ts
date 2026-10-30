@@ -63,7 +63,7 @@ test('a report on the generic template offers a model-specific one, starts from 
     await readSampleAs(page, instrument.id);
 
     const notice = page.locator('#generic-template-notice');
-    await expect(notice).toContainText(`generic Malfunction / repair template for ${model}`);
+    await expect(notice).toContainText(`Generic Malfunction / repair template in use. A ${model} template`);
     await notice.locator(`button:has-text("Create a ${model} template")`).click();
 
     // The Templates tab, prefilled for this report and started from the
