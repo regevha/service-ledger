@@ -674,6 +674,7 @@ export function IntakeFlow({
 
   function resetToIntake() {
     setPhase({ name: 'intake' });
+    submittedJobs.current.clear();
     setTechnicianName('');
     setFile(null);
     setReport(null);
@@ -752,6 +753,20 @@ export function IntakeFlow({
     }
   }
 
+  // A job that was submitted but not seen to finish (the wait ran out). "Try again" goes back to
+  // waiting for that same job rather than submitting a second one, which would read the scan twice.
+  const submittedJobs = useRef(new Map<string, string>());
+  async function submitOrResume(key: string, submit: () => Promise<{ id: string }>): Promise<{ id: string }> {
+    const earlier = submittedJobs.current.get(key);
+    if (earlier) return { id: earlier };
+    const job = await submit();
+    submittedJobs.current.set(key, job.id);
+    return job;
+  }
+  function forgetJob(jobId: string) {
+    for (const [key, id] of submittedJobs.current) if (id === jobId) submittedJobs.current.delete(key);
+  }
+
   // Wait for a job, remembering which one so Cancel can stop it. Returns only if the screen was
   // not cancelled meanwhile; otherwise it throws and the step ends quietly (see attempt).
   async function pollJob(jobId: string, opts: { timeoutMs?: number } = {}) {
@@ -764,7 +779,12 @@ export function IntakeFlow({
     try {
       const job = await pollExtractionJob(jobId, { ...opts, signal: abortRef.current.signal });
       if (cancelledRef.current) throw new PollAborted();
+      forgetJob(jobId); // it finished, one way or the other; the next attempt starts a new one
       return job;
+    } catch (e) {
+      // The job is gone (its report was deleted, say): waiting for it again would never end.
+      if (e instanceof ApiError && e.status === 404) forgetJob(jobId);
+      throw e;
     } finally {
       if (jobIdRef.current === jobId) jobIdRef.current = null;
     }
@@ -776,6 +796,7 @@ export function IntakeFlow({
     if (cancelledRef.current) return; // already cancelling
     cancelledRef.current = true;
     abortRef.current.abort();
+    submittedJobs.current.clear();
     const jobId = jobIdRef.current;
     const draftId = report && phase.name !== 'review' && phase.name !== 'done' ? report.id : null;
     // Stop the job first: deleting a report whose scan is still being read is refused.
@@ -797,7 +818,7 @@ export function IntakeFlow({
       // runs it — so wait for it to leave pending/extracting before reading
       // the result back.
       const startedAt = performance.now();
-      const submitted = await extractAttachment(attId);
+      const submitted = await submitOrResume(`extract:${attId}`, () => extractAttachment(attId));
       const job = await pollJob(submitted.id);
       const elapsedSeconds = (performance.now() - startedAt) / 1000;
       if (job.status === 'failed') {
@@ -869,7 +890,9 @@ export function IntakeFlow({
       label: includePages.length ? 'Translating again…' : 'Checking the language of the document…',
     });
     await attempt('Translation failed unexpectedly.', () => void runTranslation(attId, reportId, includePages), async () => {
-      const submitted = await translateAttachment(attId, includePages);
+      const submitted = await submitOrResume(`translate:${attId}:${includePages.join(',')}`, () =>
+        translateAttachment(attId, includePages)
+      );
       const job = await pollJob(submitted.id, { timeoutMs: 300_000 });
       if (job.status === 'failed') {
         failPhase(job.error_message || 'Translation failed for an unknown reason.', () => void runTranslation(attId, reportId, includePages));
@@ -927,7 +950,7 @@ export function IntakeFlow({
     await attempt('Classification failed unexpectedly.', () => void runClassification(attId, reportId), async () => {
       // §3/§9: submit returns a pending job immediately; app/worker.py picks
       // it up in the background and this polls until it's done.
-      const submitted = await classifyAttachment(attId);
+      const submitted = await submitOrResume(`classify:${attId}`, () => classifyAttachment(attId));
       const job = await pollJob(submitted.id);
       if (job.status === 'failed') {
         failPhase(
