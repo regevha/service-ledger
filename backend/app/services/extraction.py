@@ -47,6 +47,7 @@ from app.services.claude_client import (
 from app.services.documents import UnsupportedDocumentError
 from app.services.translation import source_block
 from app.services.errors import ExtractionError
+from app.services.field_values import normalize_values
 from app.services.text_extraction import text_extract
 
 logger = logging.getLogger("app.services.extraction")
@@ -98,7 +99,7 @@ contract start/end dates, the PO date, or any date in the CALIBRATED TOOLS table
 those describe the contract and the engineer's test equipment, not this visit.
 
 Durations: a time printed as a clock duration (HH:MM, for example 01:25) is hours and \
-minutes, not decimal hours; give a numeric hours field as decimal hours (01:25 is 1.42). \
+minutes, not decimal hours; give a numeric hours field as decimal hours rounded to the nearest quarter hour (01:25 is 1.5). \
 A number with no unit printed on a labour or work line is hours. Never invent a unit for a \
 value that has none. If the document is a reviewed English translation of a Hebrew form, \
 identifiers and dates in it are exactly as printed on the original.
@@ -147,6 +148,9 @@ def _stub_value(field: dict, attachment_key: str):
         notes = field.get("notes") or ""
         if "e.g." in notes:
             return [v.strip() for v in notes.split("e.g.", 1)[1].split(",")]
+        options = field.get("options") or []
+        if options:
+            return [options[int(_stable_unit(attachment_key, name) * len(options))]]
         return []
     if ftype == TemplateFieldType.object_list:
         # A list of {name, type} columns, not a dict — see ItemSchemaColumn's
@@ -170,7 +174,8 @@ def _leaf_json_schema(ftype: str, options: list[str] | None = None) -> dict:
     if ftype == TemplateFieldType.enum:
         return {"type": "string", "enum": options or []}
     if ftype == TemplateFieldType.enum_list:
-        return {"type": "array", "items": {"type": "string"}}
+        items = {"type": "string", "enum": options} if options else {"type": "string"}
+        return {"type": "array", "items": items}
     if ftype in (TemplateFieldType.number_detector, TemplateFieldType.number_laser):
         return {"type": "object", "additionalProperties": {"type": "number"}}
     # Fallback for anything unanticipated — accept any JSON value rather than
@@ -236,6 +241,8 @@ def _field_list_for_prompt(fields: list[dict]) -> str:
     for field in fields:
         unit = f", unit: {field['unit']}" if field.get("unit") else ""
         notes = f" — {field['notes']}" if field.get("notes") else ""
+        if field.get("optional"):
+            notes += " (optional: if the form does not state it, answer with an empty value, not a guess)"
         lines.append(f"- {field['name']} ({field['type']}{unit}){notes}")
     return "\n".join(lines)
 
@@ -387,7 +394,7 @@ _SAMPLE_REPAIR_VALUES = {
     ),
     "components_replaced": [],
     "labor_hours": 11.5,
-    "fault_category": "fluidics",
+    "fault_category": ["fluidics"],
 }
 
 
@@ -434,7 +441,10 @@ def _text_layer_extract(attachment: Attachment, template: ReportTemplate) -> Ext
 
 def extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
     if settings.use_live_claude:
-        return _live_extract(attachment, template)
-    if settings.stub_extract_from_text:
-        return _text_layer_extract(attachment, template)
-    return _stub_extract(attachment, template)
+        result = _live_extract(attachment, template)
+    elif settings.stub_extract_from_text:
+        result = _text_layer_extract(attachment, template)
+    else:
+        result = _stub_extract(attachment, template)
+    fields = template.field_schema.get("fields", [])
+    return result._replace(extracted_fields=normalize_values(fields, result.extracted_fields))

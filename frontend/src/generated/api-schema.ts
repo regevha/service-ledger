@@ -2273,6 +2273,11 @@ export interface components {
              * @default false
              */
             filled_by_person: boolean;
+            /**
+             * Optional
+             * @default false
+             */
+            optional: boolean;
         };
         /**
          * TemplateFieldType
