@@ -351,16 +351,21 @@ def approve_extraction_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
 
 @router.post("/extraction-jobs/{job_id}/cancel", response_model=schemas.ExtractionJobOut)
 def cancel_extraction_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
-    """VIEW_PROMPTS: the person pressed Cancel; nothing is sent to Claude."""
+    """The person pressed Cancel. A job that has not started is simply never run, so nothing is
+    sent to Claude. A job the worker is already running cannot be interrupted, but its result is
+    thrown away and nothing is written (the worker checks before it writes). Either way the job
+    ends as failed with "Cancelled." Only a job that already finished is refused."""
     job = db.get(models.ExtractionJob, job_id)
     if not job:
         raise HTTPException(404, "Extraction job not found")
-    if job.status != models.ExtractionJobStatus.awaiting_approval:
-        raise HTTPException(409, "This job is not waiting for approval.")
+    if job.status in (models.ExtractionJobStatus.succeeded, models.ExtractionJobStatus.failed):
+        raise HTTPException(409, "This job has already finished.")
+    waiting = job.status == models.ExtractionJobStatus.awaiting_approval
+    job.params = {**(job.params or {}), "cancelled": True}
     job.status = models.ExtractionJobStatus.failed
-    job.error_message = "Cancelled before the prompt was sent to Claude."
+    job.error_message = "Cancelled before the prompt was sent to Claude." if waiting else "Cancelled."
     job.completed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(job)
-    logger.info("Prompt cancelled for %s job %s", job.kind.value, job.id)
+    logger.info("Cancelled %s job %s", job.kind.value, job.id)
     return job
