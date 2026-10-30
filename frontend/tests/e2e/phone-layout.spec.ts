@@ -88,8 +88,9 @@ test.describe('a finalized report on a phone', { tag: '@phone' }, () => {
     // Nothing is cut off: the box is as tall as its text.
     const box = page.locator('.field-list.read-only textarea').first();
     await expect(box).toHaveValue(longText);
-    const { scroll, client } = await box.evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
-    expect(scroll).toBeLessThanOrEqual(client + 1);
+    // The box re-fits when the font loads, so wait for it to settle instead of reading it once.
+    await expect.poll(() => box.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+    const client = await box.evaluate((el) => el.clientHeight);
     expect(client).toBeGreaterThan(100);
 
     // Editing brings the normal, resizable box back.
