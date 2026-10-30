@@ -684,7 +684,7 @@ def test_stub_other_maker_file_is_not_in_the_fleet_until_it_is_added(client, run
         "/instruments",
         json={
             "name": "Aurora",
-            "instrument_type": "facs",
+            "instrument_type": "flow_cytometer",
             "model": "Cytek Aurora",
             "manufacturer": "Cytek Biosciences",
             "distributor": "almog diagnostic",

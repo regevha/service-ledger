@@ -10,7 +10,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import Instrument
+from app.models import DEFAULT_INSTRUMENT_TYPE_KEY, Instrument
 from app.services.instrument_types import ensure_default_types
 from app.services.manufacturers import ensure_default_makers
 
@@ -93,7 +93,7 @@ def seed(db: Session) -> list[Instrument]:
                 existing.distributor = spec["distributor"]
             created.append(existing)
             continue
-        row = Instrument(instrument_type="facs", status="active", **spec)
+        row = Instrument(instrument_type=DEFAULT_INSTRUMENT_TYPE_KEY, status="active", **spec)
         db.add(row)
         created.append(row)
     db.commit()

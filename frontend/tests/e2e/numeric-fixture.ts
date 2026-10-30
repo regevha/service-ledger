@@ -16,7 +16,7 @@ export const NUMERIC_FIELDS = [
 /** Gives `model` an installation/upgrade template with the numeric fields above. */
 export async function createNumericTemplate(request: APIRequestContext, model: string): Promise<void> {
   const res = await request.post(`${API_BASE}/report-templates`, {
-    data: { instrument_type: 'facs', report_type: 'installation_upgrade', model, fields: NUMERIC_FIELDS },
+    data: { instrument_type: 'flow_cytometer', report_type: 'installation_upgrade', model, fields: NUMERIC_FIELDS },
   });
   expect(res.status(), await res.text()).toBe(201);
 }

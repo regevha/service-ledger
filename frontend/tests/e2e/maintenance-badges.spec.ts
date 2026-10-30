@@ -21,7 +21,7 @@ async function setup(request: APIRequestContext, model: string) {
 async function maintenanceReport(request: APIRequestContext, model: string, instrumentId: string, day: string) {
   const template = await (
     await request.post(`${API_BASE}/report-templates`, {
-      data: { instrument_type: 'facs', report_type: 'preventive_maintenance', model, fields: [{ name: 'summary', type: 'text' }] },
+      data: { instrument_type: 'flow_cytometer', report_type: 'preventive_maintenance', model, fields: [{ name: 'summary', type: 'text' }] },
     })
   ).json();
   await seedReport(request, {

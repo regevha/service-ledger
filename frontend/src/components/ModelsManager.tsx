@@ -38,7 +38,7 @@ function ModelForm({
 }) {
   const [name, setName] = useState(existing?.name ?? '');
   const [manufacturer, setManufacturer] = useState(existing?.manufacturer ?? '');
-  const [typeKey, setTypeKey] = useState(existing?.instrument_type ?? 'facs');
+  const [typeKey, setTypeKey] = useState(existing?.instrument_type ?? types.find((t) => t.is_default)?.key ?? types[0]?.key ?? '');
   const [interval, setInterval] = useState(existing?.service_interval_months?.toString() ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [saving, setSaving] = useState(false);

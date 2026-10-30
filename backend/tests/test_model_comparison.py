@@ -45,7 +45,7 @@ def _add_numeric_template(db_session):
     """The seeded templates only have labor_hours, so give LSRFortessa a template with the other numeric kinds."""
     db_session.add(
         ReportTemplate(
-            instrument_type="facs",
+            instrument_type="flow_cytometer",
             report_type=ReportType.installation_upgrade,
             model="LSRFortessa",
             field_schema={

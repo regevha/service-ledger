@@ -161,7 +161,7 @@ def _save(client, name, **filters):
 
 
 def _new_model(client, name="Spare Sorter"):
-    res = client.post("/instrument-models", json={"name": name, "manufacturer": "BD", "instrument_type": "facs"})
+    res = client.post("/instrument-models", json={"name": name, "manufacturer": "BD", "instrument_type": "flow_cytometer"})
     assert res.status_code == 201, res.text
     return res.json()
 
