@@ -355,8 +355,10 @@ def test_live_translation_sends_the_page_and_ignores_qc_pages(client, run_worker
     job = _translate(client, run_worker, att)
     assert job["status"] == "succeeded"
 
-    assert len(fake.messages.calls) == 1
-    call = fake.messages.calls[0]
+    # A scan with no text layer gets the small language check first, then the translation.
+    assert len(fake.messages.calls) == 2
+    assert fake.messages.calls[0]["tool_choice"] == {"type": "tool", "name": "record_language"}
+    call = fake.messages.calls[1]
     content = call["messages"][0]["content"]
     assert content[0]["type"] == "document"  # the page itself, not extracted text
     assert "IGNORE instrument QC printouts" in content[1]["text"]
@@ -398,6 +400,27 @@ def test_live_english_document_needs_no_review(client, run_worker, live):
     _translate(client, run_worker, att)
     assert _current(client, att)["status"] == "not_needed"
     assert client.post(f"/attachments/{att}/classify").status_code == 202
+
+
+def test_live_an_english_scan_costs_only_the_small_language_check(client, run_worker, live):
+    fake = _FakeClient(_tool_use({"source_language": "en", "hebrew_share": 0.0}))
+    live.setattr(translation, "_get_client", lambda: fake)
+    att = _upload(client, "english_photo.pdf")["attachment"]["id"]
+    job = _translate(client, run_worker, att)
+    assert job["status"] == "succeeded"
+    assert len(fake.messages.calls) == 1
+    call = fake.messages.calls[0]
+    assert call["max_tokens"] == 200 and call["tool_choice"] == {"type": "tool", "name": "record_language"}
+    assert "Do not translate" in call["messages"][0]["content"][1]["text"]
+    assert _current(client, att)["status"] == "not_needed"
+
+
+def test_live_a_failed_language_check_fails_the_job(client, run_worker, live):
+    fake = _FakeClient(_tool_use({"source_language": "he"}))  # no hebrew_share
+    live.setattr(translation, "_get_client", lambda: fake)
+    att = _upload(client, "scan.pdf")["attachment"]["id"]
+    job = _translate(client, run_worker, att)
+    assert job["status"] == "failed" and "language check" in job["error_message"]
 
 
 def test_live_a_text_layer_that_is_not_hebrew_makes_no_model_call(client, run_worker, live):
