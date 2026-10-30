@@ -144,7 +144,6 @@ def test_fields_that_are_not_on_the_form_stay_empty_at_zero_confidence():
 
     # Lab-manager fields: nothing on the form says them, so nothing is invented.
     assert values["fault_category"] is None and conf["fault_category"] == 0.0
-    assert values["retest_result"] is None and conf["retest_result"] == 0.0
 
 
 def test_every_read_field_carries_a_confidence_and_nothing_else_does():
@@ -166,21 +165,7 @@ def test_a_pm_report_with_12_hour_times_and_month_first_dates_is_read():
     assert values["labor_hours"] == 6.25
     # 03/17/2025 on the form settles month-first, so 02/10/2026 is 10 February.
     assert visit == date(2026, 2, 10)
-    assert values["calibrated_tools"] == [
-        {
-            "tool_id": "T-000030",
-            "tool_name": "Ophir Laser Power Meter Display",
-            "last_calibration_date": "2025-11-17",
-            "next_calibration_date": "2026-11-17",
-        },
-        {
-            "tool_id": "T-4240-003-01",
-            "tool_name": "Pressure Meter",
-            "last_calibration_date": "2025-03-24",
-            "next_calibration_date": "2026-03-24",
-        },
-    ]
-    assert values["verification_result"] is None and conf["verification_result"] == 0.0
+    assert "calibrated_tools" not in values  # no longer recorded
 
 
 def test_an_empty_cause_section_is_empty_and_flagged_not_invented():
@@ -189,10 +174,10 @@ def test_an_empty_cause_section_is_empty_and_flagged_not_invented():
     assert conf["root_cause"] == 0.35  # below the 0.7 review threshold: a person looks at it
 
 
-def test_the_installation_template_reads_parts_used_and_service_description():
+def test_the_installation_template_reads_parts_replaced_and_service_description():
     values, _, _ = read(PM_LINES, "install")
     assert values["service_description"] == "11 Month Recurring"
-    assert values["parts_used"] == [{"part_name": "S8 PM kit", "part_number": "667009", "qty": 1}]
+    assert values["components_replaced"] == [{"part_name": "S8 PM kit", "part_number": "667009", "qty": 1}]
 
 
 # ---------- dates ----------
@@ -346,4 +331,4 @@ def test_an_uploaded_pm_report_goes_from_classification_to_real_field_values(cli
     assert saved["extracted_fields"]["labor_hours"] == 6.25
     assert saved["extracted_fields"]["service_description"] == "11 Month Recurring"
     # The review screen flags what was not read: confidence 0 is under the threshold.
-    assert job["field_confidences"]["verification_result"] == 0.0
+    assert "verification_result" not in job["field_confidences"]

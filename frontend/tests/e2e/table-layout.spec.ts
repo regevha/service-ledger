@@ -60,7 +60,7 @@ test('the Reports search box is styled like the other filters', async ({ page })
 test('a template with a seeded choice field can be opened and saved', async ({ page }) => {
   await page.goto('/');
   await page.click('.view-tab:has-text("Templates")');
-  // The generic repair row (any model) carries the retest_result choice field.
+  // The generic repair row (any model) carries the fault_category choice field.
   const row = page.locator('.template-row-body', { hasText: 'Malfunction / repair' }).filter({ hasText: '(any model)' }).first();
   await row.getByRole('button', { name: 'Edit' }).click();
   await expect(page.getByText('needs at least one option')).toHaveCount(0);

@@ -109,10 +109,6 @@ test.describe('analytics bars', () => {
     total_labor_hours: 18,
     labor_hours_by_instrument: [rollup(1), rollup(2), rollup(3)],
     labor_hours_by_fault_category: { fluidics: 5, optics: 2 },
-    pass_fail_by_report_type: {
-      repair: { pass_count: 3, fail_count: 1, other_count: 0, total: 4 },
-      preventive_maintenance: { pass_count: 12, fail_count: 0, other_count: 1, total: 13 },
-    },
   };
 
   test('every bar starts and ends in the same place, whatever its label or value says', async ({ page }) => {
@@ -134,12 +130,6 @@ test.describe('analytics bars', () => {
       expect(Math.round(b.x)).toBe(Math.round(boxes[0].x));
       expect(Math.round(b.width)).toBe(Math.round(boxes[0].width));
     }
-    // The pass/fail bars share the same columns too.
-    const stack = page.locator('.stack-track');
-    await expect(stack).toHaveCount(2);
-    const [s0, s1] = [await stack.nth(0).boundingBox(), await stack.nth(1).boundingBox()];
-    expect(Math.round(s0!.x)).toBe(Math.round(s1!.x));
-    expect(Math.round(s0!.width)).toBe(Math.round(s1!.width));
   });
 
   test('when every part has the same count the bars give way to a plain list', async ({ page }) => {

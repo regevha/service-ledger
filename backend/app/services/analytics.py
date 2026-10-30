@@ -2,7 +2,7 @@
 
 A pure function of already-finalized report data — no new columns, no new
 tables. Everything here reads components_replaced / labor_hours /
-fault_category / retest_result / verification_result straight out of
+fault_category straight out of
 Report.extracted_fields, the same loosely-typed JSONB
 routers/instruments.py's instrument_trend endpoint already reads a single
 field out of for one instrument. Aggregation runs in Python rather than
@@ -30,7 +30,7 @@ from app.services.places import subtree_ids
 from app.services.report_filters import apply_report_filters
 from app.models import report_chronological_order
 
-# The report types that carry labor_hours/components_replaced/pass-fail
+# The report types that carry labor_hours/components_replaced
 # fields (seed_templates.py). Installation/upgrade reports are left out
 # rather than appearing as an always-zero row.
 _LABOR_TRACKING_REPORT_TYPES = (models.ReportType.repair, models.ReportType.preventive_maintenance)
@@ -70,14 +70,6 @@ def _labor_hours_of(fields: dict) -> float | None:
             found = lenient(value)
             if found is not None:
                 return found
-    return None
-
-
-def _result_field_for(report_type: models.ReportType) -> str | None:
-    if report_type is models.ReportType.repair:
-        return "retest_result"
-    if report_type is models.ReportType.preventive_maintenance:
-        return "verification_result"
     return None
 
 
@@ -176,9 +168,6 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
     # Finalized repair/PM reports that added nothing to the hours: no hours recorded, or no instrument.
     reports_without_hours = 0
     labor_by_fault_category: dict[str, float] = {}
-    # How each instrument's repair / preventive maintenance reports came out, for the fleet list's pass rate.
-    results_by_instrument: dict[uuid.UUID, dict[str, int]] = {}
-    pass_fail: dict[str, dict[str, int]] = {rt.value: {"pass": 0, "fail": 0, "other": 0} for rt in _LABOR_TRACKING_REPORT_TYPES}
 
     for report in reports:
         if report.instrument_id is not None:
@@ -232,14 +221,6 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
                             labor_by_fault_category.get(fault_category, 0.0) + labor_hours
                         )
 
-            result_field = _result_field_for(report_type)
-            result = fields.get(result_field) if result_field else None
-            bucket_key = "pass" if result == "pass" else "fail" if result == "fail" else "other"
-            pass_fail[report_type.value][bucket_key] += 1
-            if report.instrument_id is not None:
-                per_instrument = results_by_instrument.setdefault(report.instrument_id, {"pass": 0, "fail": 0, "other": 0})
-                per_instrument[bucket_key] += 1
-
     instrument_query = db.query(models.Instrument).order_by(models.Instrument.name)
     instruments = _apply_unit_filters(instrument_query, filters).all()
     labor_hours_by_instrument = [
@@ -255,7 +236,6 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         for instrument in instruments
     ]
 
-    no_results = {"pass": 0, "fail": 0, "other": 0}
     report_counts_by_instrument = [
         schemas.ReportCountByInstrumentOut(
             instrument_id=instrument.id,
@@ -265,9 +245,6 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
             serial_number=instrument.serial_number,
             report_count=report_count_by_instrument.get(instrument.id, 0),
             total_labor_hours=labor_by_instrument.get(instrument.id, 0.0),
-            pass_count=results_by_instrument.get(instrument.id, no_results)["pass"],
-            fail_count=results_by_instrument.get(instrument.id, no_results)["fail"],
-            other_count=results_by_instrument.get(instrument.id, no_results)["other"],
         )
         for instrument in instruments
     ]
@@ -281,9 +258,6 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         entry.unit_count += 1
         entry.report_count += row.report_count
         entry.total_labor_hours += row.total_labor_hours
-        entry.pass_count += row.pass_count
-        entry.fail_count += row.fail_count
-        entry.other_count += row.other_count
     report_counts_by_model = sorted(by_model.values(), key=lambda m: (-m.report_count, m.model))
 
     parts_replaced = sorted(
@@ -300,7 +274,7 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         reverse=True,
     )
 
-    place_rollups = _place_rollups(db, instruments, report_count_by_instrument, labor_by_instrument, results_by_instrument)
+    place_rollups = _place_rollups(db, instruments, report_count_by_instrument, labor_by_instrument)
 
     return schemas.FleetAnalyticsOut(
         finalized_report_count=len(reports),
@@ -312,15 +286,6 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
         report_counts_by_model=report_counts_by_model,
         place_rollups=place_rollups,
         labor_hours_by_fault_category=labor_by_fault_category,
-        pass_fail_by_report_type={
-            report_type: schemas.PassFailBreakdownOut(
-                pass_count=counts["pass"],
-                fail_count=counts["fail"],
-                other_count=counts["other"],
-                total=counts["pass"] + counts["fail"] + counts["other"],
-            )
-            for report_type, counts in pass_fail.items()
-        },
     )
 
 
@@ -329,7 +294,6 @@ def _place_rollups(
     instruments: list[models.Instrument],
     report_counts: dict[uuid.UUID, int],
     labor: dict[uuid.UUID, float],
-    results: dict[uuid.UUID, dict[str, int]] | None = None,
 ) -> list[schemas.PlaceRollupOut]:
     """Instruments, reports and work hours per place, at every level an
     instrument sits under: its institution, its faculty (when its room is in
@@ -357,11 +321,6 @@ def _place_rollups(
             row.instrument_count += 1
             row.report_count += report_counts.get(instrument.id, 0)
             row.total_labor_hours += labor.get(instrument.id, 0.0)
-            tally = (results or {}).get(instrument.id)
-            if tally:
-                row.pass_count += tally["pass"]
-                row.fail_count += tally["fail"]
-                row.other_count += tally["other"]
             node = places.get(node.parent_id) if node.parent_id else None
     return sorted(rows.values(), key=lambda r: (r.institution_name.lower(), r.kind != "institution", r.name.lower()))
 
@@ -427,23 +386,10 @@ def _finalized_reports_by_instrument(
     return by_instrument
 
 
-def _breakdown(counts: dict[str, int]) -> schemas.PassFailBreakdownOut:
-    return schemas.PassFailBreakdownOut(
-        pass_count=counts["pass"],
-        fail_count=counts["fail"],
-        other_count=counts["other"],
-        total=counts["pass"] + counts["fail"] + counts["other"],
-    )
-
-
 def _unit_comparison(instrument: models.Instrument, reports: list[models.Report]) -> schemas.UnitComparisonOut:
     labor_hours = 0.0
     labor_reports = 0
     parts_qty = 0.0
-    results = {
-        models.ReportType.repair: {"pass": 0, "fail": 0, "other": 0},
-        models.ReportType.preventive_maintenance: {"pass": 0, "fail": 0, "other": 0},
-    }
     for report in reports:
         fields = report.extracted_fields or {}
         for entry in fields.get("components_replaced") or []:
@@ -458,9 +404,6 @@ def _unit_comparison(instrument: models.Instrument, reports: list[models.Report]
         if hours is not None:
             labor_hours += hours
             labor_reports += 1
-        result_field = _result_field_for(report_type)
-        result = fields.get(result_field) if result_field else None
-        results[report_type]["pass" if result == "pass" else "fail" if result == "fail" else "other"] += 1
     dated = [r.report_date for r in reports if r.report_date is not None]
     return schemas.UnitComparisonOut(
         instrument_id=instrument.id,
@@ -472,8 +415,6 @@ def _unit_comparison(instrument: models.Instrument, reports: list[models.Report]
         labor_report_count=labor_reports,
         total_labor_hours=labor_hours,
         parts_replaced_qty=parts_qty,
-        repair_results=_breakdown(results[models.ReportType.repair]),
-        preventive_maintenance_results=_breakdown(results[models.ReportType.preventive_maintenance]),
     )
 
 

@@ -1,17 +1,13 @@
 import { type APIRequestContext } from '@playwright/test';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { test, expect } from './coverage';
-import { uniqueFixture, uniquePdf } from './unique-upload';
+import { uniquePdf } from './unique-upload';
 import { BACKEND_PORT } from '../../playwright.config';
 
-// Fields a person fills in (fault category, retest result, verification result) are not
+// Fields a person fills in (fault category) are not
 // printed on the form. The model still suggests a value, but Review always asks for it to
 // be checked, however confident the model was (review of 2026-10-29, item 7, option B).
 
 const API = `http://localhost:${BACKEND_PORT}`;
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 
 async function seedRepair(request: APIRequestContext, technician: string, finalize = false): Promise<string> {
   const report = await (await request.post(`${API}/reports`, { data: { technician_name: technician } })).json();
@@ -36,43 +32,31 @@ async function seedRepair(request: APIRequestContext, technician: string, finali
   return report.id;
 }
 
-test('the repair template marks fault category and retest result as filled in by a person', async ({ request }) => {
+test('the repair template marks fault category as filled in by a person', async ({ request }) => {
   const templates = await (
     await request.get(`${API}/report-templates`, { params: { report_type: 'repair', model: 'LSRFortessa' } })
   ).json();
   const marked = templates[0].field_schema.fields.filter((f: { filled_by_person?: boolean }) => f.filled_by_person);
-  expect(marked.map((f: { name: string }) => f.name).sort()).toEqual(['fault_category', 'retest_result']);
+  expect(marked.map((f: { name: string }) => f.name).sort()).toEqual(['fault_category']);
 });
 
-test('a new report: person fields are flagged even at 99% confidence, until marked as checked', async ({ page }) => {
-  // Every field read at 0.99, so only the person fields can be flagged.
-  await page.route('**/extraction-jobs/*', async (route) => {
-    const response = await route.fetch();
-    const job = await response.json();
-    if (job?.kind === 'extract' && job.field_confidences) {
-      job.field_confidences = Object.fromEntries(Object.keys(job.field_confidences).map((k) => [k, 0.99]));
-    }
-    await route.fulfill({ response, json: job });
-  });
+test('a person field is flagged until it is marked as checked', async ({ page, request }) => {
+  const marker = `E2E-PersonNew-${Date.now()}`;
+  await seedRepair(request, marker);
   await page.goto('/');
-  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(CONFIDENT_SCAN));
-  await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await page.click('.view-tab:has-text("Reports")');
+  await page.click(`.report-row-body:has-text("${marker}")`);
+  await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
 
-  const badges = page.getByTestId('person-field-badge');
-  const n = await badges.count();
-  expect(n).toBeGreaterThan(0);
-  await expect(page.locator('.field.pending')).toHaveCount(n);
-  await expect(badges.first()).toHaveText('suggested, check it');
-  await expect(page.getByTestId('attention-strip')).toContainText(`${n} field`);
+  const field = page.locator('[data-field="fault_category"]');
+  await expect(field).toHaveClass(/pending/);
+  await expect(field.getByTestId('person-field-badge')).toHaveText('suggested, check it');
+  const pending = await page.locator('.field.pending').count();
 
-  const first = page.locator('.field.pending').first();
-  const name = await first.getAttribute('data-field');
-  await first.getByRole('button', { name: 'Mark as checked' }).click();
-  const field = page.locator(`[data-field="${name}"]`);
+  await field.getByRole('button', { name: 'Mark as checked' }).click();
   await expect(field).not.toHaveClass(/pending/);
   await expect(field.getByTestId('person-field-badge')).toHaveText('checked');
-  await expect(page.locator('.field.pending')).toHaveCount(n - 1);
+  await expect(page.locator('.field.pending')).toHaveCount(pending - 1);
 });
 
 test('a saved draft flags them too; a finalized report does not', async ({ page, request }) => {
@@ -82,7 +66,7 @@ test('a saved draft flags them too; a finalized report does not', async ({ page,
   await page.click('.view-tab:has-text("Reports")');
   await page.click(`.report-row-body:has-text("${draftMarker}")`);
   await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
-  for (const name of ['fault_category', 'retest_result']) {
+  for (const name of ['fault_category']) {
     await expect(page.locator(`[data-field="${name}"]`)).toHaveClass(/pending/);
     await expect(page.locator(`[data-field="${name}"]`).getByTestId('person-field-badge')).toHaveText('suggested, check it');
   }

@@ -198,7 +198,6 @@ def test_export_csv_extracted_fields_column_is_valid_json(client, seeded):
     json.loads() throws on the very first boolean, null, or nested value,
     despite the column being named and documented as JSON."""
     fields = {
-        "retest_result": "pass",
         "compensation_matrix_updated": True,
         "root_cause": None,
         "components_replaced": ["injector O-ring", "sheath filter"],

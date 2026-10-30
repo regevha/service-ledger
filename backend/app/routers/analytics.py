@@ -64,8 +64,8 @@ def analytics_filters(
 @router.get("/analytics/fleet", response_model=schemas.FleetAnalyticsOut)
 def fleet_analytics(filters: AnalyticsFilters = Depends(analytics_filters), db: Session = Depends(get_db)):
     """Fleet-wide roll-ups computed from every finalized report's already-
-    captured fields (components_replaced, labor_hours, fault_category,
-    retest_result/verification_result) — no new columns, nothing to backfill.
+    captured fields (components_replaced, labor_hours, fault_category)
+    — no new columns, nothing to backfill.
     See services/analytics.py for exactly how each number is derived and why
     only finalized reports contribute."""
     return compute_fleet_analytics(db, filters)

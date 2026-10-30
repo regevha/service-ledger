@@ -54,28 +54,26 @@ test('the Compare action on a row starts with that template and lists the closes
 
   await page.locator('#compare-right').selectOption({ label: CYTOFLEX_REPAIR });
 
-  // The generic repair template is a strict subset of the CytoFLEX S one.
-  await expect(page.locator('#compare-summary')).toContainText('7 of 10 fields shared');
+  // Both carry the same six fields.
+  await expect(page.locator('#compare-summary')).toContainText('6 of 6 fields shared');
   await expect(page.locator('#compare-summary')).toContainText('0 only in “Malfunction / repair · (any model)”');
-  await expect(page.locator('#compare-summary')).toContainText('3 only in “Malfunction / repair · CytoFLEX S”');
-  await expect(page.locator('tr[data-status="only_right"]')).toHaveCount(3);
-  await expect(page.locator('tr[data-field="service_contract_level"]')).toContainText('Only on the right');
-  await expect(page.locator('tr[data-field="service_contract_level"] td').first()).toContainText('Not in this template');
+  await expect(page.locator('#compare-summary')).toContainText('0 only in “Malfunction / repair · CytoFLEX S”');
+  await expect(page.locator('tr[data-status="only_right"]')).toHaveCount(0);
   // The reading hints (notes) differ on five fields, shown as such.
   await expect(page.locator('tr[data-status="differs"]')).toHaveCount(5);
   await expect(page.locator('tr[data-field="labor_hours"]')).toContainText('Differs: notes');
   await expect(page.locator('tr[data-field="labor_hours"] mark').first()).toBeVisible();
-  await expect(page.locator('tr[data-status="same"]')).toHaveCount(2);
+  await expect(page.locator('tr[data-status="same"]')).toHaveCount(1);
 
   // Only the differences.
   await page.getByLabel('Show only the differences').check();
   await expect(page.locator('tr[data-status="same"]')).toHaveCount(0);
-  await expect(page.locator('tr.compare-row')).toHaveCount(8);
+  await expect(page.locator('tr.compare-row')).toHaveCount(5);
 
   // Nothing was changed by looking.
   await page.getByRole('button', { name: '← Back to templates' }).click();
   await expect(page.locator('.template-table')).toBeVisible();
-  await expect(row(page, 'Malfunction / repair', '(any model)')).toContainText('7');
+  await expect(row(page, 'Malfunction / repair', '(any model)')).toContainText('6');
 });
 
 test('the Compare templates button needs both templates chosen, and identical templates are said to be identical', async ({
@@ -89,9 +87,9 @@ test('the Compare templates button needs both templates chosen, and identical te
   await expect(page.locator('#compare-right')).toBeEnabled();
   await page.locator('#compare-right').selectOption({ label: 'Preventive maintenance · Cytek Aurora' });
 
-  // The two Cytek Aurora templates have the same seven fields.
-  await expect(page.locator('#compare-summary')).toContainText('7 of 7 fields shared');
-  await expect(page.locator('tr[data-status="same"]')).toHaveCount(7);
+  // The two Cytek Aurora templates have the same four fields.
+  await expect(page.locator('#compare-summary')).toContainText('4 of 4 fields shared');
+  await expect(page.locator('tr[data-status="same"]')).toHaveCount(4);
   await page.getByLabel('Show only the differences').check();
   await expect(page.locator('#compare-identical')).toContainText('identical fields');
 

@@ -1,5 +1,5 @@
 """Field alias groups: a short, hand-kept list of sets of field names that mean
-the same thing ("retest_result", "verification_result"), shared by everyone. The
+the same thing ("root_cause" and "cause", say), shared by everyone. The
 template comparison reads them to show a "possible match"; nothing else does,
 and nothing here renames or merges a field (proposal-template-comparison.md,
 phase 2)."""

@@ -105,7 +105,6 @@ def test_use_live_claude_true_routes_classify_and_extract_through_the_live_path(
         "components_replaced",
         "labor_hours",
         "fault_category",
-        "retest_result",
     }
 
     fake_extract_client = _FakeClient(
@@ -123,8 +122,6 @@ def test_use_live_claude_true_routes_classify_and_extract_through_the_live_path(
                 "labor_hours__confidence": 0.88,
                 "fault_category": "fluidics",
                 "fault_category__confidence": 0.91,
-                "retest_result": "pass",
-                "retest_result__confidence": 0.97,
             }
         )
     )
