@@ -25,7 +25,7 @@ test('an unreachable backend surfaces a clear connection error', async ({ page }
   await page.click('button:has-text("Upload & classify")');
 
   await expect(page.locator('.banner-crit')).toBeVisible({ timeout: TIMEOUT.ui });
-  await expect(page.locator('.banner-crit')).toContainText('Could not reach the backend');
+  await expect(page.locator('.banner-crit')).toContainText('Cannot reach the server');
   await expect(page.locator('button:has-text("Start over")')).toBeVisible();
   await expect(page.locator('button:has-text("Try again")')).toBeVisible();
 });

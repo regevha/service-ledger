@@ -113,7 +113,7 @@ test('an extraction that never finishes stays pending, then offers Try again', a
       return page.getByTestId('intake-error').count();
     }, { timeout: TIMEOUT.flow })
     .toBe(1);
-  await expect(page.getByTestId('intake-error')).toContainText('did not finish');
+  await expect(page.getByTestId('intake-error')).toContainText('taking longer than usual');
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Start over' })).toBeVisible();
 
