@@ -893,15 +893,26 @@ export function setPromptApprovalHandler(handler: ((preview: PromptPreview) => P
   promptApprovalHandler = handler;
 }
 
+// A signal stops the wait early (the person pressed Cancel); the job itself is cancelled
+// separately with cancelExtractionJob.
+export class PollAborted extends Error {
+  constructor() {
+    super('Stopped waiting for the job.');
+    this.name = 'PollAborted';
+  }
+}
+
 export async function pollExtractionJob(
   jobId: string,
-  opts: { intervalMs?: number; timeoutMs?: number } = {}
+  opts: { intervalMs?: number; timeoutMs?: number; signal?: AbortSignal } = {}
 ): Promise<ExtractionJob> {
   const intervalMs = opts.intervalMs ?? 400;
   const timeoutMs = opts.timeoutMs ?? 90_000;
   let deadline = Date.now() + timeoutMs;
   for (;;) {
+    if (opts.signal?.aborted) throw new PollAborted();
     const job = await getExtractionJob(jobId);
+    if (opts.signal?.aborted) throw new PollAborted();
     if (job.status === 'succeeded' || job.status === 'failed') return job;
     if (job.status === 'awaiting_approval' && job.prompt_preview && promptApprovalHandler) {
       const send = await promptApprovalHandler(job.prompt_preview);
