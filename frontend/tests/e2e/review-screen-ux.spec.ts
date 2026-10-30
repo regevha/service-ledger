@@ -21,7 +21,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // A scan whose stub read always has flagged fields. For an ordinary scan the stub's confidence per
 // field comes from a hash of the stored file's unique name, so how many fields are flagged changes
 // from run to run (a test that needs flagged fields could not rely on it). For the sample work order
-// the stub always flags root_cause and components_replaced, which are blank on the real document.
+// the stub always flags components_replaced (root_cause is optional, so a blank one is not), which are blank on the real document.
 // It lands on the manual-confirm step first, because its report type is below the threshold.
 async function readSampleWorkOrder(page: Page) {
   await page.goto('/');

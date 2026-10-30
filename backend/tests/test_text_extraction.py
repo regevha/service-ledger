@@ -143,7 +143,7 @@ def test_fields_that_are_not_on_the_form_stay_empty_at_zero_confidence():
     values, conf, _ = read(REPAIR_LINES, "repair")
 
     # Lab-manager fields: nothing on the form says them, so nothing is invented.
-    assert values["fault_category"] is None and conf["fault_category"] == 0.0
+    assert values["fault_category"] == [] and conf["fault_category"] == 0.0
 
 
 def test_every_read_field_carries_a_confidence_and_nothing_else_does():
@@ -301,8 +301,8 @@ def test_the_live_path_wins_over_the_option(tmp_path, monkeypatch):
     monkeypatch.setattr(extraction.settings, "use_live_claude", True)
     monkeypatch.setattr(extraction.settings, "stub_extract_from_text", True)
     called = []
-    monkeypatch.setattr(extraction, "_live_extract", lambda a, t: called.append(True) or "live")
-    assert extraction.extract(_attachment(tmp_path, make_pdf(REPAIR_LINES)), _template([])) == "live"
+    monkeypatch.setattr(extraction, "_live_extract", lambda a, t: called.append(True) or extraction.ExtractionResult({}, {}, None))
+    assert extraction.extract(_attachment(tmp_path, make_pdf(REPAIR_LINES)), _template([])) == extraction.ExtractionResult({}, {}, None)
     assert called
 
 
