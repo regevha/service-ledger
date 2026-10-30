@@ -104,7 +104,7 @@ def test_seeding_fills_a_missing_manufacturer_but_keeps_one_a_person_set(db_sess
     seed_instruments.seed(db_session)
     rows = {i.model: i for i in db_session.query(Instrument).all()}
     rows["LSRFortessa"].manufacturer = None
-    rows["FACSAria III"].manufacturer = "Becton Dickinson"
+    rows["FACSAria III"].manufacturer = "Custom Maker"
     db_session.commit()
 
     seed_instruments.seed(db_session)
@@ -112,4 +112,4 @@ def test_seeding_fills_a_missing_manufacturer_but_keeps_one_a_person_set(db_sess
 
     rows = {i.model: i for i in db_session.query(Instrument).all()}
     assert rows["LSRFortessa"].manufacturer == "BD"
-    assert rows["FACSAria III"].manufacturer == "Becton Dickinson"
+    assert rows["FACSAria III"].manufacturer == "Custom Maker"

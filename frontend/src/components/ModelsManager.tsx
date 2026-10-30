@@ -10,6 +10,7 @@ import {
   type InstrumentModel,
   type InstrumentType,
 } from '../api';
+import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
 import { ModelPage } from './ModelPage';
 import { RowMenu } from './RowMenu';
 import { showToast } from '../toast';
@@ -88,11 +89,12 @@ function ModelForm({
           <span>
             Name <span className="required-mark" title="Required">*</span>
           </span>
-          <input type="text" className="text-input" value={name} placeholder="e.g. FACSAria III" onChange={(e) => setName(e.target.value)} />
+          <input type="text" className="text-input" value={name} placeholder="e.g. Aurora" onChange={(e) => setName(e.target.value)} />
         </label>
         <label className="schema-form-label">
           Manufacturer
-          <input type="text" className="text-input" value={manufacturer} placeholder="e.g. BD" onChange={(e) => setManufacturer(e.target.value)} />
+          <input type="text" className="text-input" value={manufacturer} placeholder="e.g. Cytek Biosciences" list={MAKER_LIST_ID} onChange={(e) => setManufacturer(e.target.value)} />
+          <MakerDatalist />
         </label>
       </div>
       <div className="schema-form-row">
