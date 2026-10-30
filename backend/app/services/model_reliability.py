@@ -17,6 +17,7 @@ from statistics import mean
 from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
+from app.services.field_values import as_choice_list
 from app.services.analytics import AnalyticsFilters, _labor_hours_of, compute_fleet_analytics
 
 MIN_REPAIRS = 3
@@ -54,10 +55,11 @@ def compute_model_reliability(db: Session, model_id: uuid.UUID) -> schemas.Model
         else:
             dates_by_unit[report.instrument_id].append(report.report_date)
         fields = report.extracted_fields or {}
-        category = fields.get("fault_category")
-        if isinstance(category, str) and category.strip():
+        chosen = as_choice_list(fields.get("fault_category"))
+        if chosen:
             with_category += 1
-            categories[category.strip()][report.instrument_id] += 1
+            for category in chosen:
+                categories[category][report.instrument_id] += 1
         found = _labor_hours_of(fields)
         if found is not None:
             hours.append(found)

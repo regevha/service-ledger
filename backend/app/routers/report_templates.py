@@ -163,6 +163,8 @@ def _field_to_dict(field: schemas.TemplateFieldIn) -> dict:
         out["item_schema"] = [{"name": col.name, "type": col.type.value} for col in field.item_schema]
     if field.filled_by_person:
         out["filled_by_person"] = True
+    if field.optional:
+        out["optional"] = True
     return out
 
 

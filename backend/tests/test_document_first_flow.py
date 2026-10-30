@@ -120,7 +120,7 @@ def test_uncertain_report_type_falls_back_to_manual_pick_then_finalizes(client, 
     assert extracted["status"] == "extracted"
     # Real values from the sample document (§5), reproduced by the stub.
     assert "fluidics path" in extracted["extracted_fields"]["work_performed"]
-    assert extracted["extracted_fields"]["fault_category"] == "fluidics"
+    assert extracted["extracted_fields"]["fault_category"] == ["fluidics"]
     assert extracted["extracted_fields"]["root_cause"] == ""  # genuinely blank on the real form
 
     # Root cause came back blank at low confidence (§5) — a human fills it in.
