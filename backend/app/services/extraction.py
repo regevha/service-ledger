@@ -48,12 +48,16 @@ from app.services.documents import UnsupportedDocumentError
 from app.services.translation import source_block
 from app.services.errors import ExtractionError
 from app.services.field_values import normalize_values
+from app.services.privacy import scrub_values
 from app.services.text_extraction import text_extract
 
 logger = logging.getLogger("app.services.extraction")
 settings = get_settings()
 
 _EXTRACT_TOOL_NAME = "record_extraction"
+
+# A field the privacy check had to change is at most this sure (below the review threshold).
+_SCRUBBED_CONFIDENCE = 0.5
 
 _EXTRACT_PROMPT_HEADER = """This is a scanned service report (the notes below about dates and sign-offs are written for BD Care Work Order Service Reports; on another maker's report use the equivalent fields). Extract exactly the fields listed \
 below under "Fields to extract", and only those fields — nothing else on the page.
@@ -69,7 +73,8 @@ natural empty value) rather than inventing something, and give it a low confiden
 directly-printed value deserves 0.85+; anything inferred, illegible, or genuinely \
 absent from the form deserves meaningfully lower. Don't default to a high number.
 
-Privacy — this is not optional: never let the customer's name, account, address, \
+Privacy — this is not optional: no person's name and no contract detail may appear in any field, free text included; \
+write "the engineer" or "the customer" instead of a name. Never let the customer's name, account, address, \
 phone number, contract number, or any other contact/billing detail enter a field's \
 value, even in a text field, even when that detail sits on the same line or right \
 next to text you do need. This also covers the engineer/technician's own name and \
@@ -447,4 +452,13 @@ def extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResul
     else:
         result = _stub_extract(attachment, template)
     fields = template.field_schema.get("fields", [])
-    return result._replace(extracted_fields=normalize_values(fields, result.extracted_fields))
+    values = normalize_values(fields, result.extracted_fields)
+    # The privacy rule's safety net: anything it removes leaves the field doubtful, so a person looks.
+    values, scrubbed = scrub_values(fields, values)
+    confidences = {
+        k: (min(v, _SCRUBBED_CONFIDENCE) if k in scrubbed and isinstance(v, (int, float)) else v)
+        for k, v in result.field_confidences.items()
+    }
+    if scrubbed:
+        logger.info("Privacy check removed names or contract details from: %s", ", ".join(sorted(scrubbed)))
+    return result._replace(extracted_fields=values, field_confidences=confidences)
