@@ -65,10 +65,11 @@ def test_cancel_sends_nothing_and_fails_the_job(client, run_worker, monkeypatch)
     assert fake.messages.calls == []
 
 
-def test_approve_and_cancel_need_a_waiting_job(client, run_worker, monkeypatch):
+def test_approve_needs_a_waiting_job(client, run_worker, monkeypatch):
     fake, job_id = _setup(client, monkeypatch)  # still pending, not waiting
     assert client.post(f"/extraction-jobs/{job_id}/approve").status_code == 409
-    assert client.post(f"/extraction-jobs/{job_id}/cancel").status_code == 409
+    # Cancel is allowed for any job that has not finished (see test_cancel_job.py).
+    assert client.post(f"/extraction-jobs/{job_id}/cancel").status_code == 200
 
 
 def test_off_by_default_calls_straight_through(client, run_worker, monkeypatch):

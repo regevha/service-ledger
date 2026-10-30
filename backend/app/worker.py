@@ -27,6 +27,7 @@ import logging
 import time
 from datetime import datetime, timezone
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import models
@@ -74,6 +75,14 @@ def _claim_next_job(db: Session) -> models.ExtractionJob | None:
     return job
 
 
+def _was_cancelled(db: Session, job_id) -> bool:
+    """True when the person cancelled this job (or deleted its report) while the worker was busy
+    with the slow call. The caller then writes nothing: the result is thrown away."""
+    db.rollback()  # end the transaction so this reads what was committed meanwhile
+    row = db.execute(select(models.ExtractionJob.params).where(models.ExtractionJob.id == job_id)).first()
+    return row is None or bool((row[0] or {}).get("cancelled"))
+
+
 def _fail_job(db: Session, job: models.ExtractionJob, message: str) -> None:
     job.status = models.ExtractionJobStatus.failed
     job.error_message = message
@@ -103,6 +112,8 @@ def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
         db.commit()
         return
 
+    if _was_cancelled(db, job.id):
+        return
     job.classification = result.model_dump(mode="json")
 
     # Re-read the report under a row lock *after* the (slow) classify call,
@@ -178,6 +189,8 @@ def _run_translate_job(db: Session, job: models.ExtractionJob) -> None:
         _fail_job(db, job, str(e))
         return
 
+    if _was_cancelled(db, job.id):
+        return
     # Re-read under a row lock after the slow call, like the other job kinds.
     report = attachment.report
     db.refresh(report, with_for_update=True)
@@ -267,6 +280,8 @@ def _run_extract_job(db: Session, job: models.ExtractionJob) -> None:
         _fail_job(db, job, str(e))
         return
 
+    if _was_cancelled(db, job.id):
+        return
     # The checks above ran *before* the slow extract call — a report can be
     # finalized, or moved to a different template (PATCH .../template), while
     # Claude is still working. Re-read it under a row lock and re-check before

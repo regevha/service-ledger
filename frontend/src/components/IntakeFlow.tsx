@@ -17,6 +17,8 @@ import {
   getReportTemplate,
   getTranslation,
   pollExtractionJob,
+  PollAborted,
+  cancelExtractionJob,
   setPromptApprovalHandler,
   type PromptPreview,
   reportPdfUrl,
@@ -574,6 +576,20 @@ export function IntakeFlow({
   templateCreated?: { template: ReportTemplate; nonce: number } | null;
 }) {
   const [phase, setPhase] = useState<Phase>({ name: 'intake' });
+  // Cancel: set once the person presses it (or the screen goes away). Every step checks it, so a
+  // step that is still in flight neither goes on to the next one nor shows an error.
+  const cancelledRef = useRef(false);
+  const abortRef = useRef<AbortController>(new AbortController());
+  // The job the screen is waiting on, so Cancel can stop it.
+  const jobIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    cancelledRef.current = false;
+    abortRef.current = new AbortController();
+    return () => {
+      cancelledRef.current = true;
+      abortRef.current.abort();
+    };
+  }, []);
   // The fleet as the in-flight steps below should see it: the prop, plus any
   // instrument added during this intake (the prop only catches up after the
   // app reloads its list, and these async steps hold an older render's copy).
@@ -721,14 +737,56 @@ export function IntakeFlow({
   // thrown exception); `attempt` wraps a step's body so each step below only
   // states its fallback message, its retry, and what it actually does.
   function failPhase(message: string, retry: () => void, action?: { label: string; run: () => void }) {
+    if (cancelledRef.current) return;
     setPhase({ name: 'error', message, retry, action });
   }
 
   async function attempt(fallbackMessage: string, retry: () => void, fn: () => Promise<void>) {
+    if (cancelledRef.current) return;
     try {
       await fn();
     } catch (e) {
+      // Cancelled: the person is not waiting for this step any more, so there is nothing to report.
+      if (cancelledRef.current || e instanceof PollAborted) return;
       failPhase(e instanceof ApiError ? e.message : fallbackMessage, retry);
+    }
+  }
+
+  // Wait for a job, remembering which one so Cancel can stop it. Returns only if the screen was
+  // not cancelled meanwhile; otherwise it throws and the step ends quietly (see attempt).
+  async function pollJob(jobId: string, opts: { timeoutMs?: number } = {}) {
+    if (cancelledRef.current) {
+      // Cancel was pressed while this job was being submitted, before it could be stopped by id.
+      void cancelExtractionJob(jobId).catch(() => undefined);
+      throw new PollAborted();
+    }
+    jobIdRef.current = jobId;
+    try {
+      const job = await pollExtractionJob(jobId, { ...opts, signal: abortRef.current.signal });
+      if (cancelledRef.current) throw new PollAborted();
+      return job;
+    } finally {
+      if (jobIdRef.current === jobId) jobIdRef.current = null;
+    }
+  }
+
+  // Cancel on the working screen: stop the job, remove the draft this attempt created (nothing in
+  // it is the person's work yet), then return to a clean upload screen.
+  async function handleCancel() {
+    if (cancelledRef.current) return; // already cancelling
+    cancelledRef.current = true;
+    abortRef.current.abort();
+    const jobId = jobIdRef.current;
+    const draftId = report && phase.name !== 'review' && phase.name !== 'done' ? report.id : null;
+    // Stop the job first: deleting a report whose scan is still being read is refused.
+    if (jobId) await cancelExtractionJob(jobId).catch(() => undefined);
+    if (draftId) await deleteReport(draftId).catch(() => undefined);
+    if (onCancel) {
+      onCancel();
+    } else {
+      resetToIntake();
+      cancelledRef.current = false;
+      abortRef.current = new AbortController();
     }
   }
 
@@ -740,7 +798,7 @@ export function IntakeFlow({
       // the result back.
       const startedAt = performance.now();
       const submitted = await extractAttachment(attId);
-      const job = await pollExtractionJob(submitted.id);
+      const job = await pollJob(submitted.id);
       const elapsedSeconds = (performance.now() - startedAt) / 1000;
       if (job.status === 'failed') {
         failPhase(job.error_message || 'Extraction failed for an unknown reason.', () => void runExtraction(attId, reportId, tpl));
@@ -812,7 +870,7 @@ export function IntakeFlow({
     });
     await attempt('Translation failed unexpectedly.', () => void runTranslation(attId, reportId, includePages), async () => {
       const submitted = await translateAttachment(attId, includePages);
-      const job = await pollExtractionJob(submitted.id, { timeoutMs: 300_000 });
+      const job = await pollJob(submitted.id, { timeoutMs: 300_000 });
       if (job.status === 'failed') {
         failPhase(job.error_message || 'Translation failed for an unknown reason.', () => void runTranslation(attId, reportId, includePages));
         return;
@@ -870,7 +928,7 @@ export function IntakeFlow({
       // §3/§9: submit returns a pending job immediately; app/worker.py picks
       // it up in the background and this polls until it's done.
       const submitted = await classifyAttachment(attId);
-      const job = await pollExtractionJob(submitted.id);
+      const job = await pollJob(submitted.id);
       if (job.status === 'failed') {
         failPhase(
           job.error_message || 'Classification failed for an unknown reason.',
@@ -932,6 +990,10 @@ export function IntakeFlow({
     setPhase({ name: 'working', label: 'Creating report…' });
     await attempt('Could not create the report.', () => void handleStart(), async () => {
       const newReport = await createReport({ technician_name: technicianName || null });
+      if (cancelledRef.current) {
+        await deleteReport(newReport.id).catch(() => undefined);
+        return;
+      }
       setReport(newReport);
       await uploadScan(newReport.id, file);
     });
@@ -954,6 +1016,10 @@ export function IntakeFlow({
           return;
         }
         throw e;
+      }
+      if (cancelledRef.current) {
+        await deleteReport(reportId).catch(() => undefined);
+        return;
       }
       setAttachmentId(attachment.id);
       noteDuplicates(attachment.duplicate_report_ids);
@@ -1037,7 +1103,7 @@ export function IntakeFlow({
           label={phase.label}
           fileName={file?.name}
           slow={liveClaude}
-          onCancel={onCancel}
+          onCancel={() => void handleCancel()}
         />
       )}
 
