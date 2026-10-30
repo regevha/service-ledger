@@ -50,6 +50,9 @@ export function ReviewScreen({
   busy = null,
   saveError = null,
   onRetrySave,
+  instrumentLine,
+  onChangeInstrument,
+  onBack,
 }: {
   template: ReportTemplate;
   fields: Record<string, unknown>;
@@ -108,6 +111,11 @@ export function ReviewScreen({
   // Why the last save or finalize failed. Shown on this screen with a retry; nothing typed is lost.
   saveError?: string | null;
   onRetrySave?: () => void;
+  /** Intake only: which unit the report is on and how it was found, with a way back to change it. */
+  instrumentLine?: string;
+  onChangeInstrument?: () => void;
+  /** Intake only: back to the Classify step. Shown in the heading row. */
+  onBack?: () => void;
 }) {
   // A low-confidence field stays flagged until the technician explicitly marks it checked.
   // Editing the value does not count: they may have typed over it without looking at the scan.
@@ -199,6 +207,16 @@ export function ReviewScreen({
       <div className="section-title-row">
         <div>
           <div className="section-title report-heading">{heading}</div>
+          {instrumentLine && (
+            <div className="report-instrument-line" data-testid="review-instrument-line">
+              <span>{instrumentLine}</span>
+              {onChangeInstrument && (
+                <button type="button" className="link-button" onClick={onChangeInstrument}>
+                  Change
+                </button>
+              )}
+            </div>
+          )}
           {(meta || extractionSeconds != null) && (
             <div className="report-heading-meta">
               {meta}
@@ -208,6 +226,17 @@ export function ReviewScreen({
           )}
         </div>
         <div className="section-title-actions">
+          {onBack && (
+            <button
+              type="button"
+              className="btn small"
+              data-testid="back-to-classify"
+              title="Change the instrument or report type. Reading the document again replaces edits made here."
+              onClick={onBack}
+            >
+              ← Back to Classify
+            </button>
+          )}
           <ScanToggleButton preview={preview} />
           {originalScanUrl && !(phone && (linksInMenu || phoneScan)) && (
             <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
