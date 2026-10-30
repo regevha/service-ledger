@@ -23,6 +23,8 @@ function extractionTimeText(seconds: number): string {
  * below), and overrides the heading since "N fields need attention" is
  * meaningless without those confidences.
  */
+const isEmptyValue = (v: unknown) => v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+
 export function ReviewScreen({
   template,
   fields,
@@ -121,9 +123,12 @@ export function ReviewScreen({
   // Fields a person fills in (not printed on the form): the model's value is only a
   // suggestion, so it is flagged whatever its confidence, until marked as checked.
   const personFields = new Set(template.field_schema.fields.filter((f) => f.filled_by_person).map((f) => f.name));
+  // Fields that may be left empty (root cause): empty is a fine answer, not a doubt.
+  const optionalFields = new Set(template.field_schema.fields.filter((f) => f.optional).map((f) => f.name));
   const isFlagged = (name: string) => {
     if (checked.has(name)) return false;
     if (personFields.has(name) && !readOnly) return true;
+    if (optionalFields.has(name) && isEmptyValue(fields[name])) return false;
     const confidence = fieldConfidences[name];
     return confidence !== undefined && confidence < fieldConfidenceThreshold;
   };

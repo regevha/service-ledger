@@ -618,6 +618,9 @@ class TemplateFieldIn(BaseModel):
     # root cause). The model still suggests a value, but the review screen always
     # asks for it to be checked, whatever the confidence.
     filled_by_person: bool = False
+    # May be left empty: when the form does not state it, an empty value is the
+    # right answer and the review screen does not flag it.
+    optional: bool = False
 
     @model_validator(mode="after")
     def _check_shape(self) -> "TemplateFieldIn":
