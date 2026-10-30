@@ -75,7 +75,7 @@ test('a file that is not a PDF or an image is refused on the spot, with the reas
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeDisabled();
 });
 
-test('several files at once are refused: one file per report', async ({ page }) => {
+test('several PDFs at once are refused: one PDF per report', async ({ page }) => {
   await page.goto('/');
   const dt = await dataTransfer(
     page,
@@ -86,7 +86,7 @@ test('several files at once are refused: one file per report', async ({ page }) 
     PDF()
   );
   await page.locator('.dropzone').dispatchEvent('drop', { dataTransfer: dt });
-  await expect(page.getByRole('alert')).toContainText('one file at a time');
+  await expect(page.getByRole('alert')).toContainText('Drop one PDF');
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeDisabled();
 });
 
@@ -141,5 +141,8 @@ test('dropProblem: what is accepted and what is said when it is not', () => {
   // A wrong type is not rescued by a right-looking name.
   expect(dropProblem([f('fake.pdf', 'text/plain')])).toContain('is not a PDF or an image');
   expect(dropProblem([])).toContain('Nothing was dropped');
-  expect(dropProblem([f('a.pdf', 'application/pdf'), f('b.pdf', 'application/pdf')])).toContain('one file at a time');
+  expect(dropProblem([f('a.pdf', 'application/pdf'), f('b.pdf', 'application/pdf')])).toContain('Drop one PDF');
+  // Several photos of the pages are fine, but not mixed with a PDF.
+  expect(dropProblem([f('a.jpg', 'image/jpeg'), f('b.png', 'image/png')])).toBeNull();
+  expect(dropProblem([f('a.jpg', 'image/jpeg'), f('b.pdf', 'application/pdf')])).toContain('Drop one PDF');
 });
