@@ -14,7 +14,6 @@ const KNOWN: Known[] = [
   { rule: 'color-contrast', screens: ['intake', 'reports', 'review', 'analytics'], why: 'muted text and some badges are below 4.5:1 against their background' },
   { rule: 'label', screens: ['review'], why: 'some inputs in the field editor have no label of their own' },
   { rule: 'select-name', screens: ['review'], why: 'some selects in the review screen have no accessible name' },
-  { rule: 'scrollable-region-focusable', screens: ['analytics'], why: 'a scrolling chart/table area cannot be reached with the keyboard' },
 ];
 
 async function scan(page: Page, screen: string) {

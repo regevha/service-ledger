@@ -173,19 +173,18 @@ def test_endpoint_compares_the_generic_and_cytoflex_repair_templates(client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["left"]["id"] == generic["id"] and body["right"]["id"] == cytoflex["id"]
-    # The generic template is a strict subset: 7 shared, 3 only on the CytoFLEX S side.
+    # Both carry the same six fields; only the notes differ on five of them.
     assert body["summary"] == {
-        "left_count": 7,
-        "right_count": 10,
-        "shared": 7,
-        "same": 2,
+        "left_count": 6,
+        "right_count": 6,
+        "shared": 6,
+        "same": 1,
         "differs": 5,
         "only_left": 0,
-        "only_right": 3,
+        "only_right": 0,
         "possible_match": 0,
     }
-    only_right = [r["name"] for r in body["rows"] if r["status"] == "only_right"]
-    assert only_right == ["service_contract_level", "service_contract_number", "customer_signature_present"]
+    assert not [r for r in body["rows"] if r["status"] in ("only_left", "only_right")]
     differing = {r["name"]: r["differences"] for r in body["rows"] if r["status"] == "differs"}
     assert differing == {
         "fault_description": ["notes"],
@@ -200,20 +199,16 @@ def test_endpoint_shows_the_two_cytek_aurora_templates_as_identical(client):
     install = _seeded(client, "installation_upgrade", "Cytek Aurora")
     pm = _seeded(client, "preventive_maintenance", "Cytek Aurora")
     body = _compare(client, install, pm).json()
-    assert body["summary"]["same"] == body["summary"]["shared"] == 7
+    assert body["summary"]["same"] == body["summary"]["shared"] == 4
     assert body["summary"]["differs"] == body["summary"]["only_left"] == body["summary"]["only_right"] == 0
 
 
-def test_endpoint_shows_generic_and_cytek_pm_with_fields_on_both_sides(client):
+def test_endpoint_generic_and_cytek_pm_now_carry_the_same_four_fields(client):
     generic = _seeded(client, "preventive_maintenance", None)
     cytek = _seeded(client, "preventive_maintenance", "Cytek Aurora")
     body = _compare(client, generic, cytek).json()
-    assert [r["name"] for r in body["rows"] if r["status"] == "only_left"] == ["components_replaced", "calibrated_tools"]
-    assert [r["name"] for r in body["rows"] if r["status"] == "only_right"] == [
-        "parts_used",
-        "customer_order_number",
-        "customer_signature_present",
-    ]
+    assert [r["name"] for r in body["rows"]] == ["service_description", "work_performed", "components_replaced", "labor_hours"]
+    assert not [r for r in body["rows"] if r["status"] in ("only_left", "only_right", "possible_match")]
 
 
 def test_endpoint_summary_counts_add_up(client):
@@ -231,13 +226,13 @@ def test_endpoint_swapping_sides_swaps_the_only_columns(client):
     generic = _seeded(client, "repair", None)
     cytoflex = _seeded(client, "repair", "CytoFLEX S")
     swapped = _compare(client, cytoflex, generic).json()["summary"]
-    assert (swapped["only_left"], swapped["only_right"]) == (3, 0)
+    assert (swapped["only_left"], swapped["only_right"]) == (0, 0)
 
 
 def test_endpoint_comparing_a_template_with_itself_is_all_same(client):
     generic = _seeded(client, "repair", None)
     s = _compare(client, generic, generic).json()["summary"]
-    assert s["same"] == s["shared"] == 7
+    assert s["same"] == s["shared"] == 6
 
 
 def test_endpoint_unknown_template_is_404(client):

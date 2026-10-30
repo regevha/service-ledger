@@ -42,7 +42,7 @@ test('instrument detail page: reached from the reports filter, shows history, an
     serial: 'P648282B3003',
     reportType: 'repair',
     technician,
-    extractedFields: { labor_hours: 2, fault_category: 'electronics', retest_result: 'pass' },
+    extractedFields: { labor_hours: 2, fault_category: 'electronics' },
   });
 
   await page.goto('/');
@@ -98,7 +98,7 @@ test('a report opened straight from the list still returns to the list, not an i
     model: 'LSRFortessa',
     reportType: 'preventive_maintenance',
     technician,
-    extractedFields: { labor_hours: 1.5, verification_result: 'pass' },
+    extractedFields: { labor_hours: 1.5 },
   });
 
   await page.goto('/');

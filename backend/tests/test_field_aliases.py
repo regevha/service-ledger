@@ -293,43 +293,40 @@ def test_two_fields_of_a_group_in_one_template_pair_with_the_right_ones_in_order
     assert rows[0].right["name"] == "p_three"
 
 
-def test_endpoint_reports_possible_matches_with_the_concept_and_a_count(client):
+def _two_pm_templates(db):
+    """Two maintenance-shaped templates whose parts fields are worded differently."""
+    left = _template(db, [_f("service_description"), _f("components_replaced", "object[]"), _f("tools", "object[]")], None, ReportType.preventive_maintenance)
+    right = _template(db, [_f("service_description"), _f("parts_used", "object[]"), _f("order_ref")], "Other", ReportType.preventive_maintenance)
+    return {"left": str(left.id), "right": str(right.id)}
+
+
+def test_endpoint_reports_possible_matches_with_the_concept_and_a_count(client, db_session):
+    params = _two_pm_templates(db_session)
     _create(client, ["components_replaced", "parts_used"], "Parts")
-    rows = client.get("/report-templates/all").json()
-    generic = next(r for r in rows if r["report_type"] == "preventive_maintenance" and r["model"] is None)
-    cytek = next(r for r in rows if r["report_type"] == "preventive_maintenance" and r["model"] == "Cytek Aurora")
-    body = client.get("/report-templates/compare", params={"left": generic["id"], "right": cytek["id"]}).json()
+    body = client.get("/report-templates/compare", params=params).json()
     match = [r for r in body["rows"] if r["status"] == "possible_match"]
     assert [m["name"] for m in match] == ["components_replaced"]
     assert match[0]["right"]["name"] == "parts_used"
     assert match[0]["concept"]["label"] == "Parts"
     assert match[0]["concept"]["names"] == ["components_replaced", "parts_used"]
     assert body["summary"]["possible_match"] == 1
-    # The generic template had two fields only it has; one is now a possible match.
-    assert [r["name"] for r in body["rows"] if r["status"] == "only_left"] == ["calibrated_tools"]
-    assert [r["name"] for r in body["rows"] if r["status"] == "only_right"] == [
-        "customer_order_number",
-        "customer_signature_present",
-    ]
+    # Each side had one field only it has besides the pair; the pair is now a possible match.
+    assert [r["name"] for r in body["rows"] if r["status"] == "only_left"] == ["tools"]
+    assert [r["name"] for r in body["rows"] if r["status"] == "only_right"] == ["order_ref"]
     assert body["summary"]["shared"] + body["summary"]["only_left"] + body["summary"]["possible_match"] == body["summary"]["left_count"]
     assert body["summary"]["shared"] + body["summary"]["only_right"] + body["summary"]["possible_match"] == body["summary"]["right_count"]
 
 
-def test_endpoint_without_aliases_has_no_possible_matches(client):
-    rows = client.get("/report-templates/all").json()
-    generic = next(r for r in rows if r["report_type"] == "preventive_maintenance" and r["model"] is None)
-    cytek = next(r for r in rows if r["report_type"] == "preventive_maintenance" and r["model"] == "Cytek Aurora")
-    body = client.get("/report-templates/compare", params={"left": generic["id"], "right": cytek["id"]}).json()
+def test_endpoint_without_aliases_has_no_possible_matches(client, db_session):
+    params = _two_pm_templates(db_session)
+    body = client.get("/report-templates/compare", params=params).json()
     assert body["summary"]["possible_match"] == 0
     assert all(r["concept"] is None for r in body["rows"])
 
 
-def test_deleting_a_group_removes_its_possible_matches(client):
+def test_deleting_a_group_removes_its_possible_matches(client, db_session):
+    params = _two_pm_templates(db_session)
     group = _create(client, ["components_replaced", "parts_used"]).json()
-    rows = client.get("/report-templates/all").json()
-    generic = next(r for r in rows if r["report_type"] == "preventive_maintenance" and r["model"] is None)
-    cytek = next(r for r in rows if r["report_type"] == "preventive_maintenance" and r["model"] == "Cytek Aurora")
-    params = {"left": generic["id"], "right": cytek["id"]}
     assert client.get("/report-templates/compare", params=params).json()["summary"]["possible_match"] == 1
     client.delete(f"/field-aliases/{group['id']}")
     assert client.get("/report-templates/compare", params=params).json()["summary"]["possible_match"] == 0

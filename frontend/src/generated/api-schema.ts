@@ -627,7 +627,8 @@ export interface paths {
          * Finalize Report
          * @description §9: mark a report finalized. §5: a report is meant to reach this from
          *     extracted/in_review — finalizing a bare draft would just freeze an empty
-         *     record, so that's rejected rather than silently allowed.
+         *     record, so that's rejected rather than silently allowed. Finalizing a
+         *     report that already is finalized returns it unchanged.
          */
         post: operations["finalize_report_reports__report_id__finalize_post"];
         delete?: never;
@@ -906,7 +907,10 @@ export interface paths {
         put?: never;
         /**
          * Cancel Extraction Job
-         * @description VIEW_PROMPTS: the person pressed Cancel; nothing is sent to Claude.
+         * @description The person pressed Cancel. A job that has not started is simply never run, so nothing is
+         *     sent to Claude. A job the worker is already running cannot be interrupted, but its result is
+         *     thrown away and nothing is written (the worker checks before it writes). Either way the job
+         *     ends as failed with "Cancelled." Only a job that already finished is refused.
          */
         post: operations["cancel_extraction_job_extraction_jobs__job_id__cancel_post"];
         delete?: never;
@@ -1028,8 +1032,8 @@ export interface paths {
         /**
          * Fleet Analytics
          * @description Fleet-wide roll-ups computed from every finalized report's already-
-         *     captured fields (components_replaced, labor_hours, fault_category,
-         *     retest_result/verification_result) — no new columns, nothing to backfill.
+         *     captured fields (components_replaced, labor_hours, fault_category)
+         *     — no new columns, nothing to backfill.
          *     See services/analytics.py for exactly how each number is derived and why
          *     only finalized reports contribute.
          */
@@ -1362,10 +1366,6 @@ export interface components {
             /** Labor Hours By Fault Category */
             labor_hours_by_fault_category: {
                 [key: string]: number;
-            };
-            /** Pass Fail By Report Type */
-            pass_fail_by_report_type: {
-                [key: string]: components["schemas"]["PassFailBreakdownOut"];
             };
         };
         /** HTTPValidationError */
@@ -1785,25 +1785,6 @@ export interface components {
             /** Total Qty */
             total_qty: number;
         };
-        /**
-         * PassFailBreakdownOut
-         * @description retest_result (repair) / verification_result (preventive_maintenance)
-         *     tallied across every finalized report of that type. other_count covers
-         *     both the templates' own non-pass/fail option ("not retested"/"not
-         *     verified") and a report that never got that field filled in at all —
-         *     both are "not a confirmed pass", so this doesn't silently drop them from
-         *     the total the way filtering them out would.
-         */
-        PassFailBreakdownOut: {
-            /** Pass Count */
-            pass_count: number;
-            /** Fail Count */
-            fail_count: number;
-            /** Other Count */
-            other_count: number;
-            /** Total */
-            total: number;
-        };
         /** PlaceCreate */
         PlaceCreate: {
             /**
@@ -1899,21 +1880,6 @@ export interface components {
             report_count: number;
             /** Total Labor Hours */
             total_labor_hours: number;
-            /**
-             * Pass Count
-             * @default 0
-             */
-            pass_count: number;
-            /**
-             * Fail Count
-             * @default 0
-             */
-            fail_count: number;
-            /**
-             * Other Count
-             * @default 0
-             */
-            other_count: number;
         };
         /** PlaceUpdate */
         PlaceUpdate: {
@@ -1949,21 +1915,6 @@ export interface components {
              * @default 0
              */
             total_labor_hours: number;
-            /**
-             * Pass Count
-             * @default 0
-             */
-            pass_count: number;
-            /**
-             * Fail Count
-             * @default 0
-             */
-            fail_count: number;
-            /**
-             * Other Count
-             * @default 0
-             */
-            other_count: number;
         };
         /**
          * ReportCountByModelOut
@@ -1983,21 +1934,6 @@ export interface components {
              * @default 0
              */
             total_labor_hours: number;
-            /**
-             * Pass Count
-             * @default 0
-             */
-            pass_count: number;
-            /**
-             * Fail Count
-             * @default 0
-             */
-            fail_count: number;
-            /**
-             * Other Count
-             * @default 0
-             */
-            other_count: number;
         };
         /**
          * ReportCreate
@@ -2332,6 +2268,11 @@ export interface components {
             options?: string[] | null;
             /** Item Schema */
             item_schema?: components["schemas"]["ItemSchemaColumn"][] | null;
+            /**
+             * Filled By Person
+             * @default false
+             */
+            filled_by_person: boolean;
         };
         /**
          * TemplateFieldType
@@ -2538,8 +2479,6 @@ export interface components {
             total_labor_hours: number;
             /** Parts Replaced Qty */
             parts_replaced_qty: number;
-            repair_results: components["schemas"]["PassFailBreakdownOut"];
-            preventive_maintenance_results: components["schemas"]["PassFailBreakdownOut"];
         };
         /** ValidationError */
         ValidationError: {

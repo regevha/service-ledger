@@ -79,7 +79,7 @@ def test_every_model_resolves_the_shared_installation_template(seeded, model):
     template = resolve_template(seeded, instrument_type="facs", report_type="installation_upgrade", model=model)
     assert template is not None and template.model is None
     names = [f["name"] for f in template.field_schema["fields"]]
-    assert names == ["service_description", "work_performed", "parts_used", "labor_hours", "verification_result"]
+    assert names == ["service_description", "work_performed", "components_replaced", "labor_hours"]
 
 
 def test_the_template_api_lists_the_new_type(client):
@@ -123,7 +123,7 @@ def test_a_confident_t107_report_resolves_extracts_and_finalizes(client, run_wor
     extracted = client.get(f"/reports/{report['id']}").json()
     assert extracted["status"] == "extracted"
     assert set(extracted["extracted_fields"]) == {
-        "service_description", "work_performed", "parts_used", "labor_hours", "verification_result",
+        "service_description", "work_performed", "components_replaced", "labor_hours",
     }
 
     assert client.post(f"/reports/{report['id']}/finalize").json()["status"] == "finalized"
@@ -159,4 +159,4 @@ def test_an_installation_report_is_left_out_of_the_fleet_analytics_figures(clien
 
     resp = client.get("/analytics/fleet")
     assert resp.status_code == 200
-    assert set(resp.json()["pass_fail_by_report_type"]) == {"repair", "preventive_maintenance"}
+    assert "pass_fail_by_report_type" not in resp.json()

@@ -12,13 +12,13 @@ async function seedTwoModels(request: Parameters<typeof seedReport>[0]) {
     finalize: true,
     model: 'FACSAria III',
     reportType: 'repair',
-    fields: { labor_hours: 4, retest_result: 'pass' },
+    fields: { labor_hours: 4 },
   });
   await seedReport(request, {
     finalize: true,
     model: 'LSRFortessa',
     reportType: 'repair',
-    fields: { labor_hours: 2, retest_result: 'fail' },
+    fields: { labor_hours: 2 },
   });
 }
 
@@ -74,7 +74,6 @@ test('grouping by instrument lists units and choosing one narrows to it', async 
   const name = (await rows.first().locator('.fleet-row-title').textContent())!;
   await rows.first().click();
   await expect(page.getByTestId('analytics-basis')).toContainText(`for ${name}`, { timeout: TIMEOUT.ui });
-  await expect(page.getByTestId('stat-pass-rate')).toBeVisible();
 
   // Changing the grouping clears the choice.
   await list.getByRole('tab', { name: 'Model' }).click();

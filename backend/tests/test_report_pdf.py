@@ -91,7 +91,6 @@ def test_pdf_renders_repair_report_fields(client, seeded):
             ],
             "labor_hours": 2.5,
             "fault_category": "fluidics",
-            "retest_result": "pass",
         },
     )
 

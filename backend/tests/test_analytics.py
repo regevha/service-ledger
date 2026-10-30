@@ -41,9 +41,7 @@ def _make_report(
 
 def test_empty_fleet_returns_zeroed_rollups_for_every_instrument(client, seeded):
     """No finalized reports at all yet — every instrument in the fleet still
-    appears (report_count=0, total_labor_hours=0.0), and both tracked report
-    types appear in pass_fail_by_report_type at zero rather than being
-    missing keys."""
+    appears (report_count=0, total_labor_hours=0.0)."""
     resp = client.get("/analytics/fleet")
     assert resp.status_code == 200
     body = resp.json()
@@ -59,10 +57,7 @@ def test_empty_fleet_returns_zeroed_rollups_for_every_instrument(client, seeded)
         "CytoFLEX S",
     }
     assert all(row["report_count"] == 0 and row["total_labor_hours"] == 0.0 for row in body["labor_hours_by_instrument"])
-    assert body["pass_fail_by_report_type"] == {
-        "repair": {"pass_count": 0, "fail_count": 0, "other_count": 0, "total": 0},
-        "preventive_maintenance": {"pass_count": 0, "fail_count": 0, "other_count": 0, "total": 0},
-    }
+    assert "pass_fail_by_report_type" not in body
 
 
 def test_parts_replaced_aggregates_across_reports_by_name_and_number(client, seeded):
@@ -157,50 +152,6 @@ def test_labor_hours_rolled_up_by_instrument_and_fault_category(client, seeded):
     assert by_model["FACSDiscover S8"]["report_count"] == 0
 
 
-def test_pass_fail_tallies_missing_and_non_binary_results_as_other(client, seeded):
-    _make_report(
-        seeded,
-        model="FACSAria III",
-        report_type=ReportType.repair,
-        extracted_fields={"retest_result": "pass"},
-    )
-    _make_report(
-        seeded,
-        model="LSRFortessa",
-        report_type=ReportType.repair,
-        extracted_fields={"retest_result": "fail"},
-    )
-    _make_report(
-        seeded,
-        model="FACSDiscover S8",
-        report_type=ReportType.repair,
-        extracted_fields={"retest_result": "not retested"},
-    )
-    # No retest_result key at all — still counted as "other", not silently
-    # dropped from the total.
-    _make_report(seeded, model="FACSAria III", report_type=ReportType.repair, extracted_fields={})
-    _make_report(
-        seeded,
-        model="LSRFortessa",
-        report_type=ReportType.preventive_maintenance,
-        extracted_fields={"verification_result": "pass"},
-    )
-
-    body = client.get("/analytics/fleet").json()
-    assert body["pass_fail_by_report_type"]["repair"] == {
-        "pass_count": 1,
-        "fail_count": 1,
-        "other_count": 2,
-        "total": 4,
-    }
-    assert body["pass_fail_by_report_type"]["preventive_maintenance"] == {
-        "pass_count": 1,
-        "fail_count": 0,
-        "other_count": 0,
-        "total": 1,
-    }
-
-
 def test_non_finalized_reports_never_contribute(client, seeded):
     _make_report(
         seeded,
@@ -210,7 +161,6 @@ def test_non_finalized_reports_never_contribute(client, seeded):
         extracted_fields={
             "labor_hours": 100,
             "fault_category": "software",
-            "retest_result": "pass",
             "components_replaced": [{"part_name": "Should not count", "part_number": "X", "qty": 1}],
         },
     )
@@ -219,7 +169,6 @@ def test_non_finalized_reports_never_contribute(client, seeded):
     assert body["parts_replaced"] == []
     assert body["total_labor_hours"] == 0.0
     assert body["labor_hours_by_fault_category"] == {}
-    assert body["pass_fail_by_report_type"]["repair"]["total"] == 0
 
 
 def test_non_numeric_and_boolean_labor_hours_and_qty_are_ignored_not_miscounted(client, seeded):
@@ -347,30 +296,27 @@ def test_report_counts_per_instrument_and_per_model(client, seeded):
     assert allrows["LSRFortessa"] == 2
 
 
-def test_rows_carry_hours_and_pass_counts_for_the_fleet_list(client, seeded):
-    """Each per-instrument, per-model and per-place row says how its repair / preventive
-    maintenance reports came out and how many hours they took, so the fleet list beside
-    the charts can show a pass rate and an hours bar without another request."""
+def test_rows_carry_hours_for_the_fleet_list(client, seeded):
+    """Each per-instrument, per-model and per-place row says how many hours its reports
+    took, so the fleet list beside the charts can show an hours bar without another request."""
     _make_report(seeded, model="FACSAria III", report_type=ReportType.repair,
-                 extracted_fields={"labor_hours": 2, "retest_result": "pass"})
+                 extracted_fields={"labor_hours": 2})
     _make_report(seeded, model="FACSAria III", report_type=ReportType.repair,
-                 extracted_fields={"labor_hours": 3, "retest_result": "fail"})
+                 extracted_fields={"labor_hours": 3})
     _make_report(seeded, model="FACSAria III", report_type=ReportType.preventive_maintenance,
                  extracted_fields={"labor_hours": 1})
     _make_report(seeded, model="LSRFortessa", report_type=ReportType.repair,
-                 extracted_fields={"labor_hours": 4, "retest_result": "pass"})
+                 extracted_fields={"labor_hours": 4})
     body = client.get("/analytics/fleet").json()
 
     unit = {r["model"]: r for r in body["report_counts_by_instrument"]}["FACSAria III"]
-    assert (unit["pass_count"], unit["fail_count"], unit["other_count"]) == (1, 1, 1)
     assert unit["total_labor_hours"] == 6.0
 
     model = {r["model"]: r for r in body["report_counts_by_model"]}["FACSAria III"]
-    assert (model["pass_count"], model["fail_count"], model["other_count"]) == (1, 1, 1)
     assert model["total_labor_hours"] == 6.0
     # The model record's id is what the page sends back as the model_id filter.
     narrowed = client.get("/analytics/fleet", params={"model_id": model["model_id"]}).json()
     assert [r["model"] for r in narrowed["report_counts_by_model"]] == ["FACSAria III"]
 
     quiet = {r["model"]: r for r in body["report_counts_by_model"]}["CytoFLEX S"]
-    assert (quiet["pass_count"], quiet["fail_count"], quiet["other_count"], quiet["total_labor_hours"]) == (0, 0, 0, 0.0)
+    assert quiet["total_labor_hours"] == 0.0

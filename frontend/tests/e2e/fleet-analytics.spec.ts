@@ -4,8 +4,8 @@ import { TIMEOUT } from './timeouts';
 
 // The Analytics tab (GET /analytics/fleet) — a smoke check that the tab
 // renders real numbers end to end through the UI. The aggregation math
-// itself (parts merging by part_number, labor-hours roll-ups, pass/fail
-// bucketing including missing/non-binary results) is already exhaustively
+// itself (parts merging by part_number, labor-hours roll-ups)
+// is already exhaustively
 // covered by backend/tests/test_analytics.py; this only proves the frontend
 // actually fetches and displays what that endpoint returns.
 //
@@ -17,7 +17,7 @@ import { TIMEOUT } from './timeouts';
 
 const UNIQUE_PART_QTY = 5000;
 
-test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail counts', async ({ page, request }) => {
+test('the Analytics tab shows this run\'s own labor hours and parts', async ({ page, request }) => {
   const uniquePart = `E2E-Part-${Date.now()}`;
 
   await seedReport(request, {
@@ -27,7 +27,6 @@ test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail 
     fields: {
       labor_hours: 4,
       fault_category: 'fluidics',
-      retest_result: 'pass',
       components_replaced: [{ part_name: uniquePart, part_number: 'E2E-1', qty: UNIQUE_PART_QTY }],
     },
   });
@@ -35,14 +34,14 @@ test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail 
     finalize: true,
     model: 'LSRFortessa',
     reportType: 'preventive_maintenance',
-    fields: { labor_hours: 2.5, verification_result: 'fail' },
+    fields: { labor_hours: 2.5 },
   });
 
   await page.goto('/');
   await page.click('.view-tab:has-text("Analytics")');
 
   await expect(page.locator('.section-title')).toContainText('Fleet analytics');
-  await expect(page.locator('.stat-tile')).toHaveCount(4, { timeout: TIMEOUT.ui });
+  await expect(page.locator('.stat-tile')).toHaveCount(3, { timeout: TIMEOUT.ui });
 
   // This run added at least 4 + 2.5 = 6.5 hours — the fleet-wide total may
   // be higher if other specs already finalized reports in this same run.
@@ -69,8 +68,4 @@ test('the Analytics tab shows this run\'s own labor hours, parts, and pass/fail 
   const ariaBar = page.locator('.labor-bar', { hasText: 'FACSAria III' });
   await expect(ariaBar).toBeVisible();
   await expect(ariaBar.locator('.bar-value')).not.toHaveText('none');
-
-  // Pass/fail section shows both report types this run touched.
-  await expect(page.locator('.stack-row', { hasText: 'Malfunction / repair' })).toBeVisible();
-  await expect(page.locator('.stack-row', { hasText: 'Preventive maintenance' })).toBeVisible();
 });

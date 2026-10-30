@@ -388,7 +388,6 @@ _SAMPLE_REPAIR_VALUES = {
     "components_replaced": [],
     "labor_hours": 11.5,
     "fault_category": "fluidics",
-    "retest_result": "pass",
 }
 
 
