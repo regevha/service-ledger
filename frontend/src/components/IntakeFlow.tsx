@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { PromptReview } from './PromptReview';
+import { plainMessage } from '../plainMessages';
 import {
   deleteReport,
   ApiError,
@@ -73,6 +74,8 @@ type Phase =
       name: 'error';
       message: string;
       retry: () => void;
+      /** The server's own words when they were replaced by a plain sentence; shown under "Details for support". */
+      detail?: string;
       /** What the retry button says; "Try again" unless trying again would only repeat the refusal. */
       retryLabel?: string;
       action?: { label: string; run: () => void };
@@ -794,7 +797,16 @@ export function IntakeFlow({
   function failPhase(message: string, retry: () => void, action?: { label: string; run: () => void }, retryLabel?: string) {
     if (cancelledRef.current) return;
     // The step that was running stays the one the step bar shows, and names what failed.
-    setPhase((prev) => ({ name: 'error', message, retry, retryLabel, action, step: prev.name === 'error' ? prev.step : stepOf(prev) }));
+    const plain = plainMessage(message);
+    setPhase((prev) => ({
+      name: 'error',
+      message: plain,
+      detail: plain === message ? undefined : message,
+      retry,
+      retryLabel,
+      action,
+      step: prev.name === 'error' ? prev.step : stepOf(prev),
+    }));
   }
 
   async function attempt(fallbackMessage: string, retry: () => void, fn: () => Promise<void>) {
@@ -873,7 +885,7 @@ export function IntakeFlow({
   }
 
   async function runExtraction(attId: string, reportId: string, tpl: ReportTemplate) {
-    setPhase({ name: 'working', label: 'Reading the resolved template with Claude vision…' });
+    setPhase({ name: 'working', label: 'Reading the fields from the document…' });
     await attempt('Extraction failed unexpectedly.', () => void runExtraction(attId, reportId, tpl), async () => {
       // §3/§9: this only enqueues the job — app/worker.py is what actually
       // runs it — so wait for it to leave pending/extracting before reading
@@ -906,7 +918,7 @@ export function IntakeFlow({
     instrumentId: string,
     instrumentType: string
   ) {
-    setPhase({ name: 'working', label: 'Resolving the matching template…' });
+    setPhase({ name: 'working', label: 'Finding the right form…' });
     await attempt(
       'Could not resolve a template.',
       () => void resolveAndExtract(reportId, attId, model, reportType, instrumentId, instrumentType),
@@ -1007,7 +1019,7 @@ export function IntakeFlow({
   }
 
   async function runClassification(attId: string, reportId: string) {
-    setPhase({ name: 'working', label: 'Classifying instrument & report type…' });
+    setPhase({ name: 'working', label: 'Reading the instrument and visit type…' });
     await attempt('Classification failed unexpectedly.', () => void runClassification(attId, reportId), async () => {
       // §3/§9: submit returns a pending job immediately; app/worker.py picks
       // it up in the background and this polls until it's done.
@@ -1157,7 +1169,7 @@ export function IntakeFlow({
       else showToast('Saved');
       return true;
     } catch (e) {
-      setSaveError({ message: e instanceof ApiError ? e.message : 'Saving failed unexpectedly.', finalize });
+      setSaveError({ message: plainMessage(e instanceof ApiError ? e.message : 'Saving failed unexpectedly.'), finalize });
       return false;
     } finally {
       setSaving(null);
@@ -1344,6 +1356,12 @@ export function IntakeFlow({
           <div className="banner banner-crit" data-testid="intake-error">
             <strong>{STEP_FAILED[phase.step] ?? 'Something went wrong'}{file ? ` (${file.name})` : ''}.</strong> {phase.message}
           </div>
+          {phase.detail && (
+            <details className="error-details" data-testid="intake-error-details">
+              <summary>Details for support</summary>
+              <code>{phase.detail}</code>
+            </details>
+          )}
           <div className="cta-row">
             <button className="btn" onClick={resetToIntake}>
               Start over
