@@ -233,8 +233,10 @@ def test_a_serial_not_in_the_fleet_is_reported_not_guessed(client, run_worker):
     pdf = make_pdf(service_report(product="665158 - FACSDiscover S8", serial="MP6651580000099"))
     result = _classify(client, run_worker, _upload(client, pdf)["id"])
     assert result["instrument_serial"]["value"] == "MP6651580000099" and result["serial_match"] == "not_found"
-    # Only one S8 in the fleet, so it is still the model's only unit.
-    assert result["resolved_instrument_id"] is not None
+    # Only one S8 in the fleet, but the document names a different serial: not auto-resolved,
+    # the S8 is only suggested (the technician confirms, or adds the new instrument).
+    assert result["resolved_instrument_id"] is None
+    assert result["suggested_instrument_id"] is not None
 
 
 def test_a_file_with_no_text_still_gets_the_demo_answer(client, run_worker):

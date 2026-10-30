@@ -12,9 +12,10 @@ import {
 
 /**
  * Shown on the classification screen when the document's instrument is not in
- * the fleet (ClassificationResult.maker_in_fleet === false). The technician
- * adds it right here, with what the document says already filled in, and the
- * document is classified again against the new fleet.
+ * the fleet: another maker's instrument (maker_in_fleet === false), or one of
+ * the fleet's own models whose serial is not registered (serial_match ===
+ * 'not_found'). The technician adds it right here, with what the document says
+ * already filled in, and the document is classified again against the new fleet.
  */
 export function AddInstrumentPanel({
   classification,
@@ -28,8 +29,11 @@ export function AddInstrumentPanel({
 }) {
   const [types, setTypes] = useState<InstrumentType[]>([]);
   const [typeKey, setTypeKey] = useState('');
-  const [model, setModel] = useState(classification.detected_model ?? '');
-  const [name, setName] = useState(classification.detected_model ?? '');
+  // Another maker's form names its model; a fleet model's form is read as that model.
+  const otherMaker = classification.maker_in_fleet === false;
+  const startModel = classification.detected_model ?? (otherMaker ? '' : classification.instrument.value);
+  const [model, setModel] = useState(startModel);
+  const [name, setName] = useState(startModel);
   const [manufacturer, setManufacturer] = useState(classification.detected_manufacturer ?? '');
   // The form's issuer is usually the company that sold or services the
   // instrument, not its maker, so it goes in the distributor field.
@@ -50,7 +54,11 @@ export function AddInstrumentPanel({
   // A model that already exists has one instrument type; the new instrument has to match it.
   useEffect(() => {
     const match = knownModels.find((m) => m.name === model.trim());
-    if (match) setTypeKey(match.instrument_type);
+    if (match) {
+      setTypeKey(match.instrument_type);
+      // A model already in the fleet knows its maker.
+      if (match.manufacturer) setManufacturer((current) => current || match.manufacturer || '');
+    }
   }, [knownModels, model]);
 
   useEffect(() => {
@@ -90,10 +98,16 @@ export function AddInstrumentPanel({
     <div className="section add-instrument-panel" id="add-instrument-panel">
       <div className="section-title">This instrument is not in your fleet</div>
       <p className="hint-text">
-        The document looks like {classification.detected_manufacturer ? `a ${classification.detected_manufacturer} ` : 'an '}
-        {classification.detected_model ?? 'instrument'} that has not been added yet
-        {classification.issuer ? `, on a form from ${classification.issuer}` : ''}. Add it here, check the details, and the document is classified
-        again.
+        {otherMaker ? (
+          <>
+            The document looks like {classification.detected_manufacturer ? `a ${classification.detected_manufacturer} ` : 'an '}
+            {classification.detected_model ?? 'instrument'} that has not been added yet
+            {classification.issuer ? `, on a form from ${classification.issuer}` : ''}.
+          </>
+        ) : (
+          <>The serial number on the document, {classification.instrument_serial?.value}, is not registered under {classification.instrument.value}.</>
+        )}{' '}
+        Add it here, check the details, and the document is classified again.
       </p>
       <div className="add-instrument-grid">
         <label>
