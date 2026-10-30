@@ -161,6 +161,7 @@ test.describe('intake flow', () => {
     await page.click('button:has-text("Upload & classify")');
     const hint = page.locator('.section:has(.section-title:has-text("Detected from the document")) .hint-text');
     await expect(hint).toBeVisible({ timeout: TIMEOUT.flow });
-    await expect(hint).toHaveText('Check the instrument and the report type, then continue.');
+    // The sample's report type is unclear, so the line names it instead of the general request.
+    await expect(hint).toHaveText('The report type was not clear on the document. Check the outlined rows, then continue.');
   });
 });

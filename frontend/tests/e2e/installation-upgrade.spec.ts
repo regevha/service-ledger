@@ -1,6 +1,7 @@
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { TIMEOUT } from './timeouts';
+import { confirmClassification } from './helpers/ui';
 
 import { finalizeFromReview } from './finalize-helper';
 // Installation / upgrade is a report type of its own (BD task code T107). The
@@ -22,7 +23,7 @@ test('a technician can confirm a report as an installation / upgrade and review 
 
   const typeSelect = page.locator('select:has(option:has-text("Installation / upgrade"))');
   await typeSelect.selectOption({ label: 'Installation / upgrade' });
-  await page.click('button:has-text("Confirm & continue")');
+  await confirmClassification(page);
 
   const fields = page.locator('.field-list');
   await expect(fields).toBeVisible({ timeout: TIMEOUT.flow });

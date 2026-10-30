@@ -3,6 +3,7 @@ import { uniqueFixture } from './unique-upload';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TIMEOUT } from './timeouts';
+import { confirmClassification } from './helpers/ui';
 
 import { finalizeFromReview } from './finalize-helper';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,7 +31,7 @@ test('the extracted service date is shown on review, can be corrected, and is sa
     const instrumentSelect = page.locator('.class-row select').first();
     const firstInstrument = await instrumentSelect.locator('option:not([disabled])').first().getAttribute('value');
     await instrumentSelect.selectOption(firstInstrument!);
-    await page.click('button:has-text("Confirm & continue to extraction")');
+    await confirmClassification(page);
   }
 
   const dateInput = page.locator('#review-report-date');

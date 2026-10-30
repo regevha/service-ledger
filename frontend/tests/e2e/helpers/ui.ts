@@ -28,3 +28,13 @@ export async function openAnalytics(page: Page): Promise<void> {
   await page.click('.view-tab:has-text("Analytics")');
   await expect(page.getByTestId('analytics-filters')).toBeVisible({ timeout: TIMEOUT.ui });
 }
+
+/**
+ * Presses "Confirm & continue" on the Classify screen. A report type read with low confidence is not
+ * pre-selected, so when the type select is still empty the given type is chosen first.
+ */
+export async function confirmClassification(page: Page, reportType: string = 'repair'): Promise<void> {
+  const typeSelect = page.locator('.class-row select').nth(1);
+  if ((await typeSelect.inputValue()) === '') await typeSelect.selectOption(reportType);
+  await page.click('button:has-text("Confirm & continue")');
+}

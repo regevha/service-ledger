@@ -2,6 +2,7 @@ import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { TIMEOUT } from './timeouts';
 import { API_BASE } from './helpers/api';
+import { confirmClassification } from './helpers/ui';
 
 // A second kind of instrument: a type is added from the instrument form, an
 // instrument is created with it, and a report for that instrument says
@@ -67,7 +68,7 @@ test('a new instrument type can be added, used, and shows a clear message when i
     });
     await page.click('button:has-text("Upload & classify")');
     await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
-    await page.click('button:has-text("Confirm & continue")');
+    await confirmClassification(page);
     await expect(page.getByText(new RegExp(`There is no .* template for ${typeName} / E2E-Talos yet`))).toBeVisible({
       timeout: TIMEOUT.ui,
     });
