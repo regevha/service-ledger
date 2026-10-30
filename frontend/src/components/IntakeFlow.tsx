@@ -335,7 +335,7 @@ function ConfirmClassificationScreen({
   instruments: Instrument[];
   pickInstrumentId: string;
   setPickInstrumentId: (v: string) => void;
-  pickReportType: ReportType;
+  pickReportType: ReportType | '';
   setPickReportType: (v: ReportType) => void;
   classificationConfidenceThreshold: number;
   onConfirm: () => void;
@@ -350,6 +350,17 @@ function ConfirmClassificationScreen({
   const serial = classification.instrument_serial ?? null;
   const match: SerialMatch = classification.serial_match ?? 'not_read';
   const noteType = classification.report_type_note as ReportType | null | undefined;
+  // Say which reads were uncertain, and outline those rows, instead of a general "check it".
+  const threshold = classificationConfidenceThreshold;
+  const modelUnsure = classification.instrument.confidence < threshold;
+  const unitUnsure = !pickInstrumentId || match === 'model_conflict';
+  const typeUnsure = classification.report_type.confidence < threshold;
+  const reasons = [
+    typeUnsure ? 'The report type was not clear on the document.' : '',
+    modelUnsure ? 'The instrument model was not clear on the document.' : '',
+    match === 'model_conflict' ? 'The serial number belongs to a different model than the one read.' : '',
+    !pickInstrumentId && !modelUnsure && match !== 'model_conflict' ? 'The instrument could not be told from the document.' : '',
+  ].filter(Boolean);
   return (
     <>
     {classification.maker_in_fleet === false && (
@@ -359,8 +370,8 @@ function ConfirmClassificationScreen({
       <div className="section-title-row">
         <div>
           <div className="section-title">Detected from the document</div>
-          <p className="hint-text">
-            Check the instrument and the report type, then continue.
+          <p className="hint-text" data-testid="classify-reason">
+            {reasons.length > 0 ? `${reasons.join(' ')} Check the outlined rows, then continue.` : 'Check the instrument and the report type, then continue.'}
           </p>
         </div>
         <div className="section-title-actions">
@@ -415,7 +426,7 @@ function ConfirmClassificationScreen({
         <div className="field-note">{SERIAL_MATCH_NOTE[match]}</div>
       </div>
 
-      <div className="class-row" data-testid="class-row">
+      <div className={`class-row${unitUnsure || modelUnsure ? ' uncertain' : ''}`} data-testid="class-row">
         <div className="crow-top">
           <span className="clabel">Instrument</span>
           <ConfidenceBadge
@@ -456,7 +467,7 @@ function ConfirmClassificationScreen({
         </select>
       </div>
 
-      <div className="class-row" data-testid="class-row">
+      <div className={`class-row${typeUnsure || !pickReportType ? ' uncertain' : ''}`} data-testid="class-row">
         <div className="crow-top">
           <span className="clabel">Report type</span>
           <ConfidenceBadge
@@ -470,6 +481,10 @@ function ConfirmClassificationScreen({
           />
         </div>
         <select value={pickReportType} onChange={(e) => setPickReportType(e.target.value as ReportType)}>
+          {/* Below the confidence threshold nothing is pre-selected, so one click cannot accept a guess. */}
+          <option value="" disabled>
+            Select report type…
+          </option>
           {(Object.keys(REPORT_TYPE_LABEL) as ReportType[]).map((rt) => (
             <option key={rt} value={rt}>
               {REPORT_TYPE_LABEL[rt]}
@@ -484,7 +499,7 @@ function ConfirmClassificationScreen({
       </div>
 
       <div className="cta-row">
-        <button className="btn primary" disabled={!pickInstrumentId} onClick={onConfirm}>
+        <button className="btn primary" disabled={!pickInstrumentId || !pickReportType} onClick={onConfirm}>
           Confirm &amp; continue to extraction →
         </button>
       </div>
@@ -699,7 +714,9 @@ export function IntakeFlow({
   // shared a model.
   const [pickInstrumentId, setPickInstrumentId] = useState('');
   const [serialNotice, setSerialNotice] = useState<SerialNotice | null>(null);
-  const [pickReportType, setPickReportType] = useState<ReportType>('repair');
+  const [pickReportType, setPickReportType] = useState<ReportType | ''>('');
+  // True when the person chose the unit on the Classify screen (rather than it being matched by the serial).
+  const [unitChosen, setUnitChosen] = useState(false);
   // Reports that already hold this document, keyed by id (see describeDuplicates).
   const [duplicates, setDuplicates] = useState<Record<string, Report | null>>({});
 
@@ -1019,6 +1036,7 @@ export function IntakeFlow({
   }
 
   async function runClassification(attId: string, reportId: string) {
+    setUnitChosen(false);
     setPhase({ name: 'working', label: 'Reading the instrument and visit type…' });
     await attempt('Classification failed unexpectedly.', () => void runClassification(attId, reportId), async () => {
       // §3/§9: submit returns a pending job immediately; app/worker.py picks
@@ -1070,7 +1088,10 @@ export function IntakeFlow({
         // that model"); older results without it get the model-only rule.
         const guessed = instrumentsRef.current.filter((inst) => inst.model === result.instrument.value);
         setPickInstrumentId(result.suggested_instrument_id ?? (guessed.length === 1 ? guessed[0].id : ''));
-        setPickReportType((result.report_type.value as ReportType) ?? 'repair');
+        // Only a clear reading is pre-selected; an uncertain one has to be chosen.
+        setPickReportType(
+          result.report_type.confidence >= classificationConfidenceThreshold ? ((result.report_type.value as ReportType) ?? '') : ''
+        );
         setPhase({ name: 'confirm-classification' });
       }
     });
@@ -1137,7 +1158,8 @@ export function IntakeFlow({
   async function handleConfirmClassification() {
     if (!report || !attachmentId) return;
     const instrument = instruments.find((inst) => inst.id === pickInstrumentId);
-    if (!instrument) return;
+    if (!instrument || !pickReportType) return;
+    setUnitChosen(true);
     await resolveAndExtract(report.id, attachmentId, instrument.model, pickReportType, instrument.id, instrument.instrument_type);
   }
 
@@ -1179,6 +1201,14 @@ export function IntakeFlow({
   // The app asks before a tab, the Back button or "Back to Classify" would throw unsaved edits away.
   useNavigationGuard('new', dirty, () => handleSaveFields(false));
 
+  // Which unit the report is on and how it was found, shown under the Review heading during intake.
+  const matchedBySerial = classification?.serial_match === 'matched';
+  const reviewInstrumentLine = (() => {
+    const unit = report?.instrument_id ? instruments.find((inst) => inst.id === report.instrument_id) : undefined;
+    if (!unit) return undefined;
+    const how = unitChosen ? 'you chose it' : matchedBySerial ? 'matched by serial' : 'the only unit of that model';
+    return `${unit.model} · ${unit.serial_number} · ${how}`;
+  })();
   const reviewInstrument = report?.instrument_id ? instruments.find((inst) => inst.id === report.instrument_id) : undefined;
 
   return (
@@ -1271,6 +1301,7 @@ export function IntakeFlow({
               <button
                 type="button"
                 className="btn small"
+                title="Saving a template reads this report again and replaces what is on screen, so correct after, not before."
                 onClick={() =>
                   requestTemplate({ reportId: report.id, attachmentId, instrument: reviewInstrument, reportType: template.report_type })
                 }
@@ -1283,22 +1314,9 @@ export function IntakeFlow({
             </div>
           }
         >
-          This report used the generic {REPORT_TYPE_LABEL[template.report_type]} template for {reviewInstrument.model}. A template made for{' '}
-          {reviewInstrument.model} can ask for the fields its forms carry; saving one reads this report again and replaces what is on
-          screen, so make corrections after, not before.
+          Generic {REPORT_TYPE_LABEL[template.report_type]} template in use. A {reviewInstrument.model} template can ask for the fields its
+          forms carry.
         </Notice>
-      )}
-
-      {phase.name === 'review' && classification && (
-        <button
-          type="button"
-          className="btn small back-link"
-          data-testid="back-to-classify"
-          title="Change the instrument or report type. Reading the document again replaces edits made here."
-          onClick={backToClassification}
-        >
-          ← Back to Classify
-        </button>
       )}
 
       {phase.name === 'review' && template && (
@@ -1320,6 +1338,9 @@ export function IntakeFlow({
           extractionSeconds={extractionSeconds}
           busy={saving}
           saveError={saveError?.message ?? null}
+          instrumentLine={reviewInstrumentLine}
+          onChangeInstrument={classification ? backToClassification : undefined}
+          onBack={classification ? backToClassification : undefined}
           onRetrySave={saveError ? () => void handleSaveFields(saveError.finalize) : undefined}
         />
       )}

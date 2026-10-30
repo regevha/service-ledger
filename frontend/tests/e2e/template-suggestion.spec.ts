@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TIMEOUT } from './timeouts';
 import { API_BASE } from './helpers/api';
+import { confirmClassification } from './helpers/ui';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = path.join(__dirname, 'fixtures', 'sample-work-order.pdf');
@@ -40,7 +41,7 @@ async function readSampleAs(page: Page, instrumentId: string) {
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
   await page.locator('.class-row select').first().selectOption(instrumentId);
-  await page.click('button:has-text("Confirm & continue")');
+  await confirmClassification(page);
   await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 }
 
@@ -181,7 +182,7 @@ test('a type with no template at all offers to create one and then reads the rep
     });
     await page.click('button:has-text("Upload & classify")');
     await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
-    await page.click('button:has-text("Confirm & continue")');
+    await confirmClassification(page);
 
     await expect(page.getByText(new RegExp(`There is no .* template for ${typeName} / ${model} yet`))).toBeVisible({ timeout: TIMEOUT.ui });
     await page.locator('#create-template-action').click();

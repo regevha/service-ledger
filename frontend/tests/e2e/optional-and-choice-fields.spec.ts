@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { test, expect } from './coverage';
 import { uniqueFixture } from './unique-upload';
 import { TIMEOUT } from './timeouts';
+import { confirmClassification } from './helpers/ui';
 
 // The sample repair order leaves its cause blank, and the reading says so with low confidence.
 // Root cause is marked optional, so that empty answer is fine and not flagged; the blank parts list
@@ -16,7 +17,7 @@ test('an empty optional root cause is not flagged, a blank parts list still is',
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(SAMPLE));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
-  await page.click('button:has-text("Confirm & continue")');
+  await confirmClassification(page);
   await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 
   await expect(page.locator('[data-field="components_replaced"]')).toHaveClass(/pending/);

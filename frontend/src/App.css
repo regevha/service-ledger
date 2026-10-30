@@ -344,6 +344,18 @@ textarea {
   border: 1px solid var(--warn);
 }
 
+.class-row.uncertain {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 1px var(--warn);
+}
+.report-instrument-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.86rem;
+  margin-top: 4px;
+}
 .class-row,
 .read-row {
   border: 1px solid var(--border);
