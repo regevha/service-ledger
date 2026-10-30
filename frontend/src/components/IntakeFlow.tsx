@@ -36,6 +36,7 @@ import {
 } from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { showToast } from '../toast';
+import { prepareUpload } from '../imageUpload';
 import { ACCEPTED_TYPES, dropProblem } from '../uploadFiles';
 import type { TemplateRequest } from '../templateRequest';
 import { ConfidenceBadge, classificationLabel } from './ConfidenceBadge';
@@ -145,16 +146,18 @@ function StepBar({ phase }: { phase: Phase }) {
 function IntakeScreen({
   technicianName,
   setTechnicianName,
-  file,
-  setFile,
+  files,
+  setFiles,
   onStart,
 }: {
   technicianName: string;
   setTechnicianName: (v: string) => void;
-  file: File | null;
-  setFile: (f: File | null) => void;
+  files: File[];
+  setFiles: (f: File[]) => void;
   onStart: () => void;
 }) {
+  const file = files[0] ?? null;
+  const chosenLabel = files.length > 1 ? `${files.length} photos — one report` : file?.name;
   const [dragging, setDragging] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
 
@@ -204,17 +207,18 @@ function IntakeScreen({
           const files = Array.from(e.dataTransfer.files);
           const problem = dropProblem(files);
           // A refused drop leaves the file already chosen in place; say so, so it is not a surprise.
-          setDropError(problem && file ? `${problem} Keeping ${file.name}.` : problem);
-          if (!problem) setFile(files[0]);
+          setDropError(problem && file ? `${problem} Keeping ${chosenLabel}.` : problem);
+          if (!problem) setFiles(files);
         }}
       >
         <div className="icon">📄</div>
         <div className="primary">
-          {dragging ? 'Drop the file here' : file ? file.name : phone ? 'Take a photo or choose a file' : 'Click to choose a scan or PDF, or drop it here'}
+          {dragging ? 'Drop the file here' : file ? chosenLabel : phone ? 'Take a photo or choose a file' : 'Click to choose a scan or PDF, or drop it here'}
         </div>
-        <div className="secondary">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one file per report, any instrument, any report type</div>
+        <div className="secondary">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one PDF, or several photos of the pages, per report; any instrument, any report type</div>
         <input
           type="file"
+          multiple
           data-testid="intake-file-input"
           accept={ACCEPTED_TYPES.join(',')}
           // Visually hidden, not display:none, so the keyboard can reach it (Enter or Space opens the picker).
@@ -222,7 +226,13 @@ function IntakeScreen({
           aria-label="Choose a scan or PDF"
           onChange={(e) => {
             setDropError(null);
-            setFile(e.target.files?.[0] ?? null);
+            const picked = Array.from(e.target.files ?? []);
+            const problem = picked.length > 1 ? dropProblem(picked) : null;
+            if (problem) {
+              setDropError(problem);
+              return;
+            }
+            setFiles(picked);
           }}
         />
       </label>
@@ -679,7 +689,8 @@ export function IntakeFlow({
   }, []);
 
   const [technicianName, setTechnicianName] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const file = files[0] ?? null;
 
   const [report, setReport] = useState<Report | null>(null);
   const [classification, setClassification] = useState<ClassificationResult | null>(null);
@@ -742,7 +753,7 @@ export function IntakeFlow({
   function chooseAnotherFile() {
     draftIdRef.current = null;
     setPhase({ name: 'intake' });
-    setFile(null);
+    setFiles([]);
     setReport(null);
   }
 
@@ -750,7 +761,7 @@ export function IntakeFlow({
     setPhase({ name: 'intake' });
     submittedJobs.current.clear();
     setTechnicianName('');
-    setFile(null);
+    setFiles([]);
     setReport(null);
     setClassification(null);
     setTranslation(null);
@@ -1103,7 +1114,7 @@ export function IntakeFlow({
   // draft in the reports list and instrument history, with no way to delete
   // it (§10). Now a retry after the report exists re-runs only the upload.
   async function handleStart() {
-    if (!file) return;
+    if (files.length === 0) return;
     setPhase({ name: 'working', label: 'Creating report…' });
     await attempt('Could not create the report.', () => void handleStart(), async () => {
       const newReport = await createReport({ technician_name: technicianName || null });
@@ -1113,7 +1124,7 @@ export function IntakeFlow({
         return;
       }
       setReport(newReport);
-      await uploadScan(newReport.id, file);
+      await uploadScan(newReport.id, await prepareUpload(files));
     });
   }
 
@@ -1229,8 +1240,8 @@ export function IntakeFlow({
         <IntakeScreen
           technicianName={technicianName}
           setTechnicianName={setTechnicianName}
-          file={file}
-          setFile={setFile}
+          files={files}
+          setFiles={setFiles}
           onStart={() => void handleStart()}
         />
       )}
