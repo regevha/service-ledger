@@ -2942,9 +2942,11 @@ button.fleet-row:hover {
   margin: 8px 0;
 }
 
-/* Places screen */
+/* Places screen. The header and every body row are separate grids, so the Actions column is a
+   fixed width: with `auto` each row sized it to its own content and the headings drifted off
+   their columns. */
 .instrument-row.place-row {
-  grid-template-columns: minmax(0, 2fr) minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 1fr) 148px;
 }
 @media (max-width: 900px) {
   .instrument-row.place-row {
