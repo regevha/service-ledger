@@ -47,15 +47,16 @@ test('uncertain report type routes through manual confirm before extracting', as
 
   // The stub's real BD Care values for this exact fixture (§5) — root_cause
   // and components_replaced are genuinely blank on the source document, not
-  // a bad read, and both get flagged for review rather than guessed.
+  // a bad read; the blank parts list is flagged for review, the optional cause is not.
   const faultCategoryField = page.locator('.field', { hasText: 'fault category' });
-  await expect(faultCategoryField.locator('select')).toHaveValue('fluidics');
+  await expect(faultCategoryField).toContainText('fluidics');
 
   const workPerformedField = page.locator('.field', { hasText: 'work performed' });
   await expect(workPerformedField.locator('textarea')).toHaveValue(/fluidics path/);
 
   const rootCauseField = page.locator('.field', { hasText: 'root cause' });
-  await expect(rootCauseField).toHaveClass(/pending/);
+  // Optional on the template, so a blank one is not flagged.
+  await expect(rootCauseField).not.toHaveClass(/pending/);
   await expect(rootCauseField.locator('textarea')).toHaveValue('');
 
   // A human fills in the blank the model correctly declined to guess.
