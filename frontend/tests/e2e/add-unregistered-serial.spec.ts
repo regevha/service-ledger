@@ -1,5 +1,6 @@
 import { test, expect } from './coverage';
 import { TIMEOUT } from './timeouts';
+import { API_BASE } from './helpers/api';
 
 // A BD service report whose serial number is not registered: the classify screen offers the
 // same add-instrument panel as for another maker's form, pre-filled from the document.
@@ -27,7 +28,7 @@ function textPdf(lines: string[]): Buffer {
   return Buffer.from(out, 'latin1');
 }
 
-test('a serial that is not registered offers the add-instrument panel, pre-filled', async ({ page }) => {
+test('a serial that is not registered offers the add-instrument panel, pre-filled', async ({ page, request }) => {
   const stamp = String(Date.now()).slice(-8);
   const serial = `R647794E6${stamp}`; // BD serials embed the product code
   const pdf = textPdf([
@@ -58,4 +59,10 @@ test('a serial that is not registered offers the add-instrument panel, pre-fille
   await expect(page.locator('#add-instrument-panel')).toHaveCount(0, { timeout: TIMEOUT.flow });
   await expect(page.locator('.banner-crit')).toHaveCount(0);
   await expect(page.locator('.field-list, #serial-notice').first()).toBeVisible({ timeout: TIMEOUT.flow });
+
+  // The suite shares one database: a second LSRFortessa would stop other specs from finding "the only unit".
+  const list = await (await request.get(`${API_BASE}/instruments`)).json();
+  const created = list.find((i: { serial_number: string }) => i.serial_number === serial);
+  expect(created).toBeTruthy();
+  expect((await request.delete(`${API_BASE}/instruments/${created.id}`)).ok()).toBe(true);
 });
