@@ -304,11 +304,8 @@ export interface ReportCountByInstrument {
   institution?: string | null;
   serial_number: string;
   report_count: number;
-  /** Hours and how the repair / preventive maintenance reports came out, for the fleet list's row. */
+  /** Hours for the fleet list's row. */
   total_labor_hours?: number;
-  pass_count?: number;
-  fail_count?: number;
-  other_count?: number;
 }
 
 /** The same counts added up per instrument model. */
@@ -319,16 +316,6 @@ export interface ReportCountByModel {
   unit_count: number;
   report_count: number;
   total_labor_hours?: number;
-  pass_count?: number;
-  fail_count?: number;
-  other_count?: number;
-}
-
-export interface PassFailBreakdown {
-  pass_count: number;
-  fail_count: number;
-  other_count: number;
-  total: number;
 }
 
 export type PlaceRollup = components['schemas']['PlaceRollupOut'];
@@ -345,7 +332,6 @@ export interface FleetAnalytics {
   /** Instruments, reports and work hours per institution, faculty and room. */
   place_rollups?: PlaceRollup[];
   labor_hours_by_fault_category: Record<string, number>;
-  pass_fail_by_report_type: Record<string, PassFailBreakdown>;
 }
 
 // ---------- Fetch plumbing ----------
@@ -487,8 +473,6 @@ export interface UnitComparison {
   labor_report_count: number;
   total_labor_hours: number;
   parts_replaced_qty: number;
-  repair_results: PassFailBreakdown;
-  preventive_maintenance_results: PassFailBreakdown;
 }
 
 export interface ModelComparison {
@@ -631,7 +615,7 @@ export function compareTemplates(leftId: string, rightId: string): Promise<Templ
 // ---------- Field aliases ----------
 //
 // Sets of field names that mean the same thing under different wording
-// ("retest_result", "verification_result"), kept by hand and shared by everyone.
+// ("root_cause", "cause"), kept by hand and shared by everyone.
 // The template comparison reads them to show a "possible match"; nothing is
 // renamed or merged because of them.
 export interface FieldAliasGroup {

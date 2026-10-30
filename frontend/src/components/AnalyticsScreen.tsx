@@ -9,7 +9,6 @@ import {
   type PartUsage,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
-import { REPORT_TYPE_LABEL } from '../labels';
 import { BarRow } from './BarRow';
 import { ChartSection } from './ChartSection';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -18,7 +17,7 @@ import { PlaceCharts } from './PlaceCharts';
 import { ReportsPerInstrumentChart, ReportsPerModelChart } from './ReportCountCharts';
 import { ReportFilterBar } from './ReportFilterBar';
 import { ModelComparisonSection } from './ModelComparison';
-import { FleetList, GROUPS, fleetRows, passRate, type FleetSelection, type GroupBy } from './FleetList';
+import { FleetList, GROUPS, fleetRows, type FleetSelection, type GroupBy } from './FleetList';
 
 /**
  * Fleet-wide roll-ups (GET /analytics/fleet) — most-replaced parts, labor
@@ -141,67 +140,6 @@ function LaborHoursByFaultCategoryChart({ byCategory }: { byCategory: Record<str
         <BarRow key={category} label={category} value={hours} maxValue={maxHours} formattedValue={formatHours(hours)} />
       ))}
     </div>
-  );
-}
-
-function PassFailSection({ byReportType }: { byReportType: FleetAnalytics['pass_fail_by_report_type'] }) {
-  const rows = (['repair', 'preventive_maintenance'] as const)
-    .map((rt) => ({ reportType: rt, breakdown: byReportType[rt] }))
-    .filter((row) => row.breakdown && row.breakdown.total > 0);
-
-  if (rows.length === 0) {
-    return <div className="empty-hint">No finalized repair or preventive maintenance reports with a pass/fail result yet.</div>;
-  }
-
-  return (
-    <>
-      <div className="legend-row">
-        <span className="legend-item">
-          <span className="legend-swatch good" /> Pass
-        </span>
-        <span className="legend-item">
-          <span className="legend-swatch crit" /> Fail
-        </span>
-        <span className="legend-item">
-          <span className="legend-swatch other" /> Not recorded
-        </span>
-      </div>
-      <div className="stack-chart">
-        {rows.map(({ reportType, breakdown }) => (
-          <div className="stack-row" key={reportType}>
-            <div className="bar-row-label">
-              <span className="bar-label">{REPORT_TYPE_LABEL[reportType]}</span>
-            </div>
-            <div className="stack-track">
-              {breakdown.pass_count > 0 && (
-                <div
-                  className="stack-seg good"
-                  style={{ flexGrow: breakdown.pass_count }}
-                  title={`Pass: ${breakdown.pass_count}`}
-                />
-              )}
-              {breakdown.fail_count > 0 && (
-                <div
-                  className="stack-seg crit"
-                  style={{ flexGrow: breakdown.fail_count }}
-                  title={`Fail: ${breakdown.fail_count}`}
-                />
-              )}
-              {breakdown.other_count > 0 && (
-                <div
-                  className="stack-seg other"
-                  style={{ flexGrow: breakdown.other_count }}
-                  title={`Not recorded: ${breakdown.other_count}`}
-                />
-              )}
-            </div>
-            <span className="bar-value">
-              {breakdown.pass_count}/{breakdown.total} pass
-            </span>
-          </div>
-        ))}
-      </div>
-    </>
   );
 }
 
@@ -385,13 +323,6 @@ export function AnalyticsScreen() {
 
   const totalUnitsReplaced = data ? data.parts_replaced.reduce((sum, p) => sum + p.total_qty, 0) : 0;
   const totalReports = data ? data.labor_hours_by_instrument.reduce((sum, r) => sum + r.report_count, 0) : 0;
-  const passing = data
-    ? Object.values(data.pass_fail_by_report_type ?? {}).reduce(
-        (t, b) => ({ pass: t.pass + b.pass_count, fail: t.fail + b.fail_count, other: t.other + b.other_count }),
-        { pass: 0, fail: 0, other: 0 }
-      )
-    : null;
-  const rate = passing ? passRate(passing.pass, passing.fail, passing.other) : null;
 
   return (
     <div className="section">
@@ -463,10 +394,6 @@ export function AnalyticsScreen() {
                   <span className="stat-value">{totalReports}</span>
                   <span className="stat-label">Repair/PM reports counted</span>
                 </div>
-                <div className="stat-tile" data-testid="stat-pass-rate">
-                  <span className="stat-value">{rate === null ? '–' : `${rate}%`}</span>
-                  <span className="stat-label">Pass rate (repair and PM)</span>
-                </div>
               </div>
 
               <ChartSection title="Most replaced parts" defaultOpen>
@@ -494,10 +421,6 @@ export function AnalyticsScreen() {
 
               <ChartSection title="Labor hours by fault category (repair only)">
                 <LaborHoursByFaultCategoryChart byCategory={data.labor_hours_by_fault_category} />
-              </ChartSection>
-
-              <ChartSection title="Pass / fail rate">
-                <PassFailSection byReportType={data.pass_fail_by_report_type} />
               </ChartSection>
 
               <ModelComparisonSection filters={detailFilters} />

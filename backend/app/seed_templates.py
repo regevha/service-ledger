@@ -59,14 +59,6 @@ REPAIR_FIELDS = [
         "filled_by_person": True,
         "options": ["fluidics", "optics", "electronics", "software"],
     },
-    {
-        "name": "retest_result",
-        "type": "enum",
-        "unit": None,
-        "notes": "lab-manager-assigned, not on the source form",
-        "filled_by_person": True,
-        "options": ["pass", "fail", "not retested"],
-    },
 ]
 
 # v0.12: redesigned from a guessed per-model boolean checklist to this shared,
@@ -109,27 +101,7 @@ PM_FIELDS = [
             {"name": "qty", "type": "number"},
         ],
     },
-    {
-        "name": "calibrated_tools",
-        "type": "object[]",
-        "unit": None,
-        "notes": "external test equipment used, from the form's \"Calibrated Tools\" table — not present on repair reports",
-        "item_schema": [
-            {"name": "tool_id", "type": "text"},
-            {"name": "tool_name", "type": "text"},
-            {"name": "last_calibration_date", "type": "date"},
-            {"name": "next_calibration_date", "type": "date"},
-        ],
-    },
     {"name": "labor_hours", "type": "number", "unit": "hours", "notes": "rounded total from the form's \"Labor\" line"},
-    {
-        "name": "verification_result",
-        "type": "enum",
-        "unit": None,
-        "notes": "lab-manager-assigned, not on the source form — mirrors repair's retest_result",
-        "filled_by_person": True,
-        "options": ["pass", "fail", "not verified"],
-    },
 ]
 
 # Installation / upgrade visits (BD task code T107, "Install: Options,
@@ -154,10 +126,10 @@ INSTALL_UPGRADE_FIELDS = [
         "notes": "what was installed or upgraded, and the checks run afterwards",
     },
     {
-        "name": "parts_used",
+        "name": "components_replaced",
         "type": "object[]",
         "unit": None,
-        "notes": "one entry per part; mirrors the form's \"Parts Used\" table — often empty for a software upgrade",
+        "notes": "one entry per part; mirrors the form's \"Parts Used\" table (parts replaced) — often empty for a software upgrade",
         "item_schema": [
             {"name": "part_name", "type": "text"},
             {"name": "part_number", "type": "text"},
@@ -165,14 +137,6 @@ INSTALL_UPGRADE_FIELDS = [
         ],
     },
     {"name": "labor_hours", "type": "number", "unit": "hours", "notes": "rounded total from the form's \"Labor\" line"},
-    {
-        "name": "verification_result",
-        "type": "enum",
-        "unit": None,
-        "notes": "lab-manager-assigned, not on the source form — mirrors preventive maintenance",
-        "filled_by_person": True,
-        "options": ["pass", "fail", "not verified"],
-    },
 ]
 
 
@@ -192,7 +156,7 @@ INSTALL_UPGRADE_FIELDS = [
 # pages that follow it are ignored by the scan. The customer found travel
 # useless, so no travel field exists here.
 _CYTEK_PARTS = {
-    "name": "parts_used",
+    "name": "components_replaced",
     "type": "object[]",
     "unit": None,
     "notes": "one entry per row of the form's parts table (Cytek part numbers start N7-); empty when none",
@@ -222,32 +186,13 @@ _CYTEK_COMMON = [
         "unit": "hours",
         "notes": "the work number on the form; an unmarked number on a work line is hours. Travel is not recorded",
     },
-    {"name": "customer_order_number", "type": "text", "unit": None, "notes": "the customer's order number printed on the form"},
-    {
-        "name": "customer_signature_present",
-        "type": "boolean",
-        "unit": None,
-        "notes": (
-            "true only when a signature is actually drawn or written in the customer's own signature box; "
-            "the customer's printed name or the box title is not a signature, an empty box is false, and "
-            "the engineer's signature alone is false"
-        ),
-    },
-    {
-        "name": "verification_result",
-        "type": "enum",
-        "unit": None,
-        "notes": "lab-manager-assigned, not on the source form",
-        "filled_by_person": True,
-        "options": ["pass", "fail", "not verified"],
-    },
 ]
 CYTEK_AURORA_INSTALL_FIELDS = [dict(f) for f in _CYTEK_COMMON]
 CYTEK_AURORA_PM_FIELDS = [dict(f) for f in _CYTEK_COMMON]
 
 # CytoFLEX S, Rhenium form (SC26R006240): a one-page repair report with a fault
 # description, a free-text repair description, a work table in clock time
-# (HH:MM), a service contract level and number, no parts table, and a customer
+# (HH:MM), no parts table, and a customer
 # approval block that is often blank. Travel is empty on purpose.
 CYTOFLEX_S_REPAIR_FIELDS = [
     {"name": "fault_description", "type": "text", "unit": None, "notes": "the form's fault description and details"},
@@ -275,17 +220,6 @@ CYTOFLEX_S_REPAIR_FIELDS = [
         "unit": "hours",
         "notes": "the total of the work-hours row, printed as HH:MM (01:25 is 1.42 hours); travel is not recorded",
     },
-    {"name": "service_contract_level", "type": "text", "unit": None, "notes": "the form's service type, a contract level such as GOLD, not a report type"},
-    {"name": "service_contract_number", "type": "text", "unit": None, "notes": "the service contract number on the form"},
-    {
-        "name": "customer_signature_present",
-        "type": "boolean",
-        "unit": None,
-        "notes": (
-            "true only when a signature is actually drawn or written in the customer approval block; "
-            "a printed name alone is not a signature, and blank is normal and means false"
-        ),
-    },
     {
         "name": "fault_category",
         "type": "enum",
@@ -293,14 +227,6 @@ CYTOFLEX_S_REPAIR_FIELDS = [
         "notes": "lab-manager-assigned, not on the source form",
         "filled_by_person": True,
         "options": ["fluidics", "optics", "electronics", "software"],
-    },
-    {
-        "name": "retest_result",
-        "type": "enum",
-        "unit": None,
-        "notes": "lab-manager-assigned, not on the source form",
-        "filled_by_person": True,
-        "options": ["pass", "fail", "not retested"],
     },
 ]
 

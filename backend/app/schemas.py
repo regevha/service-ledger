@@ -614,8 +614,8 @@ class TemplateFieldIn(BaseModel):
     notes: str | None = None
     options: list[str] | None = None
     item_schema: list[ItemSchemaColumn] | None = None
-    # Filled in by a person, not printed on the form (fault category, retest
-    # result). The model still suggests a value, but the review screen always
+    # Filled in by a person, not printed on the form (fault category,
+    # root cause). The model still suggests a value, but the review screen always
     # asks for it to be checked, whatever the confidence.
     filled_by_person: bool = False
 
@@ -997,13 +997,8 @@ class ReportCountByInstrumentOut(BaseModel):
     institution: str | None = None
     serial_number: str
     report_count: int
-    # What the fleet list beside the charts shows per row: the hours added up for this
-    # instrument and how its repair / preventive maintenance reports came out
-    # (the same buckets as PassFailBreakdownOut).
+    # What the fleet list beside the charts shows per row: the hours added up for this instrument.
     total_labor_hours: float = 0.0
-    pass_count: int = 0
-    fail_count: int = 0
-    other_count: int = 0
 
 
 class ReportCountByModelOut(BaseModel):
@@ -1016,23 +1011,6 @@ class ReportCountByModelOut(BaseModel):
     unit_count: int
     report_count: int
     total_labor_hours: float = 0.0
-    pass_count: int = 0
-    fail_count: int = 0
-    other_count: int = 0
-
-
-class PassFailBreakdownOut(BaseModel):
-    """retest_result (repair) / verification_result (preventive_maintenance)
-    tallied across every finalized report of that type. other_count covers
-    both the templates' own non-pass/fail option ("not retested"/"not
-    verified") and a report that never got that field filled in at all —
-    both are "not a confirmed pass", so this doesn't silently drop them from
-    the total the way filtering them out would."""
-
-    pass_count: int
-    fail_count: int
-    other_count: int
-    total: int
 
 
 class PlaceRollupOut(BaseModel):
@@ -1047,9 +1025,6 @@ class PlaceRollupOut(BaseModel):
     instrument_count: int
     report_count: int
     total_labor_hours: float
-    pass_count: int = 0
-    fail_count: int = 0
-    other_count: int = 0
 
 
 class FleetAnalyticsOut(BaseModel):
@@ -1075,10 +1050,6 @@ class FleetAnalyticsOut(BaseModel):
     # hardcoded copy of that enum's options, so this can't silently drift
     # from the real template if its options list ever changes.
     labor_hours_by_fault_category: dict[str, float]
-    # Keyed by ReportType.value ("repair" / "preventive_maintenance") —
-    # always both, even at zero, so the frontend never has to guess whether
-    # a missing key means zero or means "not implemented yet".
-    pass_fail_by_report_type: dict[str, PassFailBreakdownOut]
 
 
 # ---------- Instrument trend ----------
@@ -1130,8 +1101,6 @@ class UnitComparisonOut(BaseModel):
     total_labor_hours: float
     # Sum of qty over every components_replaced row on the unit's reports.
     parts_replaced_qty: float
-    repair_results: PassFailBreakdownOut
-    preventive_maintenance_results: PassFailBreakdownOut
 
 
 class ModelComparisonOut(BaseModel):

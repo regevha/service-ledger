@@ -117,9 +117,6 @@ def test_place_rollups_per_level(client, db_session):
     assert (uni["instrument_count"], uni["report_count"], uni["total_labor_hours"]) == (2, 3, 9)
     room_a = by[("room", "Room A", "Zeta Filter Uni")]
     assert (room_a["instrument_count"], room_a["report_count"], room_a["total_labor_hours"]) == (1, 2, 5)
-    # None of these repairs recorded a retest result, so all of them count as "not recorded".
-    assert (uni["pass_count"], uni["fail_count"], uni["other_count"]) == (0, 0, 3)
-    assert (room_a["pass_count"], room_a["fail_count"], room_a["other_count"]) == (0, 0, 2)
     other = by[("institution", "Zeta Other Uni", "Zeta Other Uni")]
     assert (other["instrument_count"], other["report_count"]) == (1, 1)
 

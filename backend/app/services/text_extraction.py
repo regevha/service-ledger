@@ -147,26 +147,6 @@ def read_labor(text: str, order: str | None) -> tuple[float, date | None] | None
     return hours, (max(ends) if ends else None)
 
 
-def read_tools(text: str, order: str | None) -> list[dict] | None:
-    """The CALIBRATED TOOLS rows, with dates as ISO strings."""
-    block = _section(text, r"CALIBRATED TOOLS", r"Date:")
-    if block is None:
-        return None
-    rows = []
-    pattern = re.compile(rf"^(T-[\w-]+) - (.+?)(?: - [\w/.-]+)? ({_DATE}) ({_DATE})\s*$", re.M)
-    for match in pattern.finditer(block):
-        last, nxt = _to_date(match.group(3), order), _to_date(match.group(4), order)
-        rows.append(
-            {
-                "tool_id": match.group(1),
-                "tool_name": match.group(2).strip(),
-                "last_calibration_date": last.isoformat() if last else "",
-                "next_calibration_date": nxt.isoformat() if nxt else "",
-            }
-        )
-    return rows
-
-
 def _empty_value(field: dict):
     """The type's natural empty value, as the live prompt asks for."""
     ftype = field["type"]
@@ -188,7 +168,6 @@ def extract_from_text(text: str, fields: list[dict]):
     cause = _section(text, r"CAUSE", r"WORK PERFORMED / SOLUTION COMMENTS")
     work = _section(text, r"WORK PERFORMED / SOLUTION COMMENTS", r"PARTS USED")
     parts = read_parts(text)
-    tools = read_tools(text, order)
 
     def text_read(value: str | None):
         if value is None:
@@ -206,8 +185,6 @@ def extract_from_text(text: str, fields: list[dict]):
         "root_cause": lambda: text_read(cause),
         "work_performed": lambda: text_read(work),
         "components_replaced": lambda: list_read(parts),
-        "parts_used": lambda: list_read(parts),
-        "calibrated_tools": lambda: list_read(tools),
         "labor_hours": lambda: (labor[0], CONF_COMPUTED) if labor else (None, 0.0),
     }
 
@@ -220,8 +197,6 @@ def extract_from_text(text: str, fields: list[dict]):
         # custom template that reuses the name for another type is left empty.
         expected = {
             "components_replaced": TemplateFieldType.object_list,
-            "parts_used": TemplateFieldType.object_list,
-            "calibrated_tools": TemplateFieldType.object_list,
             "labor_hours": TemplateFieldType.number,
         }.get(name, TemplateFieldType.text)
         if reader is None or field["type"] != expected:

@@ -29,7 +29,7 @@ def test_the_cytek_aurora_has_its_own_install_and_pm_templates(seeded):
     for report_type in (ReportType.installation_upgrade, ReportType.preventive_maintenance):
         template = _resolve(seeded, unit, report_type)
         assert template.model == "Cytek Aurora"
-        assert "customer_order_number" in _names(template)
+        assert "customer_order_number" not in _names(template)  # treated like the contract number
 
 
 def test_the_cytek_form_has_no_travel_field_and_reads_unmarked_numbers_as_hours(seeded):
@@ -44,7 +44,7 @@ def test_the_cytoflex_has_its_own_repair_template_that_converts_clock_time(seede
     unit = _unit(seeded, "102579")
     template = _resolve(seeded, unit, ReportType.repair)
     assert template.model == "CytoFLEX S"
-    assert {"service_contract_level", "service_contract_number", "customer_signature_present"} <= set(_names(template))
+    assert not {"service_contract_level", "service_contract_number", "customer_signature_present"} & set(_names(template))
     assert not any("travel" in n for n in _names(template))
     assert "HH:MM" in _field(template, "labor_hours")["notes"]
 
@@ -74,16 +74,6 @@ def test_every_new_template_is_valid_for_the_extraction_schema(seeded):
     assert len(rows) == 3
     for row in rows:
         assert _build_extract_tool(row.field_schema["fields"])["input_schema"]["properties"]
-
-
-def test_the_customer_signature_rule_needs_an_actual_signature_not_a_printed_name(seeded):
-    # Live runs of 2026-10-15 and 2026-10-16: the Cytek form prints the customer's
-    # name above an empty signature box and the extraction read that as signed.
-    for serial, report_type in [("Y1033", ReportType.installation_upgrade), ("102579", ReportType.repair)]:
-        template = _resolve(seeded, _unit(seeded, serial), report_type)
-        notes = _field(template, "customer_signature_present")["notes"]
-        assert "actually drawn or written" in notes
-        assert "printed name" in notes
 
 
 def test_the_classify_prompt_says_the_work_order_is_the_service_call_never_the_customers_order():

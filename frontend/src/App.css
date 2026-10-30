@@ -880,32 +880,6 @@ button.fleet-row:hover {
   height: 100%;
   background: var(--accent);
 }
-.fleet-row-pass {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  width: 50px;
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
-}
-.fleet-dot {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
-  background: var(--border-strong);
-}
-.fleet-dot.good {
-  background: var(--good);
-}
-.fleet-dot.warn {
-  background: var(--warn);
-}
-.fleet-dot.crit {
-  background: var(--crit);
-}
 .fleet-empty {
   padding: 14px 12px;
   font-size: 0.82rem;
