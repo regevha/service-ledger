@@ -4,6 +4,7 @@ import {
   type Instrument,
   type ReportFilters,
   type ReportListItem,
+  type ReportStatus,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
@@ -119,6 +120,28 @@ export function ReportsListScreen({
   // pre-save one. InstrumentDetailScreen needs nothing extra: it's unmounted
   // while a report is open and fetches fresh when it mounts again.
   const [refreshNonce, setRefreshNonce] = useState(0);
+
+  // How many reports each status has under the other filters, for the pills above the list. Counted apart
+  // from `items` because the list itself is already narrowed by the status that is chosen.
+  const [statusCounts, setStatusCounts] = useState<Partial<Record<ReportStatus, number>> | null>(null);
+  const { status: chosenStatus, ...withoutStatus } = filters;
+  const withoutStatusKey = JSON.stringify(withoutStatus);
+  useEffect(() => {
+    let cancelled = false;
+    listReports(JSON.parse(withoutStatusKey) as ReportFilters)
+      .then((all) => {
+        if (cancelled) return;
+        const counts: Partial<Record<ReportStatus, number>> = {};
+        for (const r of all) counts[r.status] = (counts[r.status] ?? 0) + 1;
+        setStatusCounts(counts);
+      })
+      .catch(() => {
+        if (!cancelled) setStatusCounts(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [withoutStatusKey, refreshNonce]);
 
   const { loading, error } = useAsyncEffect(
     async (isCancelled) => {
@@ -261,6 +284,31 @@ export function ReportsListScreen({
           )
         }
       />
+      {statusCounts && (
+        <div className="status-filter" role="group" aria-label="Filter by status" data-testid="status-pills">
+          <button
+            type="button"
+            className="status-filter-pill"
+            aria-pressed={!chosenStatus}
+            onClick={() => setFilters((f) => ({ ...f, status: undefined }))}
+          >
+            All <span className="status-filter-count">{Object.values(statusCounts).reduce((a, b) => a + (b ?? 0), 0)}</span>
+          </button>
+          {(['draft', 'classified', 'extracted', 'in_review', 'finalized'] as ReportStatus[])
+            .filter((st) => (statusCounts[st] ?? 0) > 0 || chosenStatus === st)
+            .map((st) => (
+              <button
+                key={st}
+                type="button"
+                className="status-filter-pill"
+                aria-pressed={chosenStatus === st}
+                onClick={() => setFilters((f) => ({ ...f, status: st }))}
+              >
+                {STATUS_LABEL[st]} <span className="status-filter-count">{statusCounts[st] ?? 0}</span>
+              </button>
+            ))}
+        </div>
+      )}
       {error && <div className="banner banner-warn">{error}</div>}
 
       {loading ? (

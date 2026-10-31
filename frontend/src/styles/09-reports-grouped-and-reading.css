@@ -84,3 +84,43 @@
   font-size: var(--text-lg);
   font-weight: 600;
 }
+
+/* Status pills above the Reports list: one tap narrows the list to a status; the number is how many there are. */
+.status-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+.status-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--input-border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.status-filter-pill:hover {
+  background: var(--surface-2);
+}
+.status-filter-pill[aria-pressed='true'] {
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: var(--on-fill);
+}
+.status-filter-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  opacity: 0.85;
+}
+@media (max-width: 620px) {
+  .status-filter-pill {
+    min-height: 44px;
+  }
+}
