@@ -40,7 +40,7 @@ test('dropping a PDF on the upload box selects it, and it can be read', async ({
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Upload & classify' }).click();
-  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('.field-list, .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
 });
 
 test('the highlight goes away when the drag leaves the box', async ({ page }) => {

@@ -19,7 +19,7 @@ async function reachReview(page: import('@playwright/test').Page) {
   await page.click('.view-tab:has-text("New report")');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list, .banner-crit', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('.field-list, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
   await expect(page.locator('#placeholder-notice')).toBeVisible();
 }
 
