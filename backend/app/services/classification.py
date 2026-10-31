@@ -649,7 +649,10 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
     # one model apart: when it matches exactly one fleet instrument, that is
     # the instrument. See _resolve_instrument below for the rules.
     matching_instruments = [i for i in instruments if i.model == instrument_guess.value]
-    only_of_model = matching_instruments[0] if len(matching_instruments) == 1 else None
+    # When the document's instrument is not in the fleet at all, instrument_guess
+    # is only a zero-confidence placeholder for the manual pick (the first model):
+    # it must not be suggested or assigned as if the document had named it.
+    only_of_model = matching_instruments[0] if len(matching_instruments) == 1 and document.maker_in_fleet else None
     serial_instrument = match_serial(serial_read, instruments)
     if serial_read is None:
         serial_match = "not_read"
