@@ -1,0 +1,595 @@
+/* The fleet list beside the analytics charts. Wide: a sticky column on the left. Narrower: above the charts. */
+.analytics-split {
+  display: block;
+}
+.analytics-split.with-list {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.analytics-detail {
+  min-width: 0;
+}
+.analytics-detail-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+}
+.analytics-detail-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.analytics-back {
+  flex-basis: 100%;
+  min-height: 44px;
+  text-align: left;
+}
+.fleet-list {
+  margin: 0 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.analytics-split.with-list .fleet-list {
+  position: sticky;
+  top: 12px;
+  margin: 0;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}
+.fleet-list-head {
+  padding: 12px 12px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.fleet-list-label {
+  margin: 0 0 6px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.fleet-group-switch {
+  display: flex;
+}
+.fleet-group-switch button {
+  flex: 1;
+  padding: 0 8px;
+}
+.fleet-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fleet-rows li {
+  border-bottom: 1px solid var(--surface-2);
+}
+.fleet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  box-sizing: border-box;
+  padding: 8px 12px 8px 10px;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+button.fleet-row {
+  cursor: pointer;
+}
+button.fleet-row:hover {
+  background: var(--surface-2);
+}
+.fleet-row.selected {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+.fleet-row-static {
+  color: var(--text-muted);
+}
+.fleet-row-name {
+  flex: 1;
+  min-width: 0;
+}
+.fleet-row-title {
+  display: block;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fleet-row-sub {
+  display: block;
+  overflow: hidden;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fleet-row-hours {
+  display: block;
+  width: 56px;
+  text-align: right;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+.fleet-row-bar {
+  display: block;
+  height: 5px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.fleet-row.selected .fleet-row-bar {
+  background: var(--surface);
+}
+.fleet-row-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-fill);
+}
+.fleet-empty {
+  padding: 14px 12px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.fleet-more {
+  margin: 8px 12px;
+  min-height: 44px;
+}
+.fleet-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 10px 12px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+@media (max-width: 899px) {
+  .fleet-row {
+    min-height: 56px;
+  }
+}
+
+.chart-section {
+  margin-bottom: 24px;
+}
+.chart-section:last-child {
+  margin-bottom: 0;
+}
+.chart-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.chart-footnote {
+  margin: 8px 0 0;
+}
+
+.bar-chart,
+.stack-chart {
+  /* One grid for the whole chart: every row's label, bar and value share the same three
+     columns, so the bars all start and end in the same place. */
+  display: grid;
+  grid-template-columns: minmax(120px, 0.9fr) minmax(0, 2fr) max-content;
+  align-items: center;
+  gap: 10px;
+}
+.bar-row,
+.stack-row {
+  display: contents;
+}
+.bar-row-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bar-label {
+  font-size: 0.88rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-sublabel {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+.bar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent-fill);
+}
+.bar-value {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.legend-swatch.good {
+  background: var(--good);
+}
+.legend-swatch.crit {
+  background: var(--crit);
+}
+.legend-swatch.other {
+  background: var(--border-strong);
+}
+
+
+.stack-track {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.stack-seg {
+  height: 100%;
+}
+.stack-seg.good {
+  background: var(--good);
+}
+.stack-seg.crit {
+  background: var(--crit);
+}
+.stack-seg.other {
+  background: var(--border-strong);
+}
+
+@media (max-width: 620px) {
+  .bar-chart,
+  .stack-chart {
+    grid-template-columns: 1fr;
+  }
+  .bar-row,
+  .stack-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .bar-value {
+    text-align: left;
+  }
+}
+
+/* ---------- Template management ---------- */
+
+.template-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.template-row {
+  display: grid;
+  /* A fixed last column: each row is its own grid, so an "auto" column sized
+     itself per row and the header drifted away from the cells under it. */
+  grid-template-columns: 1.4fr 1.4fr 0.6fr 0.9fr 270px;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 20px;
+  text-align: left;
+}
+.template-row-head {
+  background: var(--surface-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.template-row-body {
+  font-family: var(--font-ui);
+  font-size: 0.86rem;
+  color: var(--text);
+  background: var(--surface);
+  border: none;
+  border-top: 1px solid var(--border);
+}
+.template-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-self: end;
+}
+/* Under its own caption, like every other cell in the row. */
+.instrument-row .template-row-actions {
+  justify-self: start;
+}
+
+.instrument-row {
+  display: grid;
+  /* Fixed status and actions columns, for the same reason as .report-row; minmax(0, …) so a
+     long cell wraps instead of stretching its column in that row only. */
+  grid-template-columns:
+    minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 84px 148px;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 20px;
+  text-align: left;
+}
+
+.schema-form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.schema-form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  flex: 1 1 220px;
+}
+.schema-form-label select {
+  font-size: 0.86rem;
+}
+
+.schema-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.schema-field-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.schema-field-main {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.schema-field-order {
+  display: flex;
+  gap: 4px;
+}
+.schema-field-order .btn {
+  padding: 4px 8px;
+}
+.schema-field-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.schema-field-extra {
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.schema-field-extra-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+.item-schema-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.section-title-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Field aliases ---------- */
+
+.alias-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.alias-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  background: var(--surface);
+}
+.alias-group + .alias-group {
+  border-top: 1px solid var(--border);
+}
+.alias-group-label {
+  font-weight: 600;
+  font-size: 0.86rem;
+  margin-bottom: 6px;
+}
+.alias-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.alias-chip {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.alias-names {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+.alias-name-row {
+  grid-template-columns: 1fr auto;
+}
+.alias-hint {
+  margin: 10px 0;
+  font-size: 0.8rem;
+}
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---------- Template comparison ---------- */
+
+.compare-intro {
+  margin-bottom: 14px;
+  font-size: 0.86rem;
+}
+.compare-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+.compare-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.compare-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-family: var(--font-ui);
+  font-size: 0.84rem;
+  text-align: left;
+}
+.compare-table th,
+.compare-table td {
+  padding: 10px 14px;
+  vertical-align: top;
+  border-top: 1px solid var(--border);
+}
+.compare-table thead th {
+  border-top: none;
+  background: var(--surface-2);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+}
+.compare-table tbody th {
+  width: 26%;
+  font-weight: 400;
+}
+.compare-name {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+.compare-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.compare-chip-differs {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.compare-chip-possible_match {
+  background: var(--surface);
+  color: var(--accent-strong);
+  border: 1px dashed var(--accent);
+}
+.compare-concept {
+  margin-top: 4px;
+  font-size: 0.74rem;
+}
+.compare-chip-only_left,
+.compare-chip-only_right {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.compare-same {
+  color: var(--text-muted);
+}
+.compare-cell > * + * {
+  margin-top: 4px;
+}
+.compare-detail {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.compare-notes {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.compare-absent {
+  font-style: italic;
+}
+.compare-table mark {
+  background: var(--warn-soft);
+  color: var(--text);
+  border-radius: 2px;
+  padding: 0 1px;
+}
