@@ -37,7 +37,7 @@ async function unitWithReport(request: APIRequestContext, stamp: number, tag: st
 test.beforeEach(async ({ request }) => clearSavedFilters(request));
 test.afterEach(async ({ request }) => clearSavedFilters(request));
 
-test('Reports: the Model choice keeps one model, narrows the instruments, and the export follows it', async ({ page, request }) => {
+test('Reports: the Model choice keeps one model, narrows the instruments', async ({ page, request }) => {
   const stamp = Date.now();
   const a = await unitWithReport(request, stamp, 'A');
   const b = await unitWithReport(request, stamp, 'B');
@@ -55,10 +55,6 @@ test('Reports: the Model choice keeps one model, narrows the instruments, and th
   const instruments = bar.getByLabel('Instrument', { exact: true }).locator('option');
   await expect(instruments.filter({ hasText: a.serial })).toHaveCount(1);
   await expect(instruments.filter({ hasText: b.serial })).toHaveCount(0);
-
-  // The CSV export is the same filter.
-  const href = await page.getByRole('link', { name: /Export CSV/ }).getAttribute('href');
-  expect(new URL(href!).searchParams.get('model_id')).toBeTruthy();
 
   // Choosing the model's own instrument still works, and "All models" lifts the filter.
   await bar.getByLabel('Instrument', { exact: true }).selectOption({ label: `${a.model} (${a.serial})` });

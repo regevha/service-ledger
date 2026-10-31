@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, getAppConfig, listInstruments, type AppConfig, type Instrument, type ReportTemplate } from './api';
+import { AdminScreen } from './components/AdminScreen';
 import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { InstrumentManagerScreen } from './components/InstrumentManager';
 import { IntakeFlow } from './components/IntakeFlow';
@@ -21,22 +22,22 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   classification_confidence_threshold: 0.85,
 };
 
-type View = 'new' | 'reports' | 'analytics' | 'templates' | 'instruments';
-const VIEWS: View[] = ['new', 'reports', 'analytics', 'templates', 'instruments'];
+type View = 'new' | 'reports' | 'analytics' | 'templates' | 'instruments' | 'admin' | 'more';
+const VIEWS: View[] = ['new', 'reports', 'analytics', 'templates', 'instruments', 'admin', 'more'];
 
 // Where the app is lives in the address bar (#/reports, #/reports/<report id>,
 // #/reports/instrument/<instrument id>), so Refresh keeps the place, Back and Forward
 // move between screens, and a report can be bookmarked or sent to a colleague.
 interface Route {
   view: View;
-  /** Only the Reports tab has one: what is open on it. */
+  /** Reports and Admin have one: what is open on it. */
   sub: string;
 }
 
 function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   const view = VIEWS.find((v) => v === parts[0]) ?? 'new';
-  return { view, sub: view === 'reports' ? parts.slice(1).join('/') : '' };
+  return { view, sub: view === 'reports' || view === 'admin' ? parts.slice(1).join('/') : '' };
 }
 
 // The top-level app shell: the masthead, the view tabs, and the fleet list
@@ -48,7 +49,7 @@ function parseHash(hash: string): Route {
 // app-wide confidence-threshold config.
 
 // Small outline icons for the phone's bottom bar (hidden on wide screens, where the tabs are text only).
-function TabIcon({ name }: { name: 'new' | 'reports' | 'analytics' | 'templates' | 'instruments' }) {
+function TabIcon({ name }: { name: 'new' | 'reports' | 'analytics' | 'templates' | 'instruments' | 'more' }) {
   const common = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true, className: 'tab-icon' };
   switch (name) {
     case 'new':
@@ -59,6 +60,8 @@ function TabIcon({ name }: { name: 'new' | 'reports' | 'analytics' | 'templates'
       return (<svg {...common}><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></svg>);
     case 'templates':
       return (<svg {...common}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 10h16M10 10v10" /></svg>);
+    case 'more':
+      return (<svg {...common}><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></svg>);
     case 'instruments':
       return (<svg {...common}><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3" /><path d="M8 15h8" /></svg>);
   }
@@ -214,32 +217,45 @@ export default function App() {
   return (
     <NavigationGuardContext.Provider value={guardApi}>
     <div className="wrap">
-      <div className="masthead">
-        <span className="mark" /> ServiceLedger
-      </div>
-
-      <div className="view-tabs">
-        <button className={`view-tab ${view === 'new' ? 'active' : ''}`} onClick={() => selectView('new')}>
-          <TabIcon name="new" />
-          <span className="tab-label">New report</span>
-        </button>
-        <button className={`view-tab ${view === 'reports' ? 'active' : ''}`} onClick={() => selectView('reports')}>
-          <TabIcon name="reports" />
-          <span className="tab-label">Reports</span>
-        </button>
-        <button className={`view-tab ${view === 'analytics' ? 'active' : ''}`} onClick={() => selectView('analytics')}>
-          <TabIcon name="analytics" />
-          <span className="tab-label">Analytics</span>
-        </button>
-        <button className={`view-tab ${view === 'templates' ? 'active' : ''}`} onClick={() => selectView('templates')}>
-          <TabIcon name="templates" />
-          <span className="tab-label">Templates</span>
-        </button>
-        <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} onClick={() => selectView('instruments')}>
-          <TabIcon name="instruments" />
-          <span className="tab-label">Instruments</span>
-        </button>
-      </div>
+      <header className="topbar">
+        <div className="masthead">
+          <span className="mark" /> ServiceLedger
+        </div>
+        <nav className="view-tabs" aria-label="Main">
+          <button className={`view-tab ${view === 'new' ? 'active' : ''}`} onClick={() => selectView('new')}>
+            <TabIcon name="new" />
+            <span className="tab-label">New report</span>
+          </button>
+          <button className={`view-tab ${view === 'reports' ? 'active' : ''}`} onClick={() => selectView('reports')}>
+            <TabIcon name="reports" />
+            <span className="tab-label">Reports</span>
+          </button>
+          <button className={`view-tab ${view === 'analytics' ? 'active' : ''}`} onClick={() => selectView('analytics')}>
+            <TabIcon name="analytics" />
+            <span className="tab-label">Analytics</span>
+          </button>
+          <button className={`view-tab tab-wide-only ${view === 'templates' ? 'active' : ''}`} onClick={() => selectView('templates')}>
+            <TabIcon name="templates" />
+            <span className="tab-label">Templates</span>
+          </button>
+          <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} onClick={() => selectView('instruments')}>
+            <TabIcon name="instruments" />
+            <span className="tab-label">Instruments</span>
+          </button>
+          <button className={`view-tab tab-phone-only ${view === 'more' ? 'active' : ''} ${view === 'templates' || view === 'admin' ? 'within' : ''}`} onClick={() => selectView('more')}>
+            <TabIcon name="more" />
+            <span className="tab-label">More</span>
+          </button>
+          <button className={`view-tab tab-wide-only tab-end ${view === 'admin' ? 'active' : ''}`} onClick={() => selectView('admin')}>
+            <span className="tab-label">Admin</span>
+          </button>
+        </nav>
+        {view !== 'new' && (
+          <button className="btn primary topbar-new" data-testid="topbar-new-report" onClick={() => selectView('new')}>
+            + New report
+          </button>
+        )}
+      </header>
 
       <ToastHost />
 
@@ -270,6 +286,18 @@ export default function App() {
           </div>
         )}
         {view === 'analytics' && <AnalyticsScreen />}
+        {view === 'admin' && <AdminScreen instruments={instruments} section={route.sub} onSection={(sub) => navigate('admin', sub)} />}
+        {view === 'more' && (
+          <nav className="more-screen" aria-label="More" data-testid="more-screen">
+            <h1 className="more-title">More</h1>
+            <button type="button" className="more-item" onClick={() => selectView('templates')}>
+              <span><strong>Templates</strong><small>What we read from each report type</small></span>
+            </button>
+            <button type="button" className="more-item" onClick={() => selectView('admin')}>
+              <span><strong>Admin</strong><small>Data export, field aliases</small></span>
+            </button>
+          </nav>
+        )}
         {view === 'templates' && (
           <TemplateManagerScreen
             knownModels={[...new Set(instruments.map((i) => i.model))].sort()}

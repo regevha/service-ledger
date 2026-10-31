@@ -164,22 +164,17 @@ test.describe('analytics bars', () => {
   });
 });
 
-test.describe('active tab joins its card', () => {
-  // On a phone the tabs are the bottom bar, not a tab joined to the card (see phone-nav-toast.spec.ts).
-  for (const width of [1300]) {
-    test(`at ${width}px`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 800 });
-      await page.goto('/#/templates');
-      await expect(page.locator('.view-tab.active')).toHaveText('Templates');
-      const [tab, card] = await Promise.all([page.locator('.view-tab.active').boundingBox(), page.locator('.app-shell').boundingBox()]);
-      // The tab's bottom edge lands on the card's top edge: no gap, no float.
-      expect(Math.abs(tab!.y + tab!.height - card!.y)).toBeLessThanOrEqual(1);
-      // …and the pixel row under the tab is the card's colour, not its border line.
-      const [tabBg, tabBorder] = await page.locator('.view-tab.active').evaluate((el) => {
-        const cs = getComputedStyle(el);
-        return [cs.backgroundColor, cs.borderBottomColor];
-      });
-      expect(tabBorder).toBe(tabBg);
+test.describe('active tab is marked with an underline', () => {
+  test('at 1300px', async ({ page }) => {
+    await page.setViewportSize({ width: 1300, height: 800 });
+    await page.goto('/#/templates');
+    const active = page.locator('.view-tab.active');
+    await expect(active).toHaveText('Templates');
+    const [width, color] = await active.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return [cs.borderBottomWidth, cs.borderBottomColor];
     });
-  }
+    expect(width).toBe('3px');
+    expect(color).not.toBe('rgba(0, 0, 0, 0)');
+  });
 });

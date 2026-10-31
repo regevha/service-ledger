@@ -5,7 +5,9 @@ import { API_BASE } from './helpers/api';
 // Phone review of 2026-10-25, item 8 and 19: controls are big enough for a thumb, the tab labels are
 // readable, and the keyboard leaves serial and part numbers alone.
 
-const TABS = ['New report', 'Reports', 'Analytics', 'Templates', 'Instruments'];
+// Templates and Admin sit behind the More tab on a phone.
+const TABS = ['New report', 'Reports', 'Analytics', 'Instruments', 'Templates', 'Admin'];
+const BEHIND_MORE = ['Templates', 'Admin'];
 
 async function tooSmall(page: import('@playwright/test').Page): Promise<string[]> {
   return page.evaluate(() => {
@@ -29,9 +31,15 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     await request.post(`${API_BASE}/reports`, { data: { technician_name: `E2E-Touch-${Date.now()}` } });
     await page.goto('/');
     for (const tab of TABS) {
-      await page.click(`.view-tab:has-text("${tab}")`);
-      // The tab is selected and its data has arrived, so every control is on the page to be measured.
-      await expect(page.locator('.view-tab.active')).toContainText(tab);
+      if (BEHIND_MORE.includes(tab)) {
+        await page.click('.view-tab:has-text("More")');
+        await page.click(`.more-item:has-text("${tab}")`);
+        await expect(page.locator('.view-tab.within')).toContainText('More');
+      } else {
+        await page.click(`.view-tab:has-text("${tab}")`);
+        // The tab is selected and its data has arrived, so every control is on the page to be measured.
+        await expect(page.locator('.view-tab.active')).toContainText(tab);
+      }
       await page.waitForLoadState('networkidle');
       // Open the filters where there are some, so their controls are measured too.
       const show = page.locator('button:has-text("Show filters")');
@@ -43,7 +51,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('the tab labels are readable and all five still fit without the page scrolling sideways', async ({ page }) => {
     await page.goto('/');
-    const size = await page.locator('.view-tab').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    const size = await page.locator('.view-tab:visible').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     expect(size).toBeGreaterThanOrEqual(12);
     const fits = await page.evaluate(() => {
       const tabs = document.querySelector('.view-tabs')!;
