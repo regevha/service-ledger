@@ -1,6 +1,7 @@
 import { test, expect } from './coverage';
 import { TIMEOUT } from './timeouts';
 import { API_BASE } from './helpers/api';
+import { showFlatList } from './helpers/ui';
 
 // Phone review of 2026-10-25, item 8 and 19: controls are big enough for a thumb, the tab labels are
 // readable, and the keyboard leaves serial and part numbers alone.
@@ -44,6 +45,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
       // Open the filters where there are some, so their controls are measured too.
       const show = page.locator('button:has-text("Show filters")');
       if (await show.count()) await show.first().click();
+      if (tab === 'Reports') await showFlatList(page);
       if (tab === 'Reports') await expect(page.locator('.sort-select').first()).toBeVisible();
       expect(await tooSmall(page), tab).toEqual([]);
     }

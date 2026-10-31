@@ -33,6 +33,60 @@ function screenPath(screen: ReportsScreen): string {
 
 // Free-text search needs at least this many characters (the backend refuses less).
 
+type GroupMode = 'instrument' | 'none';
+const GROUP_KEY = 'sl.reports.group';
+
+// Per-viewer convenience only: browser storage can be empty or throw.
+function readGroupMode(): GroupMode {
+  try {
+    return localStorage.getItem(GROUP_KEY) === 'none' ? 'none' : 'instrument';
+  } catch {
+    return 'instrument';
+  }
+}
+function writeGroupMode(mode: GroupMode) {
+  try {
+    localStorage.setItem(GROUP_KEY, mode);
+  } catch {
+    /* not remembered; nothing else depends on it */
+  }
+}
+
+/** Reports of one instrument (or of the uploads that have no instrument yet), newest first. */
+interface ReportGroup {
+  key: string;
+  title: string;
+  serial: string | null;
+  instrument: Instrument | null;
+  items: ReportListItem[];
+  needsReview: number;
+}
+
+function groupByInstrument(items: ReportListItem[], instruments: Instrument[]): ReportGroup[] {
+  const byKey = new Map<string, ReportGroup>();
+  for (const r of items) {
+    const key = r.instrument_model || r.instrument_serial_number ? `${r.instrument_model ?? ''}|${r.instrument_serial_number ?? ''}` : 'unread';
+    let g = byKey.get(key);
+    if (!g) {
+      const instrument = instruments.find((i) => i.model === r.instrument_model && i.serial_number === r.instrument_serial_number) ?? null;
+      g = {
+        key,
+        title: key === 'unread' ? 'Not read yet' : (r.instrument_model ?? 'Unknown instrument'),
+        serial: r.instrument_serial_number,
+        instrument,
+        items: [],
+        needsReview: 0,
+      };
+      byKey.set(key, g);
+    }
+    g.items.push(r);
+    if (r.status === 'in_review' || r.status === 'extracted') g.needsReview += 1;
+  }
+  // Instruments with the most recent report first; "Not read yet" last.
+  const newest = (g: ReportGroup) => g.items.reduce((m, r) => (r.created_at > m ? r.created_at : m), '');
+  return [...byKey.values()].sort((a, b) => (a.key === 'unread' ? 1 : b.key === 'unread' ? -1 : newest(b).localeCompare(newest(a))));
+}
+
 /** An upload that was never classified: it has no instrument or type to show yet. */
 function isUnread(r: ReportListItem): boolean {
   return r.status !== 'finalized' && !r.instrument_model && !r.report_type;
@@ -55,6 +109,7 @@ export function ReportsListScreen({
   const [items, setItems] = useState<ReportListItem[]>([]);
   // Column the table is sorted by (null: the server's order). Sorting is done here, on the rows already loaded.
   const [sort, setSort] = useState<SortState | null>(null);
+  const [groupMode, setGroupMode] = useState<GroupMode>(readGroupMode);
   const [screen, setScreen] = useState<ReportsScreen>({ kind: 'list' });
   // `items` lives here, and this component stays mounted while a report is
   // open, so the list doesn't refetch on its own when the technician comes
@@ -152,6 +207,39 @@ export function ReportsListScreen({
   // Best match first only means something for a search; otherwise the newest report leads.
   const shown = sort || searching ? sortReports(items, sort) : defaultOrder(items);
   // Search covers finalized reports only, so another status filter can only be empty.
+  const renderRow = (r: ReportListItem) => (
+              <button
+                className="report-row report-row-body"
+                key={r.id}
+                onClick={() => setScreen({ kind: 'report', item: r, returnTo: { kind: 'list' }, highlight: filters.q })}
+              >
+                <span data-label="Instrument">
+                  {r.instrument_model ?? (isUnread(r) ? 'Not read yet' : '—')}
+                  {r.instrument_serial_number ? ` (${r.instrument_serial_number})` : ''}
+                </span>
+                <span data-label="Report type">{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
+                <span data-label="Lab manager">{r.technician_name ?? '—'}</span>
+                <span data-label="Report date">
+                  {r.report_date ??
+                    (isUnread(r) ? <span className="muted">uploaded {r.created_at.slice(0, 10)}</span> : '—')}
+                </span>
+                <span data-label="Status">
+                  <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                </span>
+                {r.snippet && r.snippet.length > 0 && (
+                  <span className="report-excerpt" data-testid="excerpt">
+                    {r.matched_field && <span className="excerpt-field">{r.matched_field}: </span>}
+                    {r.snippet.map((piece, i) =>
+                      piece.matched ? <mark key={i}>{piece.text}</mark> : <span key={i}>{piece.text}</span>
+                    )}
+                  </span>
+                )}
+              </button>
+  );
+
+  // Grouping suits browsing; a search (best match first) and a chosen sort order need one flat list.
+  const grouped = groupMode === 'instrument' && !searching && !sort;
+  const groups = grouped ? groupByInstrument(defaultOrder(items), instruments) : [];
   const statusBlocksSearch = searching && Boolean(filters.status) && filters.status !== 'finalized';
 
   return (
@@ -200,7 +288,49 @@ export function ReportsListScreen({
                     sort ? ` · sorted by ${SORT_LABEL[sort.key].toLowerCase()}` : ''
                   }`}
             </span>
+            <label className="group-select-wrap">
+              <span>Group</span>
+              <select
+                className="group-select"
+                data-testid="group-select"
+                value={groupMode}
+                onChange={(e) => {
+                  const mode: GroupMode = e.target.value === 'none' ? 'none' : 'instrument';
+                  setGroupMode(mode);
+                  writeGroupMode(mode);
+                }}
+              >
+                <option value="instrument">Instrument</option>
+                <option value="none">None</option>
+              </select>
+            </label>
           </div>
+          {grouped ? (
+            <div className="report-table report-groups" data-testid="report-groups">
+              {groups.map((g) => (
+                <section className="report-group" key={g.key} data-testid="report-group">
+                  <header className="report-group-head">
+                    <div className="report-group-title">
+                      <strong>{g.title}</strong>
+                      {g.serial && <span className="report-group-serial">{g.serial}</span>}
+                      {g.instrument?.location && <span className="report-group-place">{g.instrument.location}</span>}
+                    </div>
+                    <div className="report-group-meta">
+                      <span className="report-group-count">{g.items.length} report{g.items.length === 1 ? '' : 's'}</span>
+                      {g.needsReview > 0 && <span className="badge badge-warn">{g.needsReview} need{g.needsReview === 1 ? 's' : ''} review</span>}
+                      {g.instrument && (
+                        <button type="button" className="btn small" onClick={() => setScreen({ kind: 'instrument', instrumentId: g.instrument!.id })}>
+                          Instrument page →
+                        </button>
+                      )}
+                    </div>
+                  </header>
+                  <div className="report-group-rows">{g.items.map(renderRow)}</div>
+                </section>
+              ))}
+            </div>
+          ) : (
+          <>
           <label className="sort-select-wrap">
             <span>Sort by</span>
             <select
@@ -244,36 +374,10 @@ export function ReportsListScreen({
                 );
               })}
             </div>
-            {shown.map((r) => (
-              <button
-                className="report-row report-row-body"
-                key={r.id}
-                onClick={() => setScreen({ kind: 'report', item: r, returnTo: { kind: 'list' }, highlight: filters.q })}
-              >
-                <span data-label="Instrument">
-                  {r.instrument_model ?? (isUnread(r) ? 'Not read yet' : '—')}
-                  {r.instrument_serial_number ? ` (${r.instrument_serial_number})` : ''}
-                </span>
-                <span data-label="Report type">{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
-                <span data-label="Lab manager">{r.technician_name ?? '—'}</span>
-                <span data-label="Report date">
-                  {r.report_date ??
-                    (isUnread(r) ? <span className="muted">uploaded {r.created_at.slice(0, 10)}</span> : '—')}
-                </span>
-                <span data-label="Status">
-                  <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
-                </span>
-                {r.snippet && r.snippet.length > 0 && (
-                  <span className="report-excerpt" data-testid="excerpt">
-                    {r.matched_field && <span className="excerpt-field">{r.matched_field}: </span>}
-                    {r.snippet.map((piece, i) =>
-                      piece.matched ? <mark key={i}>{piece.text}</mark> : <span key={i}>{piece.text}</span>
-                    )}
-                  </span>
-                )}
-              </button>
-            ))}
+            {shown.map(renderRow)}
           </div>
+          </>
+          )}
         </>
       )}
     </div>
