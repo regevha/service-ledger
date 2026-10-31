@@ -90,12 +90,13 @@ export function PhoneScanSwitch({ preview }: { preview: ScanPreviewState }) {
 }
 
 /** The form (children) with the scan beside it on a wide screen; hidden on a phone while its scan is showing. */
-export function ScanSplit({ preview, children }: { preview: ScanPreviewState; children: ReactNode }) {
+export function ScanSplit({ preview, rail, children }: { preview: ScanPreviewState; /** A jump list shown to the left of the scan on a wide screen. */ rail?: ReactNode; children: ReactNode }) {
   return (
     <div
-      className={`review-split${preview.showScan ? ' with-scan' : ''}`}
+      className={`review-split${preview.showScan ? ' with-scan' : ''}${rail ? ' with-rail' : ''}`}
       hidden={preview.phoneScan && preview.phoneView === 'scan'}
     >
+      {rail}
       {preview.showScan && (
         <aside className="review-scan" aria-label="Original scan">
           <iframe src={`${preview.scanInlineUrl}#view=FitH`} title="Original scan" />
