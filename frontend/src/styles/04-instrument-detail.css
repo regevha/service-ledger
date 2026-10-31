@@ -1,0 +1,381 @@
+@media (max-width: 620px) {
+  .template-row {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 6px;
+  }
+  .template-row-head {
+    display: none;
+  }
+  .instrument-row {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 6px;
+  }
+  .schema-field-main {
+    grid-template-columns: 1fr;
+  }
+  .schema-field-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Instrument detail ---------- */
+
+.detail-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.detail-nav-row .back-link {
+  margin-bottom: 0;
+}
+
+.instrument-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.instrument-meta {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Distinct from report status pills (.status-draft etc. above) even though
+   they share the same .status-pill base — an instrument's "active" isn't a
+   report status, just the same pill visual language reused for a different
+   kind of state. */
+.instrument-status-active {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.instrument-status-maintenance {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.instrument-status-retired {
+  background: var(--surface-2);
+  color: var(--text-faint);
+}
+
+.instrument-report-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.instrument-report-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 1fr) 96px;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 20px;
+  text-align: left;
+}
+.instrument-report-row-head {
+  background: var(--surface-2);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+}
+.instrument-report-row-body {
+  font-family: var(--font-ui);
+  font-size: 0.86rem;
+  color: var(--text);
+  background: var(--surface);
+  border: none;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  width: 100%;
+}
+.instrument-report-row-body:hover {
+  background: var(--accent-soft);
+}
+
+@media (max-width: 620px) {
+  .instrument-report-row {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 4px;
+  }
+  .instrument-report-row-head {
+    display: none;
+  }
+}
+
+/* ---------- Instrument trend chart ---------- */
+
+.trend-section {
+  margin-bottom: 24px;
+}
+.trend-section .section-title-row select {
+  font-size: 0.82rem;
+}
+
+.trend-chart-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+}
+.trend-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+/* The line-chart legend's swatch is a short stroke, not a square — marks
+   mirror a line series with a line key, a bar/area series with a rect
+   (.legend-swatch above). */
+.legend-key {
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.trend-chart-wrap {
+  position: relative;
+}
+.trend-chart-wrap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.trend-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.trend-tick-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--text-faint);
+}
+.trend-end-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text-muted);
+}
+.trend-crosshair {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.trend-tooltip {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  min-width: 140px;
+  transform: translate(-50%, -8px);
+}
+.trend-tooltip-date {
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.trend-tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 1px 0;
+}
+.trend-tooltip-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+.trend-tooltip-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-table-wrap {
+  overflow-x: auto;
+  /* Soft edges appear on the side that has more to scroll to. */
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) 0 0 / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) 100% 0 / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.18), transparent) 0 0 / 10px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.18), transparent) 100% 0 / 10px 100% no-repeat scroll;
+}
+.trend-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.trend-table th,
+.trend-table td {
+  text-align: right;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.trend-table th:first-child,
+.trend-table td:first-child {
+  text-align: left;
+  font-family: var(--font-ui);
+}
+.trend-table th {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.trend-single-point {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+}
+
+.template-problems {
+  margin: 12px 0 0;
+  padding-left: 30px;
+}
+
+.search-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+.search-box input {
+  flex: 1;
+  min-width: 0;
+}
+.search-hint {
+  margin: -8px 0 12px;
+  font-size: 0.8rem;
+}
+.report-excerpt {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.excerpt-field {
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.report-excerpt mark,
+.search-matches mark {
+  background: var(--warn-soft);
+  color: var(--text);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.search-matches {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warn);
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 0.86rem;
+}
+.search-matches-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.search-matches ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
+.saved-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.saved-filters select {
+  width: auto;
+  flex: none;
+}
+.saved-filter-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.saved-filter-error {
+  color: var(--crit);
+  font-size: 0.85rem;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+/* Hebrew translation review (TranslationReview.tsx) */
+.translation-panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0;
+}
+.translation-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.translation-original,
+.translation-text {
+  width: 100%;
+  height: 420px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.translation-text {
+  padding: 8px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  resize: vertical;
+}
+@media (max-width: 900px) {
+  .translation-panes {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,86 @@
+/* Reports grouped by instrument: one card per instrument, its reports inside. */
+.group-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.group-select-wrap .group-select {
+  width: auto;
+}
+.report-table.report-groups {
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  gap: var(--space-4);
+}
+.report-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.report-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.report-group-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.report-group-title strong {
+  font-size: var(--text-lg);
+}
+.report-group-serial {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.report-group-place,
+.report-group-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.report-group-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.report-group-rows {
+  display: flex;
+  flex-direction: column;
+}
+.report-group-rows .report-row-body {
+  border-top: none;
+  border-bottom: 1px solid var(--border);
+}
+.report-group-rows .report-row-body:last-child {
+  border-bottom: none;
+}
+
+/* Reading the scan: a centred card with a larger spinner. */
+.section.working-panel {
+  justify-content: center;
+  padding: 56px 24px;
+}
+.section.working-panel .spinner {
+  width: 40px;
+  height: 40px;
+  border-width: 5px;
+}
+.section.working-panel .working-text {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
