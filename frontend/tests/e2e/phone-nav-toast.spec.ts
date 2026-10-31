@@ -19,7 +19,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     const barBox = (await bar.boundingBox())!;
     expect(Math.round(barBox.y + barBox.height)).toBe(PHONE.height); // flush with the bottom edge
     expect(barBox.width).toBe(PHONE.width);
-    const tabs = page.locator('.view-tab');
+    const tabs = page.locator('.view-tab:visible');
     expect(await tabs.count()).toBe(5);
     const widths = await tabs.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().width)));
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
