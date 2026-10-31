@@ -124,3 +124,51 @@
     min-height: 44px;
   }
 }
+
+/* Wide screens: the filters are a column on the left of the list instead of a row above it. */
+.reports-layout {
+  display: block;
+}
+@media (min-width: 1500px) {
+  .reports-layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: start;
+  }
+  .reports-filters {
+    position: sticky;
+    top: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .reports-filters .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 0;
+  }
+  .reports-filters .filter-row select,
+  .reports-filters .filter-row input,
+  .reports-filters .filter-row .date-input,
+  .reports-filters .search-box {
+    width: 100%;
+    max-width: none;
+  }
+  .reports-filters .filter-row .filter-sep {
+    display: none;
+  }
+  .reports-filters .filter-row .date-pair-label {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: -4px;
+  }
+  .reports-results .status-filter:first-child {
+    margin-top: 0;
+  }
+}
