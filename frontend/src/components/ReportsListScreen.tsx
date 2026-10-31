@@ -269,6 +269,8 @@ export function ReportsListScreen({
     <div className="section">
       <div className="section-title">Reports</div>
 
+      <div className="reports-layout">
+      <aside className="reports-filters" aria-label="Filters">
       <ReportFilterBar
         filters={filters}
         setFilters={setFilters}
@@ -284,6 +286,8 @@ export function ReportsListScreen({
           )
         }
       />
+      </aside>
+      <div className="reports-results">
       {statusCounts && (
         <div className="status-filter" role="group" aria-label="Filter by status" data-testid="status-pills">
           <button
@@ -428,6 +432,8 @@ export function ReportsListScreen({
           )}
         </>
       )}
+      </div>
+      </div>
     </div>
   );
 }
