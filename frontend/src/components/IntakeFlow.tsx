@@ -162,6 +162,15 @@ function IntakeScreen({
   const [dropError, setDropError] = useState<string | null>(null);
 
   const phone = useMediaQuery('(max-width: 620px)');
+  const browseRef = useRef<HTMLInputElement>(null);
+  // Photos taken one after another are the pages of one report: each new one joins the ones already chosen.
+  const addPhotos = (picked: File[]) => {
+    const kept = files.length > 0 && files.every((f) => f.type.startsWith('image/')) ? files : [];
+    const next = [...kept, ...picked];
+    const problem = next.length > 1 ? dropProblem(next) : null;
+    setDropError(problem);
+    if (!problem) setFiles(next);
+  };
   const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes('Files');
 
   return (
@@ -182,6 +191,8 @@ function IntakeScreen({
       <div className="section-title" style={{ marginTop: 18 }}>
         Scanned original
       </div>
+      <div className="upload-layout">
+      <div className="upload-main">
       <label
         data-testid="intake-dropzone"
         className={`dropzone${dragging ? ' dragging' : ''}`}
@@ -224,6 +235,7 @@ function IntakeScreen({
           // Visually hidden, not display:none, so the keyboard can reach it (Enter or Space opens the picker).
           className="sr-only"
           aria-label="Choose a scan or PDF"
+          ref={browseRef}
           onChange={(e) => {
             setDropError(null);
             const picked = Array.from(e.target.files ?? []);
@@ -236,11 +248,48 @@ function IntakeScreen({
           }}
         />
       </label>
+      {phone && (
+        <div className="phone-pick" data-testid="intake-phone-pick">
+          <label className="btn primary">
+            Take photo
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              data-testid="intake-camera-input"
+              onChange={(e) => {
+                addPhotos(Array.from(e.target.files ?? []));
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <button type="button" className="btn" onClick={() => browseRef.current?.click()}>
+            Browse files
+          </button>
+        </div>
+      )}
       {dropError && (
         <div className="drop-error" role="alert" data-testid="intake-drop-error">
           {dropError}
         </div>
       )}
+      </div>
+      <aside className="next-card" data-testid="intake-next-card" aria-label="What happens next">
+        <div className="next-card-title">What happens next</div>
+        <ol>
+          <li>
+            <strong>We read the form.</strong> Usually 10–60 seconds.
+          </li>
+          <li>
+            <strong>You confirm the instrument and report type.</strong> Only what we are unsure about is outlined.
+          </li>
+          <li>
+            <strong>You check the fields</strong> against the scan, then finalize.
+          </li>
+        </ol>
+      </aside>
+      </div>
 
       <div className="cta-row">
         <button className="btn primary" disabled={!file} onClick={onStart}>
@@ -1358,8 +1407,12 @@ export function IntakeFlow({
 
       {phase.name === 'already-on-file' && (
         <div className="section">
-          <div className="banner banner-info" id="already-on-file-notice">
-            This exact file is already on file and has been read. Open the existing report instead of loading it again.
+          <div className="state-card state-info" id="already-on-file-notice">
+            <span className="state-icon" aria-hidden="true">i</span>
+            <div>
+              <div className="state-title">Already on file</div>
+              This exact file is already on file and has been read. Open the existing report instead of loading it again.
+            </div>
           </div>
           <div className="cta-row">
             <button className="btn" onClick={resetToIntake}>
@@ -1385,8 +1438,12 @@ export function IntakeFlow({
 
       {phase.name === 'error' && (
         <div className="section">
-          <div className="banner banner-crit" data-testid="intake-error">
-            <strong>{STEP_FAILED[phase.step] ?? 'Something went wrong'}{file ? ` (${file.name})` : ''}.</strong> {phase.message}
+          <div className="state-card state-crit" role="alert" data-testid="intake-error">
+            <span className="state-icon" aria-hidden="true">!</span>
+            <div>
+              <div className="state-title">{STEP_FAILED[phase.step] ?? 'Something went wrong'}{file ? ` (${file.name})` : ''}.</div>
+              {phase.message}
+            </div>
           </div>
           {phase.detail && (
             <details className="error-details" data-testid="intake-error-details">
