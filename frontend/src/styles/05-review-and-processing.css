@@ -382,3 +382,91 @@
     max-width: none;
   }
 }
+
+/* The field jump list: only on a wide screen with the scan showing; narrower, the numbered list is enough. */
+.review-rail {
+  display: none;
+}
+@media (min-width: 1500px) {
+  .review-split.with-scan.with-rail {
+    grid-template-columns: 260px minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .review-rail {
+    display: block;
+    position: sticky;
+    top: 12px;
+    padding: var(--space-3) var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .review-rail-title {
+    padding: 0 var(--space-3) var(--space-2);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .review-rail ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .review-rail-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: 8px var(--space-3);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+  }
+  .review-rail-item:hover {
+    background: var(--surface-2);
+  }
+  .review-rail-item.flagged {
+    background: var(--flag-soft);
+    box-shadow: inset 3px 0 0 var(--flag);
+    font-weight: 600;
+  }
+  .review-rail-num {
+    width: 20px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    flex: none;
+  }
+  .review-rail-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .review-rail-mark {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: var(--good-soft);
+    color: var(--good);
+  }
+  .review-rail-item.flagged .review-rail-mark {
+    background: var(--warn);
+    color: var(--on-fill);
+  }
+}

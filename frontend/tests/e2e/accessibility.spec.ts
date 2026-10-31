@@ -11,7 +11,6 @@ import { openAnalytics, openReports, openReviewFromList } from './helpers/ui';
 
 type Known = { rule: string; screens: string[]; why: string };
 const KNOWN: Known[] = [
-  { rule: 'label', screens: ['review'], why: 'some inputs in the field editor have no label of their own' },
 ];
 
 async function scan(page: Page, screen: string) {
