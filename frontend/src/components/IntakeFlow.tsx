@@ -163,6 +163,7 @@ function IntakeScreen({
 
   const phone = useMediaQuery('(max-width: 620px)');
   const browseRef = useRef<HTMLInputElement>(null);
+  const cameraMode = useRef(false);
   // Photos taken one after another are the pages of one report: each new one joins the ones already chosen.
   const addPhotos = (picked: File[]) => {
     const kept = files.length > 0 && files.every((f) => f.type.startsWith('image/')) ? files : [];
@@ -239,6 +240,12 @@ function IntakeScreen({
           onChange={(e) => {
             setDropError(null);
             const picked = Array.from(e.target.files ?? []);
+            if (cameraMode.current) {
+              cameraMode.current = false;
+              addPhotos(picked);
+              e.target.value = '';
+              return;
+            }
             const problem = picked.length > 1 ? dropProblem(picked) : null;
             if (problem) {
               setDropError(problem);
@@ -250,21 +257,26 @@ function IntakeScreen({
       </label>
       {phone && (
         <div className="phone-pick" data-testid="intake-phone-pick">
-          <label className="btn primary">
+          <button
+            type="button"
+            className="btn primary"
+            data-testid="intake-take-photo"
+            onClick={() => {
+              // The one file input is reused: with `capture` set the phone opens the camera instead of the picker.
+              const input = browseRef.current;
+              if (!input) return;
+              cameraMode.current = true;
+              input.setAttribute('capture', 'environment');
+              input.click();
+              input.removeAttribute('capture');
+            }}
+          >
             Take photo
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="sr-only"
-              data-testid="intake-camera-input"
-              onChange={(e) => {
-                addPhotos(Array.from(e.target.files ?? []));
-                e.target.value = '';
-              }}
-            />
-          </label>
-          <button type="button" className="btn" onClick={() => browseRef.current?.click()}>
+          </button>
+          <button type="button" className="btn" onClick={() => {
+              cameraMode.current = false;
+              browseRef.current?.click();
+            }}>
             Browse files
           </button>
         </div>

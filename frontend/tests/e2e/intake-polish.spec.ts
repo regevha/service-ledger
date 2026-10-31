@@ -15,8 +15,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     await page.goto('/');
     const pick = page.getByTestId('intake-phone-pick');
     await expect(pick).toBeVisible();
-    await expect(pick.getByText('Take photo')).toBeVisible();
+    await expect(pick.getByRole('button', { name: 'Take photo' })).toBeVisible();
     await expect(pick.getByRole('button', { name: 'Browse files' })).toBeVisible();
-    await expect(page.getByTestId('intake-camera-input')).toHaveAttribute('capture', 'environment');
   });
 });
