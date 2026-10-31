@@ -89,8 +89,8 @@ def test_rename_refused_when_a_template_would_clash(client):
 def test_manufacturer_change_follows_to_the_units(client):
     unit = _make_unit(client, "S1")
     m = _model(client, "Zeta Sorter")
-    assert client.patch(f"/instrument-models/{m['id']}", json={"manufacturer": "Becton Dickinson"}).status_code == 200
-    assert client.get(f"/instruments/{unit['id']}").json()["manufacturer"] == "Becton Dickinson"
+    assert client.patch(f"/instrument-models/{m['id']}", json={"manufacturer": "Zeta Works"}).status_code == 200
+    assert client.get(f"/instruments/{unit['id']}").json()["manufacturer"] == "Zeta Works"
 
 
 def test_type_cannot_change_while_units_exist(client):

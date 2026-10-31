@@ -111,6 +111,28 @@ class InstrumentType(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class Manufacturer(Base):
+    """Who makes an instrument ("BD", "Cytek Biosciences"), as a record of its own,
+    so one maker is one row however it was typed ("BD", "Becton Dickinson") and
+    maker-specific knowledge has a place to live (the proposal for manufacturer-neutral
+    support, section 3). `name` is the canonical spelling people see; `aliases` are
+    other spellings that mean the same maker. Instruments and models point here
+    (`manufacturer_id`) and their `manufacturer` text is kept equal to `name` by
+    services/manufacturers.py on every save. Distinct from the instrument type (what
+    kind it is) and from the distributor (who services it locally)."""
+
+    __tablename__ = "manufacturers"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    # Other spellings of this maker, as typed ("Becton Dickinson"). Matching ignores
+    # case, spaces and punctuation, so "becton-dickinson" matches too.
+    aliases: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (Index("uq_manufacturers_name_lower", text("lower(name)"), unique=True),)
+
+
 class InstrumentModel(Base):
     """A model of instrument ("FACSAria III") as a record of its own, so facts
     that belong to the model live once instead of being typed on every unit
@@ -127,6 +149,11 @@ class InstrumentModel(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     manufacturer: Mapped[str | None] = mapped_column(String, nullable=True)
+    # The maker's own record; `manufacturer` above is kept equal to its name.
+    manufacturer_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("manufacturers.id"), nullable=True, index=True
+    )
+    manufacturer_record: Mapped["Manufacturer | None"] = relationship()
     instrument_type: Mapped[str] = mapped_column(String, nullable=False, default="facs")
     service_interval_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -189,9 +216,14 @@ class Instrument(Base):
     model_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("instrument_models.id"), nullable=True, index=True
     )
-    # Free text ("BD", "Beckman Coulter"); NULL when not recorded. The fleet is
-    # no longer BD-only, but existing rows predate this column.
+    # The maker's name as people see it ("BD", "Beckman Coulter"); NULL when not
+    # recorded. Typed text is matched to a Manufacturer record (by name or alias,
+    # services/manufacturers.py) and replaced by that record's canonical name.
     manufacturer: Mapped[str | None] = mapped_column(String, nullable=True)
+    manufacturer_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("manufacturers.id"), nullable=True, index=True
+    )
+    manufacturer_record: Mapped["Manufacturer | None"] = relationship()
     # Free text: the company that sells and services this unit locally when that
     # is not the maker ("Rhenium", "almog diagnostic"); NULL when there is none or
     # it is not recorded. Optional, unlike the manufacturer.

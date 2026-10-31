@@ -20,6 +20,8 @@ import { INSTRUMENT_STATUS_LABEL, MAINTENANCE_STATE_LABEL } from '../labels';
 import { idsInside, placeLabel } from '../placeUtils';
 import { MaintenanceBadge } from './MaintenanceBadge';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
+import { MakersManager } from './MakersManager';
 import { ModelsManager } from './ModelsManager';
 import { PlacesManager } from './PlacesManager';
 import { RowMenu } from './RowMenu';
@@ -221,7 +223,7 @@ function InstrumentFormScreen({
           <input
             type="text"
             className="text-input"
-            placeholder="e.g. FACSAria III — Core Lab"
+            placeholder="e.g. Aurora — Core Lab"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -231,7 +233,7 @@ function InstrumentFormScreen({
           <input
             type="text"
             className="text-input"
-            placeholder="e.g. FACSAria III"
+            placeholder="e.g. Aurora"
             value={model}
             list="known-models"
             onChange={(e) => setModel(e.target.value)}
@@ -257,11 +259,13 @@ function InstrumentFormScreen({
           <input
             type="text"
             className="text-input"
-            placeholder="e.g. BD"
+            placeholder="e.g. Cytek Biosciences"
+            list={MAKER_LIST_ID}
             value={lockedManufacturer ?? manufacturer}
             onChange={(e) => setManufacturer(e.target.value)}
             disabled={lockedManufacturer !== null}
           />
+          <MakerDatalist />
         </label>
         <label className="schema-form-label">
           <span>Serial number <Required /></span>
@@ -400,7 +404,7 @@ export function InstrumentManagerScreen({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [typeNames, setTypeNames] = useState<Record<string, string>>({});
-  const [section, setSection] = useState<'instruments' | 'models' | 'places'>('instruments');
+  const [section, setSection] = useState<'instruments' | 'models' | 'makers' | 'places'>('instruments');
   const [stateFilter, setStateFilter] = useState<'all' | MaintenanceState>('all');
   const [modelFilter, setModelFilter] = useState('all');
   const [placeFilter, setPlaceFilter] = useState('');
@@ -478,12 +482,15 @@ export function InstrumentManagerScreen({
   }
 
   const switcher = (
-    <div className="sub-switch" role="tablist" aria-label="Instruments, models or places">
+    <div className="sub-switch" role="tablist" aria-label="Instruments, models, makers or places">
       <button type="button" role="tab" aria-selected={section === 'instruments'} className={section === 'instruments' ? 'active' : ''} onClick={() => setSection('instruments')}>
         Instruments
       </button>
       <button type="button" role="tab" aria-selected={section === 'models'} className={section === 'models' ? 'active' : ''} onClick={() => setSection('models')}>
         Models
+      </button>
+      <button type="button" role="tab" aria-selected={section === 'makers'} className={section === 'makers' ? 'active' : ''} onClick={() => setSection('makers')}>
+        Makers
       </button>
       <button type="button" role="tab" aria-selected={section === 'places'} className={section === 'places' ? 'active' : ''} onClick={() => setSection('places')}>
         Places
@@ -496,6 +503,15 @@ export function InstrumentManagerScreen({
       <>
         {switcher}
         <PlacesManager onChanged={onRefresh} />
+      </>
+    );
+  }
+
+  if (section === 'makers') {
+    return (
+      <>
+        {switcher}
+        <MakersManager onChanged={onRefresh} />
       </>
     );
   }

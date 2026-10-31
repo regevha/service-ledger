@@ -9,6 +9,7 @@ import {
   type InstrumentModel,
   type InstrumentType,
 } from '../api';
+import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
 
 /**
  * Shown on the classification screen when the document's instrument is not in
@@ -130,7 +131,8 @@ export function AddInstrumentPanel({
         </label>
         <label>
           <span className="clabel">Manufacturer</span>
-          <input className="text-input" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} aria-label="Instrument manufacturer" />
+          <input className="text-input" value={manufacturer} list={MAKER_LIST_ID} onChange={(e) => setManufacturer(e.target.value)} aria-label="Instrument manufacturer" />
+          <MakerDatalist />
         </label>
         <label>
           <span className="clabel">Distributor (optional)</span>
