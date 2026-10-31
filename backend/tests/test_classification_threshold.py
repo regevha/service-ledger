@@ -112,7 +112,7 @@ def test_serial_read_picks_a_unit_only_at_or_above_the_threshold(
 def test_task_code_is_trusted_only_at_or_above_the_threshold(confidence, trusted):
     value = {"below": _below(), "at": _threshold(), "above": _above()}[confidence]
     model_guess = _guess("preventive_maintenance", 0.5)
-    guess, source = _apply_task_code(model_guess, {"task_code": "T113", "task_code_confidence": value}, "x.pdf")
+    guess, source = _apply_task_code(model_guess, {"task_code": "T113", "task_code_confidence": value}, "x.pdf", "BD")
     if trusted:
         assert source == "task_code"
         assert guess.value == "repair"
@@ -125,5 +125,5 @@ def test_the_boundary_tests_follow_the_configured_threshold(monkeypatch):
     # They read the live setting, so changing it moves the edge with it.
     monkeypatch.setattr(classification.settings, "classification_confidence_threshold", 0.6)
     model_guess = _guess("preventive_maintenance", 0.1)
-    assert _apply_task_code(model_guess, {"task_code": "T113", "task_code_confidence": 0.6}, "x.pdf")[1] == "task_code"
-    assert _apply_task_code(model_guess, {"task_code": "T113", "task_code_confidence": 0.59}, "x.pdf")[1] == "model"
+    assert _apply_task_code(model_guess, {"task_code": "T113", "task_code_confidence": 0.6}, "x.pdf", "BD")[1] == "task_code"
+    assert _apply_task_code(model_guess, {"task_code": "T113", "task_code_confidence": 0.59}, "x.pdf", "BD")[1] == "model"
