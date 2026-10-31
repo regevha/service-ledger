@@ -159,6 +159,33 @@ export async function deleteReports(request: APIRequestContext, ids: string[]): 
   }
 }
 
+/** The ids of every instrument there is. */
+export async function listInstrumentIds(request: APIRequestContext): Promise<string[]> {
+  const instruments = await okJson<{ id: string }[]>(await request.get(`${API_BASE}/instruments`), 'list instruments');
+  return instruments.map((i) => i.id);
+}
+
+/**
+ * Deletes these instruments together with their reports (the backend does both in one call). An
+ * instrument with a scan the worker is still reading is refused with 409 until it finishes, so that
+ * is retried for a moment; 404 means it is already gone. Never throws, for the same reason as
+ * deleteReports: leftover data must not fail a test that passed or hide why one failed.
+ */
+export async function deleteInstruments(request: APIRequestContext, ids: string[]): Promise<void> {
+  for (const id of ids) {
+    try {
+      await expect
+        .poll(async () => (await request.delete(`${API_BASE}/instruments/${id}`)).status(), {
+          intervals: [200, 500],
+          timeout: TIMEOUT.ui,
+        })
+        .not.toBe(409);
+    } catch {
+      /* the instrument could not be removed; the next run's reset clears it */
+    }
+  }
+}
+
 /** Removes every saved report filter, so a spec starts from and leaves an empty list. */
 export async function clearSavedFilters(request: APIRequestContext): Promise<void> {
   const { items } = await okJson<{ items: { id: string }[] }>(await request.get(`${API_BASE}/saved-report-filters`), 'list saved filters');

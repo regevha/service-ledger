@@ -1,7 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { deleteReports, listReportIds } from './helpers/api';
+import { deleteInstruments, deleteReports, listInstrumentIds, listReportIds } from './helpers/api';
 
 /**
  * Drop-in replacement for `test` from '@playwright/test'. Normally identical;
@@ -9,7 +9,7 @@ import { deleteReports, listReportIds } from './helpers/api';
  * counters the instrumented app keeps in `window.__coverage__` from every page
  * the test opened, and writes them to .nyc_output/ for `nyc report` to merge.
  */
-export const test = base.extend<{ _coverage: void; _scanPaneOff: void; _reportCleanup: void }>({
+export const test = base.extend<{ _coverage: void; _scanPaneOff: void; _reportCleanup: void; _instrumentCleanup: void }>({
   // Headless Chromium has no PDF viewer, so an inline scan <iframe> is a download in flight that can
   // interrupt typing in the form beside it. Tests start with the scan pane hidden (the per-viewer
   // "Hide scan" preference); the specs that exercise the pane turn it back on with showScanPane().
@@ -36,6 +36,20 @@ export const test = base.extend<{ _coverage: void; _scanPaneOff: void; _reportCl
       await use();
       const created = (await listReportIds(request)).filter((id) => !before.has(id));
       await deleteReports(request, created);
+    },
+    { auto: true },
+  ],
+  // The same for instruments. A spec that adds one used to delete it in its own last lines, so a test
+  // that failed halfway left it behind, and later specs that rely on "the only unit of that model"
+  // (serial matching, the add-instrument panel) failed for an unrelated-looking reason. The backend
+  // deletes an instrument's reports with it, so the order against _reportCleanup does not matter.
+  // Instruments made before the first test (a beforeAll, the seeded fleet) are left alone.
+  _instrumentCleanup: [
+    async ({ request }, use) => {
+      const before = new Set(await listInstrumentIds(request));
+      await use();
+      const created = (await listInstrumentIds(request)).filter((id) => !before.has(id));
+      await deleteInstruments(request, created);
     },
     { auto: true },
   ],

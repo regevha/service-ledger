@@ -44,7 +44,18 @@ test('Cancel while the document is being read cancels the job, removes the draft
   await page.getByTestId('intake-cancel').click();
   await expect(page.getByTestId('intake-dropzone')).toBeVisible({ timeout: TIMEOUT.ui });
   release();
-  await page.waitForTimeout(1500);
+  // Wait for what Cancel must do, then for the page to go quiet (no request in flight for 500 ms), so
+  // the "nothing else was started" check below looks at a settled page instead of at a guessed delay.
+  await expect
+    .poll(() => {
+      const seen = sent.slice(mark);
+      return {
+        cancelled: seen.some((s) => /^POST \/extraction-jobs\/[^/]+\/cancel$/.test(s)),
+        removed: seen.some((s) => /^DELETE \/reports\/[^/]+$/.test(s)),
+      };
+    }, { timeout: TIMEOUT.ui })
+    .toEqual({ cancelled: true, removed: true });
+  await page.waitForLoadState('networkidle');
 
   const after = sent.slice(mark);
   expect(after.some((s) => /^POST \/extraction-jobs\/[^/]+\/cancel$/.test(s)), `after Cancel: ${after}`).toBe(true);
