@@ -444,12 +444,23 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
     if not read.recognised:
         return None
 
+    other_model: dict = {}
     if read.model is not None:
         instrument_guess = ClassificationGuess(value=read.model, confidence=0.95)
     else:
         # A BD document, but not one of the fleet's models: no honest guess
         # exists, so offer the first model at zero confidence for the manual pick.
         instrument_guess = ClassificationGuess(value=instruments[0].model, confidence=0.0)
+        if read.unlisted_model is not None:
+            # The Installed Product line names an instrument the fleet does not
+            # have (say the S8 was deleted). Say so, instead of leaving the
+            # placeholder model looking like the answer: the screen then offers
+            # to add the instrument, with the model and serial read from the page.
+            other_model = dict(
+                detected_manufacturer="BD",
+                detected_model=read.unlisted_model,
+                maker_in_fleet=False,
+            )
 
     mapped = report_type_from_task_code(read.task_code)
     if mapped is not None:
@@ -458,7 +469,9 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
         type_guess, source = ClassificationGuess(value=ReportType.repair.value, confidence=0.0), "none"
 
     serial = ClassificationGuess(value=read.serial, confidence=0.9) if read.serial else None
-    return DocumentRead(instrument_guess, type_guess, serial, read.work_order_number, source, "text_layer")
+    return DocumentRead(
+        instrument_guess, type_guess, serial, read.work_order_number, source, "text_layer", **other_model
+    )
 
 
 def _confident_text_read(attachment: Attachment, instruments: list[Instrument]) -> DocumentRead | None:
@@ -636,7 +649,10 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
     # one model apart: when it matches exactly one fleet instrument, that is
     # the instrument. See _resolve_instrument below for the rules.
     matching_instruments = [i for i in instruments if i.model == instrument_guess.value]
-    only_of_model = matching_instruments[0] if len(matching_instruments) == 1 else None
+    # When the document's instrument is not in the fleet at all, instrument_guess
+    # is only a zero-confidence placeholder for the manual pick (the first model):
+    # it must not be suggested or assigned as if the document had named it.
+    only_of_model = matching_instruments[0] if len(matching_instruments) == 1 and document.maker_in_fleet else None
     serial_instrument = match_serial(serial_read, instruments)
     if serial_read is None:
         serial_match = "not_read"

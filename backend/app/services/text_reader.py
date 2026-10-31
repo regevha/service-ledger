@@ -93,11 +93,15 @@ class TextRead:
     product_code: str | None = None
     model: str | None = None  # one of the fleet's models
     serial: str | None = None
+    # The Installed Product's name when it is not one of the fleet's models
+    # (e.g. a FACSDiscover S8 after the S8 was deleted): the document does name
+    # an instrument, it just is not in the fleet, so it can be offered for adding.
+    unlisted_model: str | None = None
 
     @property
     def recognised(self) -> bool:
         """Looks like a BD service document: at least one identifier found."""
-        return any((self.work_order_number, self.task_code, self.product_code, self.model))
+        return any((self.work_order_number, self.task_code, self.product_code, self.model, self.unlisted_model))
 
 
 def _model_key(model: str) -> str:
@@ -138,4 +142,18 @@ def read_identifiers(text: str, models: list[str]) -> TextRead:
         serial = serial_match.group(1) if serial_match else None
         break
 
-    return TextRead(work_order, task_code, product_code, model, serial)
+    unlisted_model = None
+    if model is None:
+        # No fleet model on the Installed Product line. Parts tables use the same
+        # "<number> - <name>" shape, so only the first such line after the
+        # "Installed Product" heading counts as the instrument.
+        heading = re.search(r"installed\s+product", text, re.IGNORECASE)
+        line = _PRODUCT_LINE.search(text, heading.end()) if heading else None
+        if line is not None:
+            product_code = line.group(1)
+            unlisted_model = line.group(2).strip()
+            token = re.compile(rf"(?<![A-Za-z0-9])([A-Z]{{0,3}}{re.escape(product_code)}[0-9A-Z]+)(?![A-Za-z0-9])")
+            serial_match = token.search(text, line.end())
+            serial = serial_match.group(1) if serial_match else None
+
+    return TextRead(work_order, task_code, product_code, model, serial, unlisted_model)
