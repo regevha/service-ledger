@@ -11,7 +11,6 @@ import { openAnalytics, openReports, openReviewFromList } from './helpers/ui';
 
 type Known = { rule: string; screens: string[]; why: string };
 const KNOWN: Known[] = [
-  { rule: 'color-contrast', screens: ['intake', 'reports', 'review', 'analytics'], why: 'muted text and some badges are below 4.5:1 against their background' },
   { rule: 'label', screens: ['review'], why: 'some inputs in the field editor have no label of their own' },
 ];
 
