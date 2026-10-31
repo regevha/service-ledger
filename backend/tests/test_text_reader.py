@@ -261,6 +261,8 @@ def test_a_report_for_a_deleted_model_offers_to_add_it_instead_of_passing_for_an
     assert result["instrument_serial"]["value"] == "MP6651580000057"
     assert result["instrument"]["confidence"] == 0.0
     assert result["resolved_instrument_id"] is None and result["resolved_template_id"] is None
+    # The placeholder model is not a suggestion: no remaining unit is pre-selected.
+    assert result["suggested_instrument_id"] is None
 
 
 def test_a_file_with_no_text_still_gets_the_demo_answer(client, run_worker):
