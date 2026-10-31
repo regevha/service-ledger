@@ -26,7 +26,7 @@ REPAIR_FIELDS = [
         "name": "fault_description",
         "type": "text",
         "unit": None,
-        "notes": "reported symptom (BD's Subject line + Description)",
+        "notes": "reported symptom (the form's subject line + description)",
     },
     {
         "name": "root_cause",
@@ -88,7 +88,7 @@ PM_FIELDS = [
         "name": "service_description",
         "type": "text",
         "unit": None,
-        "notes": "BD's Subject + Description lines — often just \"Preventive Maintenance\" verbatim",
+        "notes": "the form's subject + description lines — often just \"Preventive Maintenance\" verbatim",
     },
     {
         "name": "work_performed",
@@ -123,7 +123,7 @@ INSTALL_UPGRADE_FIELDS = [
         "name": "service_description",
         "type": "text",
         "unit": None,
-        "notes": "BD's Subject + Description lines (e.g. \"Software upgrade from 6.2 to 6.3\")",
+        "notes": "the form's subject + description lines (e.g. \"Software upgrade from 6.2 to 6.3\")",
     },
     {
         "name": "work_performed",
