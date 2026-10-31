@@ -1,5 +1,6 @@
 import { test, expect } from './coverage';
 import { seedReport } from './helpers/api';
+import { showFlatList } from './helpers/ui';
 
 // Layout regressions from the 2026-10-24 UI review: the table captions must sit
 // over their columns (header and rows are separate grids, so an "auto" column
@@ -32,6 +33,7 @@ for (const width of [1440, 1100]) {
     expect(await maxColumnDrift(page, '.instrument-row.template-row-head', '.instrument-row.template-row-body')).toBe(0);
 
     await page.click('.view-tab:has-text("Reports")');
+    await showFlatList(page);
     await expect(page.locator('.report-row-body').first()).toBeVisible();
     expect(await maxColumnDrift(page, '.report-row-head', '.report-row-body')).toBe(0);
   });

@@ -8,6 +8,20 @@ export async function openReports(page: Page): Promise<void> {
   await page.goto('/');
   await page.click('.view-tab:has-text("Reports")');
   await page.waitForSelector('.report-table, .empty-hint');
+  await showFlatList(page);
+}
+
+/**
+ * The Reports list opens grouped by instrument; most specs look at rows and sort headers, which belong to the
+ * flat list, so they switch the Group choice to None first (specs of the grouped view do not call this).
+ */
+export async function showFlatList(page: Page): Promise<void> {
+  await page.waitForSelector('[data-testid="group-select"], .empty-hint');
+  const group = page.getByTestId('group-select');
+  if (await group.count()) {
+    await group.selectOption('none');
+    await page.waitForSelector('.report-table:not(.report-groups), .empty-hint');
+  }
 }
 
 /** A report from the Reports list, found by text in its row (a technician name used as a marker). */

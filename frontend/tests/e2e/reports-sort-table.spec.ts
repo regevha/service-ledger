@@ -1,6 +1,7 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { API_BASE } from './helpers/api';
+import { showFlatList } from './helpers/ui';
 
 // Sorting the Reports table by clicking a column header. The rules themselves
 // (blank cells last, status by progress, ties keep their order) are covered on
@@ -26,6 +27,7 @@ test('clicking a column header sorts the table, again reverses it, a third time 
 
   await page.goto('/');
   await page.click('.view-tab:has-text("Reports")');
+  await showFlatList(page);
   await page.fill('input[aria-label="Lab manager"]', prefix);
   await expect(page.locator('.report-row-body', { hasText: `${prefix}a` })).toBeVisible();
   await expect.poll(() => order(page, prefix)).toEqual(['a', 'c', 'b']);
@@ -57,6 +59,7 @@ test('sorting by another column replaces the first, and survives a change of fil
 
   await page.goto('/');
   await page.click('.view-tab:has-text("Reports")');
+  await showFlatList(page);
   await page.fill('input[aria-label="Lab manager"]', prefix);
   await expect.poll(() => order(page, prefix)).toEqual(['a', 'c', 'b']);
 
@@ -90,6 +93,7 @@ test('the sort is still there after opening a report and coming back', async ({ 
 
   await page.goto('/');
   await page.click('.view-tab:has-text("Reports")');
+  await showFlatList(page);
   await page.fill('input[aria-label="Lab manager"]', prefix);
   await expect.poll(() => order(page, prefix)).toEqual(['a', 'c', 'b']);
   const head = page.locator('[data-testid="sort-lab_manager"]');
