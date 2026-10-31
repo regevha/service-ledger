@@ -265,6 +265,26 @@ def test_a_report_for_a_deleted_model_offers_to_add_it_instead_of_passing_for_an
     assert result["suggested_instrument_id"] is None
 
 
+def test_live_mode_also_offers_to_add_a_model_not_in_the_fleet_without_asking_claude(client, run_worker, monkeypatch):
+    from app.services import classification
+
+    monkeypatch.setattr(classification.settings, "use_live_claude", True)
+
+    def _claude_must_not_be_asked():
+        raise AssertionError("the text layer already says this model is not in the fleet")
+
+    monkeypatch.setattr(classification, "_get_client", _claude_must_not_be_asked)
+    s8 = next(i for i in client.get("/instruments").json() if i["model"] == "FACSDiscover S8")
+    assert client.delete(f"/instruments/{s8['id']}").status_code == 204
+
+    pdf = make_pdf(service_report(product="665158 - FACSDiscover S8", serial="MP6651580000057"))
+    result = _classify(client, run_worker, _upload(client, pdf)["id"])
+
+    assert result["reader"] == "text_layer" and result["maker_in_fleet"] is False
+    assert result["detected_model"] == "FACSDiscover S8" and result["instrument_serial"]["value"] == "MP6651580000057"
+    assert result["suggested_instrument_id"] is None and result["resolved_instrument_id"] is None
+
+
 def test_a_file_with_no_text_still_gets_the_demo_answer(client, run_worker):
     result = _classify(client, run_worker, _upload(client, PLACEHOLDER)["id"])
     assert result["reader"] == "stub"
