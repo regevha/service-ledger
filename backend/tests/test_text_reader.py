@@ -146,6 +146,13 @@ def test_a_bd_document_for_an_unknown_model_is_recognised_but_has_no_model():
     assert read.model is None and read.work_order_number == "WO-90000002" and read.recognised
 
 
+def test_an_installed_product_outside_the_fleet_is_kept_with_its_serial():
+    text = extract_text(make_pdf(service_report(product="665158 - FACSDiscover S8", serial="MP6651580000099")))
+    read = read_identifiers(text, ["FACSAria III", "LSRFortessa", "CytoFLEX S"])  # the S8 was deleted
+    assert read.model is None and read.unlisted_model == "FACSDiscover S8"
+    assert read.serial == "MP6651580000099" and read.recognised
+
+
 def test_text_that_is_not_a_service_document_is_not_recognised():
     assert not read_identifiers("Quarterly invoice, page 1 of 3", MODELS).recognised
 
@@ -237,6 +244,23 @@ def test_a_serial_not_in_the_fleet_is_reported_not_guessed(client, run_worker):
     # the S8 is only suggested (the technician confirms, or adds the new instrument).
     assert result["resolved_instrument_id"] is None
     assert result["suggested_instrument_id"] is not None
+
+
+def test_a_report_for_a_deleted_model_offers_to_add_it_instead_of_passing_for_another_model(client, run_worker):
+    s8 = next(i for i in client.get("/instruments").json() if i["model"] == "FACSDiscover S8")
+    assert client.delete(f"/instruments/{s8['id']}").status_code == 204
+
+    pdf = make_pdf(service_report(product="665158 - FACSDiscover S8", serial="MP6651580000057"))
+    result = _classify(client, run_worker, _upload(client, pdf)["id"])
+
+    # Not read as one of the remaining models (the zero-confidence placeholder is
+    # only for the manual pick): the screen shows the Add-instrument panel with
+    # what the page says already filled in.
+    assert result["maker_in_fleet"] is False
+    assert result["detected_model"] == "FACSDiscover S8" and result["detected_manufacturer"] == "BD"
+    assert result["instrument_serial"]["value"] == "MP6651580000057"
+    assert result["instrument"]["confidence"] == 0.0
+    assert result["resolved_instrument_id"] is None and result["resolved_template_id"] is None
 
 
 def test_a_file_with_no_text_still_gets_the_demo_answer(client, run_worker):
