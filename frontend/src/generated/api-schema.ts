@@ -1420,7 +1420,7 @@ export interface components {
             name: string;
             /**
              * Instrument Type
-             * @default facs
+             * @default flow_cytometer
              */
             instrument_type: string;
             /** Model */
@@ -1444,7 +1444,7 @@ export interface components {
             manufacturer?: string | null;
             /**
              * Instrument Type
-             * @default facs
+             * @default flow_cytometer
              */
             instrument_type: string;
             /** Service Interval Months */
@@ -1658,6 +1658,11 @@ export interface components {
             key: string;
             /** Display Name */
             display_name: string;
+            /**
+             * Is Default
+             * @default false
+             */
+            is_default: boolean;
         };
         /**
          * InstrumentUpdate
@@ -2320,7 +2325,7 @@ export interface components {
         TemplateCreate: {
             /**
              * Instrument Type
-             * @default facs
+             * @default flow_cytometer
              */
             instrument_type: string;
             report_type: components["schemas"]["ReportType"];

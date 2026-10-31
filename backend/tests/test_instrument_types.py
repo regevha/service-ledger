@@ -10,14 +10,14 @@ def _instrument(**over):
 def test_the_seeded_types_exist_after_a_fresh_seed(client):
     types = client.get("/instrument-types").json()
     assert {t["key"]: t["display_name"] for t in types} == {
-        "facs": "Flow cytometer",
+        "flow_cytometer": "Flow cytometer",
         "electron_microscope": "Electron microscope",
         "imagestream": "ImageStream",
         "mass_spectrometer": "Mass spectrometer",
         "pcr_machine": "PCR machine",
     }
     # The key of each added type is what make_key derives from its name.
-    assert all(t["key"] == "facs" or t["key"] == make_key(t["display_name"]) for t in types)
+    assert all(t["key"] == "flow_cytometer" or t["key"] == make_key(t["display_name"]) for t in types)
 
 
 def test_seeding_again_keeps_what_people_changed_and_adds_what_is_missing(client, db_session):
@@ -137,11 +137,11 @@ def test_the_classify_prompt_lists_the_fleet_and_is_not_bd_only():
     from types import SimpleNamespace
 
     fleet = [
-        SimpleNamespace(manufacturer="BD", instrument_type="facs", model="FACSAria III"),
+        SimpleNamespace(manufacturer="BD", instrument_type="flow_cytometer", model="FACSAria III"),
         SimpleNamespace(manufacturer="Thermo", instrument_type="electron_microscope", model="Talos"),
     ]
     prompt = classification.build_classify_prompt(fleet)
-    assert "BD FACSAria III (facs)" in prompt and "Thermo Talos (electron_microscope)" in prompt
+    assert "BD FACSAria III (flow_cytometer)" in prompt and "Thermo Talos (electron_microscope)" in prompt
     assert not prompt.startswith("This is a scanned BD Care")
     assert "Work Order Task Code" in prompt  # the BD reading notes are still there
 
@@ -205,3 +205,16 @@ def test_omitting_a_field_on_update_still_leaves_it_alone(client):
     created = client.post("/instruments", json=_instrument()).json()
     patched = client.patch(f"/instruments/{created['id']}", json={"institution": "Test University", "location": "Room 2"}).json()
     assert patched["name"] == created["name"] and patched["location"] == "Room 2"
+
+
+def test_exactly_one_type_is_the_default_and_it_is_the_flow_cytometer(client):
+    types = client.get("/instrument-types").json()
+    defaults = [t for t in types if t["is_default"]]
+    assert [t["key"] for t in defaults] == ["flow_cytometer"]
+    assert defaults[0]["display_name"] == "Flow cytometer"
+
+
+def test_an_instrument_without_a_type_gets_the_default(client):
+    res = client.post("/instruments", json={"name": "Plain", "model": "PlainModel", "manufacturer": "Acme", "serial_number": "DEF-0001"})
+    assert res.status_code == 201
+    assert res.json()["instrument_type"] == "flow_cytometer"

@@ -15,6 +15,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models import (
+    DEFAULT_INSTRUMENT_TYPE_KEY,
     ExtractionJobKind,
     ExtractionJobStatus,
     InstrumentStatus,
@@ -51,6 +52,13 @@ class InstrumentTypeOut(BaseModel):
     id: uuid.UUID
     key: str
     display_name: str
+    # The type a new instrument, model or template starts with (the screens preselect it).
+    is_default: bool = False
+
+    @model_validator(mode="after")
+    def _mark_default(self):
+        self.is_default = self.key == DEFAULT_INSTRUMENT_TYPE_KEY
+        return self
 
 
 class InstrumentTypeCreate(BaseModel):
@@ -95,7 +103,7 @@ def _required_text(label: str):
 
 class InstrumentCreate(BaseModel):
     name: str
-    instrument_type: str = "facs"
+    instrument_type: str = DEFAULT_INSTRUMENT_TYPE_KEY
     model: str
     # Required for new instruments (existing rows may still have none). Blank
     # counts as missing.
@@ -313,7 +321,7 @@ class InstrumentModelDetailOut(InstrumentModelOut):
 class InstrumentModelCreate(BaseModel):
     name: str
     manufacturer: str | None = None
-    instrument_type: str = "facs"
+    instrument_type: str = DEFAULT_INSTRUMENT_TYPE_KEY
     service_interval_months: int | None = Field(default=None, ge=1, le=600)
     notes: str | None = None
 
@@ -686,7 +694,7 @@ class TemplateCreate(BaseModel):
     this instrument_type" fallback row (§2) — a real, meaningful choice, not
     an omitted one, so it defaults to None rather than being required."""
 
-    instrument_type: str = "facs"
+    instrument_type: str = DEFAULT_INSTRUMENT_TYPE_KEY
     report_type: ReportType
     model: str | None = None
     fields: list[TemplateFieldIn]

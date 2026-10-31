@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.db import get_db
 from app.models import ReportType
+from app.models import DEFAULT_INSTRUMENT_TYPE_KEY
 from app.services.instrument_types import type_exists
 from app.services.field_aliases import load_alias_index
 from app.services.template_compare import DIFFERS, ONLY_LEFT, ONLY_RIGHT, POSSIBLE_MATCH, SAME, compare_templates
@@ -20,7 +21,7 @@ router = APIRouter(tags=["report-templates"])
 
 @router.get("/report-templates", response_model=list[schemas.ReportTemplateOut])
 def list_report_templates(
-    instrument_type: str = "facs",
+    instrument_type: str = DEFAULT_INSTRUMENT_TYPE_KEY,
     model: str | None = Query(None, description="Resolve to this model's variant when one exists"),
     report_type: ReportType | None = Query(None, description="Limit to one report type"),
     db: Session = Depends(get_db),
@@ -69,7 +70,7 @@ def report_template_usage(db: Session = Depends(get_db)):
 @router.get("/report-templates/suggestions", response_model=list[schemas.TemplateSuggestionOut])
 def report_template_suggestions(
     report_type: ReportType = Query(..., description="Only templates of this report type are offered"),
-    instrument_type: str = "facs",
+    instrument_type: str = DEFAULT_INSTRUMENT_TYPE_KEY,
     model: str | None = Query(None, description="The model the new template is for"),
     limit: int = Query(3, ge=1, le=10),
     db: Session = Depends(get_db),

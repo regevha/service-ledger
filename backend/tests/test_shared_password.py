@@ -88,7 +88,7 @@ def test_everything_else_is_behind_the_password(anon, gated, path):
 
 def test_a_refused_write_changes_nothing(anon, gated):
     before = anon.get("/instruments", headers=_basic("u", PASSWORD)).json()
-    body = {"name": "Intruder", "model": "X", "serial_number": "ZZ999999", "manufacturer": "Y", "instrument_type": "facs"}
+    body = {"name": "Intruder", "model": "X", "serial_number": "ZZ999999", "manufacturer": "Y", "instrument_type": "flow_cytometer"}
     assert anon.post("/instruments", json=body).status_code == 401
     assert anon.delete(f"/instruments/{before[0]['id']}").status_code == 401
     assert anon.get("/instruments", headers=_basic("u", PASSWORD)).json() == before

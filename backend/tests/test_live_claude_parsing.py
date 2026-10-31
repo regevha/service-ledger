@@ -98,7 +98,7 @@ def test_live_classify_sends_the_configured_model(tmp_path, monkeypatch):
     monkeypatch.setattr(classification, "_get_client", lambda: fake_client)
     monkeypatch.setattr(classification.settings, "anthropic_model", "claude-test-model-x")
 
-    classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="facs")])
+    classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="flow_cytometer")])
 
     assert fake_client.messages.calls[0]["model"] == "claude-test-model-x"
 
@@ -108,7 +108,7 @@ def test_live_classify_parses_a_well_formed_tool_response(tmp_path, monkeypatch,
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4 fake scan")
     attachment = SimpleNamespace(file_path=str(pdf))
-    instruments = [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="facs"), SimpleNamespace(model="FACSAria III", manufacturer="BD", instrument_type="facs")]
+    instruments = [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="flow_cytometer"), SimpleNamespace(model="FACSAria III", manufacturer="BD", instrument_type="flow_cytometer")]
 
     fake_client = _FakeClient(
         response=_tool_use_response(
@@ -160,7 +160,7 @@ def test_live_classify_wraps_authentication_error(tmp_path, monkeypatch, caplog)
     monkeypatch.setattr(classification, "_get_client", lambda: fake_client)
 
     with pytest.raises(ClassificationError, match="authentication failed"):
-        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="facs")])
+        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="flow_cytometer")])
 
     # The router/worker only ever store str(e) on the job row — this is what
     # makes an auth failure visible anywhere a human would actually look
@@ -180,7 +180,7 @@ def test_live_classify_wraps_a_generic_api_error(tmp_path, monkeypatch, caplog):
     monkeypatch.setattr(classification, "_get_client", lambda: fake_client)
 
     with pytest.raises(ClassificationError, match="Claude API request failed during classification"):
-        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="facs")])
+        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="flow_cytometer")])
 
     assert "Claude API request failed" in caplog.text
     assert str(pdf) in caplog.text
@@ -198,7 +198,7 @@ def test_live_classify_raises_when_claude_answers_without_a_tool_call(tmp_path, 
     monkeypatch.setattr(classification, "_get_client", lambda: fake_client)
 
     with pytest.raises(ClassificationError, match="no tool_use block"):
-        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="facs")])
+        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="flow_cytometer")])
 
     assert "no tool_use block" in caplog.text
     assert "'text'" in caplog.text  # the block types actually returned, for diagnosis
@@ -218,7 +218,7 @@ def test_live_classify_raises_on_a_missing_field_in_the_tool_response(tmp_path, 
     monkeypatch.setattr(classification, "_get_client", lambda: fake_client)
 
     with pytest.raises(ClassificationError, match="missing or malformed fields"):
-        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="facs")])
+        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="flow_cytometer")])
 
     assert "missing or malformed fields" in caplog.text
     assert "instrument_model" in caplog.text  # the raw tool input, for diagnosis
@@ -241,7 +241,7 @@ def test_live_classify_raises_on_a_non_numeric_confidence(tmp_path, monkeypatch,
     monkeypatch.setattr(classification, "_get_client", lambda: fake_client)
 
     with pytest.raises(ClassificationError, match="missing or malformed fields"):
-        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="facs")])
+        classification._live_classify(None, attachment, [SimpleNamespace(model="LSRFortessa", manufacturer="BD", instrument_type="flow_cytometer")])
 
     assert "missing or malformed fields" in caplog.text
     assert "very sure" in caplog.text  # the raw tool input, for diagnosis

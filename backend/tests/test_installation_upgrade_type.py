@@ -61,7 +61,7 @@ def test_the_live_call_types_a_t107_report_from_its_task_code(tmp_path, monkeypa
     client = SimpleNamespace(messages=_Messages())
     monkeypatch.setattr(classification, "_get_client", lambda: client)
 
-    read = classification._live_classify(None, SimpleNamespace(file_path=str(scan)), [SimpleNamespace(model="FACSDiscover S8", manufacturer="BD", instrument_type="facs")])
+    read = classification._live_classify(None, SimpleNamespace(file_path=str(scan)), [SimpleNamespace(model="FACSDiscover S8", manufacturer="BD", instrument_type="flow_cytometer")])
 
     assert (read.report_type.value, read.report_type.confidence) == ("installation_upgrade", 0.96)
     assert read.report_type_source == "task_code"
@@ -76,7 +76,7 @@ def test_the_live_call_types_a_t107_report_from_its_task_code(tmp_path, monkeypa
 
 @pytest.mark.parametrize("model", MODELS)
 def test_every_model_resolves_the_shared_installation_template(seeded, model):
-    template = resolve_template(seeded, instrument_type="facs", report_type="installation_upgrade", model=model)
+    template = resolve_template(seeded, instrument_type="flow_cytometer", report_type="installation_upgrade", model=model)
     assert template is not None and template.model is None
     names = [f["name"] for f in template.field_schema["fields"]]
     assert names == ["service_description", "work_performed", "components_replaced", "labor_hours"]

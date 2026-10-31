@@ -20,12 +20,12 @@ def _mine(db_session):
 
 
 def test_creating_an_instrument_creates_and_links_its_model(client, db_session):
-    r = client.post("/instruments", json=_payload("S1", manufacturer="BD", instrument_type="facs"))
+    r = client.post("/instruments", json=_payload("S1", manufacturer="BD", instrument_type="flow_cytometer"))
     assert r.status_code == 201
     records = _records(db_session)
     assert set(records) == {"ZetaSorter III"}
     assert records["ZetaSorter III"].manufacturer == "BD"
-    assert records["ZetaSorter III"].instrument_type == "facs"
+    assert records["ZetaSorter III"].instrument_type == "flow_cytometer"
     instrument = _mine(db_session)[0]
     assert instrument.model_id == records["ZetaSorter III"].id
 
@@ -67,8 +67,8 @@ def test_instruments_built_directly_are_linked_too(db_session):
     # Seeds and older tests create rows without going through the API.
     db_session.add_all(
         [
-            models.Instrument(name="A", model="Tecnai X", serial_number="D1", instrument_type="facs"),
-            models.Instrument(name="B", model="Tecnai X", serial_number="D2", instrument_type="facs"),
+            models.Instrument(name="A", model="Tecnai X", serial_number="D1", instrument_type="flow_cytometer"),
+            models.Instrument(name="B", model="Tecnai X", serial_number="D2", instrument_type="flow_cytometer"),
         ]
     )
     db_session.commit()
