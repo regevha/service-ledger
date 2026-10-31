@@ -2861,6 +2861,13 @@ button.fleet-row:hover {
   color: var(--warn-text, inherit);
 }
 
+/* Makers list: the Actions column is a fixed width, as on Places, so the heading row lines up. */
+@media (min-width: 901px) {
+  .instrument-row.maker-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) 100px 100px 148px;
+  }
+}
+
 /* ---------- A model's page ---------- */
 .instrument-row.model-unit-row {
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) 100px minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 0.9fr);

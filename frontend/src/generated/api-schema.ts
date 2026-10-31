@@ -27,6 +27,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/manufacturers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Manufacturers */
+        get: operations["list_manufacturers_manufacturers_get"];
+        put?: never;
+        /** Create Manufacturer */
+        post: operations["create_manufacturer_manufacturers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manufacturers/{maker_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Manufacturer */
+        delete: operations["delete_manufacturer_manufacturers__maker_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Manufacturer
+         * @description Renames a maker and/or replaces its aliases. A rename is copied onto the
+         *     instruments and models that point at it, so their text keeps matching. Two makers
+         *     are never merged here: a name or alias another maker answers to is refused (409).
+         */
+        patch: operations["update_manufacturer_manufacturers__maker_id__patch"];
+        trace?: never;
+    };
     "/instrument-models": {
         parameters: {
             query?: never;
@@ -1664,6 +1705,45 @@ export interface components {
             name: string;
             type: components["schemas"]["TemplateFieldType"];
         };
+        /** ManufacturerCreate */
+        ManufacturerCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Aliases
+             * @default []
+             */
+            aliases: string[];
+        };
+        /** ManufacturerOut */
+        ManufacturerOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Aliases */
+            aliases: string[];
+            /**
+             * Instrument Count
+             * @default 0
+             */
+            instrument_count: number;
+            /**
+             * Model Count
+             * @default 0
+             */
+            model_count: number;
+        };
+        /** ManufacturerUpdate */
+        ManufacturerUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Aliases */
+            aliases?: string[] | null;
+        };
         /**
          * ModelComparisonOut
          * @description All units of one instrument model, side by side. `trend_fields` is the
@@ -2547,6 +2627,123 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstrumentTypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_manufacturers_manufacturers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManufacturerOut"][];
+                };
+            };
+        };
+    };
+    create_manufacturer_manufacturers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManufacturerCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManufacturerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_manufacturer_manufacturers__maker_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                maker_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_manufacturer_manufacturers__maker_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                maker_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManufacturerUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManufacturerOut"];
                 };
             };
             /** @description Validation Error */

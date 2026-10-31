@@ -72,7 +72,7 @@ test('a unit without maintenance reports says so, and the manufacturer follows t
   await expect(row.locator('.maintenance-no_record')).toContainText('No maintenance on record');
 
   await row.getByRole('button', { name: 'Edit' }).click();
-  const manufacturer = page.getByPlaceholder('e.g. BD');
+  const manufacturer = page.getByPlaceholder('e.g. Cytek Biosciences');
   await expect(manufacturer).toBeDisabled();
   await expect(manufacturer).toHaveValue('E2E Maker');
   await expect(page.getByText('Set by the model')).toBeVisible();

@@ -399,7 +399,7 @@ def test_update_distributor_sets_changes_and_clears_it(client):
     assert client.patch(f"/instruments/{created['id']}", json={"distributor": "almog diagnostic"}).json()["distributor"] == "almog diagnostic"
     # Other edits leave it alone, and so does a distributor edit leave the maker alone.
     after = client.patch(f"/instruments/{created['id']}", json={"location": "Room 3"}).json()
-    assert after["distributor"] == "almog diagnostic" and after["manufacturer"] == "Cytek"
+    assert after["distributor"] == "almog diagnostic" and after["manufacturer"] == "Cytek Biosciences"
     assert client.patch(f"/instruments/{created['id']}", json={"distributor": "Rhenium"}).json()["distributor"] == "Rhenium"
     assert client.patch(f"/instruments/{created['id']}", json={"distributor": None}).json()["distributor"] is None
     client.patch(f"/instruments/{created['id']}", json={"distributor": "Rhenium"})
