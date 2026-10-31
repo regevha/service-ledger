@@ -18,6 +18,8 @@
   --accent: #3b4fb8;
   --accent-strong: #2c3b8f;
   --accent-fill: #3b4fb8;
+  --accent-fill-hover: #2c3b8f;
+  --input-border: #b4bdd0;
   --accent-soft: #e3e8fa;
   --good: #1f5a35;
   --good-soft: #e0f0e6;
@@ -78,6 +80,8 @@
     --accent: #aebcff;
     --accent-strong: #d0d8ff;
     --accent-fill: #5468d8;
+    --accent-fill-hover: #6577e0;
+    --input-border: #7280a0;
     --scrim: rgba(0, 0, 0, 0.55);
     --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.5);
     --accent-soft: #313b72;
