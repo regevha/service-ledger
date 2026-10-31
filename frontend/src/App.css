@@ -729,7 +729,7 @@ textarea {
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 96px;
   gap: 10px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 14px 20px;
   text-align: left;
 }
 .report-row-head {
@@ -876,10 +876,11 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 .stat-value {
   font-family: var(--font-mono);
@@ -889,8 +890,8 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 .stat-label {
-  font-size: 0.76rem;
-  color: var(--text-faint);
+  font-size: 0.82rem;
+  color: var(--text-muted);
 }
 @media (max-width: 620px) {
   .stat-value {
@@ -1068,9 +1069,9 @@ button.fleet-row:hover {
   margin-bottom: 0;
 }
 .chart-title {
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 .chart-footnote {
   margin: 8px 0 0;
@@ -1095,7 +1096,7 @@ button.fleet-row:hover {
   min-width: 0;
 }
 .bar-label {
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1107,7 +1108,7 @@ button.fleet-row:hover {
   font-family: var(--font-mono);
 }
 .bar-track {
-  height: 10px;
+  height: 8px;
   border-radius: 4px;
   background: var(--surface-2);
   overflow: hidden;
@@ -1198,7 +1199,8 @@ button.fleet-row:hover {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 .template-row {
@@ -1208,16 +1210,16 @@ button.fleet-row:hover {
   grid-template-columns: 1.4fr 1.4fr 0.6fr 0.9fr 270px;
   gap: 10px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 14px 20px;
   text-align: left;
 }
 .template-row-head {
   background: var(--surface-2);
-  font-size: 0.7rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 .template-row-body {
   font-family: var(--font-ui);
@@ -1246,7 +1248,7 @@ button.fleet-row:hover {
     minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 84px 148px;
   gap: 10px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 14px 20px;
   text-align: left;
 }
 
@@ -1571,7 +1573,7 @@ button.fleet-row:hover {
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 1fr) 96px;
   gap: 10px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 14px 20px;
   text-align: left;
 }
 .instrument-report-row-head {
