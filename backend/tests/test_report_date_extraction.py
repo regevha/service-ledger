@@ -65,7 +65,7 @@ def test_template_fields_cannot_be_named_report_date(client):
     resp = client.post(
         "/report-templates",
         json={
-            "instrument_type": "facs",
+            "instrument_type": "flow_cytometer",
             "report_type": "preventive_maintenance",
             "model": "ReservedNameModel",
             "fields": [{"name": "report_date", "type": "date"}],

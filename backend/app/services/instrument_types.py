@@ -1,7 +1,7 @@
 """Instrument types: the managed list behind `instrument_type`.
 
-The key stored on instruments and templates must exist here. "facs" (shown as
-"Flow cytometer") is the first type; the migration adds it, and
+The key stored on instruments and templates must exist here. "flow_cytometer" (shown as
+"Flow cytometer"; it was "facs" until migration 0009) is the first type; the migration adds it, and
 `ensure_default_types` (run by the seed and at app startup) adds it and the
 other seeded types (Electron microscope, ImageStream, Mass spectrometer, PCR
 machine) wherever they are missing, including databases built by `create_all`
@@ -12,12 +12,12 @@ import re
 
 from sqlalchemy.orm import Session
 
-from app.models import InstrumentType
+from app.models import DEFAULT_INSTRUMENT_TYPE_KEY, InstrumentType
 
-DEFAULT_TYPE_KEY = "facs"
+DEFAULT_TYPE_KEY = DEFAULT_INSTRUMENT_TYPE_KEY
 DEFAULT_TYPE_NAME = "Flow cytometer"
 
-# Seeded types, in this order. "facs" keeps its historical key; the others get
+# Seeded types, in this order. "flow_cytometer" is the default type; the others get
 # the key `make_key` derives from the display name. More can be added in the app.
 DEFAULT_TYPES = [
     (DEFAULT_TYPE_KEY, DEFAULT_TYPE_NAME),

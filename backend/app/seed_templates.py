@@ -14,7 +14,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import Report, ReportTemplate, ReportType
+from app.models import DEFAULT_INSTRUMENT_TYPE_KEY, Report, ReportTemplate, ReportType
 
 # Checked against four real BD Care EU Work Order Service Reports — two
 # LSRFortessa repairs, a FACSAria III repair, and a FACSDiscover S8 repair —
@@ -272,7 +272,7 @@ def seed(db: Session) -> list[ReportTemplate]:
         existing = (
             db.query(ReportTemplate)
             .filter(
-                ReportTemplate.instrument_type == "facs",
+                ReportTemplate.instrument_type == DEFAULT_INSTRUMENT_TYPE_KEY,
                 ReportTemplate.report_type == report_type,
                 ReportTemplate.model == model,
             )
@@ -283,7 +283,7 @@ def seed(db: Session) -> list[ReportTemplate]:
             created.append(existing)
             continue
         row = ReportTemplate(
-            instrument_type="facs",
+            instrument_type=DEFAULT_INSTRUMENT_TYPE_KEY,
             report_type=report_type,
             model=model,
             field_schema={"fields": fields},
@@ -295,7 +295,7 @@ def seed(db: Session) -> list[ReportTemplate]:
     stale_candidates = [
         row
         for row in db.query(ReportTemplate)
-        .filter(ReportTemplate.instrument_type == "facs", ReportTemplate.report_type.in_(covered_report_types))
+        .filter(ReportTemplate.instrument_type == DEFAULT_INSTRUMENT_TYPE_KEY, ReportTemplate.report_type.in_(covered_report_types))
         .all()
         if (row.report_type, row.model) not in desired
     ]

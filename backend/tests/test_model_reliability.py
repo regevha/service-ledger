@@ -16,7 +16,7 @@ def _unit(client, serial, model="Zeta Rel"):
 def _template(client, model, report_type="repair"):
     r = client.post(
         "/report-templates",
-        json={"instrument_type": "facs", "report_type": report_type, "model": model, "fields": [{"name": "summary", "type": "text"}]},
+        json={"instrument_type": "flow_cytometer", "report_type": report_type, "model": model, "fields": [{"name": "summary", "type": "text"}]},
     )
     assert r.status_code == 201, r.text
     return uuid.UUID(r.json()["id"])

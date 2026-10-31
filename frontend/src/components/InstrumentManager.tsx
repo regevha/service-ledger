@@ -68,14 +68,18 @@ function InstrumentFormScreen({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [types, setTypes] = useState<InstrumentType[]>([]);
-  const [typeKey, setTypeKey] = useState(existing?.instrument_type ?? 'facs');
+  const [typeKey, setTypeKey] = useState(existing?.instrument_type ?? '');
   const [newTypeName, setNewTypeName] = useState<string | null>(null);
   const [knownModels, setKnownModels] = useState<InstrumentModel[]>([]);
   const [knownPlaces, setKnownPlaces] = useState<Place[]>([]);
 
   useEffect(() => {
     listInstrumentTypes()
-      .then(setTypes)
+      .then((list) => {
+        setTypes(list);
+        // A new instrument starts with the default type (an existing one keeps its own).
+        setTypeKey((current) => current || (list.find((t) => t.is_default)?.key ?? list[0]?.key ?? ''));
+      })
       .catch(() => setTypes([]));
     listInstrumentModels()
       .then(setKnownModels)

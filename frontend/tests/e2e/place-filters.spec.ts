@@ -19,7 +19,7 @@ async function repair(request: APIRequestContext, model: string, instrumentId: s
   if (!templateId) {
     const made = await (
       await request.post(`${API_BASE}/report-templates`, {
-        data: { instrument_type: 'facs', report_type: 'repair', model, fields: [{ name: 'labor_hours', type: 'number' }] },
+        data: { instrument_type: 'flow_cytometer', report_type: 'repair', model, fields: [{ name: 'labor_hours', type: 'number' }] },
       })
     ).json();
     templateId = made.id;

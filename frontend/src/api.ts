@@ -80,10 +80,12 @@ export interface InstrumentCreatePayload {
 
 export interface InstrumentType {
   id: string;
-  /** What instruments and templates store (e.g. "facs"). */
+  /** What instruments and templates store (e.g. "flow_cytometer"). */
   key: string;
   /** What people see (e.g. "Flow cytometer"). */
   display_name: string;
+  /** The type a new instrument, model or template starts with. */
+  is_default: boolean;
 }
 
 export interface InstrumentUpdatePayload {

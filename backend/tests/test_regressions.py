@@ -241,7 +241,7 @@ def test_deleting_a_referenced_template_is_refused_by_the_database_not_nulled(se
 def test_seed_templates_skips_a_stale_row_that_a_report_still_uses(seeded, capsys):
     db = seeded
     stale = models.ReportTemplate(
-        instrument_type="facs",
+        instrument_type="flow_cytometer",
         report_type=models.ReportType.preventive_maintenance,
         model="LeftoverModel",
         field_schema={"fields": [{"name": "f", "type": "text", "unit": None, "notes": None}]},
@@ -285,7 +285,7 @@ def test_times_replaced_counts_reports_not_rows(seeded):
 def test_pdf_tolerates_non_dict_rows_and_prints_booleans_as_yes_no(client, seeded):
     db = seeded
     template = models.ReportTemplate(
-        instrument_type="facs",
+        instrument_type="flow_cytometer",
         report_type=models.ReportType.repair,
         model="PdfTestModel",
         field_schema={

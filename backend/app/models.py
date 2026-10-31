@@ -19,6 +19,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
 
 
+# The key of the instrument type new instruments, models and templates get when none is
+# given (shown as "Flow cytometer"). The one place the key is written; the API reports it
+# as `is_default` on GET /instrument-types so the screens do not repeat it.
+DEFAULT_INSTRUMENT_TYPE_KEY = "flow_cytometer"
+
+
 def _uuid_pk() -> Mapped[uuid.UUID]:
     return mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
@@ -154,7 +160,7 @@ class InstrumentModel(Base):
         UUID(as_uuid=True), ForeignKey("manufacturers.id"), nullable=True, index=True
     )
     manufacturer_record: Mapped["Manufacturer | None"] = relationship()
-    instrument_type: Mapped[str] = mapped_column(String, nullable=False, default="facs")
+    instrument_type: Mapped[str] = mapped_column(String, nullable=False, default=DEFAULT_INSTRUMENT_TYPE_KEY)
     service_interval_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -201,14 +207,14 @@ class Place(Base):
 
 class Instrument(Base):
     """§5: the physical asset. `instrument_type` is the `key` of an
-    InstrumentType row (default "facs", shown as "Flow cytometer"), stored as a
+    InstrumentType row (default "flow_cytometer", shown as "Flow cytometer"), stored as a
     plain string rather than a native enum so adding a type needs no migration."""
 
     __tablename__ = "instruments"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     name: Mapped[str] = mapped_column(String, nullable=False)
-    instrument_type: Mapped[str] = mapped_column(String, nullable=False, default="facs")
+    instrument_type: Mapped[str] = mapped_column(String, nullable=False, default=DEFAULT_INSTRUMENT_TYPE_KEY)
     model: Mapped[str] = mapped_column(String, nullable=False)
     # The model's own record (instrument_models). Kept in step with `model` by
     # services/instrument_models.py on every save, so it is only empty for a
@@ -319,7 +325,7 @@ class ReportTemplate(Base):
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
-    instrument_type: Mapped[str] = mapped_column(String, nullable=False, default="facs")
+    instrument_type: Mapped[str] = mapped_column(String, nullable=False, default=DEFAULT_INSTRUMENT_TYPE_KEY)
     report_type: Mapped[ReportType] = mapped_column(Enum(ReportType, name="report_type"), nullable=False)
     model: Mapped[str | None] = mapped_column(String, nullable=True)
     field_schema: Mapped[dict] = mapped_column(JSONB, nullable=False)

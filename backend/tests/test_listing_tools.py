@@ -24,7 +24,7 @@ def factory(db_session, monkeypatch):
 
 
 def _unit(serial, model="ZetaSorter III", **extra):
-    return models.Instrument(name=f"Unit {serial}", model=model, serial_number=serial, instrument_type="facs", **extra)
+    return models.Instrument(name=f"Unit {serial}", model=model, serial_number=serial, instrument_type="flow_cytometer", **extra)
 
 
 def _counts(db_session):
@@ -54,7 +54,7 @@ def test_models_listing_counts_units_and_flags_look_alike_names(db_session, fact
             _unit("T4", model="Tecnai X"),
         ]
     )
-    db_session.add(models.InstrumentModel(name="Spare Sorter", manufacturer="Cytek", instrument_type="facs"))
+    db_session.add(models.InstrumentModel(name="Spare Sorter", manufacturer="Cytek", instrument_type="flow_cytometer"))
     db_session.commit()
     before = _counts(db_session)
 
@@ -62,10 +62,10 @@ def test_models_listing_counts_units_and_flags_look_alike_names(db_session, fact
     out = capsys.readouterr().out
 
     assert "4 models, 0 instruments without a model record" in out
-    assert "  ZetaSorter III  (BD, facs): 2 unit(s)" in out
-    assert "  Zeta Sorter III  (BD, facs): 1 unit(s)" in out
-    assert "  Tecnai X  (no maker, facs): 1 unit(s)" in out
-    assert "  Spare Sorter  (Cytek, facs): 0 unit(s)" in out
+    assert "  ZetaSorter III  (BD, flow_cytometer): 2 unit(s)" in out
+    assert "  Zeta Sorter III  (BD, flow_cytometer): 1 unit(s)" in out
+    assert "  Tecnai X  (no maker, flow_cytometer): 1 unit(s)" in out
+    assert "  Spare Sorter  (Cytek, flow_cytometer): 0 unit(s)" in out
     # Look-alike names are only reported, never merged.
     assert "Names that may be the same model (nothing was merged):" in out
     assert "  - Zeta Sorter III  |  ZetaSorter III" in out
@@ -85,7 +85,7 @@ def test_models_listing_is_sorted_by_name_and_counts_unlinked_instruments(db_ses
 
     assert "2 models, 1 instruments without a model record" in out
     assert out.index("  A Model") < out.index("  B Model")
-    assert "  A Model  (no maker, facs): 0 unit(s)" in out  # its only unit lost the link
+    assert "  A Model  (no maker, flow_cytometer): 0 unit(s)" in out  # its only unit lost the link
 
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")  # runpy: the module was already imported above

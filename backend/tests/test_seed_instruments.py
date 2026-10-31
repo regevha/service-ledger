@@ -33,8 +33,8 @@ def test_seeding_twice_changes_nothing(db_session):
 
 def test_the_early_demo_serials_are_renamed_in_place_and_keep_their_reports(db_session):
     legacy = [
-        Instrument(name="FACSAria III", model="FACSAria III", serial_number="A47291", instrument_type="facs", status="active"),
-        Instrument(name="FACSDiscover S8", model="FACSDiscover S8", serial_number="S80019", instrument_type="facs", status="active"),
+        Instrument(name="FACSAria III", model="FACSAria III", serial_number="A47291", instrument_type="flow_cytometer", status="active"),
+        Instrument(name="FACSDiscover S8", model="FACSDiscover S8", serial_number="S80019", instrument_type="flow_cytometer", status="active"),
     ]
     db_session.add_all(legacy)
     db_session.flush()
@@ -54,8 +54,8 @@ def test_the_early_demo_serials_are_renamed_in_place_and_keep_their_reports(db_s
 def test_a_real_unit_already_added_by_hand_is_not_merged_with_the_demo_row(db_session):
     db_session.add_all(
         [
-            Instrument(name="Old", model="FACSAria III", serial_number="A47291", instrument_type="facs", status="active"),
-            Instrument(name="Mine", model="FACSAria III", serial_number="P648282B3003", instrument_type="facs", status="active"),
+            Instrument(name="Old", model="FACSAria III", serial_number="A47291", instrument_type="flow_cytometer", status="active"),
+            Instrument(name="Mine", model="FACSAria III", serial_number="P648282B3003", instrument_type="flow_cytometer", status="active"),
         ]
     )
     db_session.commit()
@@ -81,8 +81,8 @@ def test_the_seeded_fleet_carries_its_makers(db_session):
 def test_the_hebrew_form_instruments_are_seeded_with_their_distributors(db_session):
     seed_instruments.seed(db_session)
     rows = {i.serial_number: i for i in db_session.query(Instrument).all()}
-    assert rows["Y1033"].distributor == "almog diagnostic" and rows["Y1033"].instrument_type == "facs"
-    assert rows["102579"].distributor == "Rhenium" and rows["102579"].instrument_type == "facs"
+    assert rows["Y1033"].distributor == "almog diagnostic" and rows["Y1033"].instrument_type == "flow_cytometer"
+    assert rows["102579"].distributor == "Rhenium" and rows["102579"].instrument_type == "flow_cytometer"
     assert rows["P648282B3003"].distributor is None
 
 

@@ -72,7 +72,7 @@ def _link_instruments(session: Session, flush_context, instances) -> None:
                 record = models.InstrumentModel(
                     name=instrument.model,
                     manufacturer=instrument.manufacturer,
-                    instrument_type=instrument.instrument_type or "facs",
+                    instrument_type=instrument.instrument_type or models.DEFAULT_INSTRUMENT_TYPE_KEY,
                 )
                 session.add(record)
                 created[record.name] = record

@@ -60,7 +60,7 @@ test('renaming a model warns what changes, then renames its instruments and temp
   const model = `E2E-Ren-${Date.now()}`;
   const unit = await makeUnit(request, model, 'ren');
   const t = await request.post(`${API_BASE}/report-templates`, {
-    data: { instrument_type: 'facs', report_type: 'repair', model, fields: [{ name: 'summary', type: 'text' }] },
+    data: { instrument_type: 'flow_cytometer', report_type: 'repair', model, fields: [{ name: 'summary', type: 'text' }] },
   });
   expect(t.ok()).toBeTruthy();
 
