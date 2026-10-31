@@ -93,8 +93,8 @@ test('editing the English shows durations in decimal hours and accepting continu
   await expect(page.locator('#translation-durations')).not.toContainText('12:00');
 
   await page.click('button:has-text("Accept my edits & continue")');
-  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: TIMEOUT.flow });
-  await expect(page.locator('.banner-crit')).toHaveCount(0);
+  await page.waitForSelector('.field-list, .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
+  await expect(page.locator('[data-testid="intake-error"]')).toHaveCount(0);
   await expect(page.locator('#translation-review')).toHaveCount(0);
 });
 
@@ -102,8 +102,8 @@ test('discarding the translation goes on with the original document', async ({ p
   await upload(page, `hebrew-discard-${Date.now()}.pdf`);
   await expect(page.locator('#translation-review')).toBeVisible({ timeout: TIMEOUT.flow });
   await page.click('button:has-text("Discard and use the original")');
-  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: TIMEOUT.flow });
-  await expect(page.locator('.banner-crit')).toHaveCount(0);
+  await page.waitForSelector('.field-list, .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
+  await expect(page.locator('[data-testid="intake-error"]')).toHaveCount(0);
   await expect(page.locator('#translation-review')).toHaveCount(0);
 });
 
@@ -134,7 +134,7 @@ test('an instrument that is not in the fleet is added on the spot and the docume
   // "Cytek Aurora" model (a flow cytometer), so the report finds its template and goes straight
   // to review, without the add panel.
   await expect(page.locator('#serial-notice')).toContainText(`Matched to Cytek Aurora (${serial})`, { timeout: TIMEOUT.flow });
-  await expect(page.locator('.banner-crit')).toHaveCount(0);
+  await expect(page.locator('[data-testid="intake-error"]')).toHaveCount(0);
   await expect(page.locator('#add-instrument-panel')).toHaveCount(0);
   await expect(page.locator('.field-list').first()).toBeVisible({ timeout: TIMEOUT.flow });
 
@@ -146,6 +146,6 @@ test('an instrument that is not in the fleet is added on the spot and the docume
 
 test('a document that is not Hebrew goes straight to classification', async ({ page }) => {
   await upload(page, `plain-english-${Date.now()}.pdf`);
-  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('.field-list, .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
   await expect(page.locator('#translation-review')).toHaveCount(0);
 });

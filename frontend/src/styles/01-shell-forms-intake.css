@@ -457,3 +457,103 @@ textarea {
   margin: 16px 20px 0;
   line-height: 1.5;
 }
+
+/* Upload: the drop box with a "What happens next" card beside it on a wide screen. */
+.upload-layout {
+  display: block;
+}
+.next-card {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.next-card-title {
+  margin-bottom: var(--space-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.next-card ol {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.next-card li {
+  margin-bottom: var(--space-2);
+}
+.next-card strong {
+  color: var(--text);
+}
+@media (min-width: 1000px) {
+  .upload-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: var(--space-5, 20px);
+    align-items: start;
+  }
+  .next-card {
+    margin-top: 0;
+  }
+}
+.phone-pick {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.phone-pick .btn {
+  flex: 1;
+  justify-content: center;
+  text-align: center;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* A failed or already-done upload reads as a card with an icon, not a bare banner. */
+.state-card {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid;
+  border-radius: var(--radius);
+  font-size: 0.92rem;
+}
+.state-title {
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+.state-icon {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--on-fill);
+}
+.state-info {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+.state-info .state-icon {
+  background: var(--accent-fill);
+}
+.state-crit {
+  background: var(--crit-soft);
+  color: var(--crit);
+  border-color: var(--crit);
+}
+.state-crit .state-icon {
+  background: var(--crit);
+}
