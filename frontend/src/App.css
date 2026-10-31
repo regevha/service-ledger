@@ -2325,6 +2325,7 @@ button.fleet-row:hover {
   .btn,
   .btn.small,
   .view-tab,
+  .admin-nav-item,
   .row-menu-item,
   .date-input-pick,
   select,
@@ -2530,10 +2531,10 @@ button.fleet-row:hover {
 
 @media (max-width: 620px) {
   /* Five tabs (New, Reports, Analytics, Instruments, More) become a bar at the bottom of the screen, within thumb reach. */
-  .tab-wide-only {
+  .view-tab.tab-wide-only {
     display: none;
   }
-  .tab-phone-only {
+  .view-tab.tab-phone-only {
     display: flex;
   }
   .topbar {
