@@ -4,7 +4,7 @@ import { seedReport } from './helpers/api';
 // Layout regressions from the 2026-10-24 UI review: the table captions must sit
 // over their columns (header and rows are separate grids, so an "auto" column
 // used to size itself per row), and a phone-width screen must not scroll sideways
-// (the five tabs are wider than a phone).
+// (the tabs are wider than a phone).
 
 async function maxColumnDrift(page: import('@playwright/test').Page, head: string, body: string) {
   return page.evaluate(
@@ -40,8 +40,14 @@ for (const width of [1440, 1100]) {
 test('no screen scrolls sideways at phone width', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  for (const tab of ['New report', 'Reports', 'Analytics', 'Templates', 'Instruments']) {
-    await page.click(`.view-tab:has-text("${tab}")`);
+  // Templates and Admin sit behind the More tab on a phone.
+  for (const tab of ['New report', 'Reports', 'Analytics', 'Instruments', 'More', 'Templates', 'Admin']) {
+    if (tab === 'Templates' || tab === 'Admin') {
+      await page.click('.view-tab:has-text("More")');
+      await page.click(`.more-item:has-text("${tab}")`);
+    } else {
+      await page.click(`.view-tab:has-text("${tab}")`);
+    }
     const [scrollWidth, innerWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     expect(scrollWidth, `${tab} tab`).toBeLessThanOrEqual(innerWidth);
   }

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   listReports,
-  reportsExportUrl,
   type Instrument,
   type ReportFilters,
   type ReportListItem,
@@ -201,9 +200,6 @@ export function ReportsListScreen({
                     sort ? ` · sorted by ${SORT_LABEL[sort.key].toLowerCase()}` : ''
                   }`}
             </span>
-            <a className="btn small" href={reportsExportUrl(filters)}>
-              ⬇ Export CSV
-            </a>
           </div>
           <label className="sort-select-wrap">
             <span>Sort by</span>
