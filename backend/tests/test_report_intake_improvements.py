@@ -42,7 +42,7 @@ PDF = b"%PDF-1.4 fake scan"
     ],
 )
 def test_report_type_from_task_code(printed, expected):
-    assert classification.report_type_from_task_code(printed) == expected
+    assert classification.report_type_from_task_code(printed, "BD") == expected
 
 
 @pytest.mark.parametrize(

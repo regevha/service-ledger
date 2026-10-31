@@ -28,13 +28,13 @@ MODELS = ("LSRFortessa", "FACSAria III", "FACSDiscover S8")
 
 @pytest.mark.parametrize("printed", ["T107", "t107", " T107 Install: Options, Upgrades, S/W"])
 def test_t107_means_installation_upgrade(printed):
-    assert report_type_from_task_code(printed) == ReportType.installation_upgrade
+    assert report_type_from_task_code(printed, "BD") == ReportType.installation_upgrade
 
 
 def test_the_other_task_codes_are_unchanged():
-    assert report_type_from_task_code("T113") == ReportType.repair
-    assert report_type_from_task_code("T111") == ReportType.preventive_maintenance
-    assert report_type_from_task_code("T108") is None
+    assert report_type_from_task_code("T113", "BD") == ReportType.repair
+    assert report_type_from_task_code("T111", "BD") == ReportType.preventive_maintenance
+    assert report_type_from_task_code("T108", "BD") is None
 
 
 def test_the_live_call_types_a_t107_report_from_its_task_code(tmp_path, monkeypatch):
