@@ -303,6 +303,12 @@ export function ReviewScreen({
       <fieldset className="review-fieldset" disabled={readOnly}>
       <ReadOnlyContext.Provider value={readOnly}>
       <div className={`field-list${readOnly ? ' read-only' : ''}`} ref={listRef}>
+        <div className="field-list-head">
+          <h2 className="field-list-title">What the report says</h2>
+          <span className="field-list-count" data-testid="checked-count">
+            {readOnly ? `${template.field_schema.fields.length + 1} fields` : `${template.field_schema.fields.length + 1 - flaggedCount} of ${template.field_schema.fields.length + 1} checked`}
+          </span>
+        </div>
         <div
           className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}
           data-field="report_date"
