@@ -1,0 +1,202 @@
+/* Makers list: the Actions column is a fixed width, as on Places, so the heading row lines up. */
+@media (min-width: 901px) {
+  .instrument-row.maker-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) 100px 100px 148px;
+  }
+}
+
+/* ---------- A model's page ---------- */
+.instrument-row.model-unit-row {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) 100px minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+}
+.instrument-row.model-report-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
+}
+@media (max-width: 900px) {
+  .instrument-row.model-unit-row,
+  .instrument-row.model-report-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .instrument-row.model-unit-row,
+  .instrument-row.model-report-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.model-standout {
+  color: var(--warn);
+  font-weight: 600;
+}
+.model-notes-text {
+  white-space: pre-wrap;
+  margin: 0 0 12px;
+}
+.model-name.link-button {
+  text-align: left;
+  font-weight: 600;
+}
+
+/* Maintenance state pills (instrument list, instrument page, model page). */
+.maintenance-ok {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.maintenance-due_soon {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.maintenance-overdue {
+  background: var(--crit-soft);
+  color: var(--crit);
+}
+.maintenance-no_record,
+.maintenance-not_tracked {
+  background: var(--surface-2);
+  color: var(--text-faint);
+}
+.maintenance-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+/* The Model and Maintenance choices of the Instruments list, side by side, wrapping on a narrow screen. */
+.instrument-filters {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 16px;
+}
+.instrument-header-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.instrument-row.model-rel-row {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr);
+}
+@media (max-width: 620px) {
+  .instrument-row.model-rel-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.model-rel-notes {
+  margin: 8px 0;
+}
+
+/* Places screen. The header and every body row are separate grids, so the Actions column is a
+   fixed width: with `auto` each row sized it to its own content and the headings drifted off
+   their columns. */
+.instrument-row.place-row {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 1fr) 148px;
+}
+@media (max-width: 900px) {
+  .instrument-row.place-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .instrument-row.place-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.place-depth-1 .place-name-text {
+  padding-left: 16px;
+}
+.place-depth-2 .place-name-text {
+  padding-left: 32px;
+}
+.place-name-text {
+  font-weight: 500;
+}
+.place-depth-0 .place-name-text {
+  font-weight: 600;
+}
+.places-legend {
+  margin-top: 8px;
+}
+
+.place-chart-switch {
+  margin-bottom: 8px;
+}
+
+/* VIEW_PROMPTS: prompt preview dialog */
+.prompt-review-backdrop { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.prompt-review { background: var(--surface); border: 1px solid var(--border); color: inherit; max-width: 900px; width: 100%; max-height: 90vh; overflow: auto; padding: 20px; border-radius: var(--radius); }
+.prompt-review-text { white-space: pre-wrap; word-break: break-word; background: rgba(127, 127, 127, 0.12); padding: 10px; border-radius: 6px; font-size: 0.85rem; max-height: 40vh; overflow: auto; }
+.prompt-review-doc code { word-break: break-all; }
+.prompt-review-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; position: sticky; bottom: 0; }
+
+.attention-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--warn-soft);
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+}
+.attention-strip-count {
+  font-weight: 600;
+  color: var(--warn);
+}
+.attention-strip-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.attention-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  min-height: 32px;
+  color: inherit;
+  cursor: pointer;
+}
+.mark-checked {
+  margin: 4px 0 6px;
+}
+
+/* Template editor: "Filled in by a person" under a field's unit and notes. */
+.schema-field-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.schema-field-check input {
+  margin-top: 2px;
+  flex: none;
+}
+
+/* Text for screen readers only. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* "Unsaved changes": Stay / Discard changes / Save and leave. */
+.leave-dialog-backdrop { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 60; }
+.leave-dialog { background: var(--surface); border: 1px solid var(--border); color: inherit; max-width: 440px; width: 100%; padding: 24px; border-radius: var(--radius); box-shadow: var(--shadow-pop); }
+.leave-dialog h2 { margin: 0 0 8px; font-size: 1.1rem; }
+.leave-dialog p { margin: 0 0 16px; }
+.leave-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+@media (max-width: 620px) {
+  .leave-dialog-actions { flex-direction: column-reverse; }
+  .leave-dialog-actions .btn { width: 100%; }
+}
