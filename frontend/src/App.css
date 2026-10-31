@@ -308,9 +308,10 @@ textarea {
 
 .dropzone {
   display: block;
-  border: 2px dashed var(--border-strong);
-  border-radius: 12px;
-  padding: 26px 20px;
+  border: 2px dashed var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius);
+  padding: 56px 24px;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
@@ -326,6 +327,7 @@ textarea {
 }
 .dropzone.dragging {
   border-style: solid;
+  background: var(--surface);
 }
 /* The icon and text must not become the drag target, or leaving them flickers the highlight. */
 .dropzone.dragging * {
@@ -354,17 +356,27 @@ textarea {
   font-size: 0.84rem;
 }
 .dropzone .icon {
-  font-size: 1.6rem;
-  margin-bottom: 8px;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
 }
 .dropzone .primary {
   font-weight: 600;
-  font-size: 0.92rem;
-  margin-bottom: 3px;
+  font-size: var(--text-lg);
+  color: var(--accent-strong);
+  margin-bottom: 6px;
 }
 .dropzone .secondary {
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
+  max-width: 560px;
+  margin: 0 auto;
 }
 
 .btn {
@@ -491,8 +503,10 @@ textarea {
 }
 
 .class-row.uncertain {
-  border-color: var(--warn);
-  box-shadow: 0 0 0 1px var(--warn);
+  border-color: var(--flag);
+  border-left-width: 4px;
+  background: var(--flag-soft);
+  box-shadow: none;
 }
 .report-instrument-line {
   display: flex;
@@ -505,9 +519,10 @@ textarea {
 .class-row,
 .read-row {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
   margin-bottom: 12px;
+  background: var(--surface);
 }
 .crow-top {
   display: flex;
@@ -854,22 +869,23 @@ textarea {
 
 .success-panel {
   text-align: center;
-  padding: 24px 20px 20px;
+  padding: 40px 24px 28px;
 }
 .success-panel .tick {
-  width: 44px;
-  height: 44px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background: var(--good-soft);
   color: var(--good);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
-  margin: 0 auto 12px;
+  font-size: 1.7rem;
+  margin: 0 auto 14px;
 }
 .success-panel h3 {
   margin: 0 0 6px;
+  font-size: var(--text-2xl);
 }
 .success-panel p {
   color: var(--text-muted);
@@ -3327,4 +3343,19 @@ button.fleet-row:hover {
 }
 .report-group-rows .report-row-body:last-child {
   border-bottom: none;
+}
+
+/* Reading the scan: a centred card with a larger spinner. */
+.section.working-panel {
+  justify-content: center;
+  padding: 56px 24px;
+}
+.section.working-panel .spinner {
+  width: 40px;
+  height: 40px;
+  border-width: 5px;
+}
+.section.working-panel .working-text {
+  font-size: var(--text-lg);
+  font-weight: 600;
 }
