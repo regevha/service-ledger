@@ -554,9 +554,30 @@ textarea {
   border-radius: 10px;
   padding: 12px 14px;
 }
+.field {
+  border-radius: var(--radius-sm);
+}
 .field.pending {
-  border-color: var(--warn);
-  background: var(--warn-soft);
+  border-color: var(--flag);
+  border-left-width: 4px;
+  background: var(--flag-soft);
+}
+.field-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--text);
+}
+.field-list-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+.field-list-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 .field-top {
   display: flex;

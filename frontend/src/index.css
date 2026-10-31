@@ -17,6 +17,8 @@
   --text-faint: #636d83;
   --accent: #3b4fb8;
   --accent-strong: #2c3b8f;
+  --flag: #b57308;
+  --flag-soft: #fdf6e6;
   --accent-fill: #3b4fb8;
   --accent-fill-hover: #2c3b8f;
   --input-border: #b4bdd0;
@@ -79,6 +81,8 @@
     --text-faint: #9aa5bd;
     --accent: #aebcff;
     --accent-strong: #d0d8ff;
+    --flag: #e8ae42;
+    --flag-soft: #3a3216;
     --accent-fill: #5468d8;
     --accent-fill-hover: #6577e0;
     --input-border: #7280a0;
