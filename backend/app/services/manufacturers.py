@@ -61,6 +61,17 @@ def canonical_name(db: Session, text: str | None) -> str | None:
     return maker.name if maker else cleaned
 
 
+def is_maker(db: Session | None, text: str | None, known_name: str) -> bool:
+    """True when `text` names the maker that is also known as `known_name` ("BD", say):
+    by that maker's name or any other name, so "Becton Dickinson" is BD and a maker
+    someone renamed still counts. False for empty text or a maker that is not it."""
+    if db is None:  # unit tests call the classifier without a session: use the built-in names
+        names = next(([n, *al] for n, al in DEFAULT_MAKERS if normalize(n) == normalize(known_name)), [known_name])
+        return bool(text) and normalize(text) in {normalize(n) for n in names}
+    maker = find_maker(db.query(models.Manufacturer).all(), text)
+    return maker is not None and matches(maker, known_name)
+
+
 def ensure_default_makers(db: Session) -> None:
     """Adds any known maker that is missing and any missing alias on one that exists.
     Idempotent; never renames or removes anything."""

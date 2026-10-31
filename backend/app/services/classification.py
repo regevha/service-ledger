@@ -39,6 +39,7 @@ from app.services.errors import ClassificationError
 from app.services.text_reader import extract_text, read_identifiers
 from app.services.documents import UnsupportedDocumentError
 from app.services.translation import accepted_text, is_hebrew_text_layer, source_block
+from app.services.manufacturers import is_maker
 from app.services.templates import resolve_template
 
 logger = logging.getLogger("app.services.classification")
@@ -47,7 +48,7 @@ settings = get_settings()
 _CLASSIFY_TOOL_NAME = "record_classification"
 
 # What the model answers for `instrument_model` when the document's instrument
-# is not any model in the fleet (for example a Cytek analyzer when the fleet is
+# is not any model in the fleet (for example an analyzer from a maker the fleet does not have, when the fleet is
 # all BD). It is never stored as a model: the read becomes a zero-confidence
 # placeholder for the manual pick and the maker is kept for the screen.
 NOT_IN_FLEET = "(not in the fleet)"
@@ -176,27 +177,41 @@ class DocumentRead(NamedTuple):
     detected_model: str | None = None
 
 
-# What the Work Order Task Code says about the kind of visit. Only codes whose
-# meaning is documented are listed; any other code falls back to the model's
-# own judgment rather than being guessed at.
-_TASK_CODE_REPORT_TYPES = {
-    "T111": ReportType.preventive_maintenance,
-    "T107": ReportType.installation_upgrade,
-    "T113": ReportType.repair,
+# What a printed task code says about the kind of visit. A task code is one maker's
+# own coding scheme, so the table is kept per maker (by a name the maker is known by,
+# see services/manufacturers.is_maker) and used only for that maker's documents: another
+# maker's "T113" must not be read as BD's repair code. Only codes whose meaning is
+# documented are listed; any other code falls back to the model's own judgment rather
+# than being guessed at.
+_TASK_CODE_REPORT_TYPES_BY_MAKER: dict[str, dict[str, ReportType]] = {
+    "BD": {
+        "T111": ReportType.preventive_maintenance,
+        "T107": ReportType.installation_upgrade,
+        "T113": ReportType.repair,
+    },
 }
+DEFAULT_TASK_CODE_SCHEME = "BD"
 
 
-def report_type_from_task_code(code: object) -> ReportType | None:
-    """The report type a printed task code stands for, or None when the code
-    is missing, unparseable, or not one we know the meaning of."""
-    if not isinstance(code, str):
+def task_code_scheme(db: Session, maker_text: str | None) -> str | None:
+    """The task-code scheme (a key of the table above) a document from this maker uses,
+    or None when the maker has none listed or is not known."""
+    return next((name for name in _TASK_CODE_REPORT_TYPES_BY_MAKER if is_maker(db, maker_text, name)), None)
+
+
+def report_type_from_task_code(code: object, scheme: str | None = DEFAULT_TASK_CODE_SCHEME) -> ReportType | None:
+    """The report type a printed task code stands for in `scheme` (one maker's coding),
+    or None when there is no scheme, or the code is missing, unparseable, or not one we
+    know the meaning of. `scheme` defaults to BD's, the only one listed."""
+    table = _TASK_CODE_REPORT_TYPES_BY_MAKER.get(scheme) if scheme else None
+    if not table or not isinstance(code, str):
         return None
     match = re.match(r"\s*(T\d{3})", code.upper())
-    return _TASK_CODE_REPORT_TYPES.get(match.group(1)) if match else None
+    return table.get(match.group(1)) if match else None
 
 
 def _apply_task_code(
-    type_guess: ClassificationGuess, data: dict, attachment_path: str
+    type_guess: ClassificationGuess, data: dict, attachment_path: str, scheme: str | None = DEFAULT_TASK_CODE_SCHEME
 ) -> tuple[ClassificationGuess, Literal["task_code", "model"]]:
     """Prefer the task code over the model's judgment of the visit type.
 
@@ -206,7 +221,7 @@ def _apply_task_code(
     the confidence of the *read*. A code read with doubt is ignored — the
     model's guess stands, so the report still falls through to manual
     confirmation when that guess is itself unsure."""
-    mapped = report_type_from_task_code(data.get("task_code"))
+    mapped = report_type_from_task_code(data.get("task_code"), scheme)
     if mapped is None:
         return type_guess, "model"
     try:
@@ -330,7 +345,13 @@ def _live_classify(
         )
         raise ClassificationError(f"Claude's classification response was missing or malformed fields: {e}") from e
 
-    type_guess, type_source = _apply_task_code(type_guess, data, attachment.file_path)
+    # The maker decides whether the printed task code means anything: the fleet unit the
+    # model named, else the maker the model detected on the form.
+    fleet_unit = next((i for i in instruments if i.model == instrument_guess.value), None)
+    maker_text = fleet_unit.manufacturer if fleet_unit is not None else _clean(data.get("detected_manufacturer"))
+    type_guess, type_source = _apply_task_code(
+        type_guess, data, attachment.file_path, task_code_scheme(db, maker_text)
+    )
     work_order = data.get("work_order_number")
 
     maker_in_fleet = True
@@ -441,7 +462,7 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
     if not text.strip():
         return None
     read = read_identifiers(text, sorted({i.model for i in instruments}))
-    if not read.recognised:
+    if not read.in_bd_format:
         return None
 
     if read.model is not None:

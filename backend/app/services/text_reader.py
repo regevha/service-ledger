@@ -66,6 +66,10 @@ def extract_text(data: bytes, max_pages: int = MAX_PAGES) -> str:
 # a fallback (a form that names the work order in a free-text field).
 _WORK_ORDER_LABELLED = re.compile(r"WORK ORDER NUMBER:?\s*(WO-\d{5,})", re.IGNORECASE)
 _WORK_ORDER_ANY = re.compile(r"(?<![A-Za-z])(WO-\d{5,})")
+# This reader runs on every upload, whatever the maker. A bare "WO-12345" elsewhere in a
+# document counts only when the document also says "work order" somewhere, so another
+# maker's part, order or asset number that happens to look like it is not taken for one.
+_WORK_ORDER_WORDS = re.compile(r"work\s*order", re.IGNORECASE)
 
 # "Work Order Task CodeT113 Repair / Troubleshooting Visit" (joined by pypdf),
 # or a form's dropdown value "T113 Repair / Troubleshooting Visit". A bare
@@ -95,8 +99,10 @@ class TextRead:
     serial: str | None = None
 
     @property
-    def recognised(self) -> bool:
-        """Looks like a BD service document: at least one identifier found."""
+    def in_bd_format(self) -> bool:
+        """Has at least one of the identifiers this reader knows how to find, which are
+        the ones BD service documents print. It says nothing about other makers' forms,
+        which have no reader here and are read by the model."""
         return any((self.work_order_number, self.task_code, self.product_code, self.model))
 
 
@@ -109,7 +115,9 @@ def _model_key(model: str) -> str:
 
 def read_work_order(text: str) -> str | None:
     """The work-order number as printed ("WO-03424229"), or None."""
-    match = _WORK_ORDER_LABELLED.search(text) or _WORK_ORDER_ANY.search(text)
+    match = _WORK_ORDER_LABELLED.search(text)
+    if match is None and _WORK_ORDER_WORDS.search(text):
+        match = _WORK_ORDER_ANY.search(text)
     return match.group(1).upper() if match else None
 
 
