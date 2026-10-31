@@ -187,7 +187,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 16px 20px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
   flex-wrap: wrap;
@@ -196,22 +196,37 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-faint);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 .step .num {
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  border: 2px solid var(--border-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   flex: none;
+}
+/* A line joins each step to the one before it; it fills once that step is done. */
+.step + .step {
+  flex: 1 1 0;
+}
+.step + .step::before {
+  content: '';
+  flex: 1 1 auto;
+  min-width: 16px;
+  height: 2px;
+  margin-right: 8px;
+  background: var(--border-strong);
+}
+.step.done + .step::before {
+  background: var(--accent);
 }
 .step.active {
   color: var(--text);
@@ -272,12 +287,19 @@ textarea,
 select {
   font-family: var(--font-ui);
   font-size: 0.88rem;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border-strong);
-  background: var(--bg);
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--input-border);
+  background: var(--surface);
   color: var(--text);
   width: 100%;
+}
+.text-input:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 textarea {
   min-height: 64px;
@@ -349,9 +371,9 @@ textarea {
   font-family: var(--font-ui);
   font-size: 0.82rem;
   font-weight: 600;
-  padding: 9px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border-strong);
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--input-border);
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
@@ -360,14 +382,24 @@ textarea {
   gap: 6px;
   text-decoration: none;
 }
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .btn.small {
   padding: 6px 12px;
   font-size: 0.76rem;
 }
 .btn.primary {
   background: var(--accent-fill);
-  border-color: var(--accent);
+  border-color: var(--accent-fill);
   color: var(--on-fill);
+}
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-fill-hover);
 }
 .btn.primary:disabled {
   background: var(--border-strong);
@@ -407,8 +439,9 @@ textarea {
 
 .banner {
   font-size: 0.82rem;
-  padding: 10px 14px;
-  border-radius: 8px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
   margin: 16px 20px 0;
   line-height: 1.5;
 }
@@ -419,6 +452,7 @@ textarea {
 .banner-warn {
   background: var(--warn-soft);
   color: var(--warn);
+  border-color: var(--warn);
 }
 .duplicate-list {
   margin: 8px 0 0;
@@ -430,17 +464,19 @@ textarea {
 .banner-info {
   background: var(--accent-soft);
   color: var(--accent-strong);
+  border-color: var(--accent);
 }
 .banner-crit {
   background: var(--crit-soft);
   color: var(--crit);
+  border-color: var(--crit);
   margin: 0 0 16px;
 }
 
 .badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
   border-radius: 99px;
   white-space: nowrap;
 }
@@ -748,9 +784,9 @@ textarea {
 }
 
 .status-pill {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
   border-radius: 99px;
   white-space: nowrap;
   justify-self: start;
@@ -759,7 +795,7 @@ textarea {
 .status-draft,
 .status-classified {
   background: var(--surface-2);
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 .status-extracted,
 .status-in_review {
@@ -2510,7 +2546,7 @@ button.fleet-row:hover {
   border-radius: 999px;
   font-size: 0.86rem;
   font-weight: 600;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-pop);
   animation: toast-in 0.18s ease-out;
 }
 @keyframes toast-in {
@@ -3121,7 +3157,7 @@ button.fleet-row:hover {
 
 /* VIEW_PROMPTS: prompt preview dialog */
 .prompt-review-backdrop { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
-.prompt-review { background: var(--bg); color: inherit; max-width: 900px; width: 100%; max-height: 90vh; overflow: auto; padding: 20px; border-radius: 8px; }
+.prompt-review { background: var(--surface); border: 1px solid var(--border); color: inherit; max-width: 900px; width: 100%; max-height: 90vh; overflow: auto; padding: 20px; border-radius: var(--radius); }
 .prompt-review-text { white-space: pre-wrap; word-break: break-word; background: rgba(127, 127, 127, 0.12); padding: 10px; border-radius: 6px; font-size: 0.85rem; max-height: 40vh; overflow: auto; }
 .prompt-review-doc code { word-break: break-all; }
 .prompt-review-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; position: sticky; bottom: 0; }
@@ -3189,7 +3225,7 @@ button.fleet-row:hover {
 
 /* "Unsaved changes": Stay / Discard changes / Save and leave. */
 .leave-dialog-backdrop { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 60; }
-.leave-dialog { background: var(--bg); color: inherit; max-width: 440px; width: 100%; padding: 20px; border-radius: 8px; box-shadow: var(--shadow-pop); }
+.leave-dialog { background: var(--surface); border: 1px solid var(--border); color: inherit; max-width: 440px; width: 100%; padding: 24px; border-radius: var(--radius); box-shadow: var(--shadow-pop); }
 .leave-dialog h2 { margin: 0 0 8px; font-size: 1.1rem; }
 .leave-dialog p { margin: 0 0 16px; }
 .leave-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
