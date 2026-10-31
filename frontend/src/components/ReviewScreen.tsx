@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { DateInput } from './DateInput';
 import { Notice } from './Notice';
-import { FieldControl, ReadOnlyContext } from './FieldEditor';
+import { FieldControl, FieldLabelContext, ReadOnlyContext } from './FieldEditor';
 import { PhoneScanSwitch, ScanSplit, ScanToggleButton, useScanPreview } from './ScanPreview';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
@@ -299,7 +299,25 @@ export function ReviewScreen({
 
       <PhoneScanSwitch preview={preview} />
 
-      <ScanSplit preview={preview}>
+      <ScanSplit
+        preview={preview}
+        rail={
+          <nav className="review-rail" aria-label="Fields" data-testid="review-rail">
+            <div className="review-rail-title">Fields</div>
+            <ul>
+              {[{ name: 'report_date', label: 'Service date', n: '', flagged: reportDateFlagged }, ...template.field_schema.fields.map((f, i) => ({ name: f.name, label: fieldLabel(f.name, f.unit), n: String(i + 1), flagged: isFlagged(f.name) }))].map((r) => (
+                <li key={r.name}>
+                  <button type="button" className={`review-rail-item${r.flagged && !readOnly ? ' flagged' : ''}`} onClick={() => goToField(r.name)}>
+                    <span className="review-rail-num">{r.n}</span>
+                    <span className="review-rail-label">{r.label}</span>
+                    <span className="review-rail-mark" aria-label={r.flagged && !readOnly ? 'needs checking' : 'checked'}>{r.flagged && !readOnly ? '!' : '✓'}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        }
+      >
       <fieldset className="review-fieldset" disabled={readOnly}>
       <ReadOnlyContext.Provider value={readOnly}>
       <div className={`field-list${readOnly ? ' read-only' : ''}`} ref={listRef}>
@@ -385,7 +403,9 @@ export function ReviewScreen({
                   Mark as checked
                 </button>
               )}
-              <FieldControl field={field} value={fields[field.name]} onChange={(v) => onChange(field.name, v)} />
+              <FieldLabelContext.Provider value={fieldLabel(field.name, field.unit)}>
+                <FieldControl field={field} value={fields[field.name]} onChange={(v) => onChange(field.name, v)} />
+              </FieldLabelContext.Provider>
               {field.notes && <div className="field-note">{field.notes}</div>}
             </div>
           );
