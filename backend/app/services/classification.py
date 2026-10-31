@@ -477,14 +477,21 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
 def _confident_text_read(attachment: Attachment, instruments: list[Instrument]) -> DocumentRead | None:
     """Live mode: skip the Claude call when the PDF's own text answers every
     question. That needs a clean English text layer, a serial printed on the
-    page that matches exactly one fleet instrument of the model read, and a
-    task code that maps to a report type. A scan, another maker's form, a
+    page that matches exactly one fleet instrument of the model read (or an
+    Installed Product that is plainly not in the fleet, which only has to be
+    added), and a task code that maps to a report type. A scan, another maker's form, a
     Hebrew text layer or anything unclear returns None and goes to Claude."""
     if is_hebrew_text_layer(attachment):
         return None
     read = _text_classify(attachment, instruments)
     if read is None or read.report_type_source != "task_code" or read.serial is None:
         return None
+    if not read.maker_in_fleet:
+        # The Installed Product line names an instrument the fleet does not have
+        # (say the S8 was deleted). The page says so plainly, and a model that is
+        # only allowed to answer with a fleet model could name the nearest one
+        # instead, so this is answered from the text, not by asking the model.
+        return read
     if read.instrument.confidence < settings.classification_confidence_threshold:
         return None
     instrument = match_serial(read.serial, instruments)
