@@ -18,6 +18,8 @@
     "test:e2e:coverage:shuffled": "rm -rf .nyc_output coverage && COVERAGE=1 node scripts/run-e2e-shuffled.mjs && npm run coverage:report"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

@@ -107,7 +107,7 @@
   color: var(--text);
 }
 .step.active .num {
-  background: var(--accent);
+  background: var(--accent-fill);
   border-color: var(--accent);
   color: #fff;
 }
@@ -255,7 +255,7 @@ textarea {
   font-size: 0.76rem;
 }
 .btn.primary {
-  background: var(--accent);
+  background: var(--accent-fill);
   border-color: var(--accent);
   color: #fff;
 }
@@ -890,7 +890,7 @@ button.fleet-row:hover {
 .fleet-row-bar > span {
   display: block;
   height: 100%;
-  background: var(--accent);
+  background: var(--accent-fill);
 }
 .fleet-empty {
   padding: 14px 12px;
@@ -969,7 +969,7 @@ button.fleet-row:hover {
 .bar-fill {
   height: 100%;
   border-radius: 4px;
-  background: var(--accent);
+  background: var(--accent-fill);
 }
 .bar-value {
   font-size: 0.78rem;
