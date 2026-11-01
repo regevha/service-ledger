@@ -217,7 +217,7 @@ export function PlacesManager({ onChanged }: { onChanged: () => void }) {
       {error && <div className="banner banner-warn">{error}</div>}
 
       {pending?.kind === 'delete' && (
-        <div className="banner banner-warn" role="alertdialog" aria-label="Confirm delete place">
+        <div className="banner banner-crit" role="alertdialog" aria-label="Confirm delete place">
           <div>
             Delete the {pending.place.kind} “{pending.place.name}”? This deletes only the place record; nothing is inside it and no instrument is in it. This
             cannot be undone.
