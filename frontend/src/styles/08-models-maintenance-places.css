@@ -136,13 +136,14 @@
   gap: 8px 12px;
   padding: 10px 12px;
   margin-bottom: 12px;
-  background: var(--warn-soft);
-  border: 1px solid var(--warn);
+  background: var(--flag-soft);
+  border: 1px solid var(--border);
+  box-shadow: inset 4px 0 0 var(--flag);
   border-radius: 8px;
 }
 .attention-strip-count {
   font-weight: 600;
-  color: var(--warn);
+  color: var(--text);
 }
 .attention-strip-chips {
   display: flex;

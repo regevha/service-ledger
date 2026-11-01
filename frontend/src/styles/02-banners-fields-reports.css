@@ -3,9 +3,11 @@
   margin: 0 0 12px;
 }
 .banner-warn {
-  background: var(--warn-soft);
-  color: var(--warn);
-  border-color: var(--warn);
+  /* The same look as a flagged field: soft fill, normal text, an amber bar. Brown text on amber read as off-palette. */
+  background: var(--flag-soft);
+  color: var(--text);
+  border-color: var(--border);
+  box-shadow: inset 4px 0 0 var(--flag);
 }
 .duplicate-list {
   margin: 8px 0 0;
