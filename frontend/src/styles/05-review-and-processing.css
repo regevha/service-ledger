@@ -181,15 +181,21 @@
 
 .btn.danger {
   color: var(--crit);
-  border-color: color-mix(in srgb, var(--crit) 45%, var(--border-strong));
+  border-color: var(--crit);
 }
 .btn.danger:hover:not(:disabled) {
   background: var(--crit-soft);
 }
+/* Pressed: fills solid red, like the confirming button it leads to. */
+.btn.danger:active:not(:disabled) {
+  background: var(--crit);
+  border-color: var(--crit);
+  color: var(--on-crit);
+}
 .btn.danger.solid {
   background: var(--crit);
   border-color: var(--crit);
-  color: var(--on-fill);
+  color: var(--on-crit);
 }
 .btn.danger.solid:hover:not(:disabled) {
   background: var(--crit);
