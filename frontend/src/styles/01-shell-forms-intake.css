@@ -557,3 +557,39 @@ textarea {
 .state-crit .state-icon {
   background: var(--crit);
 }
+
+/* On a phone the three steps share the width evenly: circle above, label below, a line joining the circles. */
+@media (max-width: 620px) {
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    padding: 14px 8px;
+    flex-wrap: nowrap;
+  }
+  .step {
+    position: relative;
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+    white-space: normal;
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+  .step + .step {
+    flex: none;
+  }
+  .step .num {
+    position: relative;
+    z-index: 1;
+  }
+  .step + .step::before {
+    position: absolute;
+    top: 14px;
+    left: -50%;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    flex: none;
+  }
+}
