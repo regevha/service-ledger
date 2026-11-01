@@ -358,5 +358,5 @@
   display: block;
 }
 .model-row .model-similar {
-  color: var(--warn-text, inherit);
+  color: inherit;
 }

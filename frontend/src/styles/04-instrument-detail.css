@@ -55,8 +55,8 @@
   color: var(--good);
 }
 .instrument-status-maintenance {
-  background: var(--warn-soft);
-  color: var(--warn);
+  background: var(--flag-soft);
+  color: var(--text);
 }
 .instrument-status-retired {
   background: var(--surface-2);
