@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { listReports, reportsExportUrl, type Instrument, type ReportFilters, type ReportStatus, type ReportType } from '../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
+import { useTheme } from '../theme';
 import { DateInput } from './DateInput';
 import { FieldAliasManagerScreen } from './FieldAliasManager';
 
-type Section = 'export' | 'aliases';
+type Section = 'export' | 'aliases' | 'appearance';
 
 /**
  * Admin: housekeeping that is not part of the daily flow. Data export (the CSV that used to sit on the
@@ -12,7 +13,7 @@ type Section = 'export' | 'aliases';
  * after #/admin/, so a section can be bookmarked.
  */
 export function AdminScreen({ section, onSection, instruments }: { section: string; onSection: (s: string) => void; instruments: Instrument[] }) {
-  const current: Section = section === 'aliases' ? 'aliases' : 'export';
+  const current: Section = section === 'aliases' ? 'aliases' : section === 'appearance' ? 'appearance' : 'export';
   return (
     <div className="admin-screen" data-testid="admin-screen">
       <nav className="admin-nav" aria-label="Admin sections">
@@ -22,8 +23,31 @@ export function AdminScreen({ section, onSection, instruments }: { section: stri
         <button type="button" className={`admin-nav-item ${current === 'aliases' ? 'active' : ''}`} aria-current={current === 'aliases' ? 'page' : undefined} onClick={() => onSection('aliases')}>
           Field aliases
         </button>
+        <button type="button" className={`admin-nav-item ${current === 'appearance' ? 'active' : ''}`} aria-current={current === 'appearance' ? 'page' : undefined} onClick={() => onSection('appearance')}>
+          Appearance
+        </button>
       </nav>
-      <div className="admin-body">{current === 'aliases' ? <FieldAliasManagerScreen onBack={() => onSection('')} /> : <DataExport instruments={instruments} />}</div>
+      <div className="admin-body">
+        {current === 'aliases' ? <FieldAliasManagerScreen onBack={() => onSection('')} /> : current === 'appearance' ? <Appearance /> : <DataExport instruments={instruments} />}
+      </div>
+    </div>
+  );
+}
+
+/** Light or dark. The first personal setting; kept in this browser only. */
+function Appearance() {
+  const [theme, setTheme] = useTheme();
+  return (
+    <div className="appearance" data-testid="appearance">
+      <h2>Appearance</h2>
+      <p className="hint-text">Choose light or dark. The choice is kept in this browser.</p>
+      <div className="theme-choice" role="radiogroup" aria-label="Colour mode">
+        {(['light', 'dark'] as const).map((t) => (
+          <button key={t} type="button" role="radio" aria-checked={theme === t} className={`btn${theme === t ? ' primary' : ''}`} onClick={() => setTheme(t)}>
+            {t === 'light' ? 'Light' : 'Dark'}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
