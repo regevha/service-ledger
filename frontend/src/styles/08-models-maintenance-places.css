@@ -25,7 +25,7 @@
   }
 }
 .model-standout {
-  color: var(--warn);
+  color: var(--text);
   font-weight: 600;
 }
 .model-notes-text {
@@ -43,8 +43,8 @@
   color: var(--good);
 }
 .maintenance-due_soon {
-  background: var(--warn-soft);
-  color: var(--warn);
+  background: var(--flag-soft);
+  color: var(--text);
 }
 .maintenance-overdue {
   background: var(--crit-soft);

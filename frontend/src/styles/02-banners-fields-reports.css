@@ -40,9 +40,9 @@
   color: var(--good);
 }
 .badge-warn {
-  background: var(--warn-soft);
-  color: var(--warn);
-  border: 1px solid var(--warn);
+  background: var(--flag-soft);
+  color: var(--text);
+  border: 1px solid var(--flag);
 }
 
 .class-row.uncertain {
@@ -378,8 +378,8 @@
 }
 .status-extracted,
 .status-in_review {
-  background: var(--warn-soft);
-  color: var(--warn);
+  background: var(--flag-soft);
+  color: var(--text);
 }
 .status-finalized {
   background: var(--good-soft);
