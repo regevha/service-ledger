@@ -27,8 +27,8 @@
   --good-soft: #e0f0e6;
   --warn: #7a4f08;
   --warn-soft: #fbeccb;
-  --crit: #a63a2e;
-  --crit-soft: #f6e0dc;
+  --crit: #b3261e;
+  --crit-soft: #fce8e6;
   --shadow: 0 1px 2px rgba(27, 31, 35, 0.06), 0 10px 28px -14px rgba(27, 31, 35, 0.16);
   --on-fill: #ffffff;
   --paper: #ffffff;
@@ -96,8 +96,8 @@
     --good-soft: #244a35;
     --warn: #f3d089;
     --warn-soft: #4a3a14;
-    --crit: #ff9a8b;
-    --crit-soft: #4a2a2a;
+    --crit: #ff7b72;
+    --crit-soft: #4a2630;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.5);
 
     /* Same 5 slots, stepped for the dark surface — the dataviz skill
@@ -133,8 +133,8 @@
   --good-soft: #244a35;
   --warn: #f3d089;
   --warn-soft: #4a3a14;
-  --crit: #ff9a8b;
-  --crit-soft: #4a2a2a;
+  --crit: #ff7b72;
+  --crit-soft: #4a2630;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.5);
 
   /* Same 5 slots, stepped for the dark surface — the dataviz skill
