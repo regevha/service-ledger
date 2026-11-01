@@ -230,7 +230,7 @@
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 8px;
-  box-shadow: 0 6px 18px rgb(0 0 0 / 0.14);
+  box-shadow: 0 6px 18px var(--shadow-color);
 }
 .row-menu-item {
   font-family: var(--font-ui);

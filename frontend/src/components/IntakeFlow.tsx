@@ -330,7 +330,7 @@ function describeDuplicates(duplicates: Record<string, Report | null>): string |
     const who = r.technician_name ? ` by ${r.technician_name}` : '';
     return `${/^[aeiou]/i.test(r.status) ? 'an' : 'a'} ${r.status} report${who} from ${r.report_date ?? r.created_at.slice(0, 10)}`;
   };
-  return `This document looks like one already on file: ${reports.map(describe).join('; ')}. If it is a re-scan of the same visit, finalizing this report will record the visit twice.`;
+  return `This document looks already on file: ${reports.map(describe).join('; ')}. If it is a re-scan of the same visit, finalizing records the visit twice.`;
 }
 
 /**
@@ -352,30 +352,30 @@ function describeSerialMatch(
   const suggested = instruments.find((inst) => inst.id === result.suggested_instrument_id);
 
   if (match === 'matched') {
-    if (assigned) return { tone: 'info', text: `Matched to ${label(assigned)} by the serial number on the document (${serial}).` };
+    if (assigned) return { tone: 'info', text: `Matched to ${label(assigned)} by serial number.` };
     // Not assigned automatically, but not necessarily because of the serial:
     // a low report-type read also sends the report to this screen. Say so
     // only when the serial itself was a confident read.
     if (suggested && (result.instrument_serial?.confidence ?? 0) >= threshold) {
-      return { tone: 'info', text: `Matched to ${label(suggested)} by the serial number on the document (${serial}). Confirm the details below.` };
+      return { tone: 'info', text: `Matched to ${label(suggested)} by serial number. Confirm the details below.` };
     }
     return {
       tone: 'info',
-      text: `The document shows serial ${serial}${suggested ? `, which is ${label(suggested)}` : ''}. It is pre-selected below, but the read was not confident enough to assign it automatically — check it.`,
+      text: `Serial ${serial}${suggested ? ` looks like ${label(suggested)}` : ''}. Not read confidently enough to assign it automatically — check it.`,
     };
   }
   if (match === 'model_conflict') {
     return {
       tone: 'warn',
-      text: `The document's serial number ${serial} belongs to ${suggested ? label(suggested) : 'another instrument'}, but the model read from the document is ${result.instrument.value}. One of the two reads is wrong — choose the instrument yourself.`,
+      text: `Serial ${serial} belongs to ${suggested ? label(suggested) : 'another instrument'}, but the model read is ${result.instrument.value}. One is wrong — choose the instrument.`,
     };
   }
   // not_found
   return {
     tone: 'warn',
     text: assigned
-      ? `The document shows serial ${serial}, which is not in your fleet. The report was assigned to ${label(assigned)} because it is the only ${assigned.model}; check that it is the right unit, or add serial ${serial} under Instruments.`
-      : `The document shows serial ${serial}, which is not in your fleet. Choose the unit below, or add serial ${serial} under Instruments.`,
+      ? `Serial ${serial} is not in your fleet. Assigned to ${label(assigned)}, the only ${assigned.model} — check it, or add the serial under Instruments.`
+      : `Serial ${serial} is not in your fleet. Choose the unit below, or add it under Instruments.`,
   };
 }
 
@@ -1386,8 +1386,8 @@ export function IntakeFlow({
             </div>
           }
         >
-          Generic {REPORT_TYPE_LABEL[template.report_type]} template in use. A {reviewInstrument.model} template can ask for the fields its
-          forms carry.
+          Generic {REPORT_TYPE_LABEL[template.report_type]} template in use. A {reviewInstrument.model} template can ask for this model's own
+          fields.
         </Notice>
       )}
 
