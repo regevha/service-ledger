@@ -33,6 +33,7 @@
   --on-fill: #ffffff;
   --paper: #ffffff;
   --scrim: rgba(27, 34, 48, 0.45);
+  --shadow-color: rgb(16 24 40 / 0.16);
   --shadow-pop: 0 8px 30px rgba(27, 34, 48, 0.3);
   --radius-sm: 8px;
   --radius: 14px;
@@ -87,6 +88,7 @@
     --accent-fill-hover: #6577e0;
     --input-border: #7280a0;
     --scrim: rgba(0, 0, 0, 0.55);
+    --shadow-color: rgb(0 0 0 / 0.5);
     --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.5);
     --accent-soft: #313b72;
     --good: #9ddbb3;

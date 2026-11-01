@@ -25,7 +25,7 @@
   }
 }
 .model-standout {
-  color: var(--warn);
+  color: var(--text);
   font-weight: 600;
 }
 .model-notes-text {
@@ -43,8 +43,8 @@
   color: var(--good);
 }
 .maintenance-due_soon {
-  background: var(--warn-soft);
-  color: var(--warn);
+  background: var(--flag-soft);
+  color: var(--text);
 }
 .maintenance-overdue {
   background: var(--crit-soft);
@@ -125,7 +125,7 @@
 /* VIEW_PROMPTS: prompt preview dialog */
 .prompt-review-backdrop { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
 .prompt-review { background: var(--surface); border: 1px solid var(--border); color: inherit; max-width: 900px; width: 100%; max-height: 90vh; overflow: auto; padding: 20px; border-radius: var(--radius); }
-.prompt-review-text { white-space: pre-wrap; word-break: break-word; background: rgba(127, 127, 127, 0.12); padding: 10px; border-radius: 6px; font-size: 0.85rem; max-height: 40vh; overflow: auto; }
+.prompt-review-text { white-space: pre-wrap; word-break: break-word; background: var(--surface-2); padding: 10px; border-radius: 6px; font-size: 0.85rem; max-height: 40vh; overflow: auto; }
 .prompt-review-doc code { word-break: break-all; }
 .prompt-review-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; position: sticky; bottom: 0; }
 
@@ -136,13 +136,14 @@
   gap: 8px 12px;
   padding: 10px 12px;
   margin-bottom: 12px;
-  background: var(--warn-soft);
-  border: 1px solid var(--warn);
+  background: var(--flag-soft);
+  border: 1px solid var(--border);
+  box-shadow: inset 4px 0 0 var(--flag);
   border-radius: 8px;
 }
 .attention-strip-count {
   font-weight: 600;
-  color: var(--warn);
+  color: var(--text);
 }
 .attention-strip-chips {
   display: flex;

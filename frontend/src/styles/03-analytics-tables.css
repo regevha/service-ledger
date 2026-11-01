@@ -551,8 +551,8 @@ button.fleet-row:hover {
   color: var(--text-muted);
 }
 .compare-chip-differs {
-  background: var(--warn-soft);
-  color: var(--warn);
+  background: var(--flag-soft);
+  color: var(--text);
 }
 .compare-chip-possible_match {
   background: var(--surface);

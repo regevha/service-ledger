@@ -55,8 +55,8 @@
   color: var(--good);
 }
 .instrument-status-maintenance {
-  background: var(--warn-soft);
-  color: var(--warn);
+  background: var(--flag-soft);
+  color: var(--text);
 }
 .instrument-status-retired {
   background: var(--surface-2);
@@ -215,8 +215,8 @@
   background:
     linear-gradient(to right, var(--surface) 30%, transparent) 0 0 / 28px 100% no-repeat local,
     linear-gradient(to left, var(--surface) 30%, transparent) 100% 0 / 28px 100% no-repeat local,
-    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.18), transparent) 0 0 / 10px 100% no-repeat scroll,
-    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.18), transparent) 100% 0 / 10px 100% no-repeat scroll;
+    radial-gradient(farthest-side at 0 50%, var(--shadow-color), transparent) 0 0 / 10px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--shadow-color), transparent) 100% 0 / 10px 100% no-repeat scroll;
 }
 .trend-table {
   width: 100%;
