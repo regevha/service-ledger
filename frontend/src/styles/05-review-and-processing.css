@@ -391,6 +391,12 @@
   .review-split.with-scan.with-rail {
     grid-template-columns: 260px minmax(0, 1fr) minmax(0, 1fr);
   }
+  .review-split.with-rail:not(.with-scan) {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
   .review-rail {
     display: block;
     position: sticky;
