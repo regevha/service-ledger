@@ -1,3 +1,4 @@
+import { ThemeToggle } from './components/ThemeToggle';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, getAppConfig, listInstruments, type AppConfig, type Instrument, type ReportTemplate } from './api';
 import { AdminScreen } from './components/AdminScreen';
@@ -255,6 +256,7 @@ export default function App() {
             + New report
           </button>
         )}
+        <ThemeToggle />
       </header>
 
       <ToastHost />
