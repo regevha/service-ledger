@@ -541,9 +541,9 @@ export function InstrumentManagerScreen({
       </div>
 
       {error && <div className="banner banner-warn">{error}</div>}
-      {deleteError && <div className="banner banner-warn">{deleteError}</div>}
+      {deleteError && <div className="banner banner-crit">{deleteError}</div>}
       {pendingDelete && (
-        <div className="banner banner-warn" role="alertdialog" aria-label="Confirm delete instrument">
+        <div className="banner banner-crit" role="alertdialog" aria-label="Confirm delete instrument">
           <div>
             Delete {pendingDelete.instrument.name} ({pendingDelete.instrument.serial_number})?{' '}
             {pendingDelete.total === 0

@@ -215,7 +215,7 @@ export function ReportDetailScreen({
       </div>
 
       {report && confirmingDelete && (
-        <div className="banner banner-warn" role="alertdialog" aria-label="Confirm delete">
+        <div className="banner banner-crit" role="alertdialog" aria-label="Confirm delete">
           <div>
             {report.status === 'finalized'
               ? 'This report is finalized. Deleting it permanently removes it and its scan from the service history.'
