@@ -157,6 +157,9 @@
     width: 100%;
     max-width: none;
   }
+  .reports-filters .search-box {
+    flex: none; /* the row's own flex-basis is a width; in a column it would make the box 220px tall */
+  }
   .reports-filters .filter-row .filter-sep {
     display: none;
   }
