@@ -165,7 +165,7 @@ export function MakersManager({ onChanged }: { onChanged: () => void }) {
       {error && <div className="banner banner-warn">{error}</div>}
 
       {pendingDelete && (
-        <div className="banner banner-warn" role="alertdialog" aria-label="Confirm delete maker">
+        <div className="banner banner-crit" role="alertdialog" aria-label="Confirm delete maker">
           <div>Delete the maker “{pendingDelete.name}”? It has no instruments or models. This cannot be undone.</div>
           <button type="button" className="btn small danger solid" onClick={() => void confirmDelete()} disabled={busy}>
             Confirm delete

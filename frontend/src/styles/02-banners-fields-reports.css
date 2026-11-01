@@ -22,9 +22,11 @@
   border-color: var(--accent);
 }
 .banner-crit {
+  /* Same shape as the amber notice: soft fill, normal text, a bar in the colour. Red here means destructive or failed. */
   background: var(--crit-soft);
-  color: var(--crit);
-  border-color: var(--crit);
+  color: var(--text);
+  border-color: var(--border);
+  box-shadow: inset 4px 0 0 var(--crit);
   margin: 0 0 16px;
 }
 

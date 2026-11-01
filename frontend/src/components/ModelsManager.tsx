@@ -247,7 +247,7 @@ export function ModelsManager({ onChanged }: { onChanged: () => void }) {
       {error && <div className="banner banner-warn">{error}</div>}
 
       {pending?.kind === 'delete' && (
-        <div className="banner banner-warn" role="alertdialog" aria-label="Confirm delete model">
+        <div className="banner banner-crit" role="alertdialog" aria-label="Confirm delete model">
           <div>
             Delete the model “{pending.model.name}”? This deletes only the model record; it has no instruments.
             {pending.model.template_count > 0
