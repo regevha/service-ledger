@@ -91,7 +91,7 @@
   align-items: center;
   gap: 10px;
   font-size: 0.82rem;
-  color: var(--warn);
+  color: var(--text);
   font-weight: 600;
 }
 .review-actions-buttons {
@@ -230,7 +230,7 @@
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 8px;
-  box-shadow: 0 6px 18px rgb(0 0 0 / 0.14);
+  box-shadow: 0 6px 18px var(--shadow-color);
 }
 .row-menu-item {
   font-family: var(--font-ui);
@@ -472,7 +472,7 @@
     color: var(--good);
   }
   .review-rail-item.flagged .review-rail-mark {
-    background: var(--warn);
+    background: var(--flag);
     color: var(--on-fill);
   }
 }

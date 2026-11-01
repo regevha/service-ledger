@@ -372,7 +372,7 @@ export function ReviewScreen({
             >
               <div className="field-top">
                 <span className="field-label" id={`review-field-${i}-label`}>
-                  <span className="badge-mini" style={{ background: flagged ? 'var(--warn)' : 'var(--good)' }}>
+                  <span className="badge-mini" style={{ background: flagged ? 'var(--flag)' : 'var(--good)' }}>
                     {i + 1}
                   </span>{' '}
                   {fieldLabel(field.name, field.unit)}

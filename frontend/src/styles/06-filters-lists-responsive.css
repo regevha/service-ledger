@@ -223,7 +223,7 @@
 }
 .view-switch-button.active {
   background: var(--surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 3px var(--shadow-color);
 }
 .scan-zoom-bar {
   display: flex;
