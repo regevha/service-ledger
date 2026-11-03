@@ -30,7 +30,7 @@ from types import SimpleNamespace
 from app.config import get_settings
 from app.seed_instruments import INSTRUMENTS
 from app.seed_templates import TEMPLATE_ROWS
-from app.services import claude_client, classification, extraction, prompt_gate
+from app.services import classification, claude_client, extraction, prompt_gate
 from app.services.errors import LiveClaudeError
 
 

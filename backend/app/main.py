@@ -11,25 +11,25 @@ from app.db import SessionLocal
 from app.debug_claude_log import announce_debug_log
 from app.frontend_static import mount_frontend
 from app.request_trace import RequestTraceMiddleware
-from app.shared_password import SharedPasswordMiddleware
-from app.trace import configure_logging
-from app.services.instrument_types import ensure_default_types
-from app.services.manufacturers import ensure_default_makers
-from app.services.places import PlaceTextError
 from app.routers import (
     analytics,
     attachments,
+    field_aliases,
     instrument_models,
-    places,
     instrument_types,
     instruments,
     manufacturers,
+    places,
     report_templates,
     reports,
     saved_filters,
-    field_aliases,
     translations,
 )
+from app.services.instrument_types import ensure_default_types
+from app.services.manufacturers import ensure_default_makers
+from app.services.places import PlaceTextError
+from app.shared_password import SharedPasswordMiddleware
+from app.trace import configure_logging
 
 
 @asynccontextmanager

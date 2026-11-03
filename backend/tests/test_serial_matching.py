@@ -15,7 +15,11 @@ import pytest
 
 from app.schemas import ClassificationGuess
 from app.services import classification
-from app.services.classification import _parse_serial_read, _stub_serial_read, match_serial
+from app.services.classification import (
+    _parse_serial_read,
+    _stub_serial_read,
+    match_serial,
+)
 
 PDF = ("scan.pdf", b"%PDF-1.4 x", "application/pdf")
 

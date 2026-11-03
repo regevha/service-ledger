@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
 from app.db import get_db
-from app.services.instrument_models import lock_manufacturer, type_conflict
-from app.services.maintenance import annotate
-from app.services.instrument_types import type_exists
 from app.services.analytics import trend_points, trendable_fields
+from app.services.instrument_models import lock_manufacturer, type_conflict
+from app.services.instrument_types import type_exists
+from app.services.maintenance import annotate
 from app.services.report_deletion import count_in_flight_jobs, remove_report_files
 
 router = APIRouter(tags=["instruments"])
@@ -40,7 +40,7 @@ def create_instrument(payload: schemas.InstrumentCreate, db: Session = Depends(g
         # is what actually stops the duplicate, this just turns the
         # resulting IntegrityError into the same clean 409 as the pre-check.
         db.rollback()
-        raise HTTPException(409, _SERIAL_CONFLICT)
+        raise HTTPException(409, _SERIAL_CONFLICT) from None
     db.refresh(instrument)
     annotate(db, [instrument])
     return instrument
@@ -105,7 +105,7 @@ def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdat
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(409, _SERIAL_CONFLICT)
+        raise HTTPException(409, _SERIAL_CONFLICT) from None
     db.refresh(instrument)
     annotate(db, [instrument])
     return instrument

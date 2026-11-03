@@ -147,8 +147,9 @@ def test_the_classify_prompt_lists_the_fleet_and_is_not_bd_only():
 
 
 def _text_pdf(text: str) -> bytes:
-    from reportlab.pdfgen import canvas
     import io
+
+    from reportlab.pdfgen import canvas
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf)

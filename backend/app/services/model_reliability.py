@@ -17,8 +17,12 @@ from statistics import mean
 from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
+from app.services.analytics import (
+    AnalyticsFilters,
+    _labor_hours_of,
+    compute_fleet_analytics,
+)
 from app.services.field_values import as_choice_list
-from app.services.analytics import AnalyticsFilters, _labor_hours_of, compute_fleet_analytics
 
 MIN_REPAIRS = 3
 TOP_PARTS = 10

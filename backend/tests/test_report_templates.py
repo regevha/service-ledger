@@ -236,7 +236,7 @@ def test_database_itself_rejects_duplicate_null_model_rows(seeded):
     seeded.add(dup)
     try:
         seeded.commit()
-        assert False, "expected the DB's unique index to reject this row"
+        raise AssertionError("expected the DB's unique index to reject this row")
     except IntegrityError:
         seeded.rollback()
 

@@ -197,15 +197,15 @@ def test_date_order_comes_from_any_date_that_settles_it(text, expected):
 
 
 def test_a_form_that_does_not_settle_the_date_order_gets_a_low_date_confidence():
-    lines = [l for l in PM_LINES if "03/17/2025" not in l and "11/17/2025" not in l and "03/24/2025" not in l]
-    lines = [l for l in lines if not l.startswith("T-")]
+    lines = [line for line in PM_LINES if "03/17/2025" not in line and "11/17/2025" not in line and "03/24/2025" not in line]
+    lines = [line for line in lines if not line.startswith("T-")]
     _, conf, visit = read(lines, "pm")
     assert visit == date(2026, 10, 2)  # a best reading is still given: BD EU forms are mostly day-first
     assert conf["report_date"] == 0.5
 
 
 def test_an_implausible_visit_date_is_dropped():
-    lines = [l.replace("10/11/2025", "10/11/1850").replace("12/11/2025", "12/11/1850").replace("18/11/2025", "18/11/1850") for l in REPAIR_LINES]
+    lines = [line.replace("10/11/2025", "10/11/1850").replace("12/11/2025", "12/11/1850").replace("18/11/2025", "18/11/1850") for line in REPAIR_LINES]
     _, conf, visit = read(lines, "repair")
     assert visit is None and conf["report_date"] == 0.0
 

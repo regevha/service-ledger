@@ -61,7 +61,7 @@ def create_manufacturer(payload: schemas.ManufacturerCreate, db: Session = Depen
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(409, _CONFLICT)
+        raise HTTPException(409, _CONFLICT) from None
     db.refresh(maker)
     return _out(db, maker)
 
@@ -91,7 +91,7 @@ def update_manufacturer(maker_id: uuid.UUID, payload: schemas.ManufacturerUpdate
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(409, _CONFLICT)
+        raise HTTPException(409, _CONFLICT) from None
     db.refresh(maker)
     return _out(db, maker)
 

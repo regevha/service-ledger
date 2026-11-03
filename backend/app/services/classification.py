@@ -27,19 +27,25 @@ from app.config import get_settings
 from app.models import Attachment, Instrument, ReportTemplate, ReportType
 from app.schemas import ClassificationGuess, ClassificationResult
 from app.services.claude_client import (
-    is_sample_document as _is_sample_document,
     call_claude_tool,
     extract_tool_use,
     raise_if_truncated,
+)
+from app.services.claude_client import (
     get_client as _get_client,
+)
+from app.services.claude_client import (
+    is_sample_document as _is_sample_document,
+)
+from app.services.claude_client import (
     stable_unit as _stable_unit,
 )
+from app.services.documents import UnsupportedDocumentError
 from app.services.duplicates import find_duplicate_report_ids, normalize_work_order
 from app.services.errors import ClassificationError
-from app.services.text_reader import extract_text, read_identifiers
-from app.services.documents import UnsupportedDocumentError
-from app.services.translation import accepted_text, is_hebrew_text_layer, source_block
 from app.services.templates import resolve_template
+from app.services.text_reader import extract_text, read_identifiers
+from app.services.translation import accepted_text, is_hebrew_text_layer, source_block
 
 logger = logging.getLogger("app.services.classification")
 settings = get_settings()

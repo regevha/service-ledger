@@ -79,7 +79,7 @@ def correct_serial_typos(extracted_fields: dict, serial: str) -> list[SerialFix]
                 or _edit_distance(normalized, wanted, limit) > limit
             ):
                 return word
-            fixes.append(SerialFix(name, word))
+            fixes.append(SerialFix(name, word))  # noqa: B023 (sub() below calls this right away, in the same iteration)
             return serial
 
         extracted_fields[name] = _WORD.sub(_replace, value)

@@ -2,8 +2,6 @@
 instruments' text; merging and deleting say what moves or refuses."""
 from __future__ import annotations
 
-from app import models
-
 
 def _unit(client, serial, institution="Zeta Univ", location="Room 1"):
     r = client.post(

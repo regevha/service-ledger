@@ -24,7 +24,9 @@ def normalized_search_text(q: str | None) -> str | None:
 
 def _place_ids(query: Query, place_id: uuid.UUID) -> list[uuid.UUID]:
     """The place and everything inside it (empty when the place does not exist, so nothing matches)."""
-    from app.services.places import subtree_ids  # noqa: PLC0415 (places imports models, as this does)
+    from app.services.places import (
+        subtree_ids,  # noqa: PLC0415 (places imports models, as this does)
+    )
 
     session = query.session
     place = session.get(models.Place, place_id)

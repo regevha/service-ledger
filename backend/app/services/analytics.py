@@ -26,11 +26,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Query, Session, joinedload
 
 from app import models, schemas
+from app.models import report_chronological_order
 from app.services.field_values import as_choice_list
 from app.services.manufacturers import find_maker
 from app.services.places import subtree_ids
 from app.services.report_filters import apply_report_filters
-from app.models import report_chronological_order
 
 # The report types that carry labor_hours/components_replaced
 # fields (seed_templates.py). Installation/upgrade reports are left out
@@ -408,7 +408,6 @@ def _unit_comparison(instrument: models.Instrument, reports: list[models.Report]
                     parts_qty += qty
         if report.template is None or report.template.report_type not in _LABOR_TRACKING_REPORT_TYPES:
             continue
-        report_type = report.template.report_type
         hours = _as_number(fields.get("labor_hours"))
         if hours is not None:
             labor_hours += hours

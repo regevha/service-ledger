@@ -33,7 +33,8 @@ from typing import NamedTuple
 
 from app.config import get_settings
 from app.models import Attachment
-from app.services.claude_client import call_claude_tool, extract_tool_use, get_client as _get_client
+from app.services.claude_client import call_claude_tool, extract_tool_use
+from app.services.claude_client import get_client as _get_client
 from app.services.documents import UnsupportedDocumentError, claude_content_block
 from app.services.errors import TranslationError
 from app.services.text_reader import extract_text

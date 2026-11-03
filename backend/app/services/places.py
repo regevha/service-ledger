@@ -12,7 +12,7 @@ or a room name found in several faculties of the institution) is refused with a
 """
 from __future__ import annotations
 
-from sqlalchemy import event, func, inspect
+from sqlalchemy import event, func
 from sqlalchemy.orm import Session
 
 from app import models

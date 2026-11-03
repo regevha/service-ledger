@@ -42,7 +42,9 @@ def extract_text(data: bytes, max_pages: int = MAX_PAGES) -> str:
     if b"%PDF-" not in data[:1024]:
         return ""
     try:
-        from pypdf import PdfReader  # imported here so a missing library degrades to "no text"
+        from pypdf import (
+            PdfReader,  # imported here so a missing library degrades to "no text"
+        )
 
         reader = PdfReader(io.BytesIO(data))
         if reader.is_encrypted:

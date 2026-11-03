@@ -13,7 +13,6 @@ from app import models
 from app.db import SessionLocal
 from app.services.instrument_models import near_duplicates
 
-
 _PLURAL = {"institution": "institutions", "faculty": "faculties", "room": "rooms"}
 
 

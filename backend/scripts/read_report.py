@@ -62,7 +62,7 @@ def main() -> int:
 
     print("\nProbable duplicates")
     found = False
-    for digest, names in by_hash.items():
+    for _digest, names in by_hash.items():
         if len(names) > 1:
             found = True
             print(f"  same file     {', '.join(names)}")
