@@ -17,7 +17,7 @@ import {
   type Place,
 } from '../api';
 import { INSTRUMENT_STATUS_LABEL, MAINTENANCE_STATE_LABEL } from '../labels';
-import { idsInside, placeLabel } from '../placeUtils';
+import { idsInside, matchTypedPlaces, placeLabel, typedPlaceHint } from '../placeUtils';
 import { MaintenanceBadge } from './MaintenanceBadge';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
@@ -93,10 +93,8 @@ function InstrumentFormScreen({
   const matchedModel = knownModels.find((m) => m.name === model.trim());
   // Places already on record: the institution typed is one of them (ignoring case
   // and spaces) or a new one; rooms offered are those in the institution typed.
-  const sameText = (a: string, b: string) => a.trim().replace(/\s+/g, ' ').toLowerCase() === b.trim().replace(/\s+/g, ' ').toLowerCase();
-  const matchedInstitution = knownPlaces.find((p) => p.kind === 'institution' && sameText(p.name, institution));
-  const roomsHere = matchedInstitution ? knownPlaces.filter((p) => p.kind === 'room' && p.institution_id === matchedInstitution.id) : [];
-  const matchedRoom = roomsHere.find((p) => sameText(p.name, location));
+  const { roomsHere } = matchTypedPlaces(knownPlaces, institution, location);
+  const placeHint = typedPlaceHint(knownPlaces, institution, location);
 
   // An instrument's manufacturer follows its model: with an existing model that
   // has one, it is shown read-only and changed only on the model.
@@ -328,16 +326,9 @@ function InstrumentFormScreen({
         </label>
       </div>
 
-      {(institution.trim() !== '' || location.trim() !== '') && (
+      {placeHint && (
         <small className="muted place-hint" id="place-hint">
-          {institution.trim() !== '' && (matchedInstitution ? `Existing institute · ${matchedInstitution.total_unit_count} instrument${matchedInstitution.total_unit_count === 1 ? '' : 's'}` : 'New institute · it will be added to Places')}
-          {institution.trim() !== '' && location.trim() !== '' && '. '}
-          {location.trim() !== '' &&
-            (institution.trim() === ''
-              ? 'A room needs an institute: fill in the institute too.'
-              : matchedRoom
-                ? `Existing room${matchedRoom.faculty_name ? ` in ${matchedRoom.faculty_name}` : ''} · ${matchedRoom.total_unit_count} instrument${matchedRoom.total_unit_count === 1 ? '' : 's'}`
-                : 'New room · it will be added to Places')}
+          {placeHint}
         </small>
       )}
 

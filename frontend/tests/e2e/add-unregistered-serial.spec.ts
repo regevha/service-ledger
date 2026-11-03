@@ -66,3 +66,64 @@ test('a serial that is not registered offers the add-instrument panel, pre-fille
   expect(created).toBeTruthy();
   expect((await request.delete(`${API_BASE}/instruments/${created.id}`)).ok()).toBe(true);
 });
+
+test('the add-instrument panel takes an institute and a room, creating a new institute like the Instruments tab does', async ({ page, request }) => {
+  const stamp = String(Date.now()).slice(-8);
+  const serial = `R647794E6${stamp}`;
+  const institute = `E2E Intake Institute ${stamp}`;
+  const pdf = textPdf([
+    'Service Report',
+    `CASE NUMBER : 0${stamp}      WORK ORDER NUMBER: WO-${stamp}`,
+    'ACCOUNT   INSTRUMENT LOCATION   SYSTEM   INSTALLED PRODUCT',
+    'N/A647794E6 - LSRFortessa SO',
+    'Serial/Lot Number:',
+    serial,
+    'WORK ORDER DETAILS',
+    'Work Order Task CodeT113 Repair / Troubleshooting Visit',
+  ]);
+  await page.goto('/');
+  await page.getByTestId('intake-file-input').setInputFiles({ name: `report-${stamp}.pdf`, mimeType: 'application/pdf', buffer: pdf });
+  await page.click('button:has-text("Upload & classify")');
+
+  const panel = page.locator('#add-instrument-panel');
+  await expect(panel).toBeVisible({ timeout: TIMEOUT.flow });
+  await panel.locator('input[aria-label="Instrument name"]').fill(`E2E-Intake-${stamp}`);
+  const add = panel.locator('button:has-text("Add instrument")');
+  const hint = page.locator('#add-instrument-place-hint');
+
+  // Nothing typed: no hint, and the place is optional.
+  await expect(hint).toHaveCount(0);
+  await expect(add).toBeEnabled();
+
+  // A room alone is refused here, as on the Instruments tab.
+  await panel.locator('input[aria-label="Instrument room name"]').fill('Lab 3');
+  await expect(hint).toContainText('A room needs an institute');
+  await expect(add).toBeDisabled();
+
+  // A new institute is said to be new, and the room in it too.
+  await panel.locator('input[aria-label="Instrument institute"]').fill(`  ${institute} `);
+  await expect(hint).toContainText('New institute · it will be added to Places');
+  await expect(hint).toContainText('New room · it will be added to Places');
+  await expect(add).toBeEnabled();
+  await add.click();
+
+  await expect(page.locator('#add-instrument-panel')).toHaveCount(0, { timeout: TIMEOUT.flow });
+  await expect(page.locator('.banner-crit')).toHaveCount(0);
+
+  // The instrument holds the place, and the institute and the room now exist as places.
+  const list = await (await request.get(`${API_BASE}/instruments`)).json();
+  const created = list.find((i: { serial_number: string }) => i.serial_number === serial);
+  expect(created).toBeTruthy();
+  expect(created.institution).toBe(institute);
+  expect(created.location).toBe('Lab 3');
+  const places = await (await request.get(`${API_BASE}/places`)).json();
+  const mine = places.filter((p: { name: string; institution_name: string | null }) => p.name === institute || p.institution_name === institute);
+  expect(mine.map((p: { kind: string }) => p.kind).sort()).toEqual(['institution', 'room']);
+
+  // Clean up: the suite shares one database. The instrument first, then the room, then the institute.
+  expect((await request.delete(`${API_BASE}/instruments/${created.id}`)).ok()).toBe(true);
+  for (const kind of ['room', 'institution']) {
+    const place = mine.find((p: { kind: string }) => p.kind === kind);
+    expect((await request.delete(`${API_BASE}/places/${place.id}`)).ok()).toBe(true);
+  }
+});
