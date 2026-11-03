@@ -154,3 +154,38 @@ def test_similar_names_are_listed_not_merged(client):
     _unit(client, "Q19", location="305")
     row = _find(client, "room", "305")
     assert row["similar_to"] == ["Room 305"]
+
+
+def test_messages_name_the_place_kinds_in_people_words(client):
+    """People read "institute" and "building", with the right article, never the stored kind names."""
+    uni = client.post("/places", json={"kind": "institution", "name": "Wording College"}).json()
+    # a duplicate says "an institute"
+    dup = client.post("/places", json={"kind": "institution", "name": "wording college"})
+    assert dup.status_code == 409 and "an institute" in dup.json()["detail"]
+    # a building needs an institute
+    lone = client.post("/places", json={"kind": "faculty", "name": "Physics"})
+    assert lone.status_code == 422 and "A building must be inside an institute" in lone.json()["detail"]
+    fac = client.post("/places", json={"kind": "faculty", "name": "Physics", "parent_id": uni["id"]}).json()
+    dup_b = client.post("/places", json={"kind": "faculty", "name": "physics", "parent_id": uni["id"]})
+    assert dup_b.status_code == 409 and "a building" in dup_b.json()["detail"]
+    # a building inside a building says which kind it was put in
+    wrong = client.post("/places", json={"kind": "faculty", "name": "Chem", "parent_id": fac["id"]})
+    assert wrong.status_code == 422 and "not a building" in wrong.json()["detail"]
+    for text in (dup.json()["detail"], lone.json()["detail"], dup_b.json()["detail"], wrong.json()["detail"]):
+        assert "institution" not in text.lower() and "faculty" not in text.lower()
+
+
+def test_delete_and_merge_messages_use_the_new_words(client):
+    _unit(client, "W1", institution="Wording A", location="Lab")
+    _unit(client, "W2", institution="Wording B", location="Lab")
+    a, b = _find(client, "institution", "Wording A"), _find(client, "institution", "Wording B")
+    room = _find(client, "room", "Lab", "Wording A")
+    # nothing in the stored kinds leaks into what people read
+    inside = client.delete(f"/places/{a['id']}")
+    assert inside.status_code == 409 and "1 room" in inside.json()["detail"]
+    clash = client.post(f"/places/{a['id']}/merge", json={"into_id": b["id"]})
+    assert clash.status_code == 409 and "a room called" in clash.json()["detail"]
+    kinds = client.post(f"/places/{room['id']}/merge", json={"into_id": b["id"]})
+    assert kinds.status_code == 422 and "this is a room, the other is an institute" in kinds.json()["detail"]
+    for text in (inside.json()["detail"], clash.json()["detail"], kinds.json()["detail"]):
+        assert "institution" not in text.lower() and "faculty" not in text.lower()

@@ -88,3 +88,27 @@ test('Group: Model puts the reports of every unit of one model in one card, and 
   await expect(page.getByTestId('group-select')).toHaveValue('model');
   await expect(page.getByTestId('report-groups')).toBeVisible();
 });
+
+test('Group: Model for a single unit says "1 instrument", and the card fits a phone screen', async ({ page, request }) => {
+  const stamp = Date.now();
+  const model = `E2E-GM1-${stamp}`;
+  const made = await request.post(`${API_BASE}/instruments`, {
+    data: { name: 'E2E GM solo', model, manufacturer: 'E2E Maker', serial_number: `SN-GM1-${stamp}` },
+  });
+  expect(made.ok()).toBeTruthy();
+  const unit = await made.json();
+  const templates = await (await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'repair', model } })).json();
+  const tag = `E2E-GM1T-${stamp}`;
+  await seedReport(request, { instrumentId: unit.id, templateId: templates[0].id, model, reportType: 'repair', technician: tag, finalize: true });
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto('/#/reports');
+  await page.getByTestId('group-select').selectOption('model');
+  const card = page.getByTestId('report-group').filter({ has: page.locator('.report-row-body', { hasText: tag }) });
+  await expect(card).toHaveCount(1);
+  await expect(card.getByTestId('group-units')).toHaveText('1 instrument');
+  await expect(card.locator('.report-group-count')).toHaveText('1 report');
+  // nothing makes the page scroll sideways
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
