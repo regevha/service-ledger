@@ -176,22 +176,10 @@ function IntakeScreen({
 
   return (
     <div className="section">
-      <div className="section-title">Lab manager</div>
-      <label htmlFor="intake-name" className="sr-only">
-        Your name (optional)
-      </label>
-      <input
-        id="intake-name"
-        type="text"
-        className="text-input"
-        placeholder="Your name (optional)"
-        value={technicianName}
-        onChange={(e) => setTechnicianName(e.target.value)}
-      />
+      <h2 className="intake-heading">Add a service report</h2>
+      <p className="intake-subheading">Upload the scan or photos. We read the instrument and visit type, then you check the details.</p>
 
-      <div className="section-title" style={{ marginTop: 18 }}>
-        Scanned original
-      </div>
+      <div className="section-title">Scanned original</div>
       <div className="upload-layout">
       <div className="upload-main">
       <label
@@ -301,6 +289,20 @@ function IntakeScreen({
           </li>
         </ol>
       </aside>
+      </div>
+
+      <div className="intake-name">
+        <label htmlFor="intake-name">
+          Your name <span className="intake-name-optional">(optional)</span>
+        </label>
+        <input
+          id="intake-name"
+          type="text"
+          className="text-input"
+          placeholder="Your name (optional)"
+          value={technicianName}
+          onChange={(e) => setTechnicianName(e.target.value)}
+        />
       </div>
 
       <div className="cta-row">
@@ -616,6 +618,12 @@ function WorkingPanel({
         </div>
         {slow && seconds < 90 && <div className="working-detail">Reading a scan usually takes 10–60 seconds; a translated one takes longer.</div>}
         {slow && seconds >= 90 && <div className="working-detail">Still working — this one is taking longer than usual.</div>}
+        <ul className="working-steps" aria-label="Progress">
+          <li className="done">Scan uploaded</li>
+          <li className="now">{label.replace(/[….]+$/, '')}</li>
+          <li>You check the result</li>
+        </ul>
+        <div className="working-detail">You can leave this tab; the report keeps reading in the background.</div>
       </div>
       {onCancel && (
         <button type="button" className="btn small" data-testid="intake-cancel" onClick={onCancel}>
@@ -628,11 +636,16 @@ function WorkingPanel({
 
 function DoneScreen({
   report,
+  instrumentLabel,
+  typeLabel,
   onReset,
   onOpenReport,
   onViewInstrument,
 }: {
   report: Report;
+  /** "Model · serial" of the unit the report is on, when it is known. */
+  instrumentLabel?: string;
+  typeLabel?: string;
   onReset: () => void;
   onOpenReport?: (reportId: string) => void;
   onViewInstrument?: (instrumentId: string) => void;
@@ -642,6 +655,13 @@ function DoneScreen({
       <div className="tick">✓</div>
       <h3>Report finalized</h3>
       <p>{report.finalized_at ? `Saved on ${isoDay(report.finalized_at)}.` : 'Saved.'} It is now part of the instrument's history.</p>
+      <div className="success-summary" data-testid="intake-success-summary">
+        <span className="success-summary-unit">{instrumentLabel ?? 'Instrument'}</span>
+        <span className="success-summary-chip">Finalized</span>
+        <span className="success-summary-meta">
+          {[typeLabel, report.report_date].filter(Boolean).join(' · ') || 'Service report'}
+        </span>
+      </div>
       <div className="cta-row success-actions">
         {onOpenReport && (
           <button className="btn primary" data-testid="intake-open-report" onClick={() => onOpenReport(report.id)}>
@@ -1446,7 +1466,7 @@ export function IntakeFlow({
         </div>
       )}
 
-      {phase.name === 'done' && report && <DoneScreen report={report} onReset={resetToIntake} onOpenReport={onOpenReport} onViewInstrument={onViewInstrument} />}
+      {phase.name === 'done' && report && <DoneScreen report={report} instrumentLabel={reviewInstrument ? `${reviewInstrument.model} · ${reviewInstrument.serial_number}` : undefined} typeLabel={template ? REPORT_TYPE_LABEL[template.report_type] : undefined} onReset={resetToIntake} onOpenReport={onOpenReport} onViewInstrument={onViewInstrument} />}
 
       {phase.name === 'error' && (
         <div className="section">
