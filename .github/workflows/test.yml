@@ -95,10 +95,12 @@ jobs:
   frontend:
     name: Frontend (Playwright e2e)
     runs-on: ubuntu-latest
-    # The run takes about 10 minutes and grows with every spec. Past about 13, split the specs
-    # across shards (`--shard=1/2`), each with its own job and its own Postgres service: the suite
-    # shares one database, so shards cannot share one.
-    timeout-minutes: 20
+    # The run takes about 18 to 20 minutes on main (about 16 on a pull request) and grows with every
+    # spec; at 20 it was cancelled by this limit (2026-11-03, after the accessibility, prompt-screen,
+    # CSV and happy-path specs were added). 30 is a stop-gap. The real fix is to split the specs across
+    # shards (`--shard=1/2`), each with its own job and its own Postgres service (the suite shares one
+    # database, so shards cannot share one) and to merge the coverage files before the check.
+    timeout-minutes: 30
 
     services:
       postgres:
