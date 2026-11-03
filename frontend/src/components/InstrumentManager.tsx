@@ -299,7 +299,7 @@ function InstrumentFormScreen({
           </datalist>
         </label>
         <label className="schema-form-label">
-          Institution
+          Institute
           <input
             type="text"
             className="text-input"
@@ -330,11 +330,11 @@ function InstrumentFormScreen({
 
       {(institution.trim() !== '' || location.trim() !== '') && (
         <small className="muted place-hint" id="place-hint">
-          {institution.trim() !== '' && (matchedInstitution ? `Existing institution · ${matchedInstitution.total_unit_count} instrument${matchedInstitution.total_unit_count === 1 ? '' : 's'}` : 'New institution · it will be added to Places')}
+          {institution.trim() !== '' && (matchedInstitution ? `Existing institute · ${matchedInstitution.total_unit_count} instrument${matchedInstitution.total_unit_count === 1 ? '' : 's'}` : 'New institute · it will be added to Places')}
           {institution.trim() !== '' && location.trim() !== '' && '. '}
           {location.trim() !== '' &&
             (institution.trim() === ''
-              ? 'A room needs an institution: fill in the institution too.'
+              ? 'A room needs an institute: fill in the institute too.'
               : matchedRoom
                 ? `Existing room${matchedRoom.faculty_name ? ` in ${matchedRoom.faculty_name}` : ''} · ${matchedRoom.total_unit_count} instrument${matchedRoom.total_unit_count === 1 ? '' : 's'}`
                 : 'New room · it will be added to Places')}

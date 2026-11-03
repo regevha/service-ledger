@@ -415,7 +415,7 @@ export function AnalyticsScreen() {
                 <ReportsPerModelChart rows={data.report_counts_by_model ?? []} />
               </ChartSection>
 
-              <ChartSection title="By place (institution, faculty, room)">
+              <ChartSection title="By place (institute, building, room)">
                 <PlaceCharts rows={data.place_rollups ?? []} reportsLabel={filters.status ? 'Reports' : 'Finalized reports'} />
               </ChartSection>
 

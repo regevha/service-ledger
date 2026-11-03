@@ -4,16 +4,19 @@ import { RowMenu } from './RowMenu';
 import { showToast } from '../toast';
 
 /**
- * The Places list under the Instruments tab: institutions, the faculties inside
- * them (optional) and the rooms inside institutions or faculties. A place is a
+ * The Places list under the Instruments tab: institutes, the buildings inside
+ * them (optional) and the rooms inside institutes or buildings. (People see
+ * "institute" and "building"; the stored kinds are still institution and faculty.) A place is a
  * record of its own and the record is the source: renaming or moving it updates
- * the institution and room text on its instruments. Merging two places is only
+ * the institute and room text on its instruments. Merging two places is only
  * ever done here, by a person, after a message that says exactly what moves.
  */
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-const KIND_LABEL: Record<PlaceKind, string> = { institution: 'Institution', faculty: 'Faculty', room: 'Room' };
-const KIND_PLURAL: Record<PlaceKind, string> = { institution: 'institutions', faculty: 'faculties', room: 'rooms' };
+const KIND_LABEL: Record<PlaceKind, string> = { institution: 'Institute', faculty: 'Building', room: 'Room' };
+/** The kind in running text: "institute", "building" or "room" (the stored kind keeps its old names). */
+const kindWord = (k: PlaceKind) => KIND_LABEL[k].toLowerCase();
+const KIND_PLURAL: Record<PlaceKind, string> = { institution: 'institutes', faculty: 'buildings', room: 'rooms' };
 
 function whereText(p: Place): string {
   if (p.kind === 'institution') return '—';
@@ -42,7 +45,7 @@ function PlaceForm({
   const parentOk = parents.some((p) => p.id === parentId);
   const effectiveParent = kind === 'institution' ? '' : parentOk ? parentId : (parents[0]?.id ?? '');
 
-  const parentLabel = (p: Place) => (p.kind === 'institution' ? p.name : `${p.name} (${p.institution_name}, faculty)`);
+  const parentLabel = (p: Place) => (p.kind === 'institution' ? p.name : `${p.name} (${p.institution_name}, building)`);
   const units = existing?.total_unit_count ?? 0;
   const renamed = existing !== undefined && name.trim() !== existing.name && name.trim() !== '';
   const moved = existing !== undefined && existing.kind !== 'institution' && effectiveParent !== (existing.parent_id ?? '');
@@ -73,7 +76,7 @@ function PlaceForm({
       <button type="button" className="btn small back-link" onClick={onCancel}>
         ← Back to places
       </button>
-      <div className="section-title">{existing ? `Edit ${existing.kind}` : 'New place'}</div>
+      <div className="section-title">{existing ? `Edit ${kindWord(existing.kind)}` : 'New place'}</div>
       {error && <div className="banner banner-crit">{error}</div>}
 
       <div className="schema-form-row">
@@ -82,8 +85,8 @@ function PlaceForm({
             Kind
             <select value={kind} onChange={(e) => setKind(e.target.value as PlaceKind)}>
               <option value="room">Room</option>
-              <option value="faculty">Faculty</option>
-              <option value="institution">Institution</option>
+              <option value="faculty">Building</option>
+              <option value="institution">Institute</option>
             </select>
           </label>
         )}
@@ -95,15 +98,15 @@ function PlaceForm({
             type="text"
             className="text-input"
             value={name}
-            placeholder={kind === 'institution' ? 'e.g. Bar-Ilan University' : kind === 'faculty' ? 'e.g. Faculty of Life Sciences' : 'e.g. Room 205'}
+            placeholder={kind === 'institution' ? 'e.g. Bar-Ilan University' : kind === 'faculty' ? 'e.g. Life Sciences Building' : 'e.g. Room 205'}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
         {kind !== 'institution' && (
           <label className="schema-form-label">
-            <span>{kind === 'faculty' ? 'In institution' : 'In institution or faculty'}</span>
+            <span>{kind === 'faculty' ? 'In institute' : 'In institute or building'}</span>
             <select value={effectiveParent} onChange={(e) => setParentId(e.target.value)} aria-label="Parent place">
-              {parents.length === 0 && <option value="">No {kind === 'faculty' ? 'institution' : 'institution or faculty'} yet</option>}
+              {parents.length === 0 && <option value="">No {kind === 'faculty' ? 'institute' : 'institute or building'} yet</option>}
               {parents.map((p) => (
                 <option key={p.id} value={p.id}>
                   {parentLabel(p)}
@@ -116,12 +119,12 @@ function PlaceForm({
 
       {renamed && existing && existing.kind !== 'faculty' && units > 0 && (
         <div className="banner banner-warn" id="place-rename-warning">
-          Renaming changes the {existing.kind === 'room' ? 'room name' : 'institution'} of {plural(units, 'instrument')} to “{name.trim()}”.
+          Renaming changes the {existing.kind === 'room' ? 'room name' : 'institute'} of {plural(units, 'instrument')} to “{name.trim()}”.
         </div>
       )}
       {institutionChanges && existing && newParent && units > 0 && (
         <div className="banner banner-warn" id="place-move-warning">
-          The institution of {plural(units, 'instrument')} will become “{newParent.kind === 'institution' ? newParent.name : newParent.institution_name}”.
+          The institute of {plural(units, 'instrument')} will become “{newParent.kind === 'institution' ? newParent.name : newParent.institution_name}”.
         </div>
       )}
 
@@ -210,7 +213,7 @@ export function PlacesManager({ onChanged }: { onChanged: () => void }) {
         </button>
       </div>
       <p className="hint-text">
-        An institution, the faculties inside it (optional) and the rooms. A place is kept once, here: renaming or moving it updates the institution
+        An institute, the buildings inside it (optional) and the rooms. A place is kept once, here: renaming or moving it updates the institute
         and room of its instruments. Names that look alike are never merged on their own.
       </p>
 
@@ -219,7 +222,7 @@ export function PlacesManager({ onChanged }: { onChanged: () => void }) {
       {pending?.kind === 'delete' && (
         <div className="banner banner-crit" role="alertdialog" aria-label="Confirm delete place">
           <div>
-            Delete the {pending.place.kind} “{pending.place.name}”? This deletes only the place record; nothing is inside it and no instrument is in it. This
+            Delete the {kindWord(pending.place.kind)} “{pending.place.name}”? This deletes only the place record; nothing is inside it and no instrument is in it. This
             cannot be undone.
           </div>
           <button type="button" className="btn small danger solid" onClick={() => void confirm()} disabled={busy}>
@@ -247,8 +250,8 @@ export function PlacesManager({ onChanged }: { onChanged: () => void }) {
             <div>
               {plural(pending.place.unit_count, 'instrument')} pointing at “{pending.place.name}”
               {pending.place.child_count > 0 ? ` and the ${plural(pending.place.child_count, 'place')} inside it` : ''} move to “{target.name}”
-              {pending.place.kind === 'room' ? ', and those instruments’ room name' : pending.place.kind === 'institution' ? ', and the institution of every instrument there' : ''}
-              {pending.place.kind !== 'faculty' ? ` becomes “${target.name}”` : ''}. The {pending.place.kind} “{pending.place.name}” is then deleted. This cannot be undone.
+              {pending.place.kind === 'room' ? ', and those instruments’ room name' : pending.place.kind === 'institution' ? ', and the institute of every instrument there' : ''}
+              {pending.place.kind !== 'faculty' ? ` becomes “${target.name}”` : ''}. The {kindWord(pending.place.kind)} “{pending.place.name}” is then deleted. This cannot be undone.
             </div>
           )}
           <button type="button" className="btn small danger solid" onClick={() => void confirm()} disabled={busy || !target}>
@@ -266,7 +269,7 @@ export function PlacesManager({ onChanged }: { onChanged: () => void }) {
           <div>Loading places…</div>
         </div>
       ) : places.length === 0 ? (
-        <div className="empty-hint">No places yet. They appear when an instrument is given an institution or a room, or add one here.</div>
+        <div className="empty-hint">No places yet. They appear when an instrument is given an institute or a room, or add one here.</div>
       ) : (
         <div className="template-table">
           <div className="instrument-row place-row template-row-head">
@@ -308,7 +311,7 @@ export function PlacesManager({ onChanged }: { onChanged: () => void }) {
                       {
                         label: 'Merge into…',
                         disabled: targets.length === 0,
-                        title: targets.length === 0 ? `No other ${p.kind}` : undefined,
+                        title: targets.length === 0 ? `No other ${kindWord(p.kind)}` : undefined,
                         onSelect: () => setPending({ kind: 'merge', place: p, intoId: targets[0].id }),
                       },
                       {

@@ -14,7 +14,8 @@ from app.db import SessionLocal
 from app.services.instrument_models import near_duplicates
 
 
-_PLURAL = {"institution": "institutions", "faculty": "faculties", "room": "rooms"}
+_PLURAL = {"institution": "institutes", "faculty": "buildings", "room": "rooms"}
+_WORD = {"institution": "institute", "faculty": "building", "room": "room"}
 
 
 def main() -> None:
@@ -48,7 +49,7 @@ def main() -> None:
     for kind in ("institution", "room"):
         groups = near_duplicates([p.name for p in places if p.kind == kind], contains=True)
         if groups:
-            print(f"\n{kind.capitalize()} names that may be the same place (nothing was merged):")
+            print(f"\n{_WORD[kind].capitalize()} names that may be the same place (nothing was merged):")
             for group in groups:
                 print("  - " + "  |  ".join(group))
     print("")
