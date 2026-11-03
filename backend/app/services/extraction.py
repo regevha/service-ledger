@@ -36,6 +36,7 @@ from typing import NamedTuple
 from app.config import get_settings
 from app.models import Attachment, ReportTemplate
 from app.schemas import REPORT_DATE_KEY, TemplateFieldType
+from app.services.attachment_names import source_name
 from app.services.claude_client import (
     is_sample_document as _is_sample_document,
     call_claude_tool,
@@ -323,7 +324,7 @@ _SAMPLE_REPAIR_VALUES = {
 
 def _stub_extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
     fields = template.field_schema.get("fields", [])
-    is_sample = _is_sample_document(attachment.file_path)
+    is_sample = _is_sample_document(source_name(attachment))
 
     extracted_fields: dict = {}
     field_confidences: dict = {}
