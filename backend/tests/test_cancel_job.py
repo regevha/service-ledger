@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from app.services import claude_client, classification
+from app.services import classification, claude_client
 
 TOOL_INPUT = {
     "instrument_model": "LSRFortessa", "instrument_confidence": 0.95,

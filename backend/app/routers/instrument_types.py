@@ -34,6 +34,6 @@ def create_instrument_type(payload: schemas.InstrumentTypeCreate, db: Session = 
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(409, _CONFLICT)
+        raise HTTPException(409, _CONFLICT) from None
     db.refresh(row)
     return row

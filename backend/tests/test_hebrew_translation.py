@@ -15,7 +15,6 @@ from app import models
 from app.services import classification, extraction, translation
 from app.services.translation import hebrew_share, identifier_check, identifiers_in
 
-
 # ---------- helpers ----------
 
 

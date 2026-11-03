@@ -16,11 +16,11 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.db import get_db
-from app.services.maintenance import annotate
-from app.services.model_reliability import compute_model_reliability
 from app.routers.reports import _list_item
 from app.services.instrument_models import near_duplicates
 from app.services.instrument_types import type_exists
+from app.services.maintenance import annotate
+from app.services.model_reliability import compute_model_reliability
 
 router = APIRouter(tags=["instrument-models"])
 

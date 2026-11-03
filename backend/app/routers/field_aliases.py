@@ -61,7 +61,7 @@ def create_field_alias_group(payload: schemas.FieldAliasGroupIn, db: Session = D
     except IntegrityError:
         # Two people adding the same name at once: the unique index decides.
         db.rollback()
-        raise HTTPException(409, "One of those names was just added to another group.")
+        raise HTTPException(409, "One of those names was just added to another group.") from None
     db.refresh(group)
     return _out(group)
 
@@ -85,7 +85,7 @@ def replace_field_alias_group(group_id: uuid.UUID, payload: schemas.FieldAliasGr
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(409, "One of those names was just added to another group.")
+        raise HTTPException(409, "One of those names was just added to another group.") from None
     db.refresh(group)
     return _out(group)
 

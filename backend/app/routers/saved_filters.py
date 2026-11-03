@@ -84,7 +84,7 @@ def create_saved_filter(payload: schemas.SavedFilterCreate, db: Session = Depend
         # The unique index on lower(btrim(name)) caught a duplicate name,
         # including one that slipped in between the lock and the insert.
         db.rollback()
-        raise HTTPException(409, _NAME_MESSAGE)
+        raise HTTPException(409, _NAME_MESSAGE) from None
     db.refresh(row)
     return _out(row, _existing(db))
 

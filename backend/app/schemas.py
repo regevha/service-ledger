@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import enum
 import uuid
-from typing import Literal
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -23,7 +23,6 @@ from app.models import (
     ReportType,
     TranslationStatus,
 )
-
 
 # ---------- App config ----------
 
@@ -1199,7 +1198,9 @@ class SavedFilterCriteria(BaseModel):
     @field_validator("q")
     @classmethod
     def _valid_search(cls, v: str | None) -> str | None:
-        from app.services.report_search import normalize_query  # noqa: PLC0415 (avoids a circular import)
+        from app.services.report_search import (
+            normalize_query,  # noqa: PLC0415 (avoids a circular import)
+        )
 
         return normalize_query(v)
 

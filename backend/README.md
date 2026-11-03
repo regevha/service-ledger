@@ -169,6 +169,16 @@ uvicorn app.main:app --reload
 python -m app.worker
 ```
 
+Lint with [Ruff](https://docs.astral.sh/ruff/) (`pip install ruff==0.16.9`, the version CI
+uses; rules and exceptions are in `ruff.toml`, and CI fails on any finding). It catches
+unused imports and variables, likely bugs (a bare `except`, `raise` inside `except` without
+`from`, a closure over a loop variable) and unsorted imports. `--fix` applies the safe fixes:
+
+```bash
+ruff check .
+ruff check . --fix
+```
+
 Run the tests (against a separate `service_ledger_test` database — see
 `tests/conftest.py`; `USE_LIVE_CLAUDE` force-set to
 `false` for the whole run):

@@ -17,6 +17,7 @@ def test_health_check():
     # apart from "container looks fine but nothing's listening" — worth
     # locking in given how often that distinction has mattered this week.
     from fastapi.testclient import TestClient
+
     from app.main import app
 
     with TestClient(app) as client:

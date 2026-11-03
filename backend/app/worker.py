@@ -34,14 +34,15 @@ from app import models
 from app.config import get_settings
 from app.db import SessionLocal
 from app.debug_claude_log import announce_debug_log
+from app.services import prompt_gate
 from app.services.classification import classify as run_classify
 from app.services.duplicates import normalize_work_order
 from app.services.errors import ClassificationError, ExtractionError, TranslationError
-from app.services import prompt_gate
 from app.services.extraction import extract as run_extract
 from app.services.serial_check import correct_serial_typos
 from app.services.text_reader import extract_text
-from app.services.translation import identifier_check, translate as run_translate
+from app.services.translation import identifier_check
+from app.services.translation import translate as run_translate
 from app.trace import bound_job, configure_logging
 
 logger = logging.getLogger("app.worker")
