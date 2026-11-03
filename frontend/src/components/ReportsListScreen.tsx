@@ -34,13 +34,14 @@ function screenPath(screen: ReportsScreen): string {
 
 // Free-text search needs at least this many characters (the backend refuses less).
 
-type GroupMode = 'instrument' | 'none';
+type GroupMode = 'instrument' | 'model' | 'none';
 const GROUP_KEY = 'sl.reports.group';
 
 // Per-viewer convenience only: browser storage can be empty or throw.
 function readGroupMode(): GroupMode {
   try {
-    return localStorage.getItem(GROUP_KEY) === 'none' ? 'none' : 'instrument';
+    const saved = localStorage.getItem(GROUP_KEY);
+    return saved === 'none' || saved === 'model' ? saved : 'instrument';
   } catch {
     return 'instrument';
   }
@@ -53,7 +54,7 @@ function writeGroupMode(mode: GroupMode) {
   }
 }
 
-/** Reports of one instrument (or of the uploads that have no instrument yet), newest first. */
+/** Reports of one instrument or one model (or of the uploads that have no instrument yet), newest first. */
 interface ReportGroup {
   key: string;
   title: string;
@@ -61,18 +62,29 @@ interface ReportGroup {
   instrument: Instrument | null;
   items: ReportListItem[];
   needsReview: number;
+  /** Model groups only: the manufacturer, and how many different units the reports are about. */
+  maker?: string | null;
+  units?: number;
+}
+
+const NOT_READ_KEY = 'unread';
+
+/** Newest report first inside each group; the group holding the newest report leads and "Not read yet" is last. */
+function sortGroups(groups: ReportGroup[]): ReportGroup[] {
+  const newest = (g: ReportGroup) => g.items.reduce((m, r) => (r.created_at > m ? r.created_at : m), '');
+  return [...groups].sort((a, b) => (a.key === NOT_READ_KEY ? 1 : b.key === NOT_READ_KEY ? -1 : newest(b).localeCompare(newest(a))));
 }
 
 function groupByInstrument(items: ReportListItem[], instruments: Instrument[]): ReportGroup[] {
   const byKey = new Map<string, ReportGroup>();
   for (const r of items) {
-    const key = r.instrument_model || r.instrument_serial_number ? `${r.instrument_model ?? ''}|${r.instrument_serial_number ?? ''}` : 'unread';
+    const key = r.instrument_model || r.instrument_serial_number ? `${r.instrument_model ?? ''}|${r.instrument_serial_number ?? ''}` : NOT_READ_KEY;
     let g = byKey.get(key);
     if (!g) {
       const instrument = instruments.find((i) => i.model === r.instrument_model && i.serial_number === r.instrument_serial_number) ?? null;
       g = {
         key,
-        title: key === 'unread' ? 'Not read yet' : (r.instrument_model ?? 'Unknown instrument'),
+        title: key === NOT_READ_KEY ? 'Not read yet' : (r.instrument_model ?? 'Unknown instrument'),
         serial: r.instrument_serial_number,
         instrument,
         items: [],
@@ -84,8 +96,37 @@ function groupByInstrument(items: ReportListItem[], instruments: Instrument[]): 
     if (r.status === 'in_review' || r.status === 'extracted') g.needsReview += 1;
   }
   // Instruments with the most recent report first; "Not read yet" last.
-  const newest = (g: ReportGroup) => g.items.reduce((m, r) => (r.created_at > m ? r.created_at : m), '');
-  return [...byKey.values()].sort((a, b) => (a.key === 'unread' ? 1 : b.key === 'unread' ? -1 : newest(b).localeCompare(newest(a))));
+  return sortGroups([...byKey.values()]);
+}
+
+/** One group per instrument model, however many units of it there are; the rows say which unit by serial number. */
+function groupByModel(items: ReportListItem[], instruments: Instrument[]): ReportGroup[] {
+  const byKey = new Map<string, ReportGroup>();
+  const serials = new Map<string, Set<string>>();
+  for (const r of items) {
+    const key = r.instrument_model ? `model|${r.instrument_model}` : r.instrument_serial_number ? 'model|' : NOT_READ_KEY;
+    let g = byKey.get(key);
+    if (!g) {
+      const known = r.instrument_model ? instruments.find((i) => i.model === r.instrument_model) : undefined;
+      g = {
+        key,
+        title: key === NOT_READ_KEY ? 'Not read yet' : (r.instrument_model ?? 'Unknown model'),
+        serial: null,
+        instrument: null,
+        items: [],
+        needsReview: 0,
+        maker: known?.manufacturer ?? null,
+        units: 0,
+      };
+      byKey.set(key, g);
+      serials.set(key, new Set());
+    }
+    g.items.push(r);
+    if (r.instrument_serial_number) serials.get(key)!.add(r.instrument_serial_number);
+    if (r.status === 'in_review' || r.status === 'extracted') g.needsReview += 1;
+  }
+  for (const [key, g] of byKey) g.units = serials.get(key)!.size;
+  return sortGroups([...byKey.values()]);
 }
 
 /** An upload that was never classified: it has no instrument or type to show yet. */
@@ -261,8 +302,8 @@ export function ReportsListScreen({
   );
 
   // Grouping suits browsing; a search (best match first) and a chosen sort order need one flat list.
-  const grouped = groupMode === 'instrument' && !searching && !sort;
-  const groups = grouped ? groupByInstrument(defaultOrder(items), instruments) : [];
+  const grouped = groupMode !== 'none' && !searching && !sort;
+  const groups = grouped ? (groupMode === 'model' ? groupByModel : groupByInstrument)(defaultOrder(items), instruments) : [];
   const statusBlocksSearch = searching && Boolean(filters.status) && filters.status !== 'finalized';
 
   return (
@@ -347,12 +388,13 @@ export function ReportsListScreen({
                 data-testid="group-select"
                 value={groupMode}
                 onChange={(e) => {
-                  const mode: GroupMode = e.target.value === 'none' ? 'none' : 'instrument';
+                  const mode: GroupMode = e.target.value === 'none' ? 'none' : e.target.value === 'model' ? 'model' : 'instrument';
                   setGroupMode(mode);
                   writeGroupMode(mode);
                 }}
               >
                 <option value="instrument">Instrument</option>
+                <option value="model">Model</option>
                 <option value="none">None</option>
               </select>
             </label>
@@ -366,6 +408,12 @@ export function ReportsListScreen({
                       <strong>{g.title}</strong>
                       {g.serial && <span className="report-group-serial">{g.serial}</span>}
                       {g.instrument?.location && <span className="report-group-place">{g.instrument.location}</span>}
+                      {g.units !== undefined && g.units > 0 && (
+                        <span className="report-group-serial" data-testid="group-units">
+                          {g.units} instrument{g.units === 1 ? '' : 's'}
+                        </span>
+                      )}
+                      {g.maker && <span className="report-group-place">{g.maker}</span>}
                     </div>
                     <div className="report-group-meta">
                       <span className="report-group-count">{g.items.length} report{g.items.length === 1 ? '' : 's'}</span>
