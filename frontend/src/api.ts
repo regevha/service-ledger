@@ -183,6 +183,8 @@ export interface Attachment {
   id: string;
   report_id: string;
   file_path: string;
+  /** The uploader's own file name (null on an old row that has none). */
+  original_filename?: string | null;
   file_type: string;
   page_count: number;
   /** Status of the current translation, or null when it never went through the translate step. */

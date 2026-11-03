@@ -50,9 +50,9 @@ SAMPLE_MARKERS = ("wo-04587090", "sample-work-order")
 def is_sample_document(file_path: str) -> bool:
     """True when the uploaded file is the spec's sample work order.
 
-    Matches the uploaded file's own name only — stored paths look like
-    ``storage/attachments/<report-uuid>/<uuid>_<original name>``, and nothing
-    outside the original name should decide this.
+    Matches the uploaded file's own name only. Callers pass the original name
+    (services/attachment_names.source_name); a stored path is also accepted and
+    only its last component is read, so nothing outside the name can decide this.
     """
     name = file_path.replace("\\", "/").rsplit("/", 1)[-1].lower()
     return any(marker in name for marker in SAMPLE_MARKERS)
