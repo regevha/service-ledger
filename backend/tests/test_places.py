@@ -40,7 +40,7 @@ def test_institution_alone_links_to_the_institution(client, db_session):
 
 def test_room_without_institution_is_refused_and_nothing_is_saved(client, db_session):
     r = client.post("/instruments", json=_payload("P3", location="Core Lab"))
-    assert r.status_code == 422 and "institution" in r.json()["detail"]
+    assert r.status_code == 422 and "institute" in r.json()["detail"]
     assert db_session.query(models.Instrument).filter(models.Instrument.serial_number == "P3").count() == 0
 
 

@@ -110,7 +110,7 @@ def _link_instruments(session: Session, flush_context, instances) -> None:
             institution_text, room_text = (clean(t) for t in instrument.__dict__.pop("_text_edit"))
             if institution_text is None:
                 if room_text is not None:
-                    raise PlaceTextError("A room needs an institution: fill in the institution too.")
+                    raise PlaceTextError("A room needs an institute: fill in the institute too.")
                 instrument.place = None
                 continue
             institution = resolver.get_or_create(INSTITUTION, institution_text, None)
@@ -120,7 +120,7 @@ def _link_instruments(session: Session, flush_context, instances) -> None:
             room = resolver.room_in(institution, room_text)
             if room is None:
                 raise PlaceTextError(
-                    f"{institution_text} has several rooms named {room_text} (in different faculties). "
+                    f"{institution_text} has several rooms named {room_text} (in different buildings). "
                     "Rename one of them on the Places screen first."
                 )
             instrument.place = room
