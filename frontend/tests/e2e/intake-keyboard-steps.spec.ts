@@ -14,12 +14,12 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 
 const activeStep = (page: import('@playwright/test').Page) => page.locator('.steps .step.active');
 
-test('the name box has a label, and Tab from it reaches the file picker', async ({ page }) => {
+test('the name box has a label, and Shift+Tab from it reaches the file picker', async ({ page }) => {
   await page.goto('/');
   await page.click('.view-tab:has-text("New report")');
   const name = page.getByLabel('Your name (optional)');
   await name.focus();
-  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
   const picker = page.getByLabel('Choose a scan or PDF');
   await expect(picker).toBeFocused();
   // The drop zone shows where the focus is.
