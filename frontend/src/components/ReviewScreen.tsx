@@ -4,6 +4,8 @@ import { DateInput } from './DateInput';
 import { Notice } from './Notice';
 import { FieldControl, FieldLabelContext, ReadOnlyContext } from './FieldEditor';
 import { PhoneScanSwitch, ScanSplit, ScanToggleButton, useScanPreview } from './ScanPreview';
+import { ReviewSearchBar } from './ReviewSearchBar';
+import { useReviewSearch } from '../hooks/useReviewSearch';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
 import type { ReportTemplate } from '../api';
@@ -159,6 +161,8 @@ export function ReviewScreen({
   // "Next ↓" walks the fields that need attention, one press at a time, wrapping round.
   const listRef = useRef<HTMLDivElement>(null);
   const nextFlagged = useRef(-1);
+  // Find-on-screen over the values. Not offered where the field list is not showing (the phone's Scan view).
+  const search = useReviewSearch(listRef, !(phone && phoneScan), fields, reportDate);
   function goToField(name: string) {
     const el = listRef.current?.querySelector<HTMLElement>(`[data-field="${name}"]`);
     if (!el) return;
@@ -237,6 +241,22 @@ export function ReviewScreen({
               ← Back to Classify
             </button>
           )}
+          {!(phone && phoneScan) && (
+            <button
+              type="button"
+              className="btn small"
+              data-testid="review-search-toggle"
+              aria-label="Search values"
+              aria-expanded={search.open}
+              title="Search the values (Ctrl+F)"
+              onClick={() => (search.open ? search.closeSearch() : search.openSearch())}
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
           <ScanToggleButton preview={preview} />
           {originalScanUrl && !(phone && (linksInMenu || phoneScan)) && (
             <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
@@ -250,6 +270,19 @@ export function ReviewScreen({
           )}
         </div>
       </div>
+
+      {search.open && (
+        <ReviewSearchBar
+          query={search.query}
+          count={search.count}
+          current={search.current}
+          inputRef={search.inputRef}
+          onChange={search.changeQuery}
+          onNext={search.next}
+          onPrevious={search.previous}
+          onClose={search.closeSearch}
+        />
+      )}
 
       {placeholderValues && (
         <Notice tone="warn" id="placeholder-notice">
