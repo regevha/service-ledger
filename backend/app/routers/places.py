@@ -23,11 +23,20 @@ from app.services.places import FACULTY, INSTITUTION, ROOM
 router = APIRouter(tags=["places"])
 
 _PARENT_KINDS = {INSTITUTION: (), FACULTY: (INSTITUTION,), ROOM: (INSTITUTION, FACULTY)}
-_PLURAL = {INSTITUTION: "institutions", FACULTY: "faculties", ROOM: "rooms"}
+# What people read. The stored kinds keep their old names (institution, faculty); the words shown are
+# "institute" and "building". Always go through these, never the raw kind, in a message.
+_WORD = {INSTITUTION: "institute", FACULTY: "building", ROOM: "room"}
+_PLURAL = {INSTITUTION: "institutes", FACULTY: "buildings", ROOM: "rooms"}
+
+
+def _a(kind: str) -> str:
+    """\"an institute\", \"a building\", \"a room\"."""
+    word = _WORD[kind]
+    return f"{'an' if word[0] in 'aeiou' else 'a'} {word}"
 
 
 def _plural(kind: str, n: int) -> str:
-    return f"{n} {kind}" if n == 1 else f"{n} {_PLURAL[kind]}"
+    return f"{n} {_WORD[kind]}" if n == 1 else f"{n} {_PLURAL[kind]}"
 
 
 def _out(
@@ -103,22 +112,22 @@ def _clash(db: Session, kind: str, parent_id: uuid.UUID | None, name: str, exclu
 def _check_parent(db: Session, kind: str, parent_id: uuid.UUID | None) -> models.Place | None:
     if kind == INSTITUTION:
         if parent_id is not None:
-            raise HTTPException(422, "An institution has no parent.")
+            raise HTTPException(422, "An institute has no parent.")
         return None
     if parent_id is None:
-        raise HTTPException(422, f"A {kind} must be inside {'an institution' if kind == FACULTY else 'an institution or a faculty'}.")
+        raise HTTPException(422, f"{_a(kind).capitalize()} must be inside {'an institute' if kind == FACULTY else 'an institute or a building'}.")
     parent = db.get(models.Place, parent_id)
     if parent is None:
         raise HTTPException(404, "Parent place not found")
     if parent.kind not in _PARENT_KINDS[kind]:
-        allowed = " or ".join(_PARENT_KINDS[kind])
-        raise HTTPException(422, f"A {kind} must be inside a {allowed}, not a {parent.kind}.")
+        allowed = " or ".join(_a(k) for k in _PARENT_KINDS[kind])
+        raise HTTPException(422, f"{_a(kind).capitalize()} must be inside {allowed}, not {_a(parent.kind)}.")
     return parent
 
 
 def _name_conflict(kind: str, name: str, parent: models.Place | None) -> str:
     where = f" in {parent.name}" if parent is not None else ""
-    return f"There is already a {kind} called “{name}”{where}."
+    return f"There is already {_a(kind)} called “{name}”{where}."
 
 
 @router.get("/places", response_model=list[schemas.PlaceOut])
@@ -209,7 +218,7 @@ def merge_place(place_id: uuid.UUID, payload: schemas.PlaceMerge, db: Session = 
     if source.id == target.id:
         raise HTTPException(422, "Pick a different place to merge into.")
     if source.kind != target.kind:
-        raise HTTPException(422, f"Only places of the same kind can be merged: this is a {source.kind}, the other is a {target.kind}.")
+        raise HTTPException(422, f"Only places of the same kind can be merged: this is {_a(source.kind)}, the other is {_a(target.kind)}.")
 
     inside = db.query(models.Place).filter(models.Place.parent_id == source.id).all()
     for child in inside:
@@ -217,7 +226,7 @@ def merge_place(place_id: uuid.UUID, payload: schemas.PlaceMerge, db: Session = 
         if twin is not None:
             raise HTTPException(
                 409,
-                f"Both have a {child.kind} called “{child.name}”. Merge those two first, then merge “{source.name}”.",
+                f"Both have {_a(child.kind)} called “{child.name}”. Merge those two first, then merge “{source.name}”.",
             )
 
     direct = db.query(models.Instrument).filter(models.Instrument.place_id == source.id).all()

@@ -86,7 +86,7 @@ export function ReportFilterBar<F extends BarFilters>({
   onClear?: () => void;
 }) {
   const [technicianInput, setTechnicianInput] = useState(filters.technician ?? '');
-  // Institutions, faculties and rooms to filter by (an empty list hides the control).
+  // Institutes, buildings and rooms to filter by (an empty list hides the control).
   const [places, setPlaces] = useState<Place[]>([]);
   useEffect(() => {
     let live = true;

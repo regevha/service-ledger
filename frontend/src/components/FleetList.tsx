@@ -59,7 +59,7 @@ export function fleetRows(data: FleetAnalytics, kind: GroupBy): FleetRow[] {
     key: p.place_id,
     id: p.place_id,
     name: p.name,
-    sub: [p.kind === 'institution' ? 'Institution' : `${p.kind === 'faculty' ? 'Faculty' : 'Room'} in ${p.institution_name}`, plural(p.instrument_count, 'instrument')].join(' · '),
+    sub: [p.kind === 'institution' ? 'Institute' : `${p.kind === 'faculty' ? 'Building' : 'Room'} in ${p.institution_name}`, plural(p.instrument_count, 'instrument')].join(' · '),
     reports: p.report_count,
     hours: p.total_labor_hours,
   }));

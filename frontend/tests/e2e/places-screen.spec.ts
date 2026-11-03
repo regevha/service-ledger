@@ -34,8 +34,8 @@ test('the Places list shows institutions and rooms with their instrument counts'
   await makeUnit(request, 'c', uni, null);
 
   await openPlaces(page);
-  await expect(placeRow(page, uni, 'Institution').locator('[data-label="Instruments"]')).toContainText('3');
-  await expect(placeRow(page, uni, 'Institution').locator('[data-label="Instruments"]')).toContainText('1 directly');
+  await expect(placeRow(page, uni, 'Institute').locator('[data-label="Instruments"]')).toContainText('3');
+  await expect(placeRow(page, uni, 'Institute').locator('[data-label="Instruments"]')).toContainText('1 directly');
   const room = page.locator('.place-row.template-row-body', { hasText: 'Room 1' }).filter({ hasText: uni });
   await expect(room.locator('[data-label="Instruments"]')).toHaveText('2');
 });
@@ -46,11 +46,11 @@ test('renaming an institution warns how many instruments change and updates them
   const unit = await makeUnit(request, 'ren', uni, 'R9');
 
   await openPlaces(page);
-  await placeRow(page, uni, 'Institution').locator('button:has-text("Edit")').click();
+  await placeRow(page, uni, 'Institute').locator('button:has-text("Edit")').click();
   await page.locator('.schema-form-label', { hasText: 'Name' }).locator('input').fill(`${uni} II`);
-  await expect(page.locator('#place-rename-warning')).toContainText('Renaming changes the institution of 1 instrument to');
+  await expect(page.locator('#place-rename-warning')).toContainText('Renaming changes the institute of 1 instrument to');
   await page.click('button:has-text("Save changes")');
-  await expect(placeRow(page, `${uni} II`, 'Institution')).toBeVisible();
+  await expect(placeRow(page, `${uni} II`, 'Institute')).toBeVisible();
   const after = await (await request.get(`${API_BASE}/instruments/${unit.id}`)).json();
   expect(after.institution).toBe(`${uni} II`);
   expect(after.location).toBe('R9');
@@ -89,7 +89,7 @@ test('delete is blocked while a place is in use and says what it deletes when it
   expect((await request.post(`${API_BASE}/places`, { data: { kind: 'room', name: 'Empty room', parent_id: parent.id } })).ok()).toBeTruthy();
 
   await openPlaces(page);
-  await placeRow(page, uni, 'Institution').locator('.row-menu-button').click();
+  await placeRow(page, uni, 'Institute').locator('.row-menu-button').click();
   await expect(page.locator('[role="menuitem"]:has-text("Delete")')).toBeDisabled();
   await page.keyboard.press('Escape');
 
@@ -109,16 +109,16 @@ test('the instrument form says whether the institution and room are new or exist
   await page.goto('/');
   await page.click('.view-tab:has-text("Instruments")');
   await page.click('button:has-text("+ New instrument")');
-  const inst = page.locator('.schema-form-label', { hasText: 'Institution' }).locator('input');
+  const inst = page.locator('.schema-form-label', { hasText: 'Institute' }).locator('input');
   const room = page.locator('.schema-form-label', { hasText: 'Room name' }).locator('input');
   await inst.fill(uni);
-  await expect(page.locator('#place-hint')).toContainText('Existing institution · 1 instrument');
+  await expect(page.locator('#place-hint')).toContainText('Existing institute · 1 instrument');
   await room.fill('Lab 7');
   await expect(page.locator('#place-hint')).toContainText('Existing room · 1 instrument');
   await room.fill('Lab 8');
   await expect(page.locator('#place-hint')).toContainText('New room · it will be added to Places');
   await inst.fill(`${uni} other`);
-  await expect(page.locator('#place-hint')).toContainText('New institution · it will be added to Places');
+  await expect(page.locator('#place-hint')).toContainText('New institute · it will be added to Places');
 });
 
 test('phone: the Places list has no sideways scroll and keeps captions', async ({ page, request }) => {
