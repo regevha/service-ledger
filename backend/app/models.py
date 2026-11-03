@@ -421,6 +421,11 @@ class Attachment(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     report_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("reports.id"), nullable=False)
     file_path: Mapped[str] = mapped_column(String, nullable=False)
+    # What the uploader's file was called: plain text from the client, cleaned
+    # (services/attachment_names.py), used for the download name and nothing
+    # else. The file on disk is named by a UUID, never by this. NULL for rows
+    # that predate the column and were not backfilled.
+    original_filename: Mapped[str | None] = mapped_column(String, nullable=True)
     file_type: Mapped[str] = mapped_column(String, nullable=False)
     page_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     # SHA-256 of the uploaded bytes: the same scan uploaded twice is the same

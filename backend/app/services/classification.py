@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.models import Attachment, Instrument, ReportTemplate, ReportType
 from app.schemas import ClassificationGuess, ClassificationResult
+from app.services.attachment_names import source_name
 from app.services.claude_client import (
     is_sample_document as _is_sample_document,
     call_claude_tool,
@@ -376,7 +377,7 @@ _STUB_OTHER_MAKER_SERIAL = "ZZ0000"  # the serial when the file name gives none
 
 
 def _stub_other_maker(attachment: Attachment, instruments: list[Instrument]) -> DocumentRead | None:
-    name = attachment.file_path.replace("\\", "/").rsplit("/", 1)[-1].lower()
+    name = source_name(attachment).lower()
     if STUB_OTHER_MAKER_MARKER not in name:
         return None
     # "othermaker-ABC123-scan.pdf" is read as serial ABC123, so repeated runs
@@ -437,7 +438,7 @@ def _stub_classify(
             "This document is not from a manufacturer the app can read without an API key. "
             "Set ANTHROPIC_API_KEY (USE_LIVE_CLAUDE=true) to read it."
         )
-    if _is_sample_document(attachment.file_path):
+    if _is_sample_document(source_name(attachment)):
         # Reproduces the real BD Care EU Work Order Service Report case
         # discussed in spec §4: instrument ID is a confident read, report
         # type is the harder call because repair/PM share one
@@ -462,7 +463,7 @@ def _stub_classify(
         # A file named after an instrument's serial number is "read" as that
         # instrument (see _stub_serial_read), as a real read of its serial
         # would be, so the model guess agrees with it.
-        serial_instrument = match_serial(_stub_serial_read(attachment.file_path, instruments), instruments)
+        serial_instrument = match_serial(_stub_serial_read(source_name(attachment), instruments), instruments)
         if serial_instrument is not None:
             instrument = serial_instrument
         report_types = list(ReportType)
@@ -476,8 +477,8 @@ def _stub_classify(
     return DocumentRead(
         instrument_guess,
         type_guess,
-        _stub_serial_read(attachment.file_path, instruments),
-        _stub_work_order(attachment.file_path),
+        _stub_serial_read(source_name(attachment), instruments),
+        _stub_work_order(source_name(attachment)),
         reader="stub",
     )
 
