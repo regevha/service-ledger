@@ -4,11 +4,14 @@ import {
   createInstrument,
   listInstrumentModels,
   listInstrumentTypes,
+  listPlaces,
   type ClassificationResult,
   type Instrument,
   type InstrumentModel,
   type InstrumentType,
+  type Place,
 } from '../api';
+import { matchTypedPlaces, typedPlaceHint } from '../placeUtils';
 import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
 
 /**
@@ -40,16 +43,21 @@ export function AddInstrumentPanel({
   // instrument, not its maker, so it goes in the distributor field.
   const [distributor, setDistributor] = useState(classification.issuer ?? '');
   const [serial, setSerial] = useState(classification.instrument_serial?.value ?? '');
+  const [institute, setInstitute] = useState('');
   const [room, setRoom] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [knownModels, setKnownModels] = useState<InstrumentModel[]>([]);
+  const [knownPlaces, setKnownPlaces] = useState<Place[]>([]);
 
   useEffect(() => {
     listInstrumentModels()
       .then(setKnownModels)
       .catch(() => setKnownModels([]));
+    listPlaces()
+      .then(setKnownPlaces)
+      .catch(() => setKnownPlaces([]));
   }, []);
 
   // A model that already exists has one instrument type; the new instrument has to match it.
@@ -71,7 +79,12 @@ export function AddInstrumentPanel({
       .catch(() => setError('Could not load the instrument types.'));
   }, []);
 
-  const ready = [name, model, manufacturer, serial].every((v) => v.trim() !== '') && typeKey !== '';
+  // The institute typed is one that exists (ignoring case and spaces) or a new one, created when the instrument is saved,
+  // exactly as on the Instruments tab. A room is only meaningful inside an institute.
+  const { roomsHere } = matchTypedPlaces(knownPlaces, institute, room);
+  const placeHint = typedPlaceHint(knownPlaces, institute, room);
+  const roomWithoutInstitute = room.trim() !== '' && institute.trim() === '';
+  const ready = [name, model, manufacturer, serial].every((v) => v.trim() !== '') && typeKey !== '' && !roomWithoutInstitute;
 
   async function submit() {
     setSaving(true);
@@ -84,6 +97,7 @@ export function AddInstrumentPanel({
         manufacturer: manufacturer.trim(),
         distributor: distributor.trim() || null,
         serial_number: serial.trim(),
+        institution: institute.trim() || null,
         location: room.trim() || null,
       });
       onAdded(created);
@@ -143,10 +157,38 @@ export function AddInstrumentPanel({
           <input className="text-input" value={serial} onChange={(e) => setSerial(e.target.value)} aria-label="Instrument serial number" autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
         </label>
         <label>
+          <span className="clabel">Institute (optional)</span>
+          <input
+            className="text-input"
+            value={institute}
+            list="add-instrument-institutes"
+            placeholder="e.g. Bar-Ilan University"
+            onChange={(e) => setInstitute(e.target.value)}
+            aria-label="Instrument institute"
+          />
+          <datalist id="add-instrument-institutes">
+            {knownPlaces
+              .filter((p) => p.kind === 'institution')
+              .map((p) => (
+                <option key={p.id} value={p.name} />
+              ))}
+          </datalist>
+        </label>
+        <label>
           <span className="clabel">Room name (optional)</span>
-          <input className="text-input" value={room} onChange={(e) => setRoom(e.target.value)} aria-label="Instrument room name" />
+          <input className="text-input" value={room} list="add-instrument-rooms" onChange={(e) => setRoom(e.target.value)} aria-label="Instrument room name" />
+          <datalist id="add-instrument-rooms">
+            {roomsHere.map((p) => (
+              <option key={p.id} value={p.name} />
+            ))}
+          </datalist>
         </label>
       </div>
+      {placeHint && (
+        <small className="muted place-hint" id="add-instrument-place-hint">
+          {placeHint}
+        </small>
+      )}
       {error && <div className="banner banner-crit">{error}</div>}
       <div className="cta-row">
         <button className="btn primary" disabled={disabled || !ready} onClick={() => void submit()}>
