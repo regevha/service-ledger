@@ -743,6 +743,8 @@ class AttachmentOut(BaseModel):
     id: uuid.UUID
     report_id: uuid.UUID
     file_path: str
+    # The uploader's own file name (null on an old row that has none).
+    original_filename: str | None = None
     file_type: str
     page_count: int
     # Status of the current translation (pending_review, accepted, discarded,
