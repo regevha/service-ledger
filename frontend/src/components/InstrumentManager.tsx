@@ -21,6 +21,7 @@ import { idsInside, matchTypedPlaces, placeLabel, typedPlaceHint } from '../plac
 import { MaintenanceBadge } from './MaintenanceBadge';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
+import { SuggestInput } from './SuggestInput';
 import { MakersManager } from './MakersManager';
 import { ModelsManager } from './ModelsManager';
 import { PlacesManager } from './PlacesManager';
@@ -282,37 +283,23 @@ function InstrumentFormScreen({
       <div className="schema-form-row">
         <label className="schema-form-label">
           Room name
-          <input
-            type="text"
+          <SuggestInput
             className="text-input"
             placeholder="e.g. Core Lab"
             value={location}
-            list="known-rooms"
-            onChange={(e) => setLocation(e.target.value)}
+            onChange={setLocation}
+            options={roomsHere.map((p) => p.name)}
           />
-          <datalist id="known-rooms">
-            {roomsHere.map((p) => (
-              <option key={p.id} value={p.name} />
-            ))}
-          </datalist>
         </label>
         <label className="schema-form-label">
           Institute
-          <input
-            type="text"
+          <SuggestInput
             className="text-input"
             placeholder="e.g. Bar-Ilan University (optional)"
             value={institution}
-            list="known-institutions"
-            onChange={(e) => setInstitution(e.target.value)}
+            onChange={setInstitution}
+            options={knownPlaces.filter((p) => p.kind === 'institution').map((p) => p.name)}
           />
-          <datalist id="known-institutions">
-            {knownPlaces
-              .filter((p) => p.kind === 'institution')
-              .map((p) => (
-                <option key={p.id} value={p.name} />
-              ))}
-          </datalist>
         </label>
         <label className="schema-form-label">
           Distributor

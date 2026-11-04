@@ -13,6 +13,7 @@ import {
 } from '../api';
 import { matchTypedPlaces, typedPlaceHint } from '../placeUtils';
 import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
+import { SuggestInput } from './SuggestInput';
 
 /**
  * Shown on the classification screen when the document's instrument is not in
@@ -158,30 +159,24 @@ export function AddInstrumentPanel({
         </label>
         <label>
           <span className="clabel">Institute (optional)</span>
-          <input
+          <SuggestInput
             className="text-input"
             value={institute}
-            list="add-instrument-institutes"
             placeholder="e.g. Bar-Ilan University"
-            onChange={(e) => setInstitute(e.target.value)}
+            onChange={setInstitute}
             aria-label="Instrument institute"
+            options={knownPlaces.filter((p) => p.kind === 'institution').map((p) => p.name)}
           />
-          <datalist id="add-instrument-institutes">
-            {knownPlaces
-              .filter((p) => p.kind === 'institution')
-              .map((p) => (
-                <option key={p.id} value={p.name} />
-              ))}
-          </datalist>
         </label>
         <label>
           <span className="clabel">Room name (optional)</span>
-          <input className="text-input" value={room} list="add-instrument-rooms" onChange={(e) => setRoom(e.target.value)} aria-label="Instrument room name" />
-          <datalist id="add-instrument-rooms">
-            {roomsHere.map((p) => (
-              <option key={p.id} value={p.name} />
-            ))}
-          </datalist>
+          <SuggestInput
+            className="text-input"
+            value={room}
+            onChange={setRoom}
+            aria-label="Instrument room name"
+            options={roomsHere.map((p) => p.name)}
+          />
         </label>
       </div>
       {placeHint && (

@@ -370,3 +370,36 @@
     margin-top: 2px;
   }
 }
+
+/* Names already on file, offered as chips under a text box (SuggestInput). They float over
+   what is below instead of pushing it down, so nothing moves when the box loses focus. */
+.suggest-wrap {
+  position: relative;
+  display: block;
+}
+.suggest-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+.suggest-chip {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
