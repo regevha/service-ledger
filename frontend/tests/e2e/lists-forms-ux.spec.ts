@@ -1,14 +1,20 @@
-import type { Page } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { isIsoDay } from '../../src/isoDay';
 import { uniquePdf } from './unique-upload';
 import { TIMEOUT } from './timeouts';
-import { API_BASE } from './helpers/api';
+import { API_BASE, seedReport } from './helpers/api';
 import { showFlatList } from './helpers/ui';
 
 // UI review items #20-#25: destructive actions that look destructive, a quieter Templates row,
 // labelled fields in the template editor, required fields marked on the new-instrument form,
 // stacked phone cards that say what each value is, and one date format everywhere.
+
+// The Reports tests below need a row to look at. They used to find one left behind by other specs,
+// which is why they failed whenever the specs ran in another order (the nightly shuffled run).
+async function aReportToLookAt(request: APIRequestContext) {
+  await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-ListsForms-${Date.now()}`, finalize: true });
+}
 
 async function color(page: Page, selector: string): Promise<string> {
   return page.locator(selector).first().evaluate((el) => getComputedStyle(el).color);
@@ -167,7 +173,9 @@ test.describe('phone cards say what each value is', () => {
 
   test('Reports: a card puts instrument and status on top, type and date under, lab manager small; sort buttons introduced as such', async ({
     page,
+    request,
   }) => {
+    await aReportToLookAt(request);
     await page.goto('/#/reports');
     const row = '.report-row-body';
     await expect(page.locator(row).first()).toBeVisible();
@@ -196,7 +204,8 @@ test.describe('phone cards say what each value is', () => {
 });
 
 test.describe('dates read YYYY-MM-DD everywhere', () => {
-  test('the report filters take and show ISO dates; half-typed dates are not applied', async ({ page }) => {
+  test('the report filters take and show ISO dates; half-typed dates are not applied', async ({ page, request }) => {
+    await aReportToLookAt(request);
     await page.goto('/#/reports');
     await expect(page.locator('.report-row-body').first()).toBeVisible();
     const from = page.getByLabel('From date', { exact: true });
@@ -219,7 +228,8 @@ test.describe('dates read YYYY-MM-DD everywhere', () => {
     await expect(page.locator('.report-row-body').first()).toBeVisible();
   });
 
-  test('the calendar button fills the box in the same format', async ({ page }) => {
+  test('the calendar button fills the box in the same format', async ({ page, request }) => {
+    await aReportToLookAt(request);
     await page.goto('/#/reports');
     await expect(page.locator('.report-row-body').first()).toBeVisible();
     const box = page.locator('.date-input').first();
