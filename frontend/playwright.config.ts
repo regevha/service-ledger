@@ -32,6 +32,18 @@ const FRONTEND_PORT = 5174;
 // imports this instead of redefining its own copy of the literal.
 export const E2E_DATABASE_URL = 'postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger_e2e';
 
+// Launch settings for the Chromium-based projects only. undefined PINNED_CHROMIUM (see above) falls back
+// to Playwright's own installed browser, which is what every machine other than that one sandbox needs.
+// --no-sandbox is for running as root in that same sandbox/CI; harmless but unnecessary on a normal
+// desktop, kept for both. WebKit gets none of this: it refuses --no-sandbox ("Unknown option") and the
+// pinned path is a Chromium, which made every nightly WebKit test fail at browser launch.
+const chromiumLaunch = {
+  launchOptions: {
+    ...(PINNED_CHROMIUM ? { executablePath: PINNED_CHROMIUM } : {}),
+    args: ['--no-sandbox'],
+  },
+};
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
@@ -59,14 +71,6 @@ export default defineConfig({
     baseURL: `http://localhost:${FRONTEND_PORT}`,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    launchOptions: {
-      // undefined (see above) falls back to Playwright's own installed
-      // browser, which is what every machine other than that one sandbox
-      // needs. --no-sandbox is for running as root in that same sandbox/CI;
-      // harmless but unnecessary on a normal desktop, kept for both.
-      ...(PINNED_CHROMIUM ? { executablePath: PINNED_CHROMIUM } : {}),
-      args: ['--no-sandbox'],
-    },
   },
 
   // Two projects over the same specs. Tests tagged @phone (the describes in the
@@ -75,10 +79,10 @@ export default defineConfig({
   // change the viewport itself (to compare phone and wide layouts) still calls
   // page.setViewportSize.
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, grepInvert: /@phone|@visual/ },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], ...chromiumLaunch }, grepInvert: /@phone|@visual/ },
     {
       name: 'phone',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true },
+      use: { ...devices['Desktop Chrome'], ...chromiumLaunch, viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true },
       grep: /@phone/,
     },
     // Screenshot comparisons (visual.spec.ts), Chromium only. Their baseline images are made on the CI
@@ -86,7 +90,7 @@ export default defineConfig({
     // committed there is nothing to compare against, so the project is left out and the @visual tests
     // simply do not run, here or in CI.
     ...(process.env.E2E_VISUAL === '1' || existsSync('tests/e2e/visual.spec.ts-snapshots')
-      ? [{ name: 'visual', use: { ...devices['Desktop Chrome'] }, grep: /@visual/ }]
+      ? [{ name: 'visual', use: { ...devices['Desktop Chrome'], ...chromiumLaunch }, grep: /@visual/ }]
       : []),
     // The same phone tests in WebKit, with an iPhone profile: Safari on iOS is the browser most phones
     // in a lab run, and it differs from Chromium in exactly the places the phone tests care about

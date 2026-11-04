@@ -8,12 +8,13 @@ import { TIMEOUT } from './timeouts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
-const PHONE = { width: 412, height: 915 };
 
 test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('the tabs are a bar at the bottom, five equal buttons with an icon and a label', async ({ page }) => {
     await page.goto('/');
+    // The screen of whichever phone this project emulates (Chromium: 412x915, the WebKit iPhone profile: 390x664).
+    const PHONE = page.viewportSize()!;
     const bar = page.locator('.view-tabs');
     await expect(bar).toBeVisible();
     const barBox = (await bar.boundingBox())!;
@@ -29,7 +30,9 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     }
     // It stays put while the page scrolls.
     await page.click('.view-tab:has-text("Instruments")');
-    await page.mouse.wheel(0, 600);
+    // (window.scrollBy, not the mouse wheel: mobile WebKit has no mouse wheel.)
+    await page.evaluate(() => window.scrollBy(0, 600));
+    expect(await page.evaluate(() => window.scrollY), 'the page scrolled').toBeGreaterThan(0);
     const after = (await bar.boundingBox())!;
     expect(Math.round(after.y + after.height)).toBe(PHONE.height);
     await expect(page.locator('.view-tab.active')).toContainText('Instruments');
