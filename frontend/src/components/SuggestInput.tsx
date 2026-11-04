@@ -20,7 +20,7 @@ export function SuggestInput({ value, onChange, options, onFocus, onBlur, ...inp
     .filter((o) => o.trim().toLowerCase() !== typed && o.toLowerCase().includes(typed))
     .slice(0, 8);
   return (
-    <>
+    <span className="suggest-wrap">
       <input
         {...inputProps}
         type="text"
@@ -57,6 +57,6 @@ export function SuggestInput({ value, onChange, options, onFocus, onBlur, ...inp
           ))}
         </span>
       )}
-    </>
+    </span>
   );
 }
