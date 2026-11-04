@@ -403,3 +403,28 @@
   font-size: 0.85rem;
   cursor: pointer;
 }
+
+/* New instrument form: a locked manufacturer looks locked and says why right under itself. */
+.manufacturer-lock-hint {
+  display: block;
+  margin-top: 4px;
+}
+.schema-form-label .text-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+/* "+ Add a type": Add and Cancel side by side, not two full-width bars. */
+.type-adder-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.type-adder-actions .btn {
+  flex: 1;
+}
+.type-follows-hint {
+  display: block;
+  margin: -4px 0 14px;
+  font-size: 0.78rem;
+}
