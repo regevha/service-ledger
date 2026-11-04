@@ -179,7 +179,7 @@ function InstrumentFormScreen({
 
       {error && <div className="banner banner-crit">{error}</div>}
 
-      <div className="schema-form-row">
+      <div className="schema-form-row type-row">
         <label className="schema-form-label">
           Instrument type
           <select
@@ -198,7 +198,7 @@ function InstrumentFormScreen({
         </label>
         {!existing &&
           (newTypeName === null ? (
-            <button type="button" className="btn small" onClick={() => setNewTypeName('')}>
+            <button type="button" className="btn small add-type-link" onClick={() => setNewTypeName('')}>
               + Add a type
             </button>
           ) : (
