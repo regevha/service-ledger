@@ -30,7 +30,9 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     }
     // It stays put while the page scrolls.
     await page.click('.view-tab:has-text("Instruments")');
-    await page.mouse.wheel(0, 600);
+    // (window.scrollBy, not the mouse wheel: mobile WebKit has no mouse wheel.)
+    await page.evaluate(() => window.scrollBy(0, 600));
+    expect(await page.evaluate(() => window.scrollY), 'the page scrolled').toBeGreaterThan(0);
     const after = (await bar.boundingBox())!;
     expect(Math.round(after.y + after.height)).toBe(PHONE.height);
     await expect(page.locator('.view-tab.active')).toContainText('Instruments');
