@@ -18,7 +18,7 @@ export function SuggestInput({ value, onChange, options, onFocus, onBlur, ...inp
   const typed = value.trim().toLowerCase();
   const shown = [...new Set(options)]
     .filter((o) => o.trim().toLowerCase() !== typed && o.toLowerCase().includes(typed))
-    .slice(0, 8);
+    .slice(0, 40);
   return (
     <span className="suggest-wrap">
       <input
