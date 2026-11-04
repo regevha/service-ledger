@@ -209,6 +209,24 @@
 .sort-select-wrap {
   display: none;
 }
+/* Grouped lists have no column names to click, so the menu is the way to sort at every width. */
+.sort-select-wrap-grouped {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.sort-select-wrap-grouped .sort-select {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
 @media (max-width: 620px) {
   .sort-select-wrap {
     display: flex;

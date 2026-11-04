@@ -16,7 +16,7 @@ test('reports are grouped by instrument, and Group: None shows the flat table', 
   await page.goto('/#/reports');
   await expect(page.getByTestId('report-groups')).toBeVisible();
   await expect(page.getByTestId('group-select')).toHaveValue('instrument');
-  // No sort headers on the grouped view.
+  // The grouped view has no column headers; sorting is the Sort by menu (see the sort-in-groups spec).
   await expect(page.locator('.report-row-head')).toHaveCount(0);
 
   const groupA = page.getByTestId('report-group').filter({ has: page.locator('.report-row-body', { hasText: a }) });
@@ -112,3 +112,42 @@ test('Group: Model for a single unit says "1 instrument", and the card fits a ph
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+// Reported 2026-11-04: with the results grouped by model there was no way to sort. The Sort by menu is
+// there in both groupings now; the order applies to the rows inside each card, and the cards stay.
+for (const grouping of ['model', 'instrument'] as const) {
+  test(`Group: ${grouping} can be sorted, and the sort orders the rows inside each card`, async ({ page, request }) => {
+    const stamp = Date.now();
+    const model = `E2E-GS-${stamp}`;
+    // One unit, so that both groupings give a single card holding all three reports.
+    const made = await request.post(`${API_BASE}/instruments`, {
+      data: { name: 'E2E GS', model, manufacturer: 'E2E Maker', serial_number: `SN-GS-${stamp}` },
+    });
+    expect(made.ok()).toBeTruthy();
+    const unit = await made.json();
+    const templates = await (await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'repair', model } })).json();
+    const names = [`E2E-GS-B-${stamp}`, `E2E-GS-C-${stamp}`, `E2E-GS-A-${stamp}`];
+    for (const technician of names) {
+      await seedReport(request, { instrumentId: unit.id, templateId: templates[0].id, model, reportType: 'repair', technician, finalize: true });
+    }
+
+    await page.setViewportSize({ width: 1300, height: 900 });
+    await page.goto('/#/reports');
+    await page.getByTestId('group-select').selectOption(grouping);
+    const card = page.getByTestId('report-group').filter({ has: page.locator('.report-row-body', { hasText: names[0] }) });
+    await expect(card).toHaveCount(1);
+    const managers = () => card.locator('.report-row-body [data-label="Lab manager"]').allTextContents();
+
+    await page.getByTestId('sort-select').selectOption('lab_manager:asc');
+    await expect(page.getByTestId('report-groups'), 'still grouped after sorting').toBeVisible();
+    await expect.poll(managers).toEqual([names[2], names[0], names[1]]);
+    await expect(page.getByTestId('result-count')).toContainText('sorted by lab manager');
+
+    await page.getByTestId('sort-select').selectOption('lab_manager:desc');
+    await expect.poll(managers).toEqual([names[1], names[0], names[2]]);
+
+    await page.getByTestId('sort-select').selectOption('');
+    await expect(page.getByTestId('result-count')).not.toContainText('sorted by');
+    expect(await managers()).toHaveLength(3);
+  });
+}

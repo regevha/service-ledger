@@ -301,9 +301,10 @@ export function ReportsListScreen({
               </button>
   );
 
-  // Grouping suits browsing; a search (best match first) and a chosen sort order need one flat list.
-  const grouped = groupMode !== 'none' && !searching && !sort;
-  const groups = grouped ? (groupMode === 'model' ? groupByModel : groupByInstrument)(defaultOrder(items), instruments) : [];
+  // Grouping suits browsing; a search (best match first) needs one flat list. A chosen sort order applies
+  // to the rows inside each group (the groups keep their order), so it works with either grouping.
+  const grouped = groupMode !== 'none' && !searching;
+  const groups = grouped ? (groupMode === 'model' ? groupByModel : groupByInstrument)(sort ? sortReports(items, sort) : defaultOrder(items), instruments) : [];
   const statusBlocksSearch = searching && Boolean(filters.status) && filters.status !== 'finalized';
 
   return (
@@ -399,6 +400,24 @@ export function ReportsListScreen({
               </select>
             </label>
           </div>
+          <label className={`sort-select-wrap${grouped ? ' sort-select-wrap-grouped' : ''}`}>
+            <span>Sort by</span>
+            <select
+              className="sort-select"
+              data-testid="sort-select"
+              value={sort ? `${sort.key}:${sort.direction}` : ''}
+              onChange={(e) => {
+                const [key, direction] = e.target.value.split(':');
+                setSort(key ? { key: key as SortKey, direction: direction as 'asc' | 'desc' } : null);
+              }}
+            >
+              <option value="">{searching ? 'Best match' : 'Default order'}</option>
+              {(Object.keys(SORT_LABEL) as SortKey[]).flatMap((key) => [
+                <option key={`${key}:asc`} value={`${key}:asc`}>{`${SORT_LABEL[key]} ▲`}</option>,
+                <option key={`${key}:desc`} value={`${key}:desc`}>{`${SORT_LABEL[key]} ▼`}</option>,
+              ])}
+            </select>
+          </label>
           {grouped ? (
             <div className="report-table report-groups" data-testid="report-groups">
               {groups.map((g) => (
@@ -431,24 +450,6 @@ export function ReportsListScreen({
             </div>
           ) : (
           <>
-          <label className="sort-select-wrap">
-            <span>Sort by</span>
-            <select
-              className="sort-select"
-              data-testid="sort-select"
-              value={sort ? `${sort.key}:${sort.direction}` : ''}
-              onChange={(e) => {
-                const [key, direction] = e.target.value.split(':');
-                setSort(key ? { key: key as SortKey, direction: direction as 'asc' | 'desc' } : null);
-              }}
-            >
-              <option value="">{searching ? 'Best match' : 'Default order'}</option>
-              {(Object.keys(SORT_LABEL) as SortKey[]).flatMap((key) => [
-                <option key={`${key}:asc`} value={`${key}:asc`}>{`${SORT_LABEL[key]} ▲`}</option>,
-                <option key={`${key}:desc`} value={`${key}:desc`}>{`${SORT_LABEL[key]} ▼`}</option>,
-              ])}
-            </select>
-          </label>
           <div className="report-table">
             <div className="report-row report-row-head">
               {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => {
