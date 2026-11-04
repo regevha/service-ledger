@@ -268,20 +268,22 @@ function InstrumentFormScreen({
       </div>
 
       <div className="schema-form-row">
-        <label className="schema-form-label">
-          <span>Manufacturer {!existing && <Required />}</span>
-          <SuggestInput
-            className="text-input"
-            placeholder="e.g. Cytek Biosciences"
-            value={lockedManufacturer ?? manufacturer}
-            onChange={setManufacturer}
-            options={makerNames}
-            disabled={lockedManufacturer !== null}
-          />
+        <div className="field-with-hint">
+          <label className="schema-form-label">
+            <span>Manufacturer {!existing && <Required />}</span>
+            <SuggestInput
+              className="text-input"
+              placeholder="e.g. Cytek Biosciences"
+              value={lockedManufacturer ?? manufacturer}
+              onChange={setManufacturer}
+              options={makerNames}
+              disabled={lockedManufacturer !== null}
+            />
+          </label>
           {lockedManufacturer !== null && (
             <small className="muted manufacturer-lock-hint">Set by the model. Change it on the Models screen.</small>
           )}
-        </label>
+        </div>
         <label className="schema-form-label">
           <span>Serial number <Required /></span>
           <input type="text" className="text-input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} autoCapitalize="characters" autoCorrect="off" spellCheck={false} />

@@ -407,7 +407,8 @@
 /* New instrument form: a locked manufacturer looks locked and says why right under itself. */
 .manufacturer-lock-hint {
   display: block;
-  margin-top: 4px;
+  margin-top: 6px;
+  font-size: 0.78rem;
 }
 .schema-form-label .text-input:disabled {
   opacity: 0.7;
@@ -453,4 +454,15 @@
     font-weight: 600;
     text-decoration: underline;
   }
+}
+
+/* A field with a note under it, as one flex item of the row. */
+.field-with-hint {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.field-with-hint > .schema-form-label {
+  flex: 0 0 auto;
 }
