@@ -391,6 +391,8 @@
   border-radius: 10px;
   background: var(--surface);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  max-height: 40vh;
+  overflow-y: auto;
 }
 .suggest-chip {
   min-height: 36px;
