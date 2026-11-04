@@ -34,7 +34,7 @@ function formatHours(hours: number): string {
 
 function UnitTable({ units }: { units: UnitComparison[] }) {
   return (
-    <div className="trend-table-wrap">
+    <div className="trend-table-wrap" tabIndex={0} role="region" aria-label="Units compared, as a table">
       <table className="trend-table compare-table">
         <thead>
           <tr>
@@ -225,7 +225,7 @@ function ComparisonChart({ lines, field }: { lines: UnitLine[]; field: TrendFiel
           </svg>
         </div>
       ) : (
-        <div className="trend-table-wrap">
+        <div className="trend-table-wrap" tabIndex={0} role="region" aria-label="Comparison values, as a table">
           <table className="trend-table">
             <thead>
               <tr>
