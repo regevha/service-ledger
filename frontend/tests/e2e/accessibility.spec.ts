@@ -91,3 +91,18 @@ for (const [section, link, ready] of [
     await scan(page, `admin-${section.replace(' ', '-')}`);
   });
 }
+
+// A table that scrolls sideways has to be reachable by keyboard (axe: scrollable-region-focusable). It only
+// scrolls when it is wider than its box, which used to depend on how much data other specs had left behind
+// (so only the shuffled nightly run saw it). This scan makes the units table overflow by narrowing the window
+// after the page has loaded (below about 600px the page changes to its phone layout, so the width is 900, where it overflows by a wide margin),
+// and checks that it really does overflow, so the scan cannot pass for want of anything to find.
+test('analytics with a table that scrolls sideways', async ({ page, request }) => {
+  await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-A11y-${Date.now()}`, finalize: true });
+  await openAnalytics(page);
+  const scroller = page.locator('.trend-table-wrap').first();
+  await expect(scroller).toBeVisible();
+  await page.setViewportSize({ width: 900, height: 900 });
+  await expect.poll(() => scroller.evaluate((el) => el.scrollWidth > el.clientWidth), { message: 'the table is wider than its box' }).toBe(true);
+  await scan(page, 'analytics-narrow');
+});
