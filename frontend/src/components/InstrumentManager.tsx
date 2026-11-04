@@ -20,7 +20,7 @@ import { INSTRUMENT_STATUS_LABEL, MAINTENANCE_STATE_LABEL } from '../labels';
 import { idsInside, matchTypedPlaces, placeLabel, typedPlaceHint } from '../placeUtils';
 import { MaintenanceBadge } from './MaintenanceBadge';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
+import { useMakerNames } from './MakerSuggestions';
 import { SuggestInput } from './SuggestInput';
 import { MakersManager } from './MakersManager';
 import { ModelsManager } from './ModelsManager';
@@ -73,6 +73,7 @@ function InstrumentFormScreen({
   const [newTypeName, setNewTypeName] = useState<string | null>(null);
   const [knownModels, setKnownModels] = useState<InstrumentModel[]>([]);
   const [knownPlaces, setKnownPlaces] = useState<Place[]>([]);
+  const makerNames = useMakerNames();
 
   useEffect(() => {
     listInstrumentTypes()
@@ -233,19 +234,13 @@ function InstrumentFormScreen({
         </label>
         <label className="schema-form-label">
           <span>Model <Required /></span>
-          <input
-            type="text"
+          <SuggestInput
             className="text-input"
             placeholder="e.g. Aurora"
             value={model}
-            list="known-models"
-            onChange={(e) => setModel(e.target.value)}
+            onChange={setModel}
+            options={knownModels.map((m) => m.name)}
           />
-          <datalist id="known-models">
-            {knownModels.map((m) => (
-              <option key={m.id} value={m.name} />
-            ))}
-          </datalist>
           {model.trim() !== '' && (
             <small className="muted model-hint" id="model-hint">
               {matchedModel
@@ -259,16 +254,14 @@ function InstrumentFormScreen({
       <div className="schema-form-row">
         <label className="schema-form-label">
           <span>Manufacturer {!existing && <Required />}</span>
-          <input
-            type="text"
+          <SuggestInput
             className="text-input"
             placeholder="e.g. Cytek Biosciences"
-            list={MAKER_LIST_ID}
             value={lockedManufacturer ?? manufacturer}
-            onChange={(e) => setManufacturer(e.target.value)}
+            onChange={setManufacturer}
+            options={makerNames}
             disabled={lockedManufacturer !== null}
           />
-          <MakerDatalist />
         </label>
         <label className="schema-form-label">
           <span>Serial number <Required /></span>
