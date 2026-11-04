@@ -68,6 +68,10 @@ test('two units of one model are compared in a table and on one chart', async ({
   await expect(valueRows).toHaveCount(3);
   await expect(valueRows.first()).toContainText(`${model}-A`);
   await expect(page.locator('#model-comparison .hint-text', { hasText: 'Only one' })).toHaveCount(0);
+  // The table can scroll sideways, so the keyboard must be able to reach it.
+  const scroller = page.getByRole('region', { name: 'Comparison values, as a table' });
+  await scroller.focus();
+  await expect(scroller).toBeFocused();
 });
 
 test('a model with a single unit says there is nothing to compare yet', async ({ page, request }) => {
