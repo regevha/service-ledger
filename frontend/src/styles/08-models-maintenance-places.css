@@ -391,6 +391,8 @@
   border-radius: 10px;
   background: var(--surface);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  max-height: 40vh;
+  overflow-y: auto;
 }
 .suggest-chip {
   min-height: 36px;
@@ -402,4 +404,67 @@
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
+}
+
+/* New instrument form: a locked manufacturer looks locked and says why right under itself. */
+.manufacturer-lock-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.78rem;
+}
+.schema-form-label .text-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+/* "+ Add a type": Add and Cancel side by side, not two full-width bars. */
+.type-adder-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.type-adder-actions .btn {
+  flex: 1;
+}
+.type-follows-hint {
+  display: block;
+  margin: -4px 0 14px;
+  font-size: 0.78rem;
+}
+
+/* Phone: "+ Add a type" is a small link at the right of the "Instrument type" caption, so the dropdown keeps its full width. */
+@media (max-width: 620px) {
+  .schema-form-row.type-row {
+    position: relative;
+    flex-direction: column;
+  }
+  /* In a column, the labels' 220px flex size would become a minimum height. */
+  .schema-form-row.type-row > .schema-form-label {
+    flex: 0 0 auto;
+  }
+  .schema-form-row.type-row > .btn.add-type-link {
+    position: absolute;
+    top: -8px;
+    right: 0;
+    width: auto;
+    height: auto;
+    min-height: 40px;
+    padding: 0 4px;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: underline;
+  }
+}
+
+/* A field with a note under it, as one flex item of the row. */
+.field-with-hint {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.field-with-hint > .schema-form-label {
+  flex: 0 0 auto;
 }

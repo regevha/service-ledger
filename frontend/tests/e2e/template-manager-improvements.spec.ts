@@ -68,7 +68,9 @@ test.describe('the form says what is wrong', () => {
   test('model suggestions come from the fleet', async ({ page }) => {
     await openTemplates(page);
     await page.click('button:has-text("+ New template")');
-    await expect(page.locator('#known-models option[value="LSRFortessa"]')).toHaveCount(1);
+    // The models in the fleet are offered as tappable suggestions while the Model box has focus.
+    await page.getByPlaceholder(/blank applies to every model/).fill('LSR');
+    await expect(page.locator('.suggest-chip', { hasText: 'LSRFortessa' })).toHaveCount(1);
   });
 });
 

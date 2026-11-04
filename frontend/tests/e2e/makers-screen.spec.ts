@@ -75,7 +75,10 @@ test('the manufacturer box on a new model suggests the makers on file', async ({
   await page.click('.sub-switch button:has-text("Models")');
   await page.click('button:has-text("+ New model")');
   const box = page.getByPlaceholder('e.g. Cytek Biosciences');
-  await expect(box).toHaveAttribute('list', 'maker-names');
-  await expect(page.locator('#maker-names option[value="BD"]')).toHaveCount(1);
-  await expect(page.locator('#maker-names option[value="Becton Dickinson"]')).toHaveCount(1);
+  // The makers on file (and their other names) are offered as tappable suggestions while the box has focus.
+  await box.focus();
+  await expect(page.locator('.suggest-chip', { hasText: /^BD$/ })).toHaveCount(1);
+  await expect(page.locator('.suggest-chip', { hasText: 'Becton Dickinson' })).toHaveCount(1);
+  await page.locator('.suggest-chip', { hasText: 'Becton Dickinson' }).click();
+  await expect(box).toHaveValue('Becton Dickinson');
 });

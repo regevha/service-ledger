@@ -25,6 +25,7 @@ import { FieldAliasManagerScreen } from './FieldAliasManager';
 import { TemplateCompareScreen } from './TemplateCompare';
 import { REPORT_TYPE_LABEL } from '../labels';
 import type { TemplateRequest } from '../templateRequest';
+import { SuggestInput } from './SuggestInput';
 
 /**
  * The Templates tab: CRUD for report_templates rows, replacing "edit
@@ -580,19 +581,13 @@ function TemplateFormScreen({
         </label>
         <label className="schema-form-label">
           Model
-          <input
-            type="text"
+          <SuggestInput
             className="text-input"
             placeholder="e.g. Aurora — blank applies to every model"
-            list="known-models"
             value={model}
-            onChange={(e) => setModel(e.target.value)}
+            onChange={setModel}
+            options={knownModels}
           />
-          <datalist id="known-models">
-            {knownModels.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
         </label>
       </div>
 
