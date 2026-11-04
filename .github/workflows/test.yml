@@ -331,7 +331,7 @@ jobs:
     # WebKit's rendering is not what a change under review is likely to break.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     services:
       postgres:
@@ -376,7 +376,14 @@ jobs:
 
       - name: Install Playwright's WebKit
         working-directory: frontend
-        run: npx playwright install --with-deps webkit
+        # The Ubuntu package mirror on the runner is sometimes very slow (minutes per small package), which
+        # used to hold this step until the whole job timed out. Each attempt is capped and tried again.
+        run: |
+          for attempt in 1 2 3; do
+            timeout 6m npx playwright install --with-deps webkit && exit 0
+            echo "Install attempt $attempt did not finish; trying again."
+          done
+          exit 1
 
       - name: Run the phone tests in WebKit
         working-directory: frontend
