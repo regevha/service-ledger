@@ -209,17 +209,31 @@ function InstrumentFormScreen({
                 className="text-input"
                 placeholder="e.g. Electron microscope"
                 value={newTypeName}
+                autoFocus
+                enterKeyHint="done"
                 onChange={(e) => setNewTypeName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleAddType();
+                  }
+                }}
               />
-              <button type="button" className="btn small" onClick={() => void handleAddType()}>
-                Add
-              </button>
-              <button type="button" className="btn small" onClick={() => setNewTypeName(null)}>
-                Cancel
-              </button>
+              <span className="type-adder-actions">
+                <button type="button" className="btn small" onClick={() => void handleAddType()}>
+                  Add
+                </button>
+                <button type="button" className="btn small" onClick={() => setNewTypeName(null)}>
+                  Cancel
+                </button>
+              </span>
             </div>
           ))}
       </div>
+
+      {!existing && matchedModel && (
+        <small className="muted type-follows-hint">The type follows the model.</small>
+      )}
 
       <div className="schema-form-row">
         <label className="schema-form-label">
@@ -228,6 +242,8 @@ function InstrumentFormScreen({
             type="text"
             className="text-input"
             placeholder="e.g. Aurora — Core Lab"
+            autoCapitalize="words"
+            enterKeyHint="next"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -262,6 +278,9 @@ function InstrumentFormScreen({
             options={makerNames}
             disabled={lockedManufacturer !== null}
           />
+          {lockedManufacturer !== null && (
+            <small className="muted manufacturer-lock-hint">Set by the model. Change it on the Models screen.</small>
+          )}
         </label>
         <label className="schema-form-label">
           <span>Serial number <Required /></span>
@@ -269,21 +288,7 @@ function InstrumentFormScreen({
         </label>
       </div>
 
-      {lockedManufacturer !== null && (
-        <small className="muted manufacturer-lock-hint">Set by the model. Change it on the Models screen.</small>
-      )}
-
       <div className="schema-form-row">
-        <label className="schema-form-label">
-          Room name
-          <SuggestInput
-            className="text-input"
-            placeholder="e.g. Core Lab"
-            value={location}
-            onChange={setLocation}
-            options={roomsHere.map((p) => p.name)}
-          />
-        </label>
         <label className="schema-form-label">
           Institute
           <SuggestInput
@@ -292,6 +297,16 @@ function InstrumentFormScreen({
             value={institution}
             onChange={setInstitution}
             options={knownPlaces.filter((p) => p.kind === 'institution').map((p) => p.name)}
+          />
+        </label>
+        <label className="schema-form-label">
+          Room name
+          <SuggestInput
+            className="text-input"
+            placeholder="e.g. Core Lab"
+            value={location}
+            onChange={setLocation}
+            options={roomsHere.map((p) => p.name)}
           />
         </label>
         <label className="schema-form-label">
@@ -330,6 +345,11 @@ function InstrumentFormScreen({
         </div>
       )}
 
+      {missing.length > 0 && !saving && (
+        <p className="form-missing" id="instrument-missing">
+          Still needed: {missing.join(', ')}.
+        </p>
+      )}
       <div className="cta-row">
         <button type="button" className="btn" onClick={onCancel} disabled={saving}>
           Cancel
@@ -338,11 +358,6 @@ function InstrumentFormScreen({
           {saving ? 'Saving…' : existing ? 'Save changes' : 'Create instrument'}
         </button>
       </div>
-      {missing.length > 0 && !saving && (
-        <p className="form-missing" id="instrument-missing">
-          Still needed: {missing.join(', ')}.
-        </p>
-      )}
     </div>
   );
 }
