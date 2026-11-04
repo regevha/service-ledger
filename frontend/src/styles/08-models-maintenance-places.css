@@ -300,3 +300,63 @@
     content: 'In: ';
   }
 }
+
+/* Phone: Makers rows as compact cards, like Models and Places. */
+@media (max-width: 620px) {
+  .instrument-row.maker-row.template-row-body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name actions'
+      'aliases aliases'
+      'count models';
+    gap: 4px 12px;
+    padding: 12px 14px;
+    align-items: start;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Maker'] {
+    grid-area: name;
+    font-weight: 700;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Other names'] {
+    grid-area: aliases;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Instruments'] {
+    grid-area: count;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Models'] {
+    grid-area: models;
+    justify-self: end;
+  }
+  .instrument-row.maker-row.template-row-body > .template-row-actions {
+    grid-area: actions;
+    justify-self: end;
+    display: flex;
+    gap: 8px;
+  }
+  .instrument-row.maker-row.template-row-body > span:not([data-label='Maker']):not(.template-row-actions) {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label]::before {
+    display: none;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Other names']::before,
+  .instrument-row.maker-row.template-row-body > span[data-label='Instruments']::before,
+  .instrument-row.maker-row.template-row-body > span[data-label='Models']::before {
+    display: inline;
+    font-size: inherit;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    margin: 0;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Other names']::before {
+    content: 'Also: ';
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Instruments']::before {
+    content: 'Instruments: ';
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Models']::before {
+    content: 'Models: ';
+  }
+}
