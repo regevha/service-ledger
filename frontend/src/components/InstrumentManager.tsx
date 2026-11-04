@@ -616,7 +616,7 @@ export function InstrumentManagerScreen({
             <span>Actions</span>
           </div>
           {shownInstruments.map((inst) => (
-            <div className="instrument-row template-row-body" key={inst.id}>
+            <div className="instrument-row instrument-card template-row-body" key={inst.id}>
               <span data-label="Name">
                 {inst.name}
                 {inst.institution && <small className="muted instrument-institution">{inst.institution}</small>}
