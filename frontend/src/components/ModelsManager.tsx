@@ -10,7 +10,8 @@ import {
   type InstrumentModel,
   type InstrumentType,
 } from '../api';
-import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
+import { useMakerNames } from './MakerSuggestions';
+import { SuggestInput } from './SuggestInput';
 import { ModelPage } from './ModelPage';
 import { RowMenu } from './RowMenu';
 import { showToast } from '../toast';
@@ -38,6 +39,7 @@ function ModelForm({
 }) {
   const [name, setName] = useState(existing?.name ?? '');
   const [manufacturer, setManufacturer] = useState(existing?.manufacturer ?? '');
+  const makerNames = useMakerNames();
   const [typeKey, setTypeKey] = useState(existing?.instrument_type ?? types.find((t) => t.is_default)?.key ?? types[0]?.key ?? '');
   const [interval, setInterval] = useState(existing?.service_interval_months?.toString() ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
@@ -93,8 +95,7 @@ function ModelForm({
         </label>
         <label className="schema-form-label">
           Manufacturer
-          <input type="text" className="text-input" value={manufacturer} placeholder="e.g. Cytek Biosciences" list={MAKER_LIST_ID} onChange={(e) => setManufacturer(e.target.value)} />
-          <MakerDatalist />
+          <SuggestInput className="text-input" value={manufacturer} placeholder="e.g. Cytek Biosciences" onChange={setManufacturer} options={makerNames} />
         </label>
       </div>
       <div className="schema-form-row">
