@@ -7,7 +7,6 @@ import { showFlatList } from './helpers/ui';
 // Delete in a menu on Instruments, a tidy Templates header, Analytics bars with the number on the name's line,
 // and the wording of the upload box.
 
-const PHONE = { width: 412, height: 915 };
 
 test.describe('on a phone', { tag: '@phone' }, () => {
 
@@ -28,7 +27,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     await page.goto('/#/reports');
     const box = await page.locator('.app-shell').boundingBox();
     expect(box!.x).toBeLessThan(1);
-    expect(box!.width).toBeGreaterThan(PHONE.width - 1);
+    expect(box!.width).toBeGreaterThan(page.viewportSize()!.width - 1); // the emulated phone's own width
   });
 
   test('Instruments: Delete is in a ⋯ menu, and still asks before deleting', async ({ page }) => {
