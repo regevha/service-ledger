@@ -360,3 +360,13 @@
     content: 'Models: ';
   }
 }
+
+/* Phone: the "may be the same as" and notes lines under a name are plain and small, not bold. */
+@media (max-width: 620px) {
+  .instrument-row.model-row.template-row-body > span[data-label='Model'] small,
+  .instrument-row.place-row.template-row-body > span[data-label='Place'] small {
+    font-weight: 400;
+    font-size: 0.78rem;
+    margin-top: 2px;
+  }
+}
