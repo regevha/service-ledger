@@ -201,3 +201,102 @@
   .leave-dialog-actions { flex-direction: column-reverse; }
   .leave-dialog-actions .btn { width: 100%; }
 }
+
+/* ---------- Phone: Models and Places rows are compact cards too ---------- */
+
+@media (max-width: 620px) {
+  .instrument-row.model-row.template-row-body,
+  .instrument-row.place-row.template-row-body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    padding: 12px 14px;
+    align-items: start;
+  }
+  .instrument-row.model-row.template-row-body {
+    grid-template-areas:
+      'name actions'
+      'maker type'
+      'count interval';
+  }
+  .instrument-row.place-row.template-row-body {
+    grid-template-areas:
+      'name actions'
+      'kind kind'
+      'in in'
+      'count count';
+  }
+  .instrument-row.model-row.template-row-body > .template-row-actions,
+  .instrument-row.place-row.template-row-body > .template-row-actions {
+    grid-area: actions;
+    justify-self: end;
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Models */
+  .instrument-row.model-row.template-row-body > span[data-label='Model'] {
+    grid-area: name;
+    font-weight: 700;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Manufacturer'] {
+    grid-area: maker;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Type'] {
+    grid-area: type;
+    justify-self: end;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Instruments'] {
+    grid-area: count;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Service interval'] {
+    grid-area: interval;
+    justify-self: end;
+  }
+
+  /* Places */
+  .instrument-row.place-row.template-row-body > span[data-label='Place'] {
+    grid-area: name;
+    font-weight: 700;
+  }
+  .instrument-row.place-row.template-row-body > span[data-label='Kind'] {
+    grid-area: kind;
+  }
+  .instrument-row.place-row.template-row-body > span[data-label='In'] {
+    grid-area: in;
+  }
+  .instrument-row.place-row.template-row-body > span[data-label='Instruments'] {
+    grid-area: count;
+  }
+
+  /* Secondary values: muted and small; the field captions become short inline prefixes. */
+  .instrument-row.model-row.template-row-body > span:not([data-label='Model']):not(.template-row-actions),
+  .instrument-row.place-row.template-row-body > span:not([data-label='Place']):not(.template-row-actions) {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label]::before,
+  .instrument-row.place-row.template-row-body > span[data-label]::before {
+    display: none;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Instruments']::before,
+  .instrument-row.model-row.template-row-body > span[data-label='Service interval']::before,
+  .instrument-row.place-row.template-row-body > span[data-label='In']::before,
+  .instrument-row.place-row.template-row-body > span[data-label='Instruments']::before {
+    display: inline;
+    font-size: inherit;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    margin: 0;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Instruments']::before,
+  .instrument-row.place-row.template-row-body > span[data-label='Instruments']::before {
+    content: 'Instruments: ';
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Service interval']::before {
+    content: 'Service: ';
+  }
+  .instrument-row.place-row.template-row-body > span[data-label='In']::before {
+    content: 'In: ';
+  }
+}
