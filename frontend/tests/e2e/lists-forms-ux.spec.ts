@@ -166,9 +166,13 @@ test.describe('phone cards say what each value is', () => {
     const row = '.instrument-row.template-row-body';
     await expect(page.locator(row).first()).toBeVisible();
     await expect(page.locator('.instrument-row.template-row-head')).toBeHidden();
-    expect(await before(page, `${row} > span[data-label="Manufacturer"]`)).toBe('Manufacturer');
-    expect(await before(page, `${row} > span[data-label="Room name"]`)).toBe('Room name');
-    expect(await before(page, `${row} > span[data-label="Serial number"]`)).toBe('Serial number');
+    // A compact card: the name and manufacturer read for themselves; room, serial and distributor carry a short prefix.
+    const captionShown = (selector: string) =>
+      page.locator(selector).first().evaluate((el) => getComputedStyle(el, '::before').display);
+    expect(await captionShown(`${row} > span[data-label="Manufacturer"]`)).toBe('none');
+    expect(await before(page, `${row} > span[data-label="Room name"]`)).toBe('Room: ');
+    expect(await before(page, `${row} > span[data-label="Serial number"]`)).toBe('SN ');
+    expect(await before(page, `${row} > span[data-label="Distributor"]`)).toBe('Distributor: ');
   });
 
   test('Reports: a card puts instrument and status on top, type and date under, lab manager small; sort buttons introduced as such', async ({
