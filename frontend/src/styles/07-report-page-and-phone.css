@@ -360,3 +360,93 @@
 .model-row .model-similar {
   color: inherit;
 }
+
+/* ---------- Phone: an instrument is a compact card, not a grid of labelled fields ---------- */
+
+@media (max-width: 620px) {
+  .instrument-row.template-row-body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name name'
+      'model model'
+      'maker serial'
+      'room room'
+      'distributor distributor'
+      'status actions';
+    gap: 4px 12px;
+    padding: 12px 14px;
+    align-items: center;
+  }
+  .instrument-row.template-row-body > span[data-label='Name'] {
+    grid-area: name;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .instrument-row.template-row-body > span[data-label='Model'] {
+    grid-area: model;
+  }
+  .instrument-row.template-row-body > span[data-label='Manufacturer'] {
+    grid-area: maker;
+  }
+  .instrument-row.template-row-body > span[data-label='Serial number'] {
+    grid-area: serial;
+    justify-self: end;
+  }
+  .instrument-row.template-row-body > span[data-label='Room name'] {
+    grid-area: room;
+  }
+  .instrument-row.template-row-body > span[data-label='Distributor'] {
+    grid-area: distributor;
+  }
+  .instrument-row.template-row-body > span[data-label='Manufacturer'],
+  .instrument-row.template-row-body > span[data-label='Serial number'],
+  .instrument-row.template-row-body > span[data-label='Room name'],
+  .instrument-row.template-row-body > span[data-label='Distributor'] {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+  .instrument-row.template-row-body > span[data-label='Distributor'] {
+    color: var(--text-faint);
+    font-size: 0.78rem;
+  }
+  .instrument-row.template-row-body > span[data-label='Status'] {
+    grid-area: status;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    margin-top: 6px;
+  }
+  .instrument-row.template-row-body > .template-row-actions {
+    grid-area: actions;
+    justify-self: end;
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  /* Captions come back only where a bare value would be unclear, as inline prefixes. */
+  .instrument-row.template-row-body > span[data-label='Name']::before,
+  .instrument-row.template-row-body > span[data-label='Model']::before,
+  .instrument-row.template-row-body > span[data-label='Manufacturer']::before,
+  .instrument-row.template-row-body > span[data-label='Status']::before {
+    display: none;
+  }
+  .instrument-row.template-row-body > span[data-label='Serial number']::before,
+  .instrument-row.template-row-body > span[data-label='Room name']::before,
+  .instrument-row.template-row-body > span[data-label='Distributor']::before {
+    display: inline;
+    font-size: inherit;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    margin: 0;
+  }
+  .instrument-row.template-row-body > span[data-label='Serial number']::before {
+    content: 'SN ';
+  }
+  .instrument-row.template-row-body > span[data-label='Room name']::before {
+    content: 'Room: ';
+  }
+  .instrument-row.template-row-body > span[data-label='Distributor']::before {
+    content: 'Distributor: ';
+  }
+}
