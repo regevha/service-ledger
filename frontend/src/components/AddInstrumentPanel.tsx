@@ -12,7 +12,7 @@ import {
   type Place,
 } from '../api';
 import { matchTypedPlaces, typedPlaceHint } from '../placeUtils';
-import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
+import { useMakerNames } from './MakerSuggestions';
 import { SuggestInput } from './SuggestInput';
 
 /**
@@ -45,6 +45,7 @@ export function AddInstrumentPanel({
   const [distributor, setDistributor] = useState(classification.issuer ?? '');
   const [serial, setSerial] = useState(classification.instrument_serial?.value ?? '');
   const [institute, setInstitute] = useState('');
+  const makerNames = useMakerNames();
   const [room, setRoom] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -146,8 +147,7 @@ export function AddInstrumentPanel({
         </label>
         <label>
           <span className="clabel">Manufacturer</span>
-          <input className="text-input" value={manufacturer} list={MAKER_LIST_ID} onChange={(e) => setManufacturer(e.target.value)} aria-label="Instrument manufacturer" />
-          <MakerDatalist />
+          <SuggestInput className="text-input" value={manufacturer} onChange={setManufacturer} aria-label="Instrument manufacturer" options={makerNames} />
         </label>
         <label>
           <span className="clabel">Distributor (optional)</span>

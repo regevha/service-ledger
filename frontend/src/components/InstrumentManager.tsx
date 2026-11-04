@@ -20,7 +20,7 @@ import { INSTRUMENT_STATUS_LABEL, MAINTENANCE_STATE_LABEL } from '../labels';
 import { idsInside, matchTypedPlaces, placeLabel, typedPlaceHint } from '../placeUtils';
 import { MaintenanceBadge } from './MaintenanceBadge';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
+import { useMakerNames } from './MakerSuggestions';
 import { SuggestInput } from './SuggestInput';
 import { MakersManager } from './MakersManager';
 import { ModelsManager } from './ModelsManager';
@@ -73,6 +73,7 @@ function InstrumentFormScreen({
   const [newTypeName, setNewTypeName] = useState<string | null>(null);
   const [knownModels, setKnownModels] = useState<InstrumentModel[]>([]);
   const [knownPlaces, setKnownPlaces] = useState<Place[]>([]);
+  const makerNames = useMakerNames();
 
   useEffect(() => {
     listInstrumentTypes()
@@ -178,7 +179,7 @@ function InstrumentFormScreen({
 
       {error && <div className="banner banner-crit">{error}</div>}
 
-      <div className="schema-form-row">
+      <div className="schema-form-row type-row">
         <label className="schema-form-label">
           Instrument type
           <select
@@ -197,7 +198,7 @@ function InstrumentFormScreen({
         </label>
         {!existing &&
           (newTypeName === null ? (
-            <button type="button" className="btn small" onClick={() => setNewTypeName('')}>
+            <button type="button" className="btn small add-type-link" onClick={() => setNewTypeName('')}>
               + Add a type
             </button>
           ) : (
@@ -208,17 +209,31 @@ function InstrumentFormScreen({
                 className="text-input"
                 placeholder="e.g. Electron microscope"
                 value={newTypeName}
+                autoFocus
+                enterKeyHint="done"
                 onChange={(e) => setNewTypeName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleAddType();
+                  }
+                }}
               />
-              <button type="button" className="btn small" onClick={() => void handleAddType()}>
-                Add
-              </button>
-              <button type="button" className="btn small" onClick={() => setNewTypeName(null)}>
-                Cancel
-              </button>
+              <span className="type-adder-actions">
+                <button type="button" className="btn small" onClick={() => void handleAddType()}>
+                  Add
+                </button>
+                <button type="button" className="btn small" onClick={() => setNewTypeName(null)}>
+                  Cancel
+                </button>
+              </span>
             </div>
           ))}
       </div>
+
+      {!existing && matchedModel && (
+        <small className="muted type-follows-hint">The type follows the model.</small>
+      )}
 
       <div className="schema-form-row">
         <label className="schema-form-label">
@@ -227,25 +242,21 @@ function InstrumentFormScreen({
             type="text"
             className="text-input"
             placeholder="e.g. Aurora — Core Lab"
+            autoCapitalize="words"
+            enterKeyHint="next"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
         <label className="schema-form-label">
           <span>Model <Required /></span>
-          <input
-            type="text"
+          <SuggestInput
             className="text-input"
             placeholder="e.g. Aurora"
             value={model}
-            list="known-models"
-            onChange={(e) => setModel(e.target.value)}
+            onChange={setModel}
+            options={knownModels.map((m) => m.name)}
           />
-          <datalist id="known-models">
-            {knownModels.map((m) => (
-              <option key={m.id} value={m.name} />
-            ))}
-          </datalist>
           {model.trim() !== '' && (
             <small className="muted model-hint" id="model-hint">
               {matchedModel
@@ -257,40 +268,29 @@ function InstrumentFormScreen({
       </div>
 
       <div className="schema-form-row">
-        <label className="schema-form-label">
-          <span>Manufacturer {!existing && <Required />}</span>
-          <input
-            type="text"
-            className="text-input"
-            placeholder="e.g. Cytek Biosciences"
-            list={MAKER_LIST_ID}
-            value={lockedManufacturer ?? manufacturer}
-            onChange={(e) => setManufacturer(e.target.value)}
-            disabled={lockedManufacturer !== null}
-          />
-          <MakerDatalist />
-        </label>
+        <div className="field-with-hint">
+          <label className="schema-form-label">
+            <span>Manufacturer {!existing && <Required />}</span>
+            <SuggestInput
+              className="text-input"
+              placeholder="e.g. Cytek Biosciences"
+              value={lockedManufacturer ?? manufacturer}
+              onChange={setManufacturer}
+              options={makerNames}
+              disabled={lockedManufacturer !== null}
+            />
+          </label>
+          {lockedManufacturer !== null && (
+            <small className="muted manufacturer-lock-hint">Set by the model. Change it on the Models screen.</small>
+          )}
+        </div>
         <label className="schema-form-label">
           <span>Serial number <Required /></span>
           <input type="text" className="text-input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
         </label>
       </div>
 
-      {lockedManufacturer !== null && (
-        <small className="muted manufacturer-lock-hint">Set by the model. Change it on the Models screen.</small>
-      )}
-
       <div className="schema-form-row">
-        <label className="schema-form-label">
-          Room name
-          <SuggestInput
-            className="text-input"
-            placeholder="e.g. Core Lab"
-            value={location}
-            onChange={setLocation}
-            options={roomsHere.map((p) => p.name)}
-          />
-        </label>
         <label className="schema-form-label">
           Institute
           <SuggestInput
@@ -299,6 +299,16 @@ function InstrumentFormScreen({
             value={institution}
             onChange={setInstitution}
             options={knownPlaces.filter((p) => p.kind === 'institution').map((p) => p.name)}
+          />
+        </label>
+        <label className="schema-form-label">
+          Room name
+          <SuggestInput
+            className="text-input"
+            placeholder="e.g. Core Lab"
+            value={location}
+            onChange={setLocation}
+            options={roomsHere.map((p) => p.name)}
           />
         </label>
         <label className="schema-form-label">
@@ -337,6 +347,11 @@ function InstrumentFormScreen({
         </div>
       )}
 
+      {missing.length > 0 && !saving && (
+        <p className="form-missing" id="instrument-missing">
+          Still needed: {missing.join(', ')}.
+        </p>
+      )}
       <div className="cta-row">
         <button type="button" className="btn" onClick={onCancel} disabled={saving}>
           Cancel
@@ -345,11 +360,6 @@ function InstrumentFormScreen({
           {saving ? 'Saving…' : existing ? 'Save changes' : 'Create instrument'}
         </button>
       </div>
-      {missing.length > 0 && !saving && (
-        <p className="form-missing" id="instrument-missing">
-          Still needed: {missing.join(', ')}.
-        </p>
-      )}
     </div>
   );
 }
