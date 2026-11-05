@@ -282,7 +282,7 @@ export function ReportsListScreen({
                   {r.instrument_serial_number ? ` (${r.instrument_serial_number})` : ''}
                 </span>
                 <span data-label="Report type">{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
-                <span data-label="Lab manager">{r.technician_name ?? '—'}</span>
+                <span data-label="Lab manager" data-empty={r.technician_name ? undefined : ''}>{r.technician_name ?? '—'}</span>
                 <span data-label="Report date">
                   {r.report_date ??
                     (isUnread(r) ? <span className="muted">uploaded {r.created_at.slice(0, 10)}</span> : '—')}
