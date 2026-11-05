@@ -197,7 +197,7 @@ export function MakersManager({ onChanged }: { onChanged: () => void }) {
             return (
               <div className="instrument-row maker-row template-row-body" key={m.id}>
                 <span data-label="Maker">{m.name}</span>
-                <span data-label="Other names">{m.aliases.length ? m.aliases.join('; ') : '—'}</span>
+                <span data-label="Other names" data-empty={m.aliases.length ? undefined : ''}>{m.aliases.length ? m.aliases.join('; ') : '—'}</span>
                 <span data-label="Instruments">{m.instrument_count}</span>
                 <span data-label="Models">{m.model_count}</span>
                 <span className="template-row-actions">

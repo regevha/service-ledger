@@ -296,7 +296,7 @@ export function PlacesManager({ onChanged }: { onChanged: () => void }) {
                   )}
                 </span>
                 <span data-label="Kind">{KIND_LABEL[p.kind]}</span>
-                <span data-label="In">{whereText(p)}</span>
+                <span data-label="In" data-empty={p.kind === 'institution' ? '' : undefined}>{whereText(p)}</span>
                 <span data-label="Instruments">
                   {p.total_unit_count}
                   {p.kind !== 'room' && p.total_unit_count !== p.unit_count && <small className="muted"> ({p.unit_count} directly)</small>}
