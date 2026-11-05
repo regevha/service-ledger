@@ -208,8 +208,8 @@
   .instrument-row.model-row.template-row-body,
   .instrument-row.place-row.template-row-body {
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 4px 12px;
-    padding: 12px 14px;
+    gap: 2px 12px;
+    padding: 10px 14px;
     align-items: start;
   }
   .instrument-row.model-row.template-row-body {
@@ -221,9 +221,8 @@
   .instrument-row.place-row.template-row-body {
     grid-template-areas:
       'name actions'
-      'kind kind'
-      'in in'
-      'count count';
+      'kind count'
+      'in in';
   }
   .instrument-row.model-row.template-row-body > .template-row-actions,
   .instrument-row.place-row.template-row-body > .template-row-actions {
@@ -266,6 +265,8 @@
   }
   .instrument-row.place-row.template-row-body > span[data-label='Instruments'] {
     grid-area: count;
+    justify-self: end;
+    text-align: right;
   }
 
   /* Secondary values: muted and small; the field captions become short inline prefixes. */
@@ -309,8 +310,8 @@
       'name actions'
       'aliases aliases'
       'count models';
-    gap: 4px 12px;
-    padding: 12px 14px;
+    gap: 2px 12px;
+    padding: 10px 14px;
     align-items: start;
   }
   .instrument-row.maker-row.template-row-body > span[data-label='Maker'] {
