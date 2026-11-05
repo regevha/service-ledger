@@ -469,3 +469,87 @@
 .field-with-hint > .schema-form-label {
   flex: 0 0 auto;
 }
+
+/* Phone: every list card is two lines. Line 1 is the name with its buttons; line 2 runs the few
+   remaining values side by side (and only wraps if they truly do not fit). */
+@media (max-width: 620px) {
+  .instrument-row.template-row-body.instrument-card,
+  .instrument-row.template-row-body.model-row,
+  .instrument-row.template-row-body.place-row,
+  .instrument-row.template-row-body.maker-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 12px;
+    padding: 8px 14px;
+  }
+  .instrument-row.template-row-body.instrument-card::after,
+  .instrument-row.template-row-body.model-row::after,
+  .instrument-row.template-row-body.place-row::after,
+  .instrument-row.template-row-body.maker-row::after {
+    content: '';
+    order: 2;
+    flex: 0 0 100%;
+    height: 0;
+  }
+  /* Line 1 */
+  .instrument-row.template-row-body.instrument-card > span[data-label='Name'],
+  .instrument-row.template-row-body.model-row > span[data-label='Model'],
+  .instrument-row.template-row-body.place-row > span[data-label='Place'],
+  .instrument-row.template-row-body.maker-row > span[data-label='Maker'] {
+    order: 0;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .instrument-row.template-row-body.instrument-card > .template-row-actions,
+  .instrument-row.template-row-body.model-row > .template-row-actions,
+  .instrument-row.template-row-body.place-row > .template-row-actions,
+  .instrument-row.template-row-body.maker-row > .template-row-actions {
+    order: 1;
+    flex: 0 0 auto;
+  }
+  /* Line 2 */
+  .instrument-row.template-row-body.instrument-card > span:not([data-label='Name']):not(.template-row-actions),
+  .instrument-row.template-row-body.model-row > span:not([data-label='Model']):not(.template-row-actions),
+  .instrument-row.template-row-body.place-row > span:not([data-label='Place']):not(.template-row-actions),
+  .instrument-row.template-row-body.maker-row > span:not([data-label='Maker']):not(.template-row-actions) {
+    order: 3;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    text-align: left;
+    font-size: 0.82rem;
+  }
+  /* The maker is set by the model, and is on the Models screen and the Edit screen. */
+  .instrument-row.template-row-body.instrument-card > span[data-label='Manufacturer'] {
+    display: none;
+  }
+  .instrument-row.template-row-body.instrument-card > span[data-label='Model'] {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .instrument-row.template-row-body.instrument-card > span[data-label='Status'] {
+    margin-top: 0;
+  }
+}
+
+/* Phone, two-line cards: leave out what is the usual case or is on the Edit screen. */
+@media (max-width: 620px) {
+  /* The model when it is just the name again; the instrument type; the "Active" pill (normal state). */
+  .instrument-row.instrument-card > span[data-label='Model'][data-same],
+  .instrument-row.instrument-card .instrument-type,
+  .instrument-row.instrument-card .status-default {
+    display: none;
+  }
+  .instrument-row.model-row > span[data-label='Type'],
+  .instrument-row.maker-row > span[data-label='Models'] {
+    display: none;
+  }
+  /* A long list of other names stays on one line. */
+  .instrument-row.template-row-body.maker-row > span[data-label='Other names'] {
+    flex: 1 1 0 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
