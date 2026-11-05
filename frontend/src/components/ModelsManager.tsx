@@ -324,10 +324,10 @@ export function ModelsManager({ onChanged }: { onChanged: () => void }) {
                   )}
                   {m.notes && <small className="muted model-notes">{m.notes}</small>}
                 </span>
-                <span data-label="Manufacturer">{m.manufacturer ?? '—'}</span>
+                <span data-label="Manufacturer" data-empty={m.manufacturer ? undefined : ''}>{m.manufacturer ?? '—'}</span>
                 <span data-label="Type">{typeName(m.instrument_type)}</span>
                 <span data-label="Instruments">{m.unit_count}</span>
-                <span data-label="Service interval">
+                <span data-label="Service interval" data-empty={m.service_interval_months ? undefined : ''}>
                   {m.service_interval_months ? `${m.service_interval_months} months` : '—'}
                 </span>
                 <span className="template-row-actions">

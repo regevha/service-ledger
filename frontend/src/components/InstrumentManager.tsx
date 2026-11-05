@@ -625,7 +625,7 @@ export function InstrumentManagerScreen({
                 <small className="muted"> · {typeNames[inst.instrument_type] ?? inst.instrument_type}</small>
               </span>
               <span data-label="Serial number">{inst.serial_number}</span>
-              <span data-label="Room name">{inst.location ?? '—'}</span>
+              <span data-label="Room name" data-empty={inst.location ? undefined : ''}>{inst.location ?? '—'}</span>
               <span data-label="Status">
                 <span className={`status-pill instrument-status-${inst.status}`}>
                   {INSTRUMENT_STATUS_LABEL[inst.status]}

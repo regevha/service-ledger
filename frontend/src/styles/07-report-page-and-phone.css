@@ -480,3 +480,10 @@
     content: 'Distributor: ';
   }
 }
+
+/* Phone: a value that is empty gives no line at all, on every list card. */
+@media (max-width: 620px) {
+  .instrument-row.template-row-body > span[data-empty] {
+    display: none;
+  }
+}
