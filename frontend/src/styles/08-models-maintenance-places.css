@@ -553,3 +553,44 @@
     text-overflow: ellipsis;
   }
 }
+
+/* Phone polish: the four section tabs always fit; the three filters line up; an institution
+   that is too long for the card ends in "…" instead of pushing the card to a third line. */
+@media (max-width: 620px) {
+  .sub-switch {
+    gap: 2px;
+  }
+  .sub-switch button {
+    min-width: 0;
+    padding: 0 4px;
+    font-size: 0.92rem;
+  }
+  .instrument-filters {
+    display: block;
+  }
+  .maintenance-filter > span {
+    flex: 0 0 6.2rem;
+  }
+  .maintenance-filter > .text-input {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
+  .instrument-row.template-row-body.instrument-card > span[data-label='Name'] {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .instrument-row.template-row-body.instrument-card > span[data-label='Name'] .instrument-institution {
+    display: block;
+    margin-left: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* A report with no lab manager gives no "Lab manager: —" line. */
+  .report-row-body > span[data-empty] {
+    display: none;
+  }
+}
