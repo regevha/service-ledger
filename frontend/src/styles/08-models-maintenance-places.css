@@ -594,3 +594,21 @@
     display: none;
   }
 }
+
+/* Phone: the Edit and "…" buttons on a list card are slim rectangles (36px high, wider than tall),
+   not 44px squares. The gap between them keeps them easy to hit; the primary buttons stay 44px. */
+@media (max-width: 620px) {
+  .template-row-body .template-row-actions {
+    gap: 8px;
+  }
+  .template-row-body .template-row-actions .btn.small,
+  .template-row-body .template-row-actions .row-menu-button {
+    min-height: 36px;
+    height: 36px;
+    min-width: 52px;
+    padding: 0 12px;
+  }
+  .template-row-body .template-row-actions .row-menu-button {
+    min-width: 44px;
+  }
+}
