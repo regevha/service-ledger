@@ -447,17 +447,33 @@ export function InstrumentManagerScreen({
     }
   }
 
-  // The models that have instruments in this list, by name. A choice that is gone (its last unit was
-  // moved or deleted) counts as "all", so the list is never empty because of a stale choice.
+  // The two pickers narrow each other: Model lists only models that have an instrument in the chosen
+  // place, Place lists only places that hold an instrument of the chosen model. A choice that no longer
+  // fits counts as "all", so the list is never empty because of a stale choice.
+  const inPlace = (i: Instrument, ids: Set<string> | null) => !ids || (i.place_id != null && ids.has(i.place_id));
+  const insideRaw = idsInside(allPlaces, placeFilter || undefined);
   const modelOptions = Array.from(
-    new Map(instruments.filter((i) => i.model_id).map((i) => [i.model_id as string, i.model])).entries()
+    new Map(
+      instruments.filter((i) => i.model_id && inPlace(i, insideRaw)).map((i) => [i.model_id as string, i.model])
+    ).entries()
   ).sort((a, b) => a[1].localeCompare(b[1]));
   const activeModel = modelOptions.some(([id]) => id === modelFilter) ? modelFilter : 'all';
-  const insidePlace = idsInside(allPlaces, placeFilter || undefined);
-  const shownInstruments = instruments
+  const modelMatches = instruments.filter((i) => activeModel === 'all' || i.model_id === activeModel);
+  const placeOptions = allPlaces.filter((p) => {
+    const ids = idsInside(allPlaces, p.id);
+    return modelMatches.some((i) => inPlace(i, ids));
+  });
+  const activePlace = !placeFilter || placeOptions.some((p) => p.id === placeFilter) ? placeFilter : '';
+  const insidePlace = idsInside(allPlaces, activePlace || undefined);
+  const shownInstruments = modelMatches
     .filter((i) => stateFilter === 'all' || i.maintenance_state === stateFilter)
-    .filter((i) => activeModel === 'all' || i.model_id === activeModel)
-    .filter((i) => !insidePlace || (i.place_id != null && insidePlace.has(i.place_id)));
+    .filter((i) => inPlace(i, insidePlace));
+  const filtersActive = stateFilter !== 'all' || activeModel !== 'all' || activePlace !== '';
+  function clearFilters() {
+    setStateFilter('all');
+    setModelFilter('all');
+    setPlaceFilter('');
+  }
 
   function handleSaved() {
     setMode({ kind: 'list' });
@@ -553,9 +569,9 @@ export function InstrumentManagerScreen({
       {!loading && instruments.length > 0 && allPlaces.length > 0 && (
         <label className="maintenance-filter">
           <span>Place</span>
-          <select className="text-input" aria-label="Filter by place" value={placeFilter} onChange={(e) => setPlaceFilter(e.target.value)}>
+          <select className="text-input" aria-label="Filter by place" value={activePlace} onChange={(e) => setPlaceFilter(e.target.value)}>
             <option value="">All places</option>
-            {allPlaces.map((p) => (
+            {placeOptions.map((p) => (
               <option key={p.id} value={p.id}>
                 {placeLabel(p)}
               </option>
@@ -599,7 +615,14 @@ export function InstrumentManagerScreen({
       ) : instruments.length === 0 ? (
         <div className="empty-hint">No instruments yet.</div>
       ) : shownInstruments.length === 0 ? (
-        <div className="empty-hint">No instruments match these filters.</div>
+        <div className="empty-hint">
+          No instruments match these filters.{' '}
+          {filtersActive && (
+            <button type="button" className="btn small" onClick={clearFilters}>
+              Clear filters
+            </button>
+          )}
+        </div>
       ) : (
         <div className="template-table">
           <div className="instrument-row template-row-head">
@@ -620,14 +643,14 @@ export function InstrumentManagerScreen({
               </span>
               <span data-label="Manufacturer">{inst.manufacturer ?? '—'}</span>
               <span data-label="Distributor">{inst.distributor ?? '—'}</span>
-              <span data-label="Model">
+              <span data-label="Model" data-same={inst.model === inst.name ? '' : undefined}>
                 {inst.model}
-                <small className="muted"> · {typeNames[inst.instrument_type] ?? inst.instrument_type}</small>
+                <small className="muted instrument-type"> · {typeNames[inst.instrument_type] ?? inst.instrument_type}</small>
               </span>
               <span data-label="Serial number">{inst.serial_number}</span>
               <span data-label="Room name" data-empty={inst.location ? undefined : ''}>{inst.location ?? '—'}</span>
               <span data-label="Status">
-                <span className={`status-pill instrument-status-${inst.status}`}>
+                <span className={`status-pill instrument-status-${inst.status}${inst.status === 'active' ? ' status-default' : ''}`}>
                   {INSTRUMENT_STATUS_LABEL[inst.status]}
                 </span>{' '}
                 <MaintenanceBadge state={inst.maintenance_state} dueDate={inst.maintenance_due_date} />

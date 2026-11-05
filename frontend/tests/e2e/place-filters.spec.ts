@@ -108,3 +108,36 @@ test('Analytics shows reports and hours per place and narrows by place', async (
   await expect(chart.locator('.count-bar', { hasText: uniA })).toHaveCount(0);
   await expect(chart.locator('.count-bar', { hasText: uniB })).toContainText('7h');
 });
+
+test('the Place and Model filters narrow each other, and an empty result can be cleared', async ({ page, request }) => {
+  const stamp = Date.now();
+  const modelA = `E2E-LF-A-${stamp}`;
+  const modelB = `E2E-LF-B-${stamp}`;
+  const uniA = `E2E LF Uni A ${stamp}`;
+  const uniB = `E2E LF Uni B ${stamp}`;
+  await unit(request, modelA, 'a', uniA, 'Room 1');
+  await unit(request, modelB, 'b', uniB, 'Room 1');
+
+  await page.goto('/');
+  await page.click('.view-tab:has-text("Instruments")');
+  const rows = page.locator('.instrument-row.template-row-body', { hasText: stamp.toString() });
+  await expect(rows).toHaveCount(2);
+
+  // With a place chosen, only the models at that place are offered; with a model chosen, only its places.
+  await page.getByLabel('Filter by place').selectOption({ label: uniA });
+  const modelSelect = page.getByLabel('Filter by model');
+  await expect(modelSelect.locator('option', { hasText: modelA })).toHaveCount(1);
+  await expect(modelSelect.locator('option', { hasText: modelB })).toHaveCount(0);
+  await page.getByLabel('Filter by place').selectOption('');
+  await modelSelect.selectOption({ label: modelB });
+  const placeSelect = page.getByLabel('Filter by place');
+  await expect(placeSelect.locator('option', { hasText: uniB })).toHaveCount(2); // the institute and its room
+  await expect(placeSelect.locator('option', { hasText: uniA })).toHaveCount(0);
+
+  // An empty result has a way back.
+  await modelSelect.selectOption('all');
+  await page.getByLabel('Filter by maintenance').selectOption('overdue');
+  await expect(page.getByText('No instruments match these filters.')).toBeVisible();
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(rows).toHaveCount(2);
+});
