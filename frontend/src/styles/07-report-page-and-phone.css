@@ -385,15 +385,13 @@
   .instrument-row.instrument-card.template-row-body {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      'name name'
-      'model model'
-      'maker serial'
-      'room room'
-      'distributor distributor'
-      'status actions';
-    gap: 4px 12px;
-    padding: 12px 14px;
-    align-items: center;
+      'name actions'
+      'model serial'
+      'maker room'
+      'status status';
+    gap: 2px 12px;
+    padding: 10px 14px;
+    align-items: start;
   }
   .instrument-row.instrument-card.template-row-body > span[data-label='Name'] {
     grid-area: name;
@@ -402,12 +400,18 @@
   }
   /* The institution under the name: plain and muted, not another bold line. */
   .instrument-row.instrument-card.template-row-body > span[data-label='Name'] .instrument-institution {
+    display: inline;
+    margin-left: 8px;
     font-weight: 400;
     font-size: 0.82rem;
-    margin-top: 1px;
+  }
+  /* The name row is as tall as the buttons beside it; the name sits in the middle of them. */
+  .instrument-row.instrument-card.template-row-body > span[data-label='Name'] {
+    align-self: center;
   }
   .instrument-row.instrument-card.template-row-body > span[data-label='Model'] {
     grid-area: model;
+    font-size: 0.9rem;
   }
   .instrument-row.instrument-card.template-row-body > span[data-label='Manufacturer'] {
     grid-area: maker;
@@ -418,9 +422,12 @@
   }
   .instrument-row.instrument-card.template-row-body > span[data-label='Room name'] {
     grid-area: room;
+    justify-self: end;
+    text-align: right;
   }
+  /* Kept off the phone card to keep it short; it is on the Edit screen. */
   .instrument-row.instrument-card.template-row-body > span[data-label='Distributor'] {
-    grid-area: distributor;
+    display: none;
   }
   .instrument-row.instrument-card.template-row-body > span[data-label='Manufacturer'],
   .instrument-row.instrument-card.template-row-body > span[data-label='Serial number'],
@@ -438,14 +445,13 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px 8px;
-    margin-top: 6px;
+    margin-top: 4px;
   }
   .instrument-row.instrument-card.template-row-body > .template-row-actions {
     grid-area: actions;
     justify-self: end;
     display: flex;
     gap: 8px;
-    margin-top: 6px;
   }
   /* Captions come back only where a bare value would be unclear, as inline prefixes. */
   .instrument-row.instrument-card.template-row-body > span[data-label='Name']::before,

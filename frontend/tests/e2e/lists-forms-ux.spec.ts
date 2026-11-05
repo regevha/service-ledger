@@ -172,7 +172,7 @@ test.describe('phone cards say what each value is', () => {
     expect(await captionShown(`${row} > span[data-label="Manufacturer"]`)).toBe('none');
     expect(await before(page, `${row} > span[data-label="Room name"]`)).toBe('Room: ');
     expect(await before(page, `${row} > span[data-label="Serial number"]`)).toBe('SN ');
-    expect(await before(page, `${row} > span[data-label="Distributor"]`)).toBe('Distributor: ');
+    await expect(page.locator(`${row} > span[data-label="Distributor"]`).first()).toBeHidden(); // kept off the phone card; it is on the Edit screen
   });
 
   test('Reports: a card puts instrument and status on top, type and date under, lab manager small; sort buttons introduced as such', async ({
