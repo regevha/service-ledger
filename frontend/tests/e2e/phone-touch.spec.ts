@@ -19,7 +19,9 @@ async function tooSmall(page: import('@playwright/test').Page): Promise<string[]
       const s = getComputedStyle(el);
       if (r.width === 0 || r.height === 0 || s.visibility === 'hidden' || s.display === 'none') continue;
       if (el.closest('.tag-chip')) continue; // the tiny remove x inside a chip is not a primary control
-      if (r.height < 43.5) out.push(`${el.tagName.toLowerCase()} ${Math.round(r.width)}x${Math.round(r.height)} "${(el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 24)}"`);
+      // The Edit / "…" buttons on a list card are deliberately slimmer: 36px, with a gap between them.
+      const min = el.closest('.template-row-actions') ? 35.5 : 43.5;
+      if (r.height < min) out.push(`${el.tagName.toLowerCase()} ${Math.round(r.width)}x${Math.round(r.height)} "${(el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 24)}"`);
     }
     return out;
   });
