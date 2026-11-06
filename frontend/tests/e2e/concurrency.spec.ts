@@ -34,11 +34,11 @@ test('finalize sent twice at once: one wins, the other is refused, nothing break
 test('a double click on Save & finalize in the intake flow makes one finalized report', async ({ page, request }) => {
   const marker = `E2E-DoubleClick-${Date.now()}`;
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', marker);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 
   await page.locator(SAVE_AND_FINALIZE).dblclick();
   // Fields the scan left flagged make the screen ask "Finalize anyway?" first; answer it with a double click too.
@@ -96,7 +96,7 @@ test('an extraction that never finishes stays pending, then offers Try again', a
   });
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
@@ -120,5 +120,5 @@ test('an extraction that never finishes stays pending, then offers Try again', a
   // Try again with a worker that answers: it goes through.
   await page.unroute('**/extraction-jobs/*');
   await page.getByRole('button', { name: 'Try again' }).click();
-  await expect(page.locator('.field-list, [data-testid="class-row"]').first()).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.locator('[data-testid="field-list"], [data-testid="class-row"]').first()).toBeVisible({ timeout: TIMEOUT.flow });
 });

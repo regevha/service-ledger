@@ -20,7 +20,7 @@ async function newInstrument(request: APIRequestContext, marker: string): Promis
 
 async function openInstrument(page: Page, instrumentId: string) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   const bar = page.locator('button:has-text("Show filters")');
   if (await bar.count()) await bar.click();
   await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
@@ -78,7 +78,7 @@ test.describe('a finalized report on a phone', { tag: '@phone' }, () => {
       reportDate: '2026-09-08',
     });
     await page.goto(`/#/reports/${reportId}`);
-    await expect(page.locator('.field-list.read-only').first()).toBeVisible({ timeout: TIMEOUT.ui });
+    await expect(page.locator('[data-testid="field-list"][data-read-only="true"]').first()).toBeVisible({ timeout: TIMEOUT.ui });
 
     // The browser's own date box stays invisible, so only the app's YYYY-MM-DD text shows.
     const native = page.locator('.date-input-native').first();
@@ -86,7 +86,7 @@ test.describe('a finalized report on a phone', { tag: '@phone' }, () => {
     await expect(page.locator('.date-input input[type="text"]').first()).toHaveValue('2026-09-08');
 
     // Nothing is cut off: the box is as tall as its text.
-    const box = page.locator('.field-list.read-only textarea').first();
+    const box = page.locator('[data-testid="field-list"][data-read-only="true"] textarea').first();
     await expect(box).toHaveValue(longText);
     // The box re-fits when the font loads, so wait for it to settle instead of reading it once.
     await expect.poll(() => box.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
@@ -95,7 +95,7 @@ test.describe('a finalized report on a phone', { tag: '@phone' }, () => {
 
     // Editing brings the normal, resizable box back.
     await startEditing(page);
-    const editBox = page.locator('.field-list textarea').first();
+    const editBox = page.getByTestId('field-list').locator('textarea').first();
     const editHeight = await editBox.evaluate((el) => el.clientHeight);
     expect(editHeight).toBeLessThan(client);
   });

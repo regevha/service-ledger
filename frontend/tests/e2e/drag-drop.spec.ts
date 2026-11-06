@@ -3,6 +3,7 @@ import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { dropProblem } from '../../src/uploadFiles';
 import { TIMEOUT } from './timeouts';
+import { tabTestId } from './helpers/ui';
 
 // Dragging a scan onto the upload box on the New report tab. A real drag can't be
 // scripted, so these dispatch the same drag events a browser would, carrying a real
@@ -40,7 +41,7 @@ test('dropping a PDF on the upload box selects it, and it can be read', async ({
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Upload & classify' }).click();
-  await page.waitForSelector('.field-list, .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"], .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
 });
 
 test('the highlight goes away when the drag leaves the box', async ({ page }) => {
@@ -115,7 +116,7 @@ test('a good drop after a refused one clears the message, and so does using the 
 test('a file dropped anywhere else on the page does not make the browser open it', async ({ page }) => {
   await page.goto('/');
   for (const tab of ['New report', 'Reports', 'Analytics']) {
-    await page.click(`.view-tab:has-text("${tab}")`);
+    await page.getByTestId(tabTestId(tab)).click();
     const cancelled = await page.evaluate(() => {
       const dt = new DataTransfer();
       dt.items.add(new File(['x'], 'stray.pdf', { type: 'application/pdf' }));

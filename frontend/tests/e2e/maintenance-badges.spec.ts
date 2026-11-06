@@ -42,8 +42,8 @@ test('overdue shows on the list, the instrument page and the model page; the fil
   await maintenanceReport(request, model, unit.id, '2025-01-10');
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
-  const row = page.locator('.instrument-row.template-row-body', { hasText: `E2E Maint ${model}` });
+  await page.getByTestId('tab-instruments').click();
+  const row = page.getByTestId('instrument-row').filter({ hasText: `E2E Maint ${model}` });
   await expect(row.locator('.maintenance-overdue')).toContainText('Overdue');
 
   await page.getByLabel('Filter by maintenance').selectOption('overdue');
@@ -54,7 +54,7 @@ test('overdue shows on the list, the instrument page and the model page; the fil
 
   await page.click('.sub-switch button:has-text("Models")');
   await page.locator('.model-name', { hasText: new RegExp(`^${model}$`) }).click();
-  const unitRow = page.locator('.model-unit-row.template-row-body', { hasText: `E2E Maint ${model}` });
+  const unitRow = page.getByTestId('model-unit-row').filter({ hasText: `E2E Maint ${model}` });
   await expect(unitRow.locator('.maintenance-overdue')).toBeVisible();
 
   await page.goto(`/#/reports/instrument/${unit.id}`);
@@ -67,8 +67,8 @@ test('a unit without maintenance reports says so, and the manufacturer follows t
   const { unit } = await setup(request, model);
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
-  const row = page.locator('.instrument-row.template-row-body', { hasText: `E2E Maint ${model}` });
+  await page.getByTestId('tab-instruments').click();
+  const row = page.getByTestId('instrument-row').filter({ hasText: `E2E Maint ${model}` });
   await expect(row.locator('.maintenance-no_record')).toContainText('No maintenance on record');
 
   await row.getByRole('button', { name: 'Edit' }).click();

@@ -14,5 +14,5 @@ test('the field jump list focuses the field it names', async ({ page, request })
   const items = rail.getByRole('button');
   expect(await items.count()).toBeGreaterThan(2);
   await items.nth(1).click();
-  await expect(page.locator('.field-list :focus')).toHaveCount(1);
+  await expect(page.locator('[data-testid="field-list"] :focus')).toHaveCount(1);
 });

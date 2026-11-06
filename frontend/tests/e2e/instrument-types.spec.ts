@@ -18,10 +18,10 @@ test('a new instrument type can be added, used, and shows a clear message when i
   const typeName = `E2E Microscope ${stamp}`;
   const name = `E2E-EM-${stamp}`;
   const serial = `EM-${stamp}`;
-  const label = (text: string) => page.locator('.schema-form-label', { hasText: new RegExp('^\\s*' + text) }).locator('input');
+  const label = (text: string) => page.getByTestId('form-label').filter({ hasText: new RegExp('^\\s*' + text) }).locator('input');
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
 
   // Flow cytometer is the first type and the default.
@@ -47,7 +47,7 @@ test('a new instrument type can be added, used, and shows a clear message when i
   await label('Model').fill('E2E-Talos');
   await page.click('button:has-text("Create instrument")');
 
-  const row = page.locator('.instrument-row.template-row-body', { hasText: name });
+  const row = page.getByTestId('instrument-row').filter({ hasText: name });
   await expect(row).toContainText(typeName);
 
   // The type cannot be changed on an existing instrument.
@@ -60,7 +60,7 @@ test('a new instrument type can be added, used, and shows a clear message when i
   try {
     // A report for it: the stub reads the serial from the file name, the type
     // has no template, so the flow stops at the manual pick and then says why.
-    await page.click('.view-tab:has-text("New report")');
+    await page.getByTestId('tab-new').click();
     await page.locator('input[type="file"]').setInputFiles({
       name: `service_${serial}.pdf`,
       mimeType: 'application/pdf',
@@ -84,15 +84,15 @@ test('the Templates tab lets a template be created for another instrument type',
   const model = `E2E-Spec-${stamp}`;
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
+  await page.getByTestId('tab-templates').click();
   await page.click('button:has-text("+ New template")');
   await page.locator('#template-instrument-type').selectOption({ label: typeName });
-  await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(model);
+  await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(model);
   await page.click('button:has-text("+ Add field")');
   await page.locator('.schema-field-row').first().locator('[aria-label="Field name"]').fill('note');
   await page.click('button:has-text("Create template")');
 
-  const row = page.locator('.template-row-body', { hasText: model });
+  const row = page.getByTestId('template-row').filter({ hasText: model });
   await expect(row).toContainText(typeName);
   await row.getByRole('button', { name: /More actions/ }).click();
   await row.getByRole('menuitem', { name: 'Delete' }).click();

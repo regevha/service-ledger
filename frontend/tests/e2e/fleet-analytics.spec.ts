@@ -38,7 +38,7 @@ test('the Analytics tab shows this run\'s own labor hours and parts', async ({ p
   });
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("Analytics")');
+  await page.getByTestId('tab-analytics').click();
 
   await expect(page.locator('.section-title')).toContainText('Fleet analytics');
   await expect(page.locator('.stat-tile')).toHaveCount(3, { timeout: TIMEOUT.ui });

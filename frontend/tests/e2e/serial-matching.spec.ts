@@ -23,7 +23,7 @@ test('a document naming a serial number is assigned to that unit even when its m
   // deletes its reports).
   try {
     await page.goto('/');
-    await page.click('.view-tab:has-text("New report")');
+    await page.getByTestId('tab-new').click();
     await page.fill('input[placeholder="Your name (optional)"]', `Serial ${serial}`);
     await page.locator('input[type="file"]').setInputFiles({
       name: `service_${serial}.pdf`,
@@ -40,10 +40,10 @@ test('a document naming a serial number is assigned to that unit even when its m
     await expect(page.locator('.success-panel')).toBeVisible({ timeout: TIMEOUT.ui });
 
     // The report belongs to that unit, not to the other Aria.
-    await page.click('.view-tab:has-text("Reports")');
+    await page.getByTestId('tab-reports').click();
     await page.locator('input[aria-label="Lab manager"]').fill(`Serial ${serial}`);
-    await expect(page.locator('.report-row-body')).toHaveCount(1);
-    await expect(page.locator('.report-row-body')).toContainText(`FACSAria III (${serial})`);
+    await expect(page.getByTestId('report-row')).toHaveCount(1);
+    await expect(page.getByTestId('report-row')).toContainText(`FACSAria III (${serial})`);
   } finally {
     await request.delete(`${API_BASE}/instruments/${instrumentId}`);
   }
@@ -54,7 +54,7 @@ test('a document naming a serial number is assigned to that unit even when its m
 // fields that disagree rather than being folded into one dropdown label.
 test('the confirm screen shows the model and the serial as separate fields', async ({ page }) => {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   // The sample work order reads as an LSRFortessa; this serial is the FACSAria III's.
   await page.locator('input[type="file"]').setInputFiles({
     name: 'sample-work-order-P648282B3003.pdf',

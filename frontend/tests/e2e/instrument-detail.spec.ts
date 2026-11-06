@@ -46,7 +46,7 @@ test('instrument detail page: reached from the reports filter, shows history, an
   });
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
 
   // Filter to this instrument, then follow the new "View instrument
   // details" link the filter row only shows once an instrument is picked.
@@ -77,7 +77,7 @@ test('instrument detail page: reached from the reports filter, shows history, an
 
   // ---- Opening it, "back" returns to the instrument page, not the list ----
   await row.click();
-  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.getByTestId('field-list')).toBeVisible();
   await expect(page.locator('button:has-text("View instrument: FACSAria III")')).toBeVisible();
 
   await page.click('button:has-text("← Back to reports")');
@@ -102,9 +102,9 @@ test('a report opened straight from the list still returns to the list, not an i
   });
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
 
-  const row = page.locator('.report-row-body', { hasText: technician });
+  const row = page.getByTestId('report-row').filter({ hasText: technician });
   await expect(row).toBeVisible();
   await row.click();
 

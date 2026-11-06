@@ -58,7 +58,7 @@ test('a serial that is not registered offers the add-instrument panel, pre-fille
   // Classified again: the serial now matches, so the report goes on without the panel.
   await expect(page.locator('#add-instrument-panel')).toHaveCount(0, { timeout: TIMEOUT.flow });
   await expect(page.locator('.banner-crit')).toHaveCount(0);
-  await expect(page.locator('.field-list, #serial-notice').first()).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.locator('[data-testid="field-list"], #serial-notice').first()).toBeVisible({ timeout: TIMEOUT.flow });
 
   // The suite shares one database: a second LSRFortessa would stop other specs from finding "the only unit".
   const list = await (await request.get(`${API_BASE}/instruments`)).json();

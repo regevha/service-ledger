@@ -28,7 +28,7 @@ async function scan(page: Page, screen: string) {
 
 test('intake screen', async ({ page }) => {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await expect(page.getByTestId('intake-dropzone')).toBeVisible();
   await scan(page, 'intake');
 });
@@ -55,7 +55,7 @@ test('analytics', async ({ page, request }) => {
 
 // The Instruments tab has four parts behind one switch; each is its own screen to scan.
 for (const [part, ready] of [
-  ['Instruments', '.instrument-row.template-row-body'],
+  ['Instruments', '[data-testid="instrument-row"]'],
   ['Models', '#models-section'],
   ['Makers', '#makers-section'],
   ['Places', '#places-section'],
@@ -64,7 +64,7 @@ for (const [part, ready] of [
     // Something to list on the screens that list reports against units.
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-A11y-${Date.now()}`, finalize: true });
     await page.goto('/');
-    await page.click('.view-tab:has-text("Instruments")');
+    await page.getByTestId('tab-instruments').click();
     if (part !== 'Instruments') await page.click(`.sub-switch button:has-text("${part}")`);
     await expect(page.locator(ready).first()).toBeVisible();
     await scan(page, `instruments-${part.toLowerCase()}`);
@@ -73,8 +73,8 @@ for (const [part, ready] of [
 
 test('templates', async ({ page }) => {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
-  await expect(page.locator('.template-row-body').first()).toBeVisible();
+  await page.getByTestId('tab-templates').click();
+  await expect(page.getByTestId('template-row').first()).toBeVisible();
   await scan(page, 'templates');
 });
 
@@ -85,7 +85,7 @@ for (const [section, link, ready] of [
 ] as const) {
   test(`admin: ${section}`, async ({ page }) => {
     await page.goto('/');
-    await page.click('.view-tab:has-text("Admin")');
+    await page.getByTestId('tab-admin').click();
     await page.click(`.admin-nav-item:has-text("${link}")`);
     await expect(page.locator(ready).first()).toBeVisible();
     await scan(page, `admin-${section.replace(' ', '-')}`);

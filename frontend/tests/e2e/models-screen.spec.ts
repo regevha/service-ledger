@@ -15,14 +15,14 @@ async function makeUnit(request: import('@playwright/test').APIRequestContext, m
 
 async function openModels(page: import('@playwright/test').Page) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await page.click('.sub-switch button:has-text("Models")');
   await expect(page.locator('#models-section')).toBeVisible();
 }
 
 // The row whose model name is exactly this.
 const modelRow = (page: import('@playwright/test').Page, name: string) =>
-  page.locator('.model-row.template-row-body', {
+  page.locator('[data-testid="model-row"]', {
     has: page.locator('.model-name', { hasText: new RegExp(`^${name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}$`) }),
   });
 
@@ -30,12 +30,12 @@ test('the instrument form says whether the model is new or existing and fills in
   const model = `E2E-Form-${Date.now()}`;
   await makeUnit(request, model, 'form', 'Acme Corp');
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
-  const modelInput = page.locator('.schema-form-label', { hasText: 'Model' }).locator('input');
+  const modelInput = page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input');
   await modelInput.fill(model);
   await expect(page.locator('#model-hint')).toHaveText('Existing model · 1 instrument');
-  await expect(page.locator('.schema-form-label', { hasText: 'Manufacturer' }).locator('input')).toHaveValue('Acme Corp');
+  await expect(page.getByTestId('form-label').filter({ hasText: 'Manufacturer' }).locator('input')).toHaveValue('Acme Corp');
   await modelInput.fill(`${model}-new`);
   await expect(page.locator('#model-hint')).toContainText('New model');
 });
@@ -43,12 +43,12 @@ test('the instrument form says whether the model is new or existing and fills in
 test('a new instrument with a new model adds it to the Models list', async ({ page }) => {
   const model = `E2E-Added-${Date.now()}`;
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
-  await page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input').fill(`E2E ${model}`);
-  await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(model);
-  await page.locator('.schema-form-label', { hasText: 'Manufacturer' }).locator('input').fill('Acme Corp');
-  await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill(`E2E-ADD-${Date.now()}`);
+  await page.getByTestId('form-label').filter({ hasText: /^\s*Name/ }).locator('input').fill(`E2E ${model}`);
+  await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(model);
+  await page.getByTestId('form-label').filter({ hasText: 'Manufacturer' }).locator('input').fill('Acme Corp');
+  await page.getByTestId('form-label').filter({ hasText: 'Serial number' }).locator('input').fill(`E2E-ADD-${Date.now()}`);
   await page.click('button:has-text("Create instrument")');
   await page.click('.sub-switch button:has-text("Models")');
   const row = modelRow(page, model);
@@ -66,10 +66,10 @@ test('renaming a model warns what changes, then renames its instruments and temp
 
   await openModels(page);
   await modelRow(page, model).locator('button:has-text("Edit")').click();
-  const name = page.locator('.schema-form-label', { hasText: 'Name' }).locator('input');
+  const name = page.getByTestId('form-label').filter({ hasText: 'Name' }).locator('input');
   await name.fill(`${model}-II`);
   await expect(page.locator('#model-rename-warning')).toContainText('1 instrument and the model of 1 template');
-  await page.locator('.schema-form-label', { hasText: 'Service interval' }).locator('input').fill('6');
+  await page.getByTestId('form-label').filter({ hasText: 'Service interval' }).locator('input').fill('6');
   await page.click('button:has-text("Save changes")');
   const row = modelRow(page, `${model}-II`);
   await expect(row.locator('[data-label="Service interval"]')).toHaveText('6 months');

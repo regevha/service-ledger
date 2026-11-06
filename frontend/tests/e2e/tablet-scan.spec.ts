@@ -44,17 +44,17 @@ for (const width of [700, 899]) {
     await page.setViewportSize({ width, height: 1000 });
     const { reportId } = await seedReport(request);
     await page.goto(`/#/reports/${reportId}`);
-    await expect(page.locator('.field-list')).toBeVisible();
+    await expect(page.getByTestId('field-list')).toBeVisible();
     await expect(page.getByRole('button', { name: /Hide scan|Show scan/ })).toHaveCount(0);
 
     await page.getByRole('tab', { name: 'Scan' }).click();
-    await expect(page.locator('.field-list')).toBeHidden();
+    await expect(page.getByTestId('field-list')).toBeHidden();
     await expect(page.locator('.scan-page')).toHaveCount(2);
     // Tablets keep the plain links; only a phone folds them into the menu.
     await expect(page.getByRole('link', { name: 'Download PDF' })).toBeVisible();
 
     await page.getByRole('tab', { name: 'Fields' }).click();
-    await expect(page.locator('.field-list')).toBeVisible();
+    await expect(page.getByTestId('field-list')).toBeVisible();
   });
 }
 
@@ -62,7 +62,7 @@ test('at 900px the scan sits beside the form, with no switch', async ({ page, re
   await page.setViewportSize({ width: 900, height: 1000 });
   const { reportId } = await seedReport(request);
   await page.goto(`/#/reports/${reportId}`);
-  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.getByTestId('field-list')).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Scan' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Hide scan|Show scan/ })).toBeVisible();
 });

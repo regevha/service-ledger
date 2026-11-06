@@ -22,7 +22,7 @@ async function backendDown(page: Page) {
 const UNREACHABLE = /Could not reach the backend|Cannot reach the server/;
 
 const SCREENS = [
-  { name: 'Reports', hash: '#/reports', loading: 'Loading reports…', recovered: '.report-row-body' },
+  { name: 'Reports', hash: '#/reports', loading: 'Loading reports…', recovered: '[data-testid="report-row"]' },
   { name: 'Analytics', hash: '#/analytics', loading: 'Loading fleet analytics…', recovered: '#model-comparison, .chart-section, [data-testid="fleet-analytics"]' },
   { name: 'Instruments', hash: '#/instruments', loading: 'Loading', recovered: 'table tbody tr, .instrument-row' },
   { name: 'Templates', hash: '#/templates', loading: 'Loading', recovered: '.template-row, table tbody tr, [data-testid="template-row"]' },
@@ -49,15 +49,15 @@ test('Review: saving while the backend is down shows the error with Try again, a
   const technician = `E2E-OfflineSave-${Date.now()}`;
   const seeded = await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician });
   await page.goto('/#/reports');
-  await page.locator('.report-row-body', { hasText: technician }).first().click();
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+  await page.getByTestId('report-row').filter({ hasText: technician }).first().click();
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
 
   const backend = await backendDown(page);
   await finalizeFromReview(page);
   const alert = page.getByRole('alert').filter({ has: page.locator('#save-error') });
   await expect(alert).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(alert.getByRole('button', { name: 'Try again' })).toBeVisible();
-  await expect(page.locator('.field-list'), 'the form and what was typed stay on screen').toBeVisible();
+  await expect(page.getByTestId('field-list'), 'the form and what was typed stay on screen').toBeVisible();
   expect((await (await request.get(`${API_BASE}/reports/${seeded.reportId}`)).json()).status, 'nothing was saved').not.toBe('finalized');
 
   await backend.up();

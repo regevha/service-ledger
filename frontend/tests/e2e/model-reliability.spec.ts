@@ -32,7 +32,7 @@ async function template(request: APIRequestContext, model: string) {
 
 async function openModelPage(page: import('@playwright/test').Page, model: string) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await page.click('.sub-switch button:has-text("Models")');
   await page.locator('.model-name', { hasText: new RegExp(`^${model}$`) }).click();
   await expect(page.locator('#model-page')).toBeVisible();
@@ -65,7 +65,7 @@ test('with enough repairs the model page shows days between repairs, faults and 
   await expect(page.locator('#rel-mean-gap')).toHaveText('15 days');
   await expect(page.locator('#rel-avg-labor')).toHaveText('4.0 h');
   await expect(rel).toContainText('3 of 3 repairs have a fault category');
-  const fluidics = rel.locator('.model-rel-row.template-row-body', { hasText: 'Fluidics' });
+  const fluidics = rel.getByTestId('model-rel-row').filter({ hasText: 'Fluidics' });
   await expect(fluidics).toContainText('repeat fault');
 });
 

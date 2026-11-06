@@ -44,12 +44,12 @@ test('Reports: the Model choice keeps one model, narrows the instruments', async
   await openReports(page);
 
   const bar = page.locator('.filter-row');
-  await expect(page.locator('.report-row-body', { hasText: a.technician })).toBeVisible();
-  await expect(page.locator('.report-row-body', { hasText: b.technician })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: a.technician })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: b.technician })).toBeVisible();
 
   await bar.getByLabel('Model', { exact: true }).selectOption({ label: a.model });
-  await expect(page.locator('.report-row-body', { hasText: a.technician })).toBeVisible();
-  await expect(page.locator('.report-row-body', { hasText: b.technician })).toHaveCount(0);
+  await expect(page.getByTestId('report-row').filter({ hasText: a.technician })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: b.technician })).toHaveCount(0);
 
   // The instrument choice only offers the units of that model.
   const instruments = bar.getByLabel('Instrument', { exact: true }).locator('option');
@@ -58,10 +58,10 @@ test('Reports: the Model choice keeps one model, narrows the instruments', async
 
   // Choosing the model's own instrument still works, and "All models" lifts the filter.
   await bar.getByLabel('Instrument', { exact: true }).selectOption({ label: `${a.model} (${a.serial})` });
-  await expect(page.locator('.report-row-body', { hasText: a.technician })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: a.technician })).toBeVisible();
   await bar.getByLabel('Model', { exact: true }).selectOption('');
   await bar.getByLabel('Instrument', { exact: true }).selectOption('');
-  await expect(page.locator('.report-row-body', { hasText: b.technician })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: b.technician })).toBeVisible();
 });
 
 test('Reports: choosing a model drops an instrument of another model, and the folded bar names the model', async ({ page, request }) => {
@@ -72,12 +72,12 @@ test('Reports: choosing a model drops an instrument of another model, and the fo
 
   const bar = page.locator('.filter-row');
   await bar.getByLabel('Instrument', { exact: true }).selectOption({ label: `${b.model} (${b.serial})` });
-  await expect(page.locator('.report-row-body', { hasText: a.technician })).toHaveCount(0);
+  await expect(page.getByTestId('report-row').filter({ hasText: a.technician })).toHaveCount(0);
 
   await bar.getByLabel('Model', { exact: true }).selectOption({ label: a.model });
   // The instrument of the other model was dropped rather than left to contradict the model.
   await expect(bar.getByLabel('Instrument', { exact: true })).toHaveValue('');
-  await expect(page.locator('.report-row-body', { hasText: a.technician })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: a.technician })).toBeVisible();
 
   await page.getByRole('button', { name: 'Hide filters ▴' }).click();
   await expect(page.locator('.filters-summary-text')).toContainText(a.model);
@@ -116,9 +116,9 @@ test('Instruments: the list can be narrowed to one model', async ({ page, reques
   const a = await unitWithReport(request, stamp, 'A');
   const b = await unitWithReport(request, stamp, 'B');
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
-  const rowA = page.locator('.instrument-row.template-row-body', { hasText: a.name });
-  const rowB = page.locator('.instrument-row.template-row-body', { hasText: b.name });
+  await page.getByTestId('tab-instruments').click();
+  const rowA = page.getByTestId('instrument-row').filter({ hasText: a.name });
+  const rowB = page.getByTestId('instrument-row').filter({ hasText: b.name });
   await expect(rowA).toBeVisible();
   await expect(rowB).toBeVisible();
 
@@ -150,10 +150,10 @@ test('Saved filters keep the model, and go stale when the model is deleted', asy
 
   // After a reload nothing is filtered; picking the saved filter brings the model back.
   await openReports(page);
-  await expect(page.locator('.report-row-body', { hasText: b.technician })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: b.technician })).toBeVisible();
   await page.selectOption('select[aria-label="Saved filters"]', { label: `Model ${stamp}` });
   await expect(bar.getByLabel('Model', { exact: true }).locator('option:checked')).toHaveText(a.model);
-  await expect(page.locator('.report-row-body', { hasText: b.technician })).toHaveCount(0);
+  await expect(page.getByTestId('report-row').filter({ hasText: b.technician })).toHaveCount(0);
   await expect(page.locator('[data-testid="saved-filter-active"]')).not.toContainText('(changed)');
 
   // Delete the unit and its model: the saved filter is marked, and applying it leaves the model out.

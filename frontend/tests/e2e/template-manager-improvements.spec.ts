@@ -30,11 +30,11 @@ async function useTemplate(request: APIRequestContext, templateId: string) {
 
 async function openTemplates(page: Page) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
+  await page.getByTestId('tab-templates').click();
   await page.waitForSelector('.template-table, .empty-hint');
 }
 
-const rowFor = (page: Page, model: string) => page.locator('.template-row-body', { hasText: model });
+const rowFor = (page: Page, model: string) => page.getByTestId('template-row').filter({ hasText: model });
 
 test.describe('the form says what is wrong', () => {
   test('each problem is listed, and Save unlocks once they are fixed', async ({ page }) => {
@@ -87,14 +87,14 @@ test.describe('duplicating a template', () => {
     await expect(page.locator('#copy-notice')).toContainText('choose a different model');
     await expect(page.locator('.schema-field-row')).toHaveCount(2);
     await expect(page.locator('[aria-label="Field name"]').nth(0)).toHaveValue('fault_description');
-    await expect(page.locator('.schema-form-label', { hasText: 'Model' }).locator('input')).toHaveValue('');
+    await expect(page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input')).toHaveValue('');
 
     // Saving under the source's own model is refused, with the reason.
-    await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(source);
+    await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(source);
     await page.click('button:has-text("Create template")');
     await expect(page.locator('.banner-crit')).toContainText('already exists');
 
-    await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(copy);
+    await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(copy);
     await page.locator('[aria-label="Field name"]').nth(1).fill('renamed_in_copy');
     await page.click('button:has-text("Create template")');
 
@@ -194,7 +194,7 @@ test.describe('editing fields and columns', () => {
   test('reorder, remove, change type and the table-column controls', async ({ page }) => {
     await openTemplates(page);
     await page.click('button:has-text("+ New template")');
-    await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(`E2E-Edit-${Date.now()}`);
+    await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(`E2E-Edit-${Date.now()}`);
 
     for (const name of ['first', 'second', 'third']) {
       await page.click('button:has-text("+ Add field")');
@@ -251,14 +251,14 @@ test.describe('when the backend is unhappy', () => {
   test('the list still works without usage counts', async ({ page }) => {
     await page.route('**/report-templates/usage', (route) => route.fulfill({ status: 500, body: 'boom' }));
     await openTemplates(page);
-    await expect(page.locator('.template-row-body').first()).toBeVisible();
+    await expect(page.getByTestId('template-row').first()).toBeVisible();
     await expect(page.locator('.template-usage').first()).toHaveText('0');
   });
 
   test('a list that cannot be loaded says so', async ({ page }) => {
     await page.route('**/report-templates/all', (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"Database is down"}' }));
     await page.goto('/');
-    await page.click('.view-tab:has-text("Templates")');
+    await page.getByTestId('tab-templates').click();
     await expect(page.locator('.banner-warn')).toContainText('Database is down');
   });
 });
