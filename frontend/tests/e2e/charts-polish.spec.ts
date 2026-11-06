@@ -168,7 +168,7 @@ test.describe('active tab is marked with an underline', () => {
   test('at 1300px', async ({ page }) => {
     await page.setViewportSize({ width: 1300, height: 800 });
     await page.goto('/#/templates');
-    const active = page.locator('.view-tab.active');
+    const active = page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]');
     await expect(active).toHaveText('Templates');
     const [width, color] = await active.evaluate((el) => {
       const cs = getComputedStyle(el);

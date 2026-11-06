@@ -87,19 +87,19 @@ function ModelForm({
       {error && <div className="banner banner-crit">{error}</div>}
 
       <div className="schema-form-row">
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           <span>
             Name <span className="required-mark" title="Required">*</span>
           </span>
           <input type="text" className="text-input" value={name} placeholder="e.g. Aurora" onChange={(e) => setName(e.target.value)} />
         </label>
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Manufacturer
           <SuggestInput className="text-input" value={manufacturer} placeholder="e.g. Cytek Biosciences" onChange={setManufacturer} options={makerNames} />
         </label>
       </div>
       <div className="schema-form-row">
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Instrument type
           <select value={typeKey} disabled={units > 0} onChange={(e) => setTypeKey(e.target.value)}>
             {types.length === 0 && <option value={typeKey}>{typeKey}</option>}
@@ -111,7 +111,7 @@ function ModelForm({
           </select>
           {units > 0 && <small className="muted">Fixed while the model has instruments.</small>}
         </label>
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Service interval (months)
           <input
             type="number"
@@ -126,7 +126,7 @@ function ModelForm({
           <small className="muted">How often preventive maintenance is due. Empty: never shown as overdue.</small>
         </label>
       </div>
-      <label className="schema-form-label">
+      <label className="schema-form-label" data-testid="form-label">
         Notes
         <textarea className="text-input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </label>
@@ -267,7 +267,7 @@ export function ModelsManager({ onChanged }: { onChanged: () => void }) {
 
       {pending?.kind === 'merge' && (
         <div className="banner banner-warn" role="alertdialog" aria-label="Merge model">
-          <label className="schema-form-label">
+          <label className="schema-form-label" data-testid="form-label">
             Merge “{pending.model.name}” into
             <select value={pending.intoId} onChange={(e) => setPending({ ...pending, intoId: e.target.value })}>
               {mergeTargets(pending.model).map((o) => (
@@ -314,7 +314,7 @@ export function ModelsManager({ onChanged }: { onChanged: () => void }) {
           {models.map((m) => {
             const targets = mergeTargets(m);
             return (
-              <div className="instrument-row model-row template-row-body" key={m.id}>
+              <div className="instrument-row model-row template-row-body" data-testid="model-row" key={m.id}>
                 <span data-label="Model">
                   <button type="button" className="link-button model-name" onClick={() => setMode({ kind: 'page', model: m })}>
                     {m.name}

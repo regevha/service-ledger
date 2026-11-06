@@ -26,7 +26,7 @@ test('an unclear report type is explained, outlined and has to be chosen; Review
   await typeRow.locator('select').selectOption('repair');
   await expect(confirm).toBeEnabled();
   await confirm.click();
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 
   const line = page.getByTestId('review-instrument-line');
   await expect(line).toContainText('you chose it');

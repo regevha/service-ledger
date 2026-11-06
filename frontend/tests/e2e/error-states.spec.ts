@@ -20,7 +20,7 @@ test('an unreachable backend surfaces a clear connection error', async ({ page }
   });
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
@@ -38,7 +38,7 @@ test('a failed classification surfaces the backend error and Try again re-attemp
   });
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
@@ -57,7 +57,7 @@ test('a failed classification surfaces the backend error and Try again re-attemp
 
 test('a file that is not a PDF or an image is refused with the reason', async ({ page }) => {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles({
     name: 'notes.txt',
     mimeType: 'text/plain',
@@ -77,12 +77,12 @@ test('an image scan is accepted, not just a PDF', async ({ page }) => {
     'base64'
   );
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles({ name: 'scan.png', mimeType: 'image/png', buffer: png });
   await page.click('button:has-text("Upload & classify")');
 
   // Past the upload step: it reaches classification (the manual pick or the
   // review screen, depending on how many instruments share the guessed model).
-  await page.waitForSelector('.field-list, .class-row', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"], .class-row', { timeout: TIMEOUT.flow });
   await expect(page.locator('[data-testid="intake-error"]')).toHaveCount(0);
 });

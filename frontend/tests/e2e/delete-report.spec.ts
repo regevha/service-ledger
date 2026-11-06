@@ -22,7 +22,7 @@ test('deleting a draft report asks for confirmation, then removes it from the li
   await page.click('button:has-text("Confirm delete")');
 
   await page.waitForSelector('.report-table, .empty-hint');
-  await expect(page.locator(`.report-row-body:has-text("${marker}")`)).toHaveCount(0);
+  await expect(page.locator(`[data-testid="report-row"]:has-text("${marker}")`)).toHaveCount(0);
   expect((await request.get(`${API_BASE}/reports/${report.id}`)).status()).toBe(404);
 });
 
@@ -38,6 +38,6 @@ test('a finalized report is deleted only after a stronger warning', async ({ pag
   await page.click('button:has-text("Confirm delete")');
 
   await page.waitForSelector('.report-table, .empty-hint');
-  await expect(page.locator(`.report-row-body:has-text("${marker}")`)).toHaveCount(0);
+  await expect(page.locator(`[data-testid="report-row"]:has-text("${marker}")`)).toHaveCount(0);
   expect((await request.get(`${API_BASE}/reports/${report.id}`)).status()).toBe(404);
 });

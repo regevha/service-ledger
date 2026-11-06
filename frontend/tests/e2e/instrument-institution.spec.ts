@@ -9,27 +9,27 @@ test('institution: set on create, shown in the list, changed and cleared on edit
   const name = `E2E-Inst-${Date.now()}`;
   const serial = `E2E-INST-SN-${Date.now()}`;
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
-  await page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input').fill(name);
-  await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill('E2E-Model');
-  await page.locator('.schema-form-label', { hasText: 'Manufacturer' }).locator('input').fill('E2E Maker');
-  await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill(serial);
-  await page.locator('.schema-form-label', { hasText: 'Institute' }).locator('input').fill('  Bar-Ilan University ');
+  await page.getByTestId('form-label').filter({ hasText: /^\s*Name/ }).locator('input').fill(name);
+  await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill('E2E-Model');
+  await page.getByTestId('form-label').filter({ hasText: 'Manufacturer' }).locator('input').fill('E2E Maker');
+  await page.getByTestId('form-label').filter({ hasText: 'Serial number' }).locator('input').fill(serial);
+  await page.getByTestId('form-label').filter({ hasText: 'Institute' }).locator('input').fill('  Bar-Ilan University ');
   await page.click('button:has-text("Create instrument")');
 
-  const row = page.locator('.instrument-row.template-row-body', { hasText: name });
+  const row = page.getByTestId('instrument-row').filter({ hasText: name });
   await expect(row.locator('.instrument-institution')).toHaveText('Bar-Ilan University');
 
   await row.locator('button:has-text("Edit")').click();
-  const input = page.locator('.schema-form-label', { hasText: 'Institute' }).locator('input');
+  const input = page.getByTestId('form-label').filter({ hasText: 'Institute' }).locator('input');
   await expect(input).toHaveValue('Bar-Ilan University');
   await input.fill('Tel Aviv University');
   await page.click('button:has-text("Save changes")');
   await expect(row.locator('.instrument-institution')).toHaveText('Tel Aviv University');
 
   await row.locator('button:has-text("Edit")').click();
-  await page.locator('.schema-form-label', { hasText: 'Institute' }).locator('input').fill('');
+  await page.getByTestId('form-label').filter({ hasText: 'Institute' }).locator('input').fill('');
   await page.click('button:has-text("Save changes")');
   await expect(row).toBeVisible();
   await expect(row.locator('.instrument-institution')).toHaveCount(0);
@@ -53,9 +53,9 @@ test('Analytics hours chart: the bar is labelled with the instrument name and sh
 
 test('a room needs an institution: the form will not save a room alone', async ({ page }) => {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
-  const field = (label: string | RegExp) => page.locator('.schema-form-label', { hasText: label }).locator('input');
+  const field = (label: string | RegExp) => page.getByTestId('form-label').filter({ hasText: label }).locator('input');
   await field(/^\s*Name/).fill(`E2E-RoomOnly-${Date.now()}`);
   await field('Model').fill(`E2E-RoomModel-${Date.now()}`);
   await field('Manufacturer').fill('E2E Maker');

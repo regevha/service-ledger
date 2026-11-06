@@ -81,7 +81,7 @@ function PlaceForm({
 
       <div className="schema-form-row">
         {!existing && (
-          <label className="schema-form-label">
+          <label className="schema-form-label" data-testid="form-label">
             Kind
             <select value={kind} onChange={(e) => setKind(e.target.value as PlaceKind)}>
               <option value="room">Room</option>
@@ -90,7 +90,7 @@ function PlaceForm({
             </select>
           </label>
         )}
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           <span>
             Name <span className="required-mark" title="Required">*</span>
           </span>
@@ -103,7 +103,7 @@ function PlaceForm({
           />
         </label>
         {kind !== 'institution' && (
-          <label className="schema-form-label">
+          <label className="schema-form-label" data-testid="form-label">
             <span>{kind === 'faculty' ? 'In institute' : 'In institute or building'}</span>
             <select value={effectiveParent} onChange={(e) => setParentId(e.target.value)} aria-label="Parent place">
               {parents.length === 0 && <option value="">No {kind === 'faculty' ? 'institute' : 'institute or building'} yet</option>}
@@ -236,7 +236,7 @@ export function PlacesManager({ onChanged }: { onChanged: () => void }) {
 
       {pending?.kind === 'merge' && (
         <div className="banner banner-warn" role="alertdialog" aria-label="Merge place">
-          <label className="schema-form-label">
+          <label className="schema-form-label" data-testid="form-label">
             Merge “{pending.place.name}” into
             <select value={pending.intoId} onChange={(e) => setPending({ ...pending, intoId: e.target.value })}>
               {mergeTargets(pending.place).map((o) => (
@@ -288,7 +288,7 @@ export function PlacesManager({ onChanged }: { onChanged: () => void }) {
                   ? `${plural(p.unit_count, 'instrument')} in it`
                   : null;
             return (
-              <div className="instrument-row place-row template-row-body" key={p.id}>
+              <div className="instrument-row place-row template-row-body" data-testid="place-row" key={p.id}>
                 <span data-label="Place" className={`place-name place-depth-${depth(p)}`}>
                   <span className="place-name-text">{p.name}</span>
                   {p.similar_to.length > 0 && (

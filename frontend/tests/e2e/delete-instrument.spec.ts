@@ -30,7 +30,7 @@ async function reportOn(request: import('@playwright/test').APIRequestContext, i
 
 async function openInstruments(page: import('@playwright/test').Page) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await expect(page.locator('.section-title')).toContainText('Instruments');
 }
 
@@ -38,7 +38,7 @@ test('an instrument with no reports is deleted after a confirm step', async ({ p
   const name = `E2E-Del-${Date.now()}`;
   const { id } = await createInstrument(request, name);
   await openInstruments(page);
-  const row = page.locator('.instrument-row.template-row-body', { hasText: name });
+  const row = page.getByTestId('instrument-row').filter({ hasText: name });
 
   await row.locator('button:has-text("Delete")').click();
   const dialog = page.getByRole('alertdialog');
@@ -56,7 +56,7 @@ test('an instrument with no reports is deleted after a confirm step', async ({ p
   expect((await request.get(`${API_BASE}/instruments/${id}`)).status()).toBe(404);
 
   // Gone from the Reports tab's instrument filter too (same shared list).
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await expect(page.getByLabel('Instrument', { exact: true }).locator('option', { hasText: name })).toHaveCount(0);
 });
 
@@ -68,7 +68,7 @@ test('deleting an instrument also deletes all of its reports, and says how many'
   expect((await request.patch(`${API_BASE}/instruments/${id}`, { data: { status: 'retired' } })).status()).toBe(200);
 
   await openInstruments(page);
-  const row = page.locator('.instrument-row.template-row-body', { hasText: name });
+  const row = page.getByTestId('instrument-row').filter({ hasText: name });
   await row.locator('button:has-text("Delete")').click();
   const dialog = page.getByRole('alertdialog');
   await expect(dialog).toContainText('also permanently deletes its 2 reports');

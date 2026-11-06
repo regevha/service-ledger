@@ -14,7 +14,7 @@ import { API_BASE, waitForExtraction } from './helpers/api';
 
 async function uploadAndClassify(page: import('@playwright/test').Page, name: string, contents: string) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Duplicate');
   await page.locator('input[type="file"]').setInputFiles({
     name,
@@ -68,7 +68,7 @@ test('the same file as a report that was already read is refused and opens the e
 
   // Loading the same bytes again through the UI is turned away…
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Second Try');
   await page.locator('input[type="file"]').setInputFiles({
     name: `again_${marker}.pdf`,
@@ -84,8 +84,8 @@ test('the same file as a report that was already read is refused and opens the e
 
   // The button opens the report that already holds the file.
   await page.click('button:has-text("Open existing report")');
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
-  await expect(page.locator('.view-tab.active')).toHaveText('Reports');
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+  await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Reports');
 });
 
 test('a re-scan with a different file but the same work order is flagged', async ({ page }) => {

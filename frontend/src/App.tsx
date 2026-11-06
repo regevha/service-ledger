@@ -223,31 +223,31 @@ export default function App() {
           <span className="mark" /> ServiceLedger
         </div>
         <nav className="view-tabs" aria-label="Main">
-          <button className={`view-tab ${view === 'new' ? 'active' : ''}`} onClick={() => selectView('new')}>
+          <button className={`view-tab ${view === 'new' ? 'active' : ''}`} data-testid="tab-new" aria-current={view === 'new' ? 'page' : undefined} onClick={() => selectView('new')}>
             <TabIcon name="new" />
             <span className="tab-label">New report</span>
           </button>
-          <button className={`view-tab ${view === 'reports' ? 'active' : ''}`} onClick={() => selectView('reports')}>
+          <button className={`view-tab ${view === 'reports' ? 'active' : ''}`} data-testid="tab-reports" aria-current={view === 'reports' ? 'page' : undefined} onClick={() => selectView('reports')}>
             <TabIcon name="reports" />
             <span className="tab-label">Reports</span>
           </button>
-          <button className={`view-tab ${view === 'analytics' ? 'active' : ''}`} onClick={() => selectView('analytics')}>
+          <button className={`view-tab ${view === 'analytics' ? 'active' : ''}`} data-testid="tab-analytics" aria-current={view === 'analytics' ? 'page' : undefined} onClick={() => selectView('analytics')}>
             <TabIcon name="analytics" />
             <span className="tab-label">Analytics</span>
           </button>
-          <button className={`view-tab tab-wide-only ${view === 'templates' ? 'active' : ''}`} onClick={() => selectView('templates')}>
+          <button className={`view-tab tab-wide-only ${view === 'templates' ? 'active' : ''}`} data-testid="tab-templates" aria-current={view === 'templates' ? 'page' : undefined} onClick={() => selectView('templates')}>
             <TabIcon name="templates" />
             <span className="tab-label">Templates</span>
           </button>
-          <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} onClick={() => selectView('instruments')}>
+          <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} data-testid="tab-instruments" aria-current={view === 'instruments' ? 'page' : undefined} onClick={() => selectView('instruments')}>
             <TabIcon name="instruments" />
             <span className="tab-label">Instruments</span>
           </button>
-          <button className={`view-tab tab-phone-only ${view === 'more' ? 'active' : ''} ${view === 'templates' || view === 'admin' ? 'within' : ''}`} onClick={() => selectView('more')}>
+          <button className={`view-tab tab-phone-only ${view === 'more' ? 'active' : ''} ${view === 'templates' || view === 'admin' ? 'within' : ''}`} data-testid="tab-more" aria-current={view === 'more' ? 'page' : undefined} onClick={() => selectView('more')}>
             <TabIcon name="more" />
             <span className="tab-label">More</span>
           </button>
-          <button className={`view-tab tab-wide-only tab-end ${view === 'admin' ? 'active' : ''}`} onClick={() => selectView('admin')}>
+          <button className={`view-tab tab-wide-only tab-end ${view === 'admin' ? 'active' : ''}`} data-testid="tab-admin" aria-current={view === 'admin' ? 'page' : undefined} onClick={() => selectView('admin')}>
             <span className="tab-label">Admin</span>
           </button>
         </nav>

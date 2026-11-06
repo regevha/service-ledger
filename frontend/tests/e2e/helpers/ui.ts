@@ -6,7 +6,7 @@ import { TIMEOUT } from '../timeouts';
 /** The Reports tab, once its table (or its empty-state hint) is showing. */
 export async function openReports(page: Page): Promise<void> {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await page.waitForSelector('.report-table, .empty-hint');
   await showFlatList(page);
 }
@@ -27,19 +27,19 @@ export async function showFlatList(page: Page): Promise<void> {
 /** A report from the Reports list, found by text in its row (a technician name used as a marker). */
 export async function openReportFromList(page: Page, marker: string): Promise<void> {
   await openReports(page);
-  await page.click(`.report-row-body:has-text("${marker}")`);
+  await page.click(`[data-testid="report-row"]:has-text("${marker}")`);
 }
 
 /** The same, for a report that opens on the review screen: waits until its fields are showing. */
 export async function openReviewFromList(page: Page, marker: string): Promise<void> {
   await openReportFromList(page, marker);
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
 }
 
 /** The Analytics tab, once its filter bar is showing. */
 export async function openAnalytics(page: Page): Promise<void> {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Analytics")');
+  await page.getByTestId('tab-analytics').click();
   await expect(page.getByTestId('analytics-filters')).toBeVisible({ timeout: TIMEOUT.ui });
 }
 
@@ -51,4 +51,10 @@ export async function confirmClassification(page: Page, reportType: string = 're
   const typeSelect = page.locator('.class-row select').nth(1);
   if ((await typeSelect.inputValue()) === '') await typeSelect.selectOption(reportType);
   await page.click('button:has-text("Confirm & continue")');
+}
+
+/** The test id of a main-navigation tab, from its label ("New report" -> tab-new). */
+export function tabTestId(label: string): string {
+  const ids: Record<string, string> = { 'New report': 'tab-new', Reports: 'tab-reports', Analytics: 'tab-analytics', Templates: 'tab-templates', Instruments: 'tab-instruments', Admin: 'tab-admin', More: 'tab-more' };
+  return ids[label] ?? `tab-${label.toLowerCase()}`;
 }
