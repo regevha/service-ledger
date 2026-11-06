@@ -59,4 +59,45 @@ export function stepOf(phase: Phase): number {
   }
 }
 
+/** Everything that can move the wizard from one phase to another. */
+export type PhaseAction =
+  | { type: 'reset' }
+  | { type: 'working'; label: string }
+  | { type: 'show'; name: 'review' | 'review-translation' | 'confirm-classification' | 'done' }
+  | { type: 'already-on-file'; existingReportId: string }
+  | {
+      type: 'fail';
+      message: string;
+      /** Set when `message` was replaced by a plain sentence; the original goes under "Details for support". */
+      detail?: string;
+      retry: () => void;
+      retryLabel?: string;
+      action?: { label: string; run: () => void };
+    };
+
+/** The wizard's phase after an action. Pure: the step a failure is shown on comes from the previous phase. */
+export function phaseReducer(prev: Phase, action: PhaseAction): Phase {
+  switch (action.type) {
+    case 'reset':
+      return { name: 'intake' };
+    case 'working':
+      return { name: 'working', label: action.label };
+    case 'show':
+      return { name: action.name };
+    case 'already-on-file':
+      return { name: 'already-on-file', existingReportId: action.existingReportId };
+    case 'fail':
+      return {
+        name: 'error',
+        message: action.message,
+        detail: action.detail,
+        retry: action.retry,
+        retryLabel: action.retryLabel,
+        action: action.action,
+        // The step that was running stays the one the step bar shows, and names what failed.
+        step: prev.name === 'error' ? prev.step : stepOf(prev),
+      };
+  }
+}
+
 export const STEP_FAILED = ['The upload failed', 'Reading the document failed', 'Saving the report failed'];
