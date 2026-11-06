@@ -630,6 +630,16 @@ textarea {
   font-weight: 600;
   letter-spacing: -0.02em;
 }
+.intake-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+}
+.intake-head-cta {
+  flex: none;
+  white-space: nowrap;
+}
 .intake-subheading {
   margin: var(--space-1) 0 var(--space-5, 20px);
   color: var(--text-muted);
