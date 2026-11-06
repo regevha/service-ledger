@@ -16,6 +16,7 @@ import { ConfirmClassificationScreen } from './intake/ConfirmClassificationScree
 import { DoneScreen } from './intake/DoneScreen';
 import { IntakeScreen } from './intake/IntakeScreen';
 import { StepBar } from './intake/StepBar';
+import { useReviewState } from './intake/useReviewState';
 import { useIntakeJobs } from './intake/useIntakeJobs';
 import { usePromptReview } from './intake/usePromptReview';
 import { WorkingPanel } from './intake/WorkingPanel';
@@ -93,22 +94,11 @@ export function IntakeFlow({
   const [files, setFiles] = useState<File[]>([]);
   const file = files[0] ?? null;
 
-  const [report, setReport] = useState<Report | null>(null);
-  const [classification, setClassification] = useState<ClassificationResult | null>(null);
-  const [attachmentId, setAttachmentId] = useState<string | null>(null);
-  const [template, setTemplate] = useState<ReportTemplate | null>(null);
-  const [fieldConfidences, setFieldConfidences] = useState<Record<string, number>>({});
-  // Measured in the browser, from submitting the extraction to the job finishing; shown on Review & finalize only.
-  const [extractionSeconds, setExtractionSeconds] = useState<number | null>(null);
-  const [fields, setFields] = useState<Record<string, unknown>>({});
-  const [reportDate, setReportDate] = useState<string | null>(null);
-  // What the form held when it was last extracted or saved; the form differs from it exactly when
-  // there are unsaved edits (see reviewSnapshot).
-  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
-  // A save or finalize request in flight, and why the last one failed. Both live on the review screen
-  // itself, so a failure keeps the form, the scan view and the "checked" marks where they were.
-  const [saving, setSaving] = useState<'save' | 'finalize' | null>(null);
-  const [saveError, setSaveError] = useState<{ message: string; finalize: boolean } | null>(null);
+  const {
+    report, setReport, classification, setClassification, attachmentId, setAttachmentId, template, setTemplate,
+    fieldConfidences, extractionSeconds, fields, setFields, reportDate, setReportDate, savedSnapshot, setSavedSnapshot,
+    saving, setSaving, saveError, setSaveError, resetReview, loadExtraction,
+  } = useReviewState();
   const dirty = phase.name === 'review' && savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
   useUnsavedChangesGuard(dirty);
   const confirmLeave = useConfirmLeave();
@@ -163,18 +153,8 @@ export function IntakeFlow({
     submittedJobs.current.clear();
     setTechnicianName('');
     setFiles([]);
-    setReport(null);
-    setClassification(null);
+    resetReview();
     setTranslation(null);
-    setAttachmentId(null);
-    setTemplate(null);
-    setFieldConfidences({});
-    setExtractionSeconds(null);
-    setFields({});
-    setReportDate(null);
-    setSavedSnapshot(null);
-    setSaving(null);
-    setSaveError(null);
     setDuplicates({});
     waitingRef.current = null;
     setGenericNoticeDismissed(false);
@@ -291,13 +271,7 @@ export function IntakeFlow({
         return;
       }
       const refreshed = await getReport(reportId);
-      setReport(refreshed);
-      setFieldConfidences(job.field_confidences ?? {});
-      setExtractionSeconds(elapsedSeconds);
-      setFields(refreshed.extracted_fields ?? {});
-      setReportDate(refreshed.report_date);
-      setSavedSnapshot(reviewSnapshot(refreshed.extracted_fields ?? {}, refreshed.report_date));
-      setSaveError(null);
+      loadExtraction(refreshed, job.field_confidences ?? {}, elapsedSeconds);
       setPhase({ name: 'review' });
     });
   }
