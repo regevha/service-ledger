@@ -13,8 +13,13 @@ then still lets a person draw a box and type the name.
 """
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from pathlib import Path
+
+# pdfium is not thread-safe: two requests using it at once (the page image and the page's words are
+# fetched together) can corrupt its heap and kill the server. Every pdfium use in a request holds this.
+PDFIUM_LOCK = threading.RLock()
 
 # A gap wider than this many character heights starts a new word, so two
 # columns that sit on one line ("Laser delay      Range") are not one word.
@@ -43,6 +48,11 @@ def page_words(path: str | Path, page: int) -> tuple[list[WordBox], bool]:
     HTTP errors."""
     import pypdfium2 as pdfium
 
+    with PDFIUM_LOCK:
+        return _page_words_locked(pdfium, path, page)
+
+
+def _page_words_locked(pdfium, path: str | Path, page: int) -> tuple[list[WordBox], bool]:
     pdf = pdfium.PdfDocument(str(path))
     try:
         if page < 1 or page > len(pdf):

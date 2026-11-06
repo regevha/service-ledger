@@ -17,7 +17,7 @@ from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
 from app.services.duplicates import find_duplicate_report_ids, find_read_copy, normalize_work_order
-from app.services.page_text import page_words
+from app.services.page_text import PDFIUM_LOCK, page_words
 from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
 from app.services.text_reader import extract_text, read_work_order
 from app.services.translation import translation_gate
@@ -207,11 +207,12 @@ def get_attachment_pages(attachment_id: uuid.UUID, db: Session = Depends(get_db)
         import pypdfium2 as pdfium
 
         try:
-            pdf = pdfium.PdfDocument(str(path))
-            try:
-                return {"page_count": len(pdf)}
-            finally:
-                pdf.close()
+            with PDFIUM_LOCK:
+                pdf = pdfium.PdfDocument(str(path))
+                try:
+                    return {"page_count": len(pdf)}
+                finally:
+                    pdf.close()
         except pdfium.PdfiumError:
             raise HTTPException(422, "The stored PDF could not be opened")
     return {"page_count": 1}
@@ -235,18 +236,19 @@ def get_attachment_page_image(
 
     import pypdfium2 as pdfium
 
-    try:
-        pdf = pdfium.PdfDocument(str(path))
-    except pdfium.PdfiumError:
-        raise HTTPException(422, "The stored PDF could not be opened")
-    try:
-        if page < 1 or page > len(pdf):
-            raise HTTPException(404, "Page not found")
-        pdf_page = pdf[page - 1]
-        scale = width / pdf_page.get_width()
-        image = pdf_page.render(scale=scale).to_pil().convert("RGB")
-    finally:
-        pdf.close()
+    with PDFIUM_LOCK:
+        try:
+            pdf = pdfium.PdfDocument(str(path))
+        except pdfium.PdfiumError:
+            raise HTTPException(422, "The stored PDF could not be opened")
+        try:
+            if page < 1 or page > len(pdf):
+                raise HTTPException(404, "Page not found")
+            pdf_page = pdf[page - 1]
+            scale = width / pdf_page.get_width()
+            image = pdf_page.render(scale=scale).to_pil().convert("RGB")
+        finally:
+            pdf.close()
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return Response(buffer.getvalue(), media_type="image/png", headers=headers)
