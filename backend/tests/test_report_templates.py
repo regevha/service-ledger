@@ -1,6 +1,6 @@
 """Coverage for the template-management endpoints in
 app/routers/report_templates.py (GET .../all, GET .../{id}, POST, PATCH,
-DELETE) and the validation in app/schemas.py's TemplateFieldIn/
+DELETE) and the validation in app/schemas/'s TemplateFieldIn/
 TemplateCreate/TemplateUpdate — none of this existed before the structured
 field editor (the frontend's Templates tab): the only prior coverage was
 the single resolve_template()-backed GET /report-templates endpoint,
