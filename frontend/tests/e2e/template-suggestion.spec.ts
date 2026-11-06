@@ -36,13 +36,13 @@ async function createTemplate(request: APIRequestContext, data: Record<string, u
 // manual pick, and stops on the review screen (the generic repair template).
 async function readSampleAs(page: Page, instrumentId: string) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(SAMPLE));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
   await page.locator('.class-row select').first().selectOption(instrumentId);
   await confirmClassification(page);
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 }
 
 test('a report on the generic template offers a model-specific one, starts from the closest, and is read again', async ({
@@ -69,7 +69,7 @@ test('a report on the generic template offers a model-specific one, starts from 
     // The Templates tab, prefilled for this report and started from the
     // closest existing template (the sibling in the same family).
     await expect(page.locator('#template-request-notice')).toContainText(`Malfunction / repair report for ${model} is waiting`);
-    await expect(page.locator('.schema-form-label', { hasText: 'Model' }).locator('input')).toHaveValue(model);
+    await expect(page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input')).toHaveValue(model);
     await expect(page.locator('#template-start-from option:checked')).toContainText(`${family} One`);
     await expect(page.locator('#template-start-from option:checked')).toContainText(`${family} family`);
     await expect(page.locator('.schema-field-row')).toHaveCount(2);
@@ -123,9 +123,9 @@ test('"Not now" hides the notice, and cancelling the request returns to the repo
 
     // Straight back to the waiting report, still on the generic template.
     await expect(page.locator('#generic-template-notice')).toBeVisible();
-    await expect(page.locator('.field-list')).toBeVisible();
+    await expect(page.getByTestId('field-list')).toBeVisible();
     // The Templates tab no longer shows the request.
-    await page.click('.view-tab:has-text("Templates")');
+    await page.getByTestId('tab-templates').click();
     await expect(page.locator('#template-request-notice')).toHaveCount(0);
     await expect(page.locator('.template-table')).toBeVisible();
   } finally {
@@ -142,7 +142,7 @@ test('a saved template for another model leaves the report as it was and says so
   try {
     await readSampleAs(page, instrument.id);
     await page.locator('#generic-template-notice button:has-text("Create a")').click();
-    await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(elsewhere);
+    await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(elsewhere);
     await page.click('button:has-text("+ Add field")');
     await page.locator('[aria-label="Field name"]').last().fill('elsewhere_note');
     await page.click('button:has-text("Create template")');
@@ -174,7 +174,7 @@ test('a type with no template at all offers to create one and then reads the rep
   });
   try {
     await page.goto('/');
-    await page.click('.view-tab:has-text("New report")');
+    await page.getByTestId('tab-new').click();
     await page.locator('input[type="file"]').setInputFiles({
       name: `service_${serial}.pdf`,
       mimeType: 'application/pdf',
@@ -208,13 +208,13 @@ test('a type with no template at all offers to create one and then reads the rep
 
 test('"+ New template" lists the closest templates for the typed model and asks before replacing edited fields', async ({ page }) => {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
+  await page.getByTestId('tab-templates').click();
   await page.click('button:has-text("+ New template")');
 
   // Blank until one is picked; the seeded CytoFLEX S repair template is the
   // closest to another CytoFLEX.
   await expect(page.locator('#template-start-from')).toHaveValue('');
-  await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill('CytoFLEX LX');
+  await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill('CytoFLEX LX');
   const closest = page.locator('#template-start-from option', { hasText: 'CytoFLEX family' });
   await expect(closest).toHaveCount(1, { timeout: 10_000 });
   await expect(closest).toContainText('CytoFLEX S');

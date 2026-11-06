@@ -12,7 +12,7 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 
 async function startIntake(page: import('@playwright/test').Page) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 }
@@ -33,7 +33,7 @@ test('progress is described in plain words, in order', async ({ page }) => {
     await route.continue();
   });
   await startIntake(page);
-  await expect(page.locator('.field-list, [data-testid="class-row"]').first()).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.locator('[data-testid="field-list"], [data-testid="class-row"]').first()).toBeVisible({ timeout: TIMEOUT.flow });
   clearInterval(watch);
 
   const labels = [...seen].join(' | ');

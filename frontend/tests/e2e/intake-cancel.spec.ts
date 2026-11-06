@@ -33,7 +33,7 @@ test('Cancel while the document is being read cancels the job, removes the draft
   });
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', marker);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
@@ -57,7 +57,7 @@ test('Cancel while the document is being read cancels the job, removes the draft
 test('Cancel right after pressing Upload leaves no draft either', async ({ page, request }) => {
   const marker = `E2E-CancelEarly-${Date.now()}`;
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', marker);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');

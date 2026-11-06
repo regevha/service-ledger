@@ -97,11 +97,11 @@ test.describe('on a phone', { tag: '@phone' }, () => {
   test('a finalized report reads as text: no calendar button and no extraction notes, until Edit', async ({ page, request }) => {
     const { reportId } = await seed(request);
     await page.goto(`/#/reports/${reportId}`);
-    await expect(page.locator('.field-list.read-only')).toBeVisible({ timeout: TIMEOUT.ui });
-    await expect(page.locator('.field-list .date-input-pick')).toBeHidden();
-    await expect(page.locator('.field-list .field-note').first()).toBeHidden();
+    await expect(page.locator('[data-testid="field-list"][data-read-only="true"]')).toBeVisible({ timeout: TIMEOUT.ui });
+    await expect(page.locator('[data-testid="field-list"] .date-input-pick')).toBeHidden();
+    await expect(page.locator('[data-testid="field-list"] .field-note').first()).toBeHidden();
     await startEditing(page);
-    await expect(page.locator('.field-list .date-input-pick')).toBeVisible();
-    await expect(page.locator('.field-list .field-note').first()).toBeVisible();
+    await expect(page.locator('[data-testid="field-list"] .date-input-pick')).toBeVisible();
+    await expect(page.locator('[data-testid="field-list"] .field-note').first()).toBeVisible();
   });
 });

@@ -34,7 +34,7 @@ async function scanDark(page: Page, screen: string) {
 
 test('dark: intake screen', async ({ page }) => {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await expect(page.getByTestId('intake-dropzone')).toBeVisible();
   await scanDark(page, 'intake');
 });
@@ -60,7 +60,7 @@ test('dark: analytics', async ({ page, request }) => {
 });
 
 for (const [part, ready] of [
-  ['Instruments', '.instrument-row.template-row-body'],
+  ['Instruments', '[data-testid="instrument-row"]'],
   ['Models', '#models-section'],
   ['Makers', '#makers-section'],
   ['Places', '#places-section'],
@@ -68,7 +68,7 @@ for (const [part, ready] of [
   test(`dark: instruments tab: ${part.toLowerCase()}`, async ({ page, request }) => {
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-A11yDark-${Date.now()}`, finalize: true });
     await page.goto('/');
-    await page.click('.view-tab:has-text("Instruments")');
+    await page.getByTestId('tab-instruments').click();
     if (part !== 'Instruments') await page.click(`.sub-switch button:has-text("${part}")`);
     await expect(page.locator(ready).first()).toBeVisible();
     await scanDark(page, `instruments-${part.toLowerCase()}`);
@@ -77,8 +77,8 @@ for (const [part, ready] of [
 
 test('dark: templates', async ({ page }) => {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
-  await expect(page.locator('.template-row-body').first()).toBeVisible();
+  await page.getByTestId('tab-templates').click();
+  await expect(page.getByTestId('template-row').first()).toBeVisible();
   await scanDark(page, 'templates');
 });
 
@@ -89,7 +89,7 @@ for (const [section, link, ready] of [
 ] as const) {
   test(`dark: admin: ${section}`, async ({ page }) => {
     await page.goto('/');
-    await page.click('.view-tab:has-text("Admin")');
+    await page.getByTestId('tab-admin').click();
     await page.click(`.admin-nav-item:has-text("${link}")`);
     await expect(page.locator(ready).first()).toBeVisible();
     await scanDark(page, `admin-${section.replace(' ', '-')}`);

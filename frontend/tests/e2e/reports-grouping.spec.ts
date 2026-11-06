@@ -19,15 +19,15 @@ test('reports are grouped by instrument, and Group: None shows the flat table', 
   // The grouped view has no column headers; sorting is the Sort by menu (see the sort-in-groups spec).
   await expect(page.locator('.report-row-head')).toHaveCount(0);
 
-  const groupA = page.getByTestId('report-group').filter({ has: page.locator('.report-row-body', { hasText: a }) });
+  const groupA = page.getByTestId('report-group').filter({ has: page.getByTestId('report-row').filter({ hasText: a }) });
   await expect(groupA).toHaveCount(1);
   await expect(groupA.locator('.report-group-head strong')).toHaveText('LSRFortessa');
-  await expect(groupA.locator('.report-row-body', { hasText: b })).toHaveCount(0);
+  await expect(groupA.getByTestId('report-row').filter({ hasText: b })).toHaveCount(0);
   await expect(groupA.getByRole('button', { name: /Instrument page/ })).toBeVisible();
 
   // A row still opens its report.
-  await groupA.locator('.report-row-body', { hasText: a }).click();
-  await expect(page.locator('.field-list, .back-link').first()).toBeVisible();
+  await groupA.getByTestId('report-row').filter({ hasText: a }).click();
+  await expect(page.locator('[data-testid="field-list"], .back-link').first()).toBeVisible();
   await page.goBack();
 
   // None: one flat table with sortable headers; the choice is remembered.
@@ -61,26 +61,26 @@ test('Group: Model puts the reports of every unit of one model in one card, and 
   await expect(page.getByTestId('group-select')).toHaveValue('instrument');
 
   // By instrument the two units are two cards.
-  const byUnit = page.getByTestId('report-group').filter({ has: page.locator('.report-row-body', { hasText: tags[0] }) });
+  const byUnit = page.getByTestId('report-group').filter({ has: page.getByTestId('report-row').filter({ hasText: tags[0] }) });
   await expect(byUnit).toHaveCount(1);
-  await expect(byUnit.locator('.report-row-body', { hasText: tags[1] })).toHaveCount(0);
+  await expect(byUnit.getByTestId('report-row').filter({ hasText: tags[1] })).toHaveCount(0);
 
   // By model they are one card: the model as its title, how many units, the maker, both reports, and no instrument page link.
   await page.getByTestId('group-select').selectOption('model');
-  const card = page.getByTestId('report-group').filter({ has: page.locator('.report-row-body', { hasText: tags[0] }) });
+  const card = page.getByTestId('report-group').filter({ has: page.getByTestId('report-row').filter({ hasText: tags[0] }) });
   await expect(card).toHaveCount(1);
-  await expect(card.locator('.report-row-body', { hasText: tags[1] })).toHaveCount(1);
+  await expect(card.getByTestId('report-row').filter({ hasText: tags[1] })).toHaveCount(1);
   await expect(card.locator('.report-group-head strong')).toHaveText(model);
   await expect(card.getByTestId('group-units')).toHaveText('2 instruments');
   await expect(card.locator('.report-group-count')).toHaveText('2 reports');
   await expect(card.locator('.report-group-head')).toContainText('E2E Maker');
   await expect(card.getByRole('button', { name: /Instrument page/ })).toHaveCount(0);
   // Each row still says which unit it is.
-  await expect(card.locator('.report-row-body', { hasText: tags[1] })).toContainText(units[1].serial);
+  await expect(card.getByTestId('report-row').filter({ hasText: tags[1] })).toContainText(units[1].serial);
 
   // A row still opens its report.
-  await card.locator('.report-row-body', { hasText: tags[0] }).click();
-  await expect(page.locator('.field-list, .back-link').first()).toBeVisible();
+  await card.getByTestId('report-row').filter({ hasText: tags[0] }).click();
+  await expect(page.locator('[data-testid="field-list"], .back-link').first()).toBeVisible();
   await page.goBack();
 
   // Remembered, like the other choices.
@@ -104,7 +104,7 @@ test('Group: Model for a single unit says "1 instrument", and the card fits a ph
   await page.setViewportSize({ width: 390, height: 800 });
   await page.goto('/#/reports');
   await page.getByTestId('group-select').selectOption('model');
-  const card = page.getByTestId('report-group').filter({ has: page.locator('.report-row-body', { hasText: tag }) });
+  const card = page.getByTestId('report-group').filter({ has: page.getByTestId('report-row').filter({ hasText: tag }) });
   await expect(card).toHaveCount(1);
   await expect(card.getByTestId('group-units')).toHaveText('1 instrument');
   await expect(card.locator('.report-group-count')).toHaveText('1 report');
@@ -134,9 +134,9 @@ for (const grouping of ['model', 'instrument'] as const) {
     await page.setViewportSize({ width: 1300, height: 900 });
     await page.goto('/#/reports');
     await page.getByTestId('group-select').selectOption(grouping);
-    const card = page.getByTestId('report-group').filter({ has: page.locator('.report-row-body', { hasText: names[0] }) });
+    const card = page.getByTestId('report-group').filter({ has: page.getByTestId('report-row').filter({ hasText: names[0] }) });
     await expect(card).toHaveCount(1);
-    const managers = () => card.locator('.report-row-body [data-label="Lab manager"]').allTextContents();
+    const managers = () => card.locator('[data-testid="report-row"] [data-label="Lab manager"]').allTextContents();
 
     await page.getByTestId('sort-select').selectOption('lab_manager:asc');
     await expect(page.getByTestId('report-groups'), 'still grouped after sorting').toBeVisible();

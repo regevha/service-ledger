@@ -16,7 +16,7 @@ const activeStep = (page: import('@playwright/test').Page) => page.locator('.ste
 
 test('the name box has a label, and Shift+Tab from it reaches the file picker', async ({ page }) => {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   const name = page.getByLabel('Your name (optional)');
   await name.focus();
   await page.keyboard.press('Shift+Tab');
@@ -39,7 +39,7 @@ test('the step bar counts the upload as step 1 until it is finished', async ({ p
     await route.continue();
   });
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
@@ -56,7 +56,7 @@ test('when reading the document fails, the step bar stays on Classify and the me
     route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ detail: 'The reading service is down.' }) })
   );
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
@@ -78,7 +78,7 @@ test('a refused file offers another file, not the same retry, and removes the em
       : route.continue()
   );
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.getByLabel('Your name (optional)').fill(marker);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');

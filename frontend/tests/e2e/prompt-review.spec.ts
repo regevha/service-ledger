@@ -66,7 +66,7 @@ async function parkFirstJob(page: Page) {
 
 async function startUpload(page: Page) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 }
@@ -112,7 +112,7 @@ test('Send approves the job once and the flow goes on', async ({ page }) => {
 
   await expect(dialog(page)).toHaveCount(0);
   // The job goes on (a real stub job, so it finishes) and the intake carries on to the next screen.
-  await page.waitForSelector('.field-list, [data-testid="class-row"], [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"], [data-testid="class-row"], [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
   await expect(page.getByTestId('intake-error')).toHaveCount(0);
   expect(calls).toEqual(['approve']);
   expect(parkedJob()).toBeTruthy();

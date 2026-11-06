@@ -78,8 +78,8 @@ test('a saved report with the same work order on the same instrument shows a dup
   await page.click('button:has-text("Delete report")');
   await page.click('button:has-text("Confirm delete")');
   await page.waitForSelector('.report-table, .empty-hint');
-  await page.click(`.report-row-body:has-text("${second}")`);
-  await expect(page.locator('.field-list, .empty-hint').first()).toBeVisible({ timeout: TIMEOUT.ui });
+  await page.click(`[data-testid="report-row"]:has-text("${second}")`);
+  await expect(page.locator('[data-testid="field-list"], .empty-hint').first()).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('#saved-duplicate-notice')).toHaveCount(0);
 });
 
@@ -99,6 +99,6 @@ test('the same work order on a different instrument shows no banner', async ({ p
 
   await openReportFromList(page, technician);
 
-  await expect(page.locator('.field-list, .empty-hint').first()).toBeVisible({ timeout: TIMEOUT.ui });
+  await expect(page.locator('[data-testid="field-list"], .empty-hint').first()).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('#saved-duplicate-notice')).toHaveCount(0);
 });

@@ -43,7 +43,7 @@ test('search finds finalized reports with an excerpt, skips drafts, and highligh
   await openReports(page);
   await page.fill('input[aria-label="Search reports"]', word);
 
-  const rows = page.locator('.report-row-body');
+  const rows = page.getByTestId('report-row');
   await expect(rows).toHaveCount(1);
   await expect(page.locator('[data-testid="result-count"]')).toContainText('1 finalized report match');
   const excerpt = page.locator('[data-testid="excerpt"]');
@@ -61,7 +61,7 @@ test('search finds finalized reports with an excerpt, skips drafts, and highligh
   // Back keeps the search.
   await page.click('button:has-text("← Back to reports")');
   await expect(page.locator('input[aria-label="Search reports"]')).toHaveValue(word);
-  await expect(page.locator('.report-row-body')).toHaveCount(1);
+  await expect(page.getByTestId('report-row')).toHaveCount(1);
   expect(hitId).toBeTruthy();
 
   // The lab manager's name is not searched.
@@ -83,13 +83,13 @@ test('search says it covers finalized reports only when the status filter is som
 
   await openReports(page);
   await page.fill('input[aria-label="Search reports"]', word);
-  await expect(page.locator('.report-row-body')).toHaveCount(1);
+  await expect(page.getByTestId('report-row')).toHaveCount(1);
 
   await page.getByLabel('Status', { exact: true }).selectOption('draft');
   await expect(page.locator('[data-testid="empty-hint"]')).toContainText('Search covers finalized reports only');
 
   await page.getByLabel('Status', { exact: true }).selectOption('finalized');
-  await expect(page.locator('.report-row-body')).toHaveCount(1);
+  await expect(page.getByTestId('report-row')).toHaveCount(1);
 
   // Another filter that excludes it gives the plain no-match message.
   await page.getByLabel('Report type', { exact: true }).selectOption('installation_upgrade');
@@ -109,10 +109,10 @@ test('a one-character search is not sent and shows a hint; several words must al
   await expect(page.locator('[data-testid="result-count"]')).not.toContainText('match');
 
   await page.fill('input[aria-label="Search reports"]', a);
-  await expect(page.locator('.report-row-body')).toHaveCount(2);
+  await expect(page.getByTestId('report-row')).toHaveCount(2);
   await page.fill('input[aria-label="Search reports"]', `${a} ${b}`);
-  await expect(page.locator('.report-row-body')).toHaveCount(1);
+  await expect(page.getByTestId('report-row')).toHaveCount(1);
   await page.fill('input[aria-label="Search reports"]', `${a} -${b}`);
-  await expect(page.locator('.report-row-body')).toHaveCount(1);
+  await expect(page.getByTestId('report-row')).toHaveCount(1);
   await expect(page.locator('[data-testid="excerpt"]')).toContainText(`only ${a}`);
 });

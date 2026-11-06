@@ -27,7 +27,7 @@ test('Try again after a timeout waits for the same job instead of submitting ano
   });
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
   await expect(page.getByTestId('intake-working')).toBeVisible({ timeout: TIMEOUT.ui });
@@ -42,7 +42,7 @@ test('Try again after a timeout waits for the same job instead of submitting ano
   // The worker answers now. Try again picks the same job up, and the flow goes on, one step at a time.
   await page.unroute('**/extraction-jobs/*');
   await page.getByRole('button', { name: 'Try again' }).click();
-  await expect(page.locator('.field-list, [data-testid="class-row"]').first()).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.locator('[data-testid="field-list"], [data-testid="class-row"]').first()).toBeVisible({ timeout: TIMEOUT.flow });
   expect(submits.filter((s) => s === 'translate')).toHaveLength(1);
   expect(submits.filter((s) => s === 'classify')).toHaveLength(1);
 });

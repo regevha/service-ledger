@@ -32,7 +32,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('Instruments: Delete is in a ⋯ menu, and still asks before deleting', async ({ page }) => {
     await page.goto('/#/instruments');
-    await expect(page.locator('.instrument-row.template-row-body').first()).toBeVisible({ timeout: TIMEOUT.ui });
+    await expect(page.getByTestId('instrument-row').first()).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: /^More actions for/ }).first().click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();

@@ -554,7 +554,7 @@ function TemplateFormScreen({
       {error && <div className="banner banner-crit">{error}</div>}
 
       <div className="schema-form-row">
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Instrument type
           <select
             id="template-instrument-type"
@@ -570,7 +570,7 @@ function TemplateFormScreen({
             ))}
           </select>
         </label>
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Report type
           <select value={reportType} onChange={(e) => setReportType(e.target.value as ReportType)}>
             {(Object.keys(REPORT_TYPE_LABEL) as ReportType[]).map((rt) => (
@@ -580,7 +580,7 @@ function TemplateFormScreen({
             ))}
           </select>
         </label>
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Model
           <SuggestInput
             className="text-input"
@@ -594,7 +594,7 @@ function TemplateFormScreen({
 
       {isCreate && (
         <div className="schema-form-row" id="start-from">
-          <label className="schema-form-label">
+          <label className="schema-form-label" data-testid="form-label">
             Start from
             <select id="template-start-from" value={startFrom} onChange={(e) => chooseStart(e.target.value)}>
               <option value="">Blank (no starting template)</option>
@@ -844,7 +844,7 @@ export function TemplateManagerScreen({
             <span>Actions</span>
           </div>
           {templates.map((tpl) => (
-            <div className="template-row template-row-body" key={tpl.id}>
+            <div className="template-row template-row-body" data-testid="template-row" key={tpl.id}>
               <span data-label="Report type">{REPORT_TYPE_LABEL[tpl.report_type]}</span>
               <span data-label="Model">
                 {tpl.model ?? '(any model)'}
