@@ -78,7 +78,7 @@
 @media (min-width: 901px) {
   .instrument-row {
     grid-template-columns:
-      minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 84px 148px;
+      minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 132px 148px;
   }
 }
 
