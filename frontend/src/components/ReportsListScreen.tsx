@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { LoadError } from './LoadError';
 import {
   listReports,
   type Instrument,
@@ -184,7 +185,7 @@ export function ReportsListScreen({
     };
   }, [withoutStatusKey, refreshNonce]);
 
-  const { loading, error } = useAsyncEffect(
+  const { loading, error, retry } = useAsyncEffect(
     async (isCancelled) => {
       const list = await listReports(filters);
       if (!isCancelled()) setItems(list);
@@ -355,7 +356,7 @@ export function ReportsListScreen({
             ))}
         </div>
       )}
-      {error && <div className="banner banner-warn">{error}</div>}
+      {error && <LoadError message={error} onRetry={retry} />}
 
       {loading ? (
         <div className="working-panel">

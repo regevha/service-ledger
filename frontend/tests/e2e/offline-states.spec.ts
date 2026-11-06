@@ -6,9 +6,9 @@ import { TIMEOUT } from './timeouts';
 
 // What a person sees when the backend cannot be reached (server down, network drop), screen by screen.
 // The intake flow's own case is in error-states.spec.ts. Here: the lists and pages that load data.
-// For each: the failure is said on the page (not a blank page or a spinner that never ends), and the
-// screen recovers once the backend is back. Three gaps found while writing this are kept as skipped
-// tests at the bottom (test.fixme), so they are written down and ready to switch on when fixed.
+// For each: the failure is said on the page in plain words (not a blank page, a spinner that never ends,
+// server commands or a false "none yet"), there is a Try again button, and the screen recovers once the
+// backend is back.
 
 const API_ORIGIN = new RegExp('^' + API_BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
@@ -29,7 +29,7 @@ const SCREENS = [
 ] as const;
 
 for (const screen of SCREENS) {
-  test(`${screen.name}: with the backend down the page says so, stops loading, and recovers when it is back`, async ({ page, request }) => {
+  test(`${screen.name}: with the backend down the page says so, stops loading, and recovers on reload`, async ({ page, request }) => {
     // Something to show once the backend is back, so recovery is visible and not just "no error".
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-Offline-${Date.now()}`, finalize: true });
     const backend = await backendDown(page);
@@ -66,10 +66,10 @@ test('Review: saving while the backend is down shows the error with Try again, a
   await expect.poll(async () => (await (await request.get(`${API_BASE}/reports/${seeded.reportId}`)).json()).status, { timeout: TIMEOUT.ui }).toBe('finalized');
 });
 
-// ---- Found while writing the above: not fixed yet, so these are skipped. Each says what it should do. ----
+// ---- The failure itself, per screen ----
 
 for (const screen of SCREENS) {
-  test.fixme(`${screen.name}: the failure is in plain words (no server commands or settings names)`, async ({ page }) => {
+  test(`${screen.name}: the failure is in plain words (no server commands or settings names)`, async ({ page }) => {
     await backendDown(page);
     await page.goto(`/${screen.hash}`);
     await expect(page.getByText(UNREACHABLE).first()).toBeVisible({ timeout: TIMEOUT.ui });
@@ -78,7 +78,7 @@ for (const screen of SCREENS) {
 }
 
 for (const screen of [SCREENS[2], SCREENS[3]]) {
-  test.fixme(`${screen.name}: a failed load does not also say there are none ("No ${screen.name.toLowerCase()} yet.")`, async ({ page }) => {
+  test(`${screen.name}: a failed load does not also say there are none ("No ${screen.name.toLowerCase()} yet.")`, async ({ page }) => {
     await backendDown(page);
     await page.goto(`/${screen.hash}`);
     await expect(page.getByText(UNREACHABLE).first()).toBeVisible({ timeout: TIMEOUT.ui });
@@ -87,7 +87,7 @@ for (const screen of [SCREENS[2], SCREENS[3]]) {
 }
 
 for (const screen of SCREENS) {
-  test.fixme(`${screen.name}: the failure comes with a Try again button that loads it once the backend is back`, async ({ page }) => {
+  test(`${screen.name}: the failure comes with a Try again button that loads it once the backend is back`, async ({ page }) => {
     const backend = await backendDown(page);
     await page.goto(`/${screen.hash}`);
     await expect(page.getByText(UNREACHABLE).first()).toBeVisible({ timeout: TIMEOUT.ui });
