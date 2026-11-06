@@ -16,6 +16,7 @@ from app.trace import configure_logging
 from app.services.instrument_types import ensure_default_types
 from app.services.manufacturers import ensure_default_makers
 from app.services.places import PlaceTextError
+from app.services.domain_errors import ConflictError, InvalidError, NotFoundError
 from app.routers import (
     analytics,
     attachments,
@@ -82,6 +83,21 @@ logger = logging.getLogger("app.main")
 async def place_text_error(request: Request, exc: PlaceTextError) -> JSONResponse:
     """An institution and room that cannot name one place (see services/places.py):
     the edit is refused, with the reason in plain words."""
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(NotFoundError)
+async def not_found_error(request: Request, exc: NotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(ConflictError)
+async def conflict_error(request: Request, exc: ConflictError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidError)
+async def invalid_error(request: Request, exc: InvalidError) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 

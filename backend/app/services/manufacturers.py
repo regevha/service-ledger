@@ -13,10 +13,12 @@ from __future__ import annotations
 import re
 import uuid
 
-from sqlalchemy import event
+from sqlalchemy import event, func, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models
+from app.services.domain_errors import ConflictError, InvalidError, NotFoundError
 
 # Makers the app knows by name, with the other spellings seen on service reports.
 # Added at startup when missing; an existing maker only gains missing aliases.
@@ -117,3 +119,92 @@ def _link_makers(session: Session, flush_context, instances) -> None:
 
 
 event.listen(Session, "before_flush", _link_makers)
+
+
+# ---------- maker records for the API (routers/manufacturers.py) ----------
+
+_CONFLICT = "Another maker already has this name or alias"
+
+
+def usage_counts(db: Session, maker: models.Manufacturer) -> tuple[int, int]:
+    """How many instruments and how many models point at this maker."""
+    instruments = db.query(func.count(models.Instrument.id)).filter(models.Instrument.manufacturer_id == maker.id).scalar() or 0
+    model_records = db.query(func.count(models.InstrumentModel.id)).filter(models.InstrumentModel.manufacturer_id == maker.id).scalar() or 0
+    return instruments, model_records
+
+
+def spellings(name: str, aliases: list[str]) -> tuple[str, list[str]]:
+    """Trimmed name and aliases: blanks, repeats and the name itself dropped."""
+    name = clean(name) or ""
+    if not normalize(name):
+        raise InvalidError("The maker needs a name with at least one letter or digit")
+    kept: list[str] = []
+    seen = {normalize(name)}
+    for alias in aliases:
+        alias = clean(alias)
+        if alias and normalize(alias) and normalize(alias) not in seen:
+            seen.add(normalize(alias))
+            kept.append(alias)
+    return name, kept
+
+
+def _clash(db: Session, name: str, aliases: list[str], own_id: uuid.UUID | None) -> bool:
+    """True when another maker already answers to the name or to one of the aliases."""
+    others = db.query(models.Manufacturer).filter(models.Manufacturer.id != own_id).all() if own_id else db.query(models.Manufacturer).all()
+    return any(matches(other, text) for other in others for text in (name, *aliases))
+
+
+def list_makers(db: Session) -> list[models.Manufacturer]:
+    return db.query(models.Manufacturer).order_by(func.lower(models.Manufacturer.name)).all()
+
+
+def create_maker(db: Session, name: str, aliases: list[str]) -> models.Manufacturer:
+    name, aliases = spellings(name, aliases)
+    if _clash(db, name, aliases, None):
+        raise ConflictError(_CONFLICT)
+    maker = models.Manufacturer(name=name, aliases=aliases)
+    db.add(maker)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ConflictError(_CONFLICT)
+    db.refresh(maker)
+    return maker
+
+
+def update_maker(db: Session, maker_id: uuid.UUID, name: str | None, aliases: list[str] | None) -> models.Manufacturer:
+    """Renames a maker and/or replaces its aliases (None keeps what it has). A rename
+    is copied onto the instruments and models that point at it, so their text keeps
+    matching. Two makers are never merged here: a name or alias another maker answers
+    to is refused."""
+    maker = db.get(models.Manufacturer, maker_id)
+    if not maker:
+        raise NotFoundError("Maker not found")
+    name, aliases = spellings(name if name is not None else maker.name, aliases if aliases is not None else maker.aliases)
+    if _clash(db, name, aliases, maker.id):
+        raise ConflictError(_CONFLICT)
+    renamed = name != maker.name
+    maker.name = name
+    maker.aliases = aliases
+    if renamed:
+        for table in (models.Instrument, models.InstrumentModel):
+            db.execute(update(table).where(table.manufacturer_id == maker.id).values(manufacturer=name))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ConflictError(_CONFLICT)
+    db.refresh(maker)
+    return maker
+
+
+def delete_maker(db: Session, maker_id: uuid.UUID) -> None:
+    maker = db.get(models.Manufacturer, maker_id)
+    if not maker:
+        raise NotFoundError("Maker not found")
+    instruments, model_records = usage_counts(db, maker)
+    if instruments or model_records:
+        raise ConflictError("This maker is still used by instruments or models; change those first")
+    db.delete(maker)
+    db.commit()
