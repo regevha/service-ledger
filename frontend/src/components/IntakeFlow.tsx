@@ -176,8 +176,19 @@ function IntakeScreen({
 
   return (
     <div className="section">
-      <h2 className="intake-heading">Add a service report</h2>
-      <p className="intake-subheading">Upload the scan or photos. We read the instrument and visit type, then you check the details.</p>
+      <div className="intake-head">
+        <div className="intake-head-text">
+          <h2 className="intake-heading">Add a service report</h2>
+          <p className="intake-subheading">Upload the scan or photos. We read the instrument and visit type, then you check the details.</p>
+        </div>
+        {/* On a desktop screen the button sits at the top, beside the heading, so it is in view without scrolling.
+            It stays disabled until a file is chosen. On a phone it stays at the bottom, after the form. */}
+        {!phone && (
+          <button className="btn primary intake-head-cta" disabled={!file} onClick={onStart}>
+            Upload &amp; classify
+          </button>
+        )}
+      </div>
 
       <div className="section-title">Scanned original</div>
       <div className="upload-layout">
@@ -305,11 +316,13 @@ function IntakeScreen({
         />
       </div>
 
-      <div className="cta-row">
-        <button className="btn primary" disabled={!file} onClick={onStart}>
-          Upload &amp; classify
-        </button>
-      </div>
+      {phone && (
+        <div className="cta-row">
+          <button className="btn primary" disabled={!file} onClick={onStart}>
+            Upload &amp; classify
+          </button>
+        </div>
+      )}
     </div>
   );
 }
