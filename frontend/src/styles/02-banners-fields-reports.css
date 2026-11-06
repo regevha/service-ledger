@@ -481,3 +481,12 @@
     white-space: nowrap;
   }
 }
+
+/* A banner with a button beside the message (Try again after a failed load). */
+.banner-with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}

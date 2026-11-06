@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LoadError } from './LoadError';
 import {
   ApiError,
   createInstrument,
@@ -544,7 +545,7 @@ export function InstrumentManagerScreen({
         </button>
       </div>
 
-      {error && <div className="banner banner-warn">{error}</div>}
+      {error && <LoadError message={error} onRetry={onRefresh} />}
       {deleteError && <div className="banner banner-crit">{deleteError}</div>}
       {pendingDelete && (
         <div className="banner banner-crit" role="alertdialog" aria-label="Confirm delete instrument">
@@ -613,7 +614,8 @@ export function InstrumentManagerScreen({
           <div>Loading instruments…</div>
         </div>
       ) : instruments.length === 0 ? (
-        <div className="empty-hint">No instruments yet.</div>
+        // A failed load says so above; it is not an empty fleet.
+        error ? null : <div className="empty-hint">No instruments yet.</div>
       ) : shownInstruments.length === 0 ? (
         <div className="empty-hint">
           No instruments match these filters.{' '}
