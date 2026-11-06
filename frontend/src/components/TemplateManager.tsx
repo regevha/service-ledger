@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { LoadError } from './LoadError';
 import {
   ApiError,
   createReportTemplate,
@@ -689,6 +690,7 @@ export function TemplateManagerScreen({
   const [usage, setUsage] = useState<Record<string, TemplateUsage>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const phone = useMediaQuery('(max-width: 620px)');
   const [mode, setMode] = useState<ManagerMode>(() => (request ? { kind: 'create' } : { kind: 'list' }));
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -703,6 +705,7 @@ export function TemplateManagerScreen({
   function reload() {
     setLoading(true);
     setError(null);
+    setLoadFailed(false);
     // Usage is advisory (warnings, the Reports column): if it cannot be read
     // the list still works, without the counts.
     getTemplateUsage()
@@ -710,7 +713,10 @@ export function TemplateManagerScreen({
       .catch(() => setUsage({}));
     listAllReportTemplates()
       .then(setTemplates)
-      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : 'Could not load templates.'))
+      .catch((e: unknown) => {
+        setError(e instanceof ApiError ? e.message : 'Could not load templates.');
+        setLoadFailed(true);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -818,7 +824,7 @@ export function TemplateManagerScreen({
         </div>
       </div>
 
-      {error && <div className="banner banner-warn">{error}</div>}
+      {error && <LoadError message={error} onRetry={loadFailed ? reload : undefined} />}
 
       {loading ? (
         <div className="working-panel">
@@ -826,7 +832,8 @@ export function TemplateManagerScreen({
           <div>Loading templates…</div>
         </div>
       ) : templates.length === 0 ? (
-        <div className="empty-hint">No templates yet.</div>
+        // A failed load says so above; it is not an empty list.
+        loadFailed ? null : <div className="empty-hint">No templates yet.</div>
       ) : (
         <div className="template-table">
           <div className="template-row template-row-head">

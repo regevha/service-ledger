@@ -27,8 +27,9 @@ export function useAsyncEffect(
   effect: (isCancelled: () => boolean) => Promise<void>,
   deps: DependencyList,
   fallbackMessage: string
-): { loading: boolean; error: string | null; setError: (message: string | null) => void } {
+): { loading: boolean; error: string | null; setError: (message: string | null) => void; retry: () => void } {
   const [loading, setLoading] = useState(true);
+  const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,7 +51,10 @@ export function useAsyncEffect(
     // closure references" (which would include `effect` itself, a new
     // function identity on every render).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [...deps, attempt]);
 
-  return { loading, error, setError };
+  /** Runs the effect again (the Try again button after a failed load). */
+  const retry = () => setAttempt((n) => n + 1);
+
+  return { loading, error, setError, retry };
 }
