@@ -274,7 +274,7 @@ export function ReportsListScreen({
   // Search covers finalized reports only, so another status filter can only be empty.
   const renderRow = (r: ReportListItem) => (
               <button
-                className="report-row report-row-body"
+                className="report-row report-row-body" data-testid="report-row"
                 key={r.id}
                 onClick={() => setScreen({ kind: 'report', item: r, returnTo: { kind: 'list' }, highlight: filters.q })}
               >

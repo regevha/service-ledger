@@ -84,7 +84,7 @@ export function ModelReliabilitySection({ modelId }: { modelId: string }) {
           <span>Days between repairs</span>
         </div>
         {data.units.map((u) => (
-          <div className="instrument-row model-rel-row template-row-body" key={u.instrument_id}>
+          <div className="instrument-row model-rel-row template-row-body" data-testid="model-rel-row" key={u.instrument_id}>
             <span data-label="Instrument">{u.name}<small className="muted"> {u.serial_number}</small></span>
             <span data-label="Repairs">{u.repair_count}</span>
             <span data-label="Days between repairs">{days(u.mean_days_between_repairs)}</span>
@@ -102,7 +102,7 @@ export function ModelReliabilitySection({ modelId }: { modelId: string }) {
               <span>Instruments</span>
             </div>
             {data.fault_categories.map((f) => (
-              <div className="instrument-row model-rel-row template-row-body" key={f.category}>
+              <div className="instrument-row model-rel-row template-row-body" data-testid="model-rel-row" key={f.category}>
                 <span data-label="Category">
                   {f.category}
                   {f.repeat && <small className="model-standout"> repeat fault</small>}
@@ -125,7 +125,7 @@ export function ModelReliabilitySection({ modelId }: { modelId: string }) {
               <span>Quantity</span>
             </div>
             {data.parts.map((p) => (
-              <div className="instrument-row model-rel-row template-row-body" key={`${p.part_name}|${p.part_number ?? ''}`}>
+              <div className="instrument-row model-rel-row template-row-body" data-testid="model-rel-row" key={`${p.part_name}|${p.part_number ?? ''}`}>
                 <span data-label="Part">
                   {p.part_name}
                   {p.part_number && <small className="muted"> {p.part_number}</small>}

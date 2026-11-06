@@ -10,7 +10,7 @@ import { TIMEOUT } from './timeouts';
 
 async function upload(page: import('@playwright/test').Page, name: string) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles({
     name,
     mimeType: 'application/pdf',
@@ -30,7 +30,7 @@ test('a Hebrew document waits for review; QC pages are listed and can be include
   await expect(page.locator('textarea[aria-label="English translation"]')).toContainText('Service report No. 2046');
   // Nothing is classified yet.
   await expect(page.locator('.class-row')).toHaveCount(0);
-  await expect(page.locator('.field-list')).toHaveCount(0);
+  await expect(page.getByTestId('field-list')).toHaveCount(0);
 
   // Ask for page 2 to be included: translated again, page 3 still ignored.
   await page.click('button:has-text("Include page 2")');
@@ -93,7 +93,7 @@ test('editing the English shows durations in decimal hours and accepting continu
   await expect(page.locator('#translation-durations')).not.toContainText('12:00');
 
   await page.click('button:has-text("Accept my edits & continue")');
-  await page.waitForSelector('.field-list, .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"], .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
   await expect(page.locator('[data-testid="intake-error"]')).toHaveCount(0);
   await expect(page.locator('#translation-review')).toHaveCount(0);
 });
@@ -102,7 +102,7 @@ test('discarding the translation goes on with the original document', async ({ p
   await upload(page, `hebrew-discard-${Date.now()}.pdf`);
   await expect(page.locator('#translation-review')).toBeVisible({ timeout: TIMEOUT.flow });
   await page.click('button:has-text("Discard and use the original")');
-  await page.waitForSelector('.field-list, .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"], .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
   await expect(page.locator('[data-testid="intake-error"]')).toHaveCount(0);
   await expect(page.locator('#translation-review')).toHaveCount(0);
 });
@@ -136,16 +136,16 @@ test('an instrument that is not in the fleet is added on the spot and the docume
   await expect(page.locator('#serial-notice')).toContainText(`Matched to Cytek Aurora (${serial})`, { timeout: TIMEOUT.flow });
   await expect(page.locator('[data-testid="intake-error"]')).toHaveCount(0);
   await expect(page.locator('#add-instrument-panel')).toHaveCount(0);
-  await expect(page.locator('.field-list').first()).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.getByTestId('field-list').first()).toBeVisible({ timeout: TIMEOUT.flow });
 
   // The new instrument is in the fleet list with its distributor.
-  await page.click('.view-tab:has-text("Instruments")');
-  const row = page.locator('.instrument-row.template-row-body', { hasText: `E2E-Aurora-${serial}` });
+  await page.getByTestId('tab-instruments').click();
+  const row = page.getByTestId('instrument-row').filter({ hasText: `E2E-Aurora-${serial}` });
   await expect(row).toContainText('almog diagnostic');
 });
 
 test('a document that is not Hebrew goes straight to classification', async ({ page }) => {
   await upload(page, `plain-english-${Date.now()}.pdf`);
-  await page.waitForSelector('.field-list, .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"], .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
   await expect(page.locator('#translation-review')).toHaveCount(0);
 });

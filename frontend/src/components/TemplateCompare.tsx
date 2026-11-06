@@ -219,7 +219,7 @@ export function TemplateCompareScreen({
       </div>
 
       <div className="schema-form-row">
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           First template
           <select id="compare-left" value={leftId} onChange={(e) => chooseLeft(e.target.value)}>
             <option value="">Choose a template…</option>
@@ -230,7 +230,7 @@ export function TemplateCompareScreen({
             ))}
           </select>
         </label>
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Second template
           <select id="compare-right" value={rightId} disabled={!left} onChange={(e) => setRightId(e.target.value)}>
             <option value="">{left ? 'Choose a template…' : 'Choose the first template first'}</option>

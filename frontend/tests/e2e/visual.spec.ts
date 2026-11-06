@@ -30,7 +30,7 @@ test('the trend chart draws the same', { tag: '@visual' }, async ({ page, reques
   }
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
   await expect(page.locator('.trend-chart-wrap svg')).toBeVisible();
@@ -57,5 +57,5 @@ test('the review screen lays out its fields the same', { tag: '@visual' }, async
   });
   await openReviewFromList(page, marker);
 
-  await expect(page.locator('.field-list')).toHaveScreenshot('review-fields.png', SHOT);
+  await expect(page.getByTestId('field-list')).toHaveScreenshot('review-fields.png', SHOT);
 });

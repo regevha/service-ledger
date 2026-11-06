@@ -23,12 +23,12 @@ test('status pills show counts and filter the list', async ({ page, request }) =
   await finalized.click();
   await expect(finalized).toHaveAttribute('aria-pressed', 'true');
   await showFlatList(page);
-  await expect(page.locator('.report-row-body', { hasText: done })).toBeVisible();
-  await expect(page.locator('.report-row-body', { hasText: open })).toHaveCount(0);
+  await expect(page.getByTestId('report-row').filter({ hasText: done })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: open })).toHaveCount(0);
   await expect(page.getByLabel('Status', { exact: true })).toHaveValue('finalized');
 
   // The count of the other statuses does not change when one is chosen.
   await expect(pills.getByRole('button', { name: /^All \d+$/ })).toBeVisible();
   await pills.getByRole('button', { name: /^All \d+$/ }).click();
-  await expect(page.locator('.report-row-body', { hasText: open })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: open })).toBeVisible();
 });

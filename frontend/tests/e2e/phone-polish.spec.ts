@@ -52,7 +52,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     await page.goto('/');
     await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
     await page.click('button:has-text("Upload & classify")');
-    await page.waitForSelector('.field-list', { timeout: 60_000 });
+    await page.waitForSelector('[data-testid="field-list"]', { timeout: 60_000 });
     const heading = page.locator('.report-heading').first();
     expect(await heading.evaluate((el) => getComputedStyle(el).textTransform)).toBe('none');
     await expect(page.locator('.report-heading-meta')).toHaveText(/attention|Check the values/);

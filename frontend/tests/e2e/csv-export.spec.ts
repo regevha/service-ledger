@@ -10,7 +10,7 @@ test('the Admin export link follows the chosen filters and downloads the filtere
   await seedReport(request, { model: 'FACSAria III', reportType: 'preventive_maintenance', technician: marker, finalize: true });
 
   await page.goto('/');
-  await page.click('.view-tab:has-text("Admin")');
+  await page.getByTestId('tab-admin').click();
   await expect(page.getByTestId('admin-screen')).toBeVisible();
 
   const exportLink = page.getByTestId('admin-export-link');
@@ -36,10 +36,10 @@ test('Export CSV is no longer on the Reports list, and the top bar has Admin and
   await page.goto('/#/reports');
   await expect(page.locator('a.btn:has-text("Export CSV")')).toHaveCount(0);
   await expect(page.getByTestId('topbar-new-report')).toBeVisible();
-  await page.click('.view-tab:has-text("Admin")');
+  await page.getByTestId('tab-admin').click();
   await expect(page).toHaveURL(/#\/admin$/);
   await page.click('.admin-nav-item:has-text("Field aliases")');
   await expect(page).toHaveURL(/#\/admin\/aliases$/);
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await expect(page.getByTestId('topbar-new-report')).toHaveCount(0);
 });

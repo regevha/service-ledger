@@ -9,7 +9,7 @@ import { API_BASE } from './helpers/api';
 
 async function openAliases(page: Page) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
+  await page.getByTestId('tab-templates').click();
   await page.click('#field-aliases');
   await expect(page.getByText('Field aliases', { exact: true }).first()).toBeVisible();
 }
@@ -119,7 +119,7 @@ test('differently named fields in one group show as a possible match in a compar
   try {
     const compare = async () => {
       await page.goto('/');
-      await page.click('.view-tab:has-text("Templates")');
+      await page.getByTestId('tab-templates').click();
       await page.click('#compare-templates');
       const pick = async (selector: string, pattern: RegExp) => {
         const options = await page

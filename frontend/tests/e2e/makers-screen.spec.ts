@@ -7,13 +7,13 @@ import { API_BASE } from './helpers/api';
 
 async function openMakers(page: Page) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await page.click('.sub-switch button:has-text("Makers")');
   await expect(page.locator('#makers-section')).toBeVisible();
 }
 
 const makerRow = (page: Page, name: string) =>
-  page.locator('.maker-row.template-row-body', { has: page.locator('[data-label="Maker"]', { hasText: new RegExp(`^${name}$`) }) });
+  page.locator('[data-testid="maker-row"]', { has: page.locator('[data-label="Maker"]', { hasText: new RegExp(`^${name}$`) }) });
 
 test('the Makers list shows the seeded makers with their other names and counts', async ({ page }) => {
   await openMakers(page);
@@ -28,8 +28,8 @@ test('adding a maker with another name, then typing that name on an instrument s
   const name = `E2E Maker ${stamp}`;
   await openMakers(page);
   await page.click('button:has-text("+ New maker")');
-  await page.locator('.schema-form-label', { hasText: /^Name/ }).locator('input').fill(name);
-  await page.locator('.schema-form-label', { hasText: 'Other names' }).locator('input').fill(`E2E Alt ${stamp}; E2E Other ${stamp}`);
+  await page.getByTestId('form-label').filter({ hasText: /^Name/ }).locator('input').fill(name);
+  await page.getByTestId('form-label').filter({ hasText: 'Other names' }).locator('input').fill(`E2E Alt ${stamp}; E2E Other ${stamp}`);
   await page.click('button:has-text("Add maker")');
   const row = makerRow(page, name);
   await expect(row).toBeVisible();
@@ -53,7 +53,7 @@ test('an unused maker can be renamed and deleted', async ({ page, request }) => 
   expect(created.status()).toBe(201);
   await openMakers(page);
   await makerRow(page, `E2E Temp ${stamp}`).locator('button:has-text("Edit")').click();
-  await page.locator('.schema-form-label', { hasText: /^Name/ }).locator('input').fill(`E2E Temp ${stamp} II`);
+  await page.getByTestId('form-label').filter({ hasText: /^Name/ }).locator('input').fill(`E2E Temp ${stamp} II`);
   await page.click('button:has-text("Save changes")');
   await expect(makerRow(page, `E2E Temp ${stamp} II`)).toBeVisible();
   await makerRow(page, `E2E Temp ${stamp} II`).locator('button:has-text("Delete")').click();
@@ -64,14 +64,14 @@ test('an unused maker can be renamed and deleted', async ({ page, request }) => 
 test('a name another maker already answers to is refused', async ({ page }) => {
   await openMakers(page);
   await page.click('button:has-text("+ New maker")');
-  await page.locator('.schema-form-label', { hasText: /^Name/ }).locator('input').fill('Becton Dickinson');
+  await page.getByTestId('form-label').filter({ hasText: /^Name/ }).locator('input').fill('Becton Dickinson');
   await page.click('button:has-text("Add maker")');
   await expect(page.locator('.banner-crit')).toContainText('already has this name');
 });
 
 test('the manufacturer box on a new model suggests the makers on file', async ({ page }) => {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await page.click('.sub-switch button:has-text("Models")');
   await page.click('button:has-text("+ New model")');
   const box = page.getByPlaceholder('e.g. Cytek Biosciences');

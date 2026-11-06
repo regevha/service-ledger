@@ -20,7 +20,7 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'sample-work-order.pdf');
 test('uncertain report type routes through manual confirm before extracting', async ({ page }) => {
   await page.goto('/');
 
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Manual Confirm');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
@@ -44,7 +44,7 @@ test('uncertain report type routes through manual confirm before extracting', as
   await expect(typeRow.locator('.badge-warn')).toBeVisible();
 
   await confirmClassification(page);
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 
   // The stub's real BD Care values for this exact fixture (§5) — root_cause
   // and components_replaced are genuinely blank on the source document, not

@@ -181,7 +181,7 @@ function InstrumentFormScreen({
       {error && <div className="banner banner-crit">{error}</div>}
 
       <div className="schema-form-row type-row">
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Instrument type
           <select
             id="instrument-type"
@@ -203,7 +203,7 @@ function InstrumentFormScreen({
               + Add a type
             </button>
           ) : (
-            <div className="schema-form-label">
+            <div className="schema-form-label" data-testid="form-label">
               New type name
               <input
                 type="text"
@@ -237,7 +237,7 @@ function InstrumentFormScreen({
       )}
 
       <div className="schema-form-row">
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           <span>Name <Required /></span>
           <input
             type="text"
@@ -249,7 +249,7 @@ function InstrumentFormScreen({
             onChange={(e) => setName(e.target.value)}
           />
         </label>
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           <span>Model <Required /></span>
           <SuggestInput
             className="text-input"
@@ -270,7 +270,7 @@ function InstrumentFormScreen({
 
       <div className="schema-form-row">
         <div className="field-with-hint">
-          <label className="schema-form-label">
+          <label className="schema-form-label" data-testid="form-label">
             <span>Manufacturer {!existing && <Required />}</span>
             <SuggestInput
               className="text-input"
@@ -285,14 +285,14 @@ function InstrumentFormScreen({
             <small className="muted manufacturer-lock-hint">Set by the model. Change it on the Models screen.</small>
           )}
         </div>
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           <span>Serial number <Required /></span>
           <input type="text" className="text-input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
         </label>
       </div>
 
       <div className="schema-form-row">
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Institute
           <SuggestInput
             className="text-input"
@@ -302,7 +302,7 @@ function InstrumentFormScreen({
             options={knownPlaces.filter((p) => p.kind === 'institution').map((p) => p.name)}
           />
         </label>
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Room name
           <SuggestInput
             className="text-input"
@@ -312,7 +312,7 @@ function InstrumentFormScreen({
             options={roomsHere.map((p) => p.name)}
           />
         </label>
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Distributor
           <input
             type="text"
@@ -335,7 +335,7 @@ function InstrumentFormScreen({
           something to change once the instrument already exists. */}
       {existing && (
         <div className="schema-form-row">
-          <label className="schema-form-label">
+          <label className="schema-form-label" data-testid="form-label">
             Status
             <select value={status} onChange={(e) => setStatus(e.target.value as InstrumentStatus)}>
               {STATUS_OPTIONS.map((s) => (
@@ -638,7 +638,7 @@ export function InstrumentManagerScreen({
             <span>Actions</span>
           </div>
           {shownInstruments.map((inst) => (
-            <div className="instrument-row instrument-card template-row-body" key={inst.id}>
+            <div className="instrument-row instrument-card template-row-body" data-testid="instrument-row" key={inst.id}>
               <span data-label="Name">
                 {inst.name}
                 {inst.institution && <small className="muted instrument-institution">{inst.institution}</small>}

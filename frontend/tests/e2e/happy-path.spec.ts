@@ -44,17 +44,17 @@ test('upload → auto-classify → extract → review → finalize', async ({ pa
   const marker = `E2E-HappyPath-${Date.now()}`;
   await page.goto('/');
 
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', marker);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
   // No manual-confirm detour expected for this fixture.
-  await page.waitForSelector('.field-list, [data-testid="class-row"], [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"], [data-testid="class-row"], [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
   await expect(page.getByTestId('class-row')).toHaveCount(0);
   await expect(page.getByTestId('intake-error')).toHaveCount(0);
 
-  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.getByTestId('field-list')).toBeVisible();
 
   // The report this run made, as the backend holds it, and the template it resolved to.
   const listed = await (await request.get(`${API_BASE}/reports`)).json();
@@ -70,7 +70,7 @@ test('upload → auto-classify → extract → review → finalize', async ({ pa
 
   for (const field of fields) {
     const value = before.extracted_fields[field.name];
-    const onScreen = page.locator(`.field-list .field[data-field="${field.name}"]`);
+    const onScreen = page.locator(`[data-testid="field-list"] .field[data-field="${field.name}"]`);
 
     // Every template field is on the review screen, and the backend holds a value for it.
     await expect(onScreen, `${field.name} is on the review screen`).toHaveCount(1);
@@ -92,7 +92,7 @@ test('upload → auto-classify → extract → review → finalize', async ({ pa
       }
     }
   }
-  await expect(page.locator('.field-list .field[data-field="report_date"] input').first(), 'service date on screen').toHaveValue(before.report_date!);
+  await expect(page.locator('[data-testid="field-list"] .field[data-field="report_date"] input').first(), 'service date on screen').toHaveValue(before.report_date!);
 
   await finalizeFromReview(page);
   await expect(page.getByTestId('intake-success')).toBeVisible({ timeout: TIMEOUT.ui });

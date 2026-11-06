@@ -18,7 +18,7 @@ async function finalizeOne(page: import('@playwright/test').Page, technician: st
   await page.fill('input[placeholder="Your name (optional)"]', technician);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
   await finalizeFromReview(page);
   await expect(page.getByTestId('intake-success')).toBeVisible({ timeout: TIMEOUT.ui });
 }
@@ -26,41 +26,41 @@ async function finalizeOne(page: import('@playwright/test').Page, technician: st
 test.describe('address bar', () => {
   test('tabs are addressable: the hash follows, Refresh keeps the tab, Back returns to the last one', async ({ page }) => {
     await page.goto('/');
-    await page.click('.view-tab:has-text("Instruments")');
+    await page.getByTestId('tab-instruments').click();
     await expect(page).toHaveURL(/#\/instruments$/);
-    await page.click('.view-tab:has-text("Templates")');
+    await page.getByTestId('tab-templates').click();
     await expect(page).toHaveURL(/#\/templates$/);
 
     await page.reload();
-    await expect(page.locator('.view-tab.active')).toHaveText('Templates');
+    await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Templates');
 
     await page.goBack();
-    await expect(page.locator('.view-tab.active')).toHaveText('Instruments');
+    await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Instruments');
     await expect(page).toHaveURL(/#\/instruments$/);
   });
 
   test('an unknown address falls back to New report', async ({ page }) => {
     await page.goto('/#/nonsense/whatever');
-    await expect(page.locator('.view-tab.active')).toHaveText('New report');
+    await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('New report');
   });
 
   test('an open report has its own address; Refresh keeps it open and Back returns to the list', async ({ page }) => {
     const marker = `E2E-Nav-${Date.now()}`;
     await finalizeOne(page, marker);
-    await page.click('.view-tab:has-text("Reports")');
-    await page.click(`.report-row-body:has-text("${marker}")`);
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+    await page.getByTestId('tab-reports').click();
+    await page.click(`[data-testid="report-row"]:has-text("${marker}")`);
+    await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page).toHaveURL(/#\/reports\/[0-9a-f-]{36}$/);
 
     await page.reload();
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
-    await expect(page.locator('.view-tab.active')).toHaveText('Reports');
+    await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+    await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Reports');
 
     await page.goBack();
     await expect(page.locator('.report-table')).toBeVisible();
     await expect(page).toHaveURL(/#\/reports$/);
     await page.goForward();
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+    await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
   });
 
   test('a link to a report that does not exist lands on the list, not a blank screen', async ({ page, request }) => {
@@ -120,12 +120,12 @@ test.describe('intake flow', () => {
     await page.goto('/');
     await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
     await page.click('button:has-text("Upload & classify")');
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
+    await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
     await finalizeFromReview(page);
     // The form is still there; the buttons say what is happening and cannot be pressed twice.
     await expect(page.locator('button:has-text("Finalizing…")')).toBeDisabled();
     await expect(page.locator('button:has-text("Save corrections")')).toBeDisabled();
-    await expect(page.locator('.field-list')).toBeVisible();
+    await expect(page.getByTestId('field-list')).toBeVisible();
     await expect(page.locator('.working-panel')).toHaveCount(0);
     await expect(page.locator('.steps .step.active')).toContainText('Review & finalize');
     await expect(page.locator('.success-panel')).toBeVisible({ timeout: 15_000 });
@@ -142,7 +142,7 @@ test.describe('intake flow', () => {
     await expect(page.locator('.steps .step.active')).toHaveCount(0);
 
     await panel.getByTestId('intake-open-report').click();
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+    await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page).toHaveURL(/#\/reports\/[0-9a-f-]{36}$/);
     await expect(page.locator('.review-actions')).toContainText('Finalized');
   });

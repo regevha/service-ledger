@@ -32,18 +32,18 @@ test('save a filter, reload, pick it, see the same rows, then delete it', async 
   await expect(page.locator('button:has-text("Save this filter")')).toBeDisabled();
 
   await page.fill('input[aria-label="Lab manager"]', mine);
-  await expect(page.locator('.report-row-body', { hasText: other })).toHaveCount(0);
+  await expect(page.getByTestId('report-row').filter({ hasText: other })).toHaveCount(0);
   await saveCurrent(page, `Mine ${stamp}`);
   await expect(page.locator('[data-testid="saved-filter-active"]')).toContainText(`Mine ${stamp}`);
   await expect(page.locator('select[aria-label="Saved filters"] option').first()).toContainText('1 of 5');
 
   // After a reload nothing is filtered, and the saved filter is still there.
   await openReports(page);
-  await expect(page.locator('.report-row-body', { hasText: other })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: other })).toBeVisible();
   await page.selectOption('select[aria-label="Saved filters"]', { label: `Mine ${stamp}` });
   await expect(page.locator('input[aria-label="Lab manager"]')).toHaveValue(mine);
-  await expect(page.locator('.report-row-body', { hasText: mine })).toBeVisible();
-  await expect(page.locator('.report-row-body', { hasText: other })).toHaveCount(0);
+  await expect(page.getByTestId('report-row').filter({ hasText: mine })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: other })).toHaveCount(0);
   await expect(page.locator('[data-testid="saved-filter-active"]')).not.toContainText('(changed)');
 
   // Editing a control marks it as changed.
@@ -110,7 +110,7 @@ test('a filter whose instrument was deleted is marked stale and still applies it
   await page.selectOption('select[aria-label="Saved filters"]', { label: await option.innerText() });
   await expect(page.locator('.saved-filters')).toContainText('The saved instrument no longer exists');
   await expect(page.locator('input[aria-label="Lab manager"]')).toHaveValue(marker);
-  await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: marker })).toBeVisible();
   await expect(page.locator('[data-testid="saved-filter-active"]')).not.toContainText('(changed)');
 });
 

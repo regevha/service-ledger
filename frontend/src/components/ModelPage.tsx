@@ -94,7 +94,7 @@ export function ModelPage({
             <span>Repairs</span>
           </div>
           {detail.units.map((u) => (
-            <div className="instrument-row model-unit-row template-row-body" key={u.id}>
+            <div className="instrument-row model-unit-row template-row-body" data-testid="model-unit-row" key={u.id}>
               <span data-label="Instrument">
                 <a className="model-unit-link" href={`#/reports/instrument/${u.id}`}>
                   {u.name}
@@ -138,7 +138,7 @@ export function ModelPage({
               <span>Status</span>
             </div>
             {detail.reports.map((r) => (
-              <div className="instrument-row model-report-row template-row-body" key={r.id}>
+              <div className="instrument-row model-report-row template-row-body" data-testid="model-report-row" key={r.id}>
                 <span data-label="Date">
                   <a className="model-report-link" href={`#/reports/${r.id}`}>
                     {formatDate(r.report_date ?? r.created_at.slice(0, 10))}

@@ -1,7 +1,7 @@
 import { test, expect } from './coverage';
 import { TIMEOUT } from './timeouts';
 import { API_BASE } from './helpers/api';
-import { showFlatList } from './helpers/ui';
+import { showFlatList, tabTestId } from './helpers/ui';
 
 // Phone review of 2026-10-25, item 8 and 19: controls are big enough for a thumb, the tab labels are
 // readable, and the keyboard leaves serial and part numbers alone.
@@ -35,13 +35,13 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     await page.goto('/');
     for (const tab of TABS) {
       if (BEHIND_MORE.includes(tab)) {
-        await page.click('.view-tab:has-text("More")');
+        await page.getByTestId('tab-more').click();
         await page.click(`.more-item:has-text("${tab}")`);
         await expect(page.locator('.view-tab.within')).toContainText('More');
       } else {
-        await page.click(`.view-tab:has-text("${tab}")`);
+        await page.getByTestId(tabTestId(tab)).click();
         // The tab is selected and its data has arrived, so every control is on the page to be measured.
-        await expect(page.locator('.view-tab.active')).toContainText(tab);
+        await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toContainText(tab);
       }
       await page.waitForLoadState('networkidle');
       // Open the filters where there are some, so their controls are measured too.

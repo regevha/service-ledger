@@ -18,7 +18,7 @@ async function createUnit(request: APIRequestContext, model: string, serial: str
 
 async function openComparison(page: Page, model: string) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Analytics")');
+  await page.getByTestId('tab-analytics').click();
   const picker = page.getByLabel('Model to compare');
   await expect(picker).toBeVisible({ timeout: TIMEOUT.ui });
   await picker.selectOption(model);

@@ -16,10 +16,10 @@ const PHONE = { width: 412, height: 915 };
 
 async function reachReview(page: import('@playwright/test').Page) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"], [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
   await expect(page.locator('#placeholder-notice')).toBeVisible();
 }
 

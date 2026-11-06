@@ -13,14 +13,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 
 const dialog = (page: Page) => page.locator('#leave-dialog');
-const firstText = (page: Page) => page.locator('.field-list textarea').first();
+const firstText = (page: Page) => page.getByTestId('field-list').locator('textarea').first();
 
 async function openIntakeReview(page: Page, startAt = '/') {
   await page.goto(startAt);
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(CONFIDENT_SCAN));
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await page.waitForSelector('[data-testid="field-list"]', { timeout: 30_000 });
 }
 
 async function seedDraft(request: APIRequestContext, technician: string): Promise<string> {
@@ -49,17 +49,17 @@ async function seedDraft(request: APIRequestContext, technician: string): Promis
 
 async function openSavedReport(page: Page, marker: string) {
   await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await page.waitForSelector('.report-table');
-  await page.click(`.report-row-body:has-text("${marker}")`);
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: 15_000 });
+  await page.click(`[data-testid="report-row"]:has-text("${marker}")`);
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: 15_000 });
 }
 
 test('a new report with unsaved edits: a tab asks first; Stay keeps everything where it was', async ({ page }) => {
   await openIntakeReview(page);
   await firstText(page).fill('Typed on the review screen');
 
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await expect(dialog(page)).toBeVisible();
   await expect(dialog(page)).toContainText('not saved');
   await expect(dialog(page).getByRole('button', { name: 'Stay' })).toBeFocused();
@@ -67,14 +67,14 @@ test('a new report with unsaved edits: a tab asks first; Stay keeps everything w
   await dialog(page).getByRole('button', { name: 'Stay' }).click();
   await expect(dialog(page)).toHaveCount(0);
   await expect(page).toHaveURL(/#\/new$/);
-  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.getByTestId('field-list')).toBeVisible();
   await expect(firstText(page)).toHaveValue('Typed on the review screen');
 });
 
 test('Escape means Stay', async ({ page }) => {
   await openIntakeReview(page);
   await firstText(page).fill('Typed on the review screen');
-  await page.click('.view-tab:has-text("Analytics")');
+  await page.getByTestId('tab-analytics').click();
   await expect(dialog(page)).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog(page)).toHaveCount(0);
@@ -84,7 +84,7 @@ test('Escape means Stay', async ({ page }) => {
 test('Discard changes leaves, and the edits are not saved', async ({ page }) => {
   await openIntakeReview(page);
   await firstText(page).fill('Typed and then discarded');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await dialog(page).getByRole('button', { name: 'Discard changes' }).click();
   await expect(page.locator('.report-table, .empty-hint').first()).toBeVisible();
   await expect(page).toHaveURL(/#\/reports$/);
@@ -97,7 +97,7 @@ test('Save and leave saves the edits, then leaves', async ({ page, request }) =>
   await firstText(page).fill(marker);
   const saveRequest = page.waitForRequest((r) => r.method() === 'PATCH' && /\/reports\/[^/]+\/fields$/.test(r.url()));
 
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await dialog(page).getByRole('button', { name: 'Save and leave' }).click();
   const reportId = (await saveRequest).url().match(/\/reports\/([^/]+)\/fields$/)![1];
 
@@ -115,7 +115,7 @@ test('Save and leave with a failing save stays on the screen and shows why', asy
       : route.continue()
   );
   await firstText(page).fill('Typed before a failing save');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await dialog(page).getByRole('button', { name: 'Save and leave' }).click();
 
   await expect(dialog(page)).toHaveCount(0);
@@ -126,21 +126,21 @@ test('Save and leave with a failing save stays on the screen and shows why', asy
 
 test('nothing unsaved: tabs and Back to Classify just go, with no question', async ({ page }) => {
   await openIntakeReview(page);
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await expect(page).toHaveURL(/#\/reports$/);
   await expect(dialog(page)).toHaveCount(0);
 
-  await page.click('.view-tab:has-text("New report")');
+  await page.getByTestId('tab-new').click();
   await expect(page.locator('.dropzone')).toBeVisible(); // the intake flow was left, as before
 
   // Saved edits are no longer unsaved edits.
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(CONFIDENT_SCAN));
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await page.waitForSelector('[data-testid="field-list"]', { timeout: 30_000 });
   await firstText(page).fill('Typed and saved');
   await page.click('button:has-text("Save corrections")');
   await expect(page.locator('.toast')).toHaveText('Saved');
-  await page.click('.view-tab:has-text("Analytics")');
+  await page.getByTestId('tab-analytics').click();
   await expect(page).toHaveURL(/#\/analytics$/);
   await expect(dialog(page)).toHaveCount(0);
 });
@@ -154,7 +154,7 @@ test('the browser Back button asks too; Stay puts the address back', async ({ pa
   await expect(dialog(page)).toBeVisible();
   await dialog(page).getByRole('button', { name: 'Stay' }).click();
   await expect(page).toHaveURL(/#\/new$/);
-  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.getByTestId('field-list')).toBeVisible();
   await expect(firstText(page)).toHaveValue('Typed before pressing Back');
 
 });
@@ -165,7 +165,7 @@ test('the browser Back button: Discard changes goes back', async ({ page }) => {
   await page.goBack();
   await dialog(page).getByRole('button', { name: 'Discard changes' }).click();
   await expect(page).toHaveURL(/#\/reports$/);
-  await expect(page.locator('.field-list')).toHaveCount(0);
+  await expect(page.getByTestId('field-list')).toHaveCount(0);
 });
 
 test('"Back to Classify" with unsaved edits says re-reading replaces them', async ({ page }) => {
@@ -175,12 +175,12 @@ test('"Back to Classify" with unsaved edits says re-reading replaces them', asyn
   await page.getByTestId('back-to-classify').click();
   await expect(dialog(page)).toContainText('reading the document again replaces');
   await dialog(page).getByRole('button', { name: 'Stay' }).click();
-  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.getByTestId('field-list')).toBeVisible();
   await expect(firstText(page)).toHaveValue('Typed before going back');
 
   await page.getByTestId('back-to-classify').click();
   await dialog(page).getByRole('button', { name: 'Discard changes' }).click();
-  await expect(page.locator('.field-list')).toHaveCount(0);
+  await expect(page.getByTestId('field-list')).toHaveCount(0);
   await expect(page.getByTestId('back-to-classify')).toHaveCount(0);
 });
 
@@ -195,7 +195,7 @@ test('a saved report with unsaved edits: Back and the tabs ask first', async ({ 
   await dialog(page).getByRole('button', { name: 'Stay' }).click();
   await expect(firstText(page)).toHaveValue('Edited on the saved report');
 
-  await page.click('.view-tab:has-text("Analytics")');
+  await page.getByTestId('tab-analytics').click();
   await expect(dialog(page)).toBeVisible();
   await dialog(page).getByRole('button', { name: 'Stay' }).click();
   await expect(page).toHaveURL(/#\/reports\/[0-9a-f-]{36}$/);
@@ -212,7 +212,7 @@ test('a saved report: Save and leave keeps the edits', async ({ page, request })
   await openSavedReport(page, marker);
   await firstText(page).fill('Saved on the way out');
 
-  await page.click('.view-tab:has-text("Analytics")');
+  await page.getByTestId('tab-analytics').click();
   await dialog(page).getByRole('button', { name: 'Save and leave' }).click();
   await expect(page).toHaveURL(/#\/analytics$/);
 

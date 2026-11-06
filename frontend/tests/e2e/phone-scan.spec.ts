@@ -34,10 +34,10 @@ test.describe('scan and report menu on a phone', { tag: '@phone' }, () => {
     await page.goto(`/#/reports/${reportId}`);
 
     await expect(page.getByRole('tab', { name: 'Fields' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('.field-list')).toBeVisible();
+    await expect(page.getByTestId('field-list')).toBeVisible();
 
     await page.getByRole('tab', { name: 'Scan' }).click();
-    await expect(page.locator('.field-list')).toBeHidden();
+    await expect(page.getByTestId('field-list')).toBeHidden();
     const pages = page.locator('.scan-page');
     expect(page_count).toBe(2);
     await expect(pages).toHaveCount(2);
@@ -52,13 +52,13 @@ test.describe('scan and report menu on a phone', { tag: '@phone' }, () => {
     await expect(page.locator('.scan-zoom-level')).toHaveText('100%');
 
     await page.getByRole('tab', { name: 'Fields' }).click();
-    await expect(page.locator('.field-list')).toBeVisible();
+    await expect(page.getByTestId('field-list')).toBeVisible();
   });
 
   test('Delete report, Download PDF and View original scan are in a "⋯" menu', async ({ page, request }) => {
     const { reportId } = await seedReport(request);
     await page.goto(`/#/reports/${reportId}`);
-    await expect(page.locator('.field-list')).toBeVisible();
+    await expect(page.getByTestId('field-list')).toBeVisible();
 
     // not loose buttons any more
     await expect(page.getByRole('button', { name: 'Delete report' })).toHaveCount(0);
