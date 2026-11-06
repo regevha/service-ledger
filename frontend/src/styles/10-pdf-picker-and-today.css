@@ -1,0 +1,343 @@
+/* Picking template fields from a PDF page, and the Today screen. Loaded last; both only use tokens from index.css. */
+
+/* ---- Pick fields from a PDF (Templates tab, inside the template form) ---- */
+.pdf-picker-closed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.pdf-picker-closed div {
+  display: flex;
+  flex-direction: column;
+}
+.pdf-picker-closed span {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.pdf-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.pdf-picker-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+}
+.pdf-picker-sample {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.pdf-picker-sample select {
+  width: 100%;
+  min-width: 0;
+}
+.pdf-picker-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.pdf-picker-pages {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.pdf-picker-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.pdf-picker-hint {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+.pdf-picker-stage {
+  display: flex;
+  flex-direction: column;
+}
+.pdf-picker-page {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+.pdf-picker-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+}
+.pdf-picker-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+.pdf-word {
+  position: absolute;
+  border-radius: 2px;
+}
+/* The words are only there to be hit; their text is for tests and screen readers, not for sight. */
+.pdf-word-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.pdf-picker-overlay .pdf-word:hover {
+  outline: 1px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.pdf-picker-overlay.show-all .pdf-word {
+  outline: 1px dashed var(--accent);
+}
+.pdf-word.chosen,
+.pdf-box.chosen {
+  background: color-mix(in srgb, var(--flag) 28%, transparent);
+  outline: 2px solid var(--flag);
+}
+.pdf-box {
+  position: absolute;
+  pointer-events: none;
+}
+.pdf-box.rubber {
+  border: 1.5px solid var(--flag);
+  background: color-mix(in srgb, var(--flag) 14%, transparent);
+}
+.pdf-card {
+  position: absolute;
+  z-index: 5;
+  width: min(300px, 90%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-pop);
+}
+.pdf-card-title {
+  font-weight: 600;
+}
+.pdf-card-sample {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--flag-soft);
+  border-left: 3px solid var(--flag);
+  padding: 6px 10px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 6em;
+  overflow: auto;
+}
+.pdf-card-sample.muted {
+  font-family: inherit;
+  color: var(--text-muted);
+}
+.pdf-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pdf-card-problem {
+  color: var(--crit);
+  font-size: var(--text-sm);
+}
+.pdf-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.pdf-picker-added {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.pdf-picker-chip {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* ---- Today ---- */
+.today {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-6);
+}
+.today-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.today-title {
+  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: 600;
+}
+.today-date {
+  color: var(--text-muted);
+}
+.today-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-4);
+}
+.today-tile .stat-value {
+  font-variant-numeric: tabular-nums;
+}
+.today-tile.attention {
+  border-left: 4px solid var(--flag);
+}
+.today-add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  padding: var(--space-4) var(--space-5);
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+.today-add:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.today-add-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  line-height: 1;
+  background: var(--accent-fill);
+  color: var(--on-fill);
+}
+.today-add small {
+  display: block;
+  color: var(--text-muted);
+}
+.today-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.today-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.today-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.today-card-head h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.today-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.today-list > li + li {
+  border-top: 1px solid var(--border);
+}
+.today-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+.today-row-button {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.today-row-button:hover {
+  background: var(--surface-2);
+}
+.today-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.today-row-title {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.today-row-sub {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.today-empty,
+.today-more {
+  padding: var(--space-4);
+  color: var(--text-muted);
+}
+.today-more {
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+@media (max-width: 899px) {
+  .today {
+    padding: var(--space-4);
+  }
+  .today-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

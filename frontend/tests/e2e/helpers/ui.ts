@@ -55,6 +55,6 @@ export async function confirmClassification(page: Page, reportType: string = 're
 
 /** The test id of a main-navigation tab, from its label ("New report" -> tab-new). */
 export function tabTestId(label: string): string {
-  const ids: Record<string, string> = { 'New report': 'tab-new', Reports: 'tab-reports', Analytics: 'tab-analytics', Templates: 'tab-templates', Instruments: 'tab-instruments', Admin: 'tab-admin', More: 'tab-more' };
+  const ids: Record<string, string> = { 'New report': 'tab-new', Reports: 'tab-reports', Analytics: 'tab-analytics', Templates: 'tab-templates', Today: 'tab-home', Instruments: 'tab-instruments', Admin: 'tab-admin', More: 'tab-more' };
   return ids[label] ?? `tab-${label.toLowerCase()}`;
 }
