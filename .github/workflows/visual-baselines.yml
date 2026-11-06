@@ -85,3 +85,14 @@ jobs:
           name: visual-baselines
           path: frontend/tests/e2e/visual.spec.ts-snapshots
           if-no-files-found: error
+
+      # TEMPORARY (remove before merging): print the images into the log for an environment that cannot download artifacts.
+      - name: Print the images
+        if: always()
+        run: |
+          for f in frontend/tests/e2e/visual.spec.ts-snapshots/*.png; do
+            echo "PNG-BEGIN $(basename "$f")"
+            base64 -w0 "$f"
+            echo
+            echo "PNG-END"
+          done
