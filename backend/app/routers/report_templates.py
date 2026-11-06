@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
@@ -138,6 +139,62 @@ def compare_report_templates(left: uuid.UUID, right: uuid.UUID, db: Session = De
             for r in result.rows
         ],
     )
+
+
+@router.get("/report-templates/sample-scans", response_model=list[schemas.SampleScanOut])
+def list_sample_scans(
+    report_type: ReportType | None = Query(None, description="Offer scans of this report type first"),
+    model: str | None = Query(None, description="Offer scans of this instrument model first"),
+    limit: int = Query(12, ge=1, le=30),
+    db: Session = Depends(get_db),
+):
+    """Stored PDFs the template editor can show while a person picks fields from
+    one: the newest first, with scans of the same report type and model ahead of
+    the rest. Images are left out (nothing to pick text from), and so are files
+    whose report has been deleted. Registered before /report-templates/{template_id}
+    so "sample-scans" is never read as a template id."""
+    attachments = (
+        db.query(models.Attachment)
+        .filter(models.Attachment.file_type == "application/pdf")
+        .order_by(models.Attachment.created_at.desc())
+        .limit(300)
+        .all()
+    )
+    wanted_model = (model or "").strip().casefold()
+    ranked: list[tuple[int, int, schemas.SampleScanOut]] = []
+    for position, attachment in enumerate(attachments):
+        report = attachment.report
+        this_type = report.template.report_type if report.template else None
+        this_model = report.instrument.model if report.instrument else None
+        same_type = report_type is not None and this_type == report_type
+        same_model = bool(wanted_model) and (this_model or "").strip().casefold() == wanted_model
+        if same_type and same_model:
+            rank, reason = 0, "Same report type and model"
+        elif same_type:
+            rank, reason = 1, "Same report type"
+        elif same_model:
+            rank, reason = 2, "Same model"
+        else:
+            rank, reason = 3, "Another report"
+        path_name = Path(attachment.file_path).name
+        ranked.append(
+            (
+                rank,
+                position,
+                schemas.SampleScanOut(
+                    attachment_id=attachment.id,
+                    report_id=report.id,
+                    file_name=path_name.split("_", 1)[1] if "_" in path_name else path_name,
+                    report_type=this_type,
+                    instrument_model=this_model,
+                    instrument_serial_number=report.instrument.serial_number if report.instrument else None,
+                    report_date=report.report_date,
+                    reason=reason,
+                ),
+            )
+        )
+    ranked.sort(key=lambda item: (item[0], item[1]))
+    return [item[2] for item in ranked[:limit]]
 
 
 @router.get("/report-templates/{template_id}", response_model=schemas.ReportTemplateOut)

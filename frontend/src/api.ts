@@ -844,6 +844,49 @@ export function attachmentPageUrl(attachmentId: string, page: number, width = 90
   return `${API_BASE}/attachments/${attachmentId}/pages/${page}?width=${width}`;
 }
 
+/** One word on a PDF page, as fractions of the page (0 to 1 from the top left); `line` counts lines down the page. */
+export interface PageWord {
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  line: number;
+}
+
+/** The words of one page, for picking template fields straight from a PDF. `has_text` is false for a scan with no text layer. */
+export interface PageWords {
+  page: number;
+  has_text: boolean;
+  words: PageWord[];
+}
+
+export function getAttachmentPageWords(attachmentId: string, page: number): Promise<PageWords> {
+  return apiFetch(`/attachments/${attachmentId}/pages/${page}/words`);
+}
+
+/** A stored PDF the template editor can show while a person picks fields from it. */
+export interface SampleScan {
+  attachment_id: string;
+  report_id: string;
+  file_name: string;
+  report_type: ReportType | null;
+  instrument_model: string | null;
+  instrument_serial_number: string | null;
+  report_date: string | null;
+  /** Why it is offered: "Same report type and model", "Same report type", "Same model" or "Another report". */
+  reason: string;
+}
+
+export function listSampleScans(params: { report_type?: ReportType; model?: string; limit?: number } = {}): Promise<SampleScan[]> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') query.set(key, String(value));
+  }
+  const qs = query.toString();
+  return apiFetch(`/report-templates/sample-scans${qs ? `?${qs}` : ''}`);
+}
+
 // Both of these now only enqueue a job and return immediately (202) — the
 // actual Claude vision call happens in the background worker (app/worker.py,
 // SL-ARCH-001 §3), not inline in the request (a vision call runs seconds,

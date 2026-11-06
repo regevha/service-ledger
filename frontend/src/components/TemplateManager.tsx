@@ -27,6 +27,7 @@ import { TemplateCompareScreen } from './TemplateCompare';
 import { REPORT_TYPE_LABEL } from '../labels';
 import type { TemplateRequest } from '../templateRequest';
 import { SuggestInput } from './SuggestInput';
+import { TemplatePdfPicker, type PickedField } from './TemplatePdfPicker';
 
 /**
  * The Templates tab: CRUD for report_templates rows, replacing "edit
@@ -460,6 +461,13 @@ function TemplateFormScreen({
     setStartPinned(option ?? null);
   }
 
+  // A field picked from a PDF page joins the list below; the editor is rebuilt so its rows pick up the new one.
+  function addPickedField(picked: PickedField) {
+    setFields((current) => [...current, { ...defaultFieldFor(picked.type), name: picked.name, notes: picked.notes }]);
+    setFieldsVersion((v) => v + 1);
+    setTouched(true);
+  }
+
   function chooseStart(id: string) {
     if (id === startFrom) return;
     if (touched && fields.length > 0) {
@@ -622,6 +630,7 @@ function TemplateFormScreen({
       <div className="section-title" style={{ marginTop: 18 }}>
         Fields
       </div>
+      <TemplatePdfPicker reportType={reportType} model={model} fieldNames={fields.map((f) => f.name)} onAddField={addPickedField} />
       <FieldSchemaEditor
         key={fieldsVersion}
         fields={fields}

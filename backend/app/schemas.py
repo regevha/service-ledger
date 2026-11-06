@@ -754,6 +754,42 @@ class AttachmentOut(BaseModel):
     duplicate_report_ids: list[uuid.UUID] = []
 
 
+class WordBoxOut(BaseModel):
+    """One word on a PDF page and where it sits, as fractions of the page
+    (0 to 1 from the top left), so the browser can draw it over the page image
+    at any size. `line` counts lines down the page from 0."""
+
+    text: str
+    x: float
+    y: float
+    w: float
+    h: float
+    line: int
+
+
+class PageWordsOut(BaseModel):
+    """GET /attachments/{id}/pages/{n}/words: the words the template editor
+    lets a person pick. `has_text` is false for a scan with no text layer."""
+
+    page: int
+    has_text: bool
+    words: list[WordBoxOut]
+
+
+class SampleScanOut(BaseModel):
+    """GET /report-templates/sample-scans: a stored PDF the template editor can
+    show while a person picks fields from it. `reason` says why it was offered."""
+
+    attachment_id: uuid.UUID
+    report_id: uuid.UUID
+    file_name: str
+    report_type: ReportType | None
+    instrument_model: str | None
+    instrument_serial_number: str | None
+    report_date: date | None
+    reason: str
+
+
 # ---------- Reports ----------
 
 
