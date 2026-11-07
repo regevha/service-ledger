@@ -315,7 +315,7 @@ of a raw JSON textarea, since the whole shape it edits is exactly what
 database); the new endpoints are for changing rows after that, including
 ones seed_templates.py never created.
 
-`app/schemas.py`'s `TemplateFieldIn` enforces, at the API boundary, exactly
+`app/schemas/`'s `TemplateFieldIn` enforces, at the API boundary, exactly
 what the review screen can render: `options` is required (and non-empty) for
 `enum`/`enum[]` fields and forbidden otherwise, `item_schema` is required
 (and non-empty, leaf-typed, no duplicate column names) for `object[]` fields
