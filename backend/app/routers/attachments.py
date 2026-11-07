@@ -287,14 +287,15 @@ def get_attachment_field_locations(attachment_id: uuid.UUID, db: Session = Depen
     """Where each field of this document's report was read from, so the review screen can draw the fields on
     the PDF. A value is looked up among the page's words, using what the reading first produced (so a field
     a person has since corrected still points at the spot it came from). A scan or photo has no text to search,
-    so `has_text` is false and no field is placed."""
+    so `has_text` is false and the only positions are the boxes the model gave when it read the picture."""
     attachment, path = _stored_scan(db, attachment_id)
+    report = attachment.report
+    model_boxes = _model_boxes(report, attachment)
     if attachment.file_type != "application/pdf":
-        return schemas.FieldLocationsOut(has_text=False, page_count=1, fields={})
+        return schemas.FieldLocationsOut(has_text=False, page_count=1, fields=_model_locations(model_boxes, 1))
 
     import pypdfium2 as pdfium
 
-    report = attachment.report
     template = report.template
     original = report.original_fields or {}
     current = report.extracted_fields or {}
@@ -316,20 +317,44 @@ def get_attachment_field_locations(attachment_id: uuid.UUID, db: Session = Depen
         located = locate_fields(path, wanted)
     except pdfium.PdfiumError:
         raise HTTPException(422, "The stored PDF could not be opened")
-    return schemas.FieldLocationsOut(
-        has_text=located.has_text,
-        page_count=located.page_count,
-        fields={
-            name: schemas.FieldLocationOut(
-                page=loc.page,
-                rects=[schemas.RectOut(x=r.x, y=r.y, w=r.w, h=r.h) for r in loc.rects],
-                matches=loc.matches,
-                ambiguous=loc.ambiguous,
-                source=loc.source,
-            )
-            for name, loc in located.fields.items()
-        },
-    )
+    fields = {
+        name: schemas.FieldLocationOut(
+            page=loc.page,
+            rects=[schemas.RectOut(x=r.x, y=r.y, w=r.w, h=r.h) for r in loc.rects],
+            matches=loc.matches,
+            ambiguous=loc.ambiguous,
+            source=loc.source,
+        )
+        for name, loc in located.fields.items()
+    }
+    # What the text could not place (a scan has no text at all) falls back to where the model said it read it.
+    for name, loc in _model_locations(model_boxes, located.page_count).items():
+        fields.setdefault(name, loc)
+    return schemas.FieldLocationsOut(has_text=located.has_text, page_count=located.page_count, fields=fields)
+
+
+def _model_boxes(report, attachment) -> dict:
+    """The boxes the model gave for this attachment, or {} when there are none or they belong to another
+    document of the same report."""
+    stored = report.field_boxes or {}
+    if stored.get("attachment_id") != str(attachment.id):
+        return {}
+    boxes = stored.get("boxes")
+    return boxes if isinstance(boxes, dict) else {}
+
+
+def _model_locations(boxes: dict, page_count: int) -> dict:
+    """Model boxes as locations marked `source: "model"` (approximate), for the pages that exist."""
+    out = {}
+    for name, b in boxes.items():
+        try:
+            page = int(b["page"])
+            rect = schemas.RectOut(x=float(b["x"]), y=float(b["y"]), w=float(b["w"]), h=float(b["h"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if 1 <= page <= page_count:
+            out[name] = schemas.FieldLocationOut(page=page, rects=[rect], matches=1, ambiguous=False, source="model")
+    return out
 
 
 _CHUNK_BYTES = 1024 * 1024

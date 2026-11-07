@@ -139,7 +139,7 @@ export interface FieldLocation {
   matches: number;
   ambiguous: boolean;
   /** "text": found among the page's words. "template": the position the template gives. */
-  source: 'text' | 'template';
+  source: 'text' | 'template' | 'model';
 }
 
 export interface FieldLocations {

@@ -308,6 +308,9 @@ def _run_extract_job(db: Session, job: models.ExtractionJob) -> None:
     # A separate copy (JSONB gets a new object on assignment, but be explicit): later edits change
     # `extracted_fields` only.
     report.original_fields = dict(result.extracted_fields)
+    report.field_boxes = (
+        {"attachment_id": str(attachment.id), "boxes": result.field_boxes} if result.field_boxes else None
+    )
     if result.report_date is not None:
         # Only overwrite with a date actually read off the document — when
         # none could be read, keep whatever the report already has (e.g. a
