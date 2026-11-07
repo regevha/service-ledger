@@ -176,7 +176,7 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
   }
   function changeType(i: number, type: FieldType) {
     const current = fields[i];
-    onChange(fields.map((f, j) => (i === j ? { ...defaultFieldFor(type), name: current.name, unit: current.unit, notes: current.notes, filled_by_person: current.filled_by_person, optional: current.optional } : f)));
+    onChange(fields.map((f, j) => (i === j ? { ...defaultFieldFor(type), name: current.name, unit: current.unit, notes: current.notes, filled_by_person: current.filled_by_person, optional: current.optional, source: current.source } : f)));
   }
   function removeField(i: number) {
     onChange(fields.filter((_, j) => j !== i));
@@ -321,6 +321,7 @@ function fieldToPayload(field: TemplateField): TemplateFieldPayload {
     ...(field.item_schema ? { item_schema: field.item_schema } : {}),
     ...(field.filled_by_person ? { filled_by_person: true } : {}),
     ...(field.optional ? { optional: true } : {}),
+    ...(field.source ? { source: field.source } : {}),
   };
 }
 
@@ -463,7 +464,7 @@ function TemplateFormScreen({
 
   // A field picked from a PDF page joins the list below; the editor is rebuilt so its rows pick up the new one.
   function addPickedField(picked: PickedField) {
-    setFields((current) => [...current, { ...defaultFieldFor(picked.type), name: picked.name, notes: picked.notes }]);
+    setFields((current) => [...current, { ...defaultFieldFor(picked.type), name: picked.name, notes: picked.notes, source: picked.source }]);
     setFieldsVersion((v) => v + 1);
     setTouched(true);
   }
@@ -630,7 +631,7 @@ function TemplateFormScreen({
       <div className="section-title" style={{ marginTop: 18 }}>
         Fields
       </div>
-      <TemplatePdfPicker reportType={reportType} model={model} fieldNames={fields.map((f) => f.name)} onAddField={addPickedField} />
+      <TemplatePdfPicker reportType={reportType} model={model} fields={fields} onAddField={addPickedField} />
       <FieldSchemaEditor
         key={fieldsVersion}
         fields={fields}

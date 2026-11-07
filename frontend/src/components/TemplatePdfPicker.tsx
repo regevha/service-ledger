@@ -5,7 +5,9 @@ import {
   getAttachmentPageCount,
   getAttachmentPageWords,
   listSampleScans,
+  type FieldSource,
   type FieldType,
+  type TemplateField,
   type PageWord,
   type ReportType,
   type SampleScan,
@@ -33,6 +35,8 @@ export interface PickedField {
   name: string;
   type: FieldType;
   notes: string | null;
+  /** The page and box the text was picked from, so the field can be shown there later. */
+  source: FieldSource;
 }
 
 interface Draft {
@@ -63,13 +67,13 @@ function sampleLabel(s: SampleScan): string {
 export function TemplatePdfPicker({
   reportType,
   model,
-  fieldNames,
+  fields,
   onAddField,
 }: {
   reportType: ReportType;
   model: string;
-  /** The names the template already has, so a new field never repeats one. */
-  fieldNames: string[];
+  /** The template's fields: their names so a new field never repeats one, and the boxes of those picked from a PDF. */
+  fields: TemplateField[];
   onAddField: (field: PickedField) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -213,6 +217,10 @@ export function TemplatePdfPicker({
     startDraft(line, boundsOf(words, line)!);
   }
 
+  const fieldNames = useMemo(() => fields.map((f) => f.name), [fields]);
+  // The fields picked from this page of a PDF, drawn back over it. Where the template was picked from another
+  // sample the boxes still land on the same form, since every report of a template is the same layout.
+  const markers = useMemo(() => fields.filter((f) => f.source && f.source.page === page), [fields, page]);
   const chosen = useMemo(() => new Set(draft?.indexes ?? []), [draft]);
 
   function add(field: PickedField) {
@@ -329,6 +337,16 @@ export function TemplatePdfPicker({
                   <span className="pdf-word-text">{w.text}</span>
                 </span>
               ))}
+              {markers.map((f) => (
+                <span
+                  key={f.name}
+                  className="pdf-marker"
+                  data-testid="pdf-marker"
+                  style={{ left: `${f.source!.x * 100}%`, top: `${f.source!.y * 100}%`, width: `${f.source!.w * 100}%`, height: `${f.source!.h * 100}%` }}
+                >
+                  <span className="pdf-marker-name">{f.name}</span>
+                </span>
+              ))}
               {draft && draft.indexes.length === 0 && (
                 <span
                   className="pdf-box chosen"
@@ -411,7 +429,7 @@ function AddFieldCard({
       aria-label="Add as a new field"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!problem) onAdd({ name: cleaned, type, notes: notes.trim() || null });
+        if (!problem) onAdd({ name: cleaned, type, notes: notes.trim() || null, source: { page, ...draft.box } });
       }}
     >
       <div className="pdf-card-title">Add as a new field</div>
