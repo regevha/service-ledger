@@ -17,6 +17,7 @@ from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
 from app.services.duplicates import find_duplicate_report_ids, find_read_copy, normalize_work_order
+from app.services.page_text import PDFIUM_LOCK, page_words
 from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
 from app.services.text_reader import extract_text, read_work_order
 from app.services.translation import translation_gate
@@ -206,11 +207,12 @@ def get_attachment_pages(attachment_id: uuid.UUID, db: Session = Depends(get_db)
         import pypdfium2 as pdfium
 
         try:
-            pdf = pdfium.PdfDocument(str(path))
-            try:
-                return {"page_count": len(pdf)}
-            finally:
-                pdf.close()
+            with PDFIUM_LOCK:
+                pdf = pdfium.PdfDocument(str(path))
+                try:
+                    return {"page_count": len(pdf)}
+                finally:
+                    pdf.close()
         except pdfium.PdfiumError:
             raise HTTPException(422, "The stored PDF could not be opened")
     return {"page_count": 1}
@@ -234,21 +236,49 @@ def get_attachment_page_image(
 
     import pypdfium2 as pdfium
 
-    try:
-        pdf = pdfium.PdfDocument(str(path))
-    except pdfium.PdfiumError:
-        raise HTTPException(422, "The stored PDF could not be opened")
-    try:
-        if page < 1 or page > len(pdf):
-            raise HTTPException(404, "Page not found")
-        pdf_page = pdf[page - 1]
-        scale = width / pdf_page.get_width()
-        image = pdf_page.render(scale=scale).to_pil().convert("RGB")
-    finally:
-        pdf.close()
+    with PDFIUM_LOCK:
+        try:
+            pdf = pdfium.PdfDocument(str(path))
+        except pdfium.PdfiumError:
+            raise HTTPException(422, "The stored PDF could not be opened")
+        try:
+            if page < 1 or page > len(pdf):
+                raise HTTPException(404, "Page not found")
+            pdf_page = pdf[page - 1]
+            scale = width / pdf_page.get_width()
+            image = pdf_page.render(scale=scale).to_pil().convert("RGB")
+        finally:
+            pdf.close()
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return Response(buffer.getvalue(), media_type="image/png", headers=headers)
+
+
+@router.get("/attachments/{attachment_id}/pages/{page}/words", response_model=schemas.PageWordsOut)
+def get_attachment_page_words(attachment_id: uuid.UUID, page: int, db: Session = Depends(get_db)):
+    """The words on one page of a stored PDF and where they sit (fractions of
+    the page, from the top left). The template editor draws these over the page
+    image so a person can click a word or drag a box to turn it into a field.
+    An image scan, or a PDF with no text layer, has no words (`has_text` false)."""
+    attachment, path = _stored_scan(db, attachment_id)
+    if attachment.file_type != "application/pdf":
+        if page != 1:
+            raise HTTPException(404, "Page not found")
+        return schemas.PageWordsOut(page=1, has_text=False, words=[])
+
+    import pypdfium2 as pdfium
+
+    try:
+        words, has_text = page_words(path, page)
+    except IndexError:
+        raise HTTPException(404, "Page not found")
+    except pdfium.PdfiumError:
+        raise HTTPException(422, "The stored PDF could not be opened")
+    return schemas.PageWordsOut(
+        page=page,
+        has_text=has_text,
+        words=[schemas.WordBoxOut(text=w.text, x=w.x, y=w.y, w=w.w, h=w.h, line=w.line) for w in words],
+    )
 
 
 _CHUNK_BYTES = 1024 * 1024

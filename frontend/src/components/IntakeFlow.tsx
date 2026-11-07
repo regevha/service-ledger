@@ -49,6 +49,7 @@ export function IntakeFlow({
   onCancel,
   onInstrumentAdded,
   onCreateTemplate,
+  onOpenBatch,
   templateCreated,
 }: {
   instruments: Instrument[];
@@ -66,6 +67,8 @@ export function IntakeFlow({
   onInstrumentAdded?: () => Promise<void> | void;
   /** Ask the Templates tab for a template for this model and report type (prefilled, with the closest one as the start). */
   onCreateTemplate?: (request: TemplateRequest) => void;
+  /** Opens the several-files screen; without it the intake screen shows no link to it. */
+  onOpenBatch?: () => void;
   /** Set when a template was just saved for a request made here; `nonce` changes on every save. */
   templateCreated?: { template: ReportTemplate; nonce: number } | null;
 }) {
@@ -202,6 +205,7 @@ export function IntakeFlow({
           files={files}
           setFiles={setFiles}
           onStart={() => void handleStart()}
+          onOpenBatch={onOpenBatch}
         />
       )}
 

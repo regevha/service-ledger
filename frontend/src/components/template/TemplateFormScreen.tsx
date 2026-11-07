@@ -3,8 +3,9 @@ import { ApiError, createReportTemplate, getTemplateSuggestions, listAllReportTe
 import { REPORT_TYPE_LABEL } from '../../labels';
 import { type TemplateRequest } from '../../templateRequest';
 import { SuggestInput } from '../SuggestInput';
-import { droppedFieldNames, fieldToPayload, templateProblems } from './fieldSchema';
+import { defaultFieldFor, droppedFieldNames, fieldToPayload, templateProblems } from './fieldSchema';
 import { FieldSchemaEditor } from './FieldSchemaEditor';
+import { TemplatePdfPicker, type PickedField } from '../TemplatePdfPicker';
 
 /** One entry of the "Start from" list: an existing template and why it is offered. */
 export interface StartOption {
@@ -95,6 +96,13 @@ export function TemplateFormScreen({
       clearTimeout(timer);
     };
   }, [isCreate, reportType, instrumentType, model]);
+
+  // A field picked from a PDF goes to the end of the list, with the page and box it was picked from.
+  function addPickedField(picked: PickedField) {
+    setFields((current) => [...current, { ...defaultFieldFor(picked.type), name: picked.name, notes: picked.notes, source: picked.source }]);
+    setFieldsVersion((v) => v + 1);
+    setTouched(true);
+  }
 
   function applyStart(id: string) {
     const option = startOptions.find((o) => o.template.id === id);
@@ -268,6 +276,7 @@ export function TemplateFormScreen({
       <div className="section-title" style={{ marginTop: 18 }}>
         Fields
       </div>
+      <TemplatePdfPicker reportType={reportType} model={model} fields={fields} onAddField={addPickedField} />
       <FieldSchemaEditor
         key={fieldsVersion}
         fields={fields}

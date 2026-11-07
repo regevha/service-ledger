@@ -388,7 +388,7 @@ export function AnalyticsScreen() {
                   <span className="stat-label">Total labor hours</span>
                 </div>
                 <div className="stat-tile">
-                  <span className="stat-value">{totalUnitsReplaced}</span>
+                  <span className="stat-value">{Number(totalUnitsReplaced.toFixed(2))}</span>
                   <span className="stat-label">Units replaced ({data.parts_replaced.length} distinct parts)</span>
                 </div>
                 <div className="stat-tile">

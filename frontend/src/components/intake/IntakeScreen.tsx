@@ -8,12 +8,14 @@ export function IntakeScreen({
   files,
   setFiles,
   onStart,
+  onOpenBatch,
 }: {
   technicianName: string;
   setTechnicianName: (v: string) => void;
   files: File[];
   setFiles: (f: File[]) => void;
   onStart: () => void;
+  onOpenBatch?: () => void;
 }) {
   const file = files[0] ?? null;
   const chosenLabel = files.length > 1 ? `${files.length} photos — one report` : file?.name;
@@ -152,6 +154,14 @@ export function IntakeScreen({
 
       <div className="intake-info">
         <p className="intake-subheading">Upload the scan or photos. We read the instrument and visit type, then you check the details.</p>
+        {onOpenBatch && (
+          <p className="intake-batch-link">
+            Have a pile of PDFs?{' '}
+            <button type="button" className="link-button" data-testid="open-batch" onClick={onOpenBatch}>
+              Upload several at once
+            </button>
+          </p>
+        )}
         <p className="hint-text">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one PDF, or several photos of the pages, per report; any instrument, any report type</p>
         <aside className="next-card" data-testid="intake-next-card" aria-label="What happens next">
           <div className="next-card-title">What happens next</div>

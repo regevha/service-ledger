@@ -125,11 +125,12 @@
   }
 }
 
-/* Wide screens: the filters are a column on the left of the list instead of a row above it. */
+/* From small laptops up: the filters are a column on the left of the list instead of a row above it, so the list
+   starts on the first screen. The column scrolls on its own when it is taller than the window. */
 .reports-layout {
   display: block;
 }
-@media (min-width: 1500px) {
+@media (min-width: 1000px) {
   .reports-layout {
     display: grid;
     grid-template-columns: 300px minmax(0, 1fr);
@@ -139,6 +140,8 @@
   .reports-filters {
     position: sticky;
     top: var(--space-4);
+    max-height: calc(100vh - 2 * var(--space-4));
+    overflow-y: auto;
     padding: var(--space-4);
     border: 1px solid var(--border);
     border-radius: var(--radius);

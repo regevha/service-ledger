@@ -6,6 +6,8 @@ import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { InstrumentManagerScreen } from './components/InstrumentManager';
 import { IntakeFlow } from './components/IntakeFlow';
 import { ReportsListScreen } from './components/ReportsListScreen';
+import { TodayScreen } from './components/TodayScreen';
+import { BatchIntake } from './components/BatchIntake';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { NavigationGuardContext, type LeaveGuard } from './navigationGuard';
@@ -23,8 +25,8 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   classification_confidence_threshold: 0.85,
 };
 
-type View = 'new' | 'reports' | 'analytics' | 'templates' | 'instruments' | 'admin' | 'more';
-const VIEWS: View[] = ['new', 'reports', 'analytics', 'templates', 'instruments', 'admin', 'more'];
+type View = 'home' | 'new' | 'batch' | 'reports' | 'analytics' | 'templates' | 'instruments' | 'admin' | 'more';
+const VIEWS: View[] = ['home', 'new', 'batch', 'reports', 'analytics', 'templates', 'instruments', 'admin', 'more'];
 
 // Where the app is lives in the address bar (#/reports, #/reports/<report id>,
 // #/reports/instrument/<instrument id>), so Refresh keeps the place, Back and Forward
@@ -50,9 +52,11 @@ function parseHash(hash: string): Route {
 // app-wide confidence-threshold config.
 
 // Small outline icons for the phone's bottom bar (hidden on wide screens, where the tabs are text only).
-function TabIcon({ name }: { name: 'new' | 'reports' | 'analytics' | 'templates' | 'instruments' | 'more' }) {
+function TabIcon({ name }: { name: 'home' | 'new' | 'reports' | 'analytics' | 'templates' | 'instruments' | 'more' }) {
   const common = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true, className: 'tab-icon' };
   switch (name) {
+    case 'home':
+      return (<svg {...common}><path d="M4 11l8-7 8 7v9H4z" /><path d="M10 20v-6h4v6" /></svg>);
     case 'new':
       return (<svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></svg>);
     case 'reports':
@@ -82,6 +86,9 @@ export default function App() {
   const view = route.view;
   // Changing this discards the intake flow's state (and any work still running in it): "Cancel".
   const [intakeKey, setIntakeKey] = useState(0);
+  // Once the several-files screen has been opened it stays mounted (hidden), so its list survives checking a report.
+  const [batchOpened, setBatchOpened] = useState(false);
+  if (view === 'batch' && !batchOpened) setBatchOpened(true);
   // A report waiting for a template of its own: the Templates tab opens a
   // prefilled form for it, and when a template is saved the intake flow reads
   // the report again (templateCreated; its nonce changes on every save).
@@ -223,7 +230,12 @@ export default function App() {
           <span className="mark" /> ServiceLedger
         </div>
         <nav className="view-tabs" aria-label="Main">
-          <button className={`view-tab ${view === 'new' ? 'active' : ''}`} data-testid="tab-new" aria-current={view === 'new' ? 'page' : undefined} onClick={() => selectView('new')}>
+          {/* Wide screens only: on a phone the five-tab bar is full, so Today is the first item of More. */}
+          <button className={`view-tab tab-wide-only ${view === 'home' ? 'active' : ''}`} data-testid="tab-home" aria-current={view === 'home' ? 'page' : undefined} onClick={() => selectView('home')}>
+            <TabIcon name="home" />
+            <span className="tab-label">Today</span>
+          </button>
+          <button className={`view-tab ${view === 'new' || view === 'batch' ? 'active' : ''}`} data-testid="tab-new" aria-current={view === 'new' || view === 'batch' ? 'page' : undefined} onClick={() => selectView('new')}>
             <TabIcon name="new" />
             <span className="tab-label">New report</span>
           </button>
@@ -281,17 +293,37 @@ export default function App() {
                 setTemplateRequest(request);
                 navigate('templates', '', { force: true });
               }}
+              onOpenBatch={() => navigate('batch')}
               onOpenReport={(reportId) => navigate('reports', reportId)}
               onViewInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
               onCancel={() => setIntakeKey((k) => k + 1)}
             />
           </div>
         )}
+        {(view === 'batch' || batchOpened) && (
+          <div hidden={view !== 'batch'}>
+            <BatchIntake active={view === 'batch'} onOpenReport={(reportId) => navigate('reports', reportId)} onBack={() => navigate('new')} />
+          </div>
+        )}
+        {view === 'home' && (
+          <TodayScreen
+            instruments={instruments}
+            instrumentsLoading={instrumentsLoading}
+            onOpenReport={(reportId) => navigate('reports', reportId)}
+            onOpenInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
+            onNewReport={() => selectView('new')}
+            onOpenReports={() => selectView('reports')}
+            onOpenInstruments={() => selectView('instruments')}
+          />
+        )}
         {view === 'analytics' && <AnalyticsScreen />}
         {view === 'admin' && <AdminScreen instruments={instruments} section={route.sub} onSection={(sub) => navigate('admin', sub)} />}
         {view === 'more' && (
           <nav className="more-screen" aria-label="More" data-testid="more-screen">
             <h1 className="more-title">More</h1>
+            <button type="button" className="more-item" onClick={() => selectView('home')}>
+              <span><strong>Today</strong><small>What needs your attention</small></span>
+            </button>
             <button type="button" className="more-item" onClick={() => selectView('templates')}>
               <span><strong>Templates</strong><small>What we read from each report type</small></span>
             </button>

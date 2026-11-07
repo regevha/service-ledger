@@ -87,6 +87,19 @@
 .view-tab.tab-end {
   margin-left: auto;
 }
+/* Small laptops: tighter tabs so all of them fit without scrolling sideways. */
+@media (min-width: 621px) and (max-width: 1100px) {
+  .view-tabs {
+    gap: 0;
+  }
+  .view-tab {
+    padding: 0 9px;
+    font-size: 0.82rem;
+  }
+  .topbar-new {
+    padding-inline: 12px;
+  }
+}
 .tab-phone-only {
   display: none;
 }

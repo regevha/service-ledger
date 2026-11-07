@@ -342,3 +342,28 @@ def test_delete_report_template_conflicts_when_reports_reference_it(client, seed
     assert resp.status_code == 409
     # Guarded, not just caught — the row must still exist afterwards.
     assert client.get(f"/report-templates/{template.id}").status_code == 200
+
+
+def test_field_source_box_round_trips(client):
+    source = {"page": 2, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.05}
+    resp = client.post(
+        "/report-templates",
+        json={"report_type": "repair", "model": "Src-1", "fields": [{"name": "laser_delay", "type": "number", "source": source}]},
+    )
+    assert resp.status_code == 201
+    template = resp.json()
+    assert template["field_schema"]["fields"][0]["source"] == source
+    # A later edit that sends it again keeps it; one that omits it drops it.
+    kept = client.patch(f"/report-templates/{template['id']}", json={"fields": [{"name": "laser_delay", "type": "number", "source": source}]})
+    assert kept.json()["field_schema"]["fields"][0]["source"] == source
+    dropped = client.patch(f"/report-templates/{template['id']}", json={"fields": [{"name": "laser_delay", "type": "number"}]})
+    assert "source" not in dropped.json()["field_schema"]["fields"][0]
+
+
+def test_field_source_box_must_lie_on_the_page(client):
+    for bad in ({"page": 0, "x": 0, "y": 0, "w": 0.1, "h": 0.1}, {"page": 1, "x": 0.9, "y": 0, "w": 0.3, "h": 0.1}, {"page": 1, "x": 0, "y": 0, "w": 0, "h": 0.1}):
+        resp = client.post(
+            "/report-templates",
+            json={"report_type": "repair", "model": "Src-2", "fields": [{"name": "a", "type": "text", "source": bad}]},
+        )
+        assert resp.status_code == 422, bad

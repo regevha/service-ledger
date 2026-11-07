@@ -1,0 +1,573 @@
+/* Picking template fields from a PDF page, and the Today screen. Loaded last; both only use tokens from index.css. */
+
+/* ---- Pick fields from a PDF (Templates tab, inside the template form) ---- */
+.pdf-picker-closed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.pdf-picker-closed div {
+  display: flex;
+  flex-direction: column;
+}
+.pdf-picker-closed span {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.pdf-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.pdf-picker-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+}
+.pdf-picker-sample {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.pdf-picker-sample select {
+  width: 100%;
+  min-width: 0;
+}
+.pdf-picker-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.pdf-picker-pages {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.pdf-picker-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.pdf-picker-hint {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+.pdf-picker-stage {
+  display: flex;
+  flex-direction: column;
+}
+.pdf-picker-page {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+.pdf-picker-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+}
+.pdf-picker-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+.pdf-word {
+  position: absolute;
+  border-radius: 2px;
+}
+/* The words are only there to be hit; their text is for tests and screen readers, not for sight. */
+.pdf-word-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.pdf-picker-overlay .pdf-word:hover {
+  outline: 1px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.pdf-picker-overlay.show-all .pdf-word {
+  outline: 1px dashed var(--accent);
+}
+.pdf-word.chosen,
+.pdf-box.chosen {
+  background: color-mix(in srgb, var(--flag) 28%, transparent);
+  outline: 2px solid var(--flag);
+}
+.pdf-box {
+  position: absolute;
+  pointer-events: none;
+}
+.pdf-box.rubber {
+  border: 1.5px solid var(--flag);
+  background: color-mix(in srgb, var(--flag) 14%, transparent);
+}
+.pdf-card {
+  position: absolute;
+  z-index: 5;
+  width: min(300px, 90%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-pop);
+}
+.pdf-card-title {
+  font-weight: 600;
+}
+.pdf-card-sample {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--flag-soft);
+  border-left: 3px solid var(--flag);
+  padding: 6px 10px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 6em;
+  overflow: auto;
+}
+.pdf-card-sample.muted {
+  font-family: inherit;
+  color: var(--text-muted);
+}
+.pdf-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pdf-card-problem {
+  color: var(--crit);
+  font-size: var(--text-sm);
+}
+.pdf-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.pdf-picker-added {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.pdf-picker-chip {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* ---- Today ---- */
+.today {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-6);
+}
+.today-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.today-title {
+  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: 600;
+}
+.today-date {
+  color: var(--text-muted);
+}
+.today-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-4);
+}
+.today-tile .stat-value {
+  font-variant-numeric: tabular-nums;
+}
+.today-tile.attention {
+  border-left: 4px solid var(--flag);
+}
+.today-add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  padding: var(--space-4) var(--space-5);
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+.today-add:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.today-add-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  line-height: 1;
+  background: var(--accent-fill);
+  color: var(--on-fill);
+}
+.today-add small {
+  display: block;
+  color: var(--text-muted);
+}
+.today-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.today-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.today-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.today-card-head h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.today-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.today-list > li + li {
+  border-top: 1px solid var(--border);
+}
+.today-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+.today-row-button {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.today-row-button:hover {
+  background: var(--surface-2);
+}
+.today-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.today-row-title {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.today-row-sub {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.today-empty,
+.today-more {
+  padding: var(--space-4);
+  color: var(--text-muted);
+}
+.today-more {
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+@media (max-width: 899px) {
+  .today {
+    padding: var(--space-4);
+  }
+  .today-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* "3 days over" is a sentence, not a status name: keep its own case. */
+.today-row .status-pill {
+  text-transform: none;
+}
+
+/* A field already in the template, drawn where it was picked. Not clickable: the field editor below edits it. */
+.pdf-marker {
+  position: absolute;
+  pointer-events: none;
+  border: 1.5px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 2px;
+}
+.pdf-marker-name {
+  position: absolute;
+  left: -1.5px;
+  bottom: 100%;
+  padding: 0 5px;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 3px 3px 0 0;
+}
+
+/* ---------- Several PDFs at once ---------- */
+.intake-batch-link {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+.batch {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.batch-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.batch-title {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.batch-sub {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+.batch-drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 28px 16px;
+  text-align: center;
+  border: 1.5px dashed var(--border, var(--line, #c9ccd8));
+  border-radius: 10px;
+  cursor: pointer;
+}
+.batch-drop span {
+  color: var(--muted);
+}
+.batch-drop input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.batch-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+.batch-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-weight: 600;
+}
+.batch-flag {
+  color: var(--flag);
+}
+.batch-tech {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+.batch-actions {
+  display: flex;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+.batch-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.batch-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border, var(--line, #d9dce8));
+}
+.batch-file {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.batch-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.batch-detail {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.batch-state {
+  font-size: 0.85rem;
+  padding: 2px 10px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--muted) 14%, transparent);
+  white-space: nowrap;
+}
+.batch-state.working::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: batch-pulse 1s ease-in-out infinite;
+}
+.state-ready .batch-state {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.state-approved .batch-state {
+  background: color-mix(in srgb, var(--ok, #2e7d4f) 20%, transparent);
+}
+.state-attention .batch-state,
+.state-failed .batch-state {
+  background: color-mix(in srgb, var(--flag) 22%, transparent);
+}
+.batch-row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+@keyframes batch-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .batch-state.working::before {
+    animation: none;
+  }
+}
+@media (max-width: 620px) {
+  .batch-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .batch-row-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .batch-actions {
+    margin-inline-start: 0;
+  }
+}
+
+/* ---------- Ask in plain words ---------- */
+.ask-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.ask-label {
+  font-weight: 600;
+}
+.ask-row {
+  display: flex;
+  gap: 8px;
+}
+.ask-input {
+  flex: 1;
+  min-width: 0;
+}
+.ask-examples,
+.ask-understood {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.ask-chip {
+  padding: 2px 10px;
+  border-radius: 99px;
+  color: var(--fg, inherit);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.ask-examples .link-button {
+  padding: 0;
+  text-align: start;
+}
+/* In the filter column the box is narrow: the button goes under the field and the examples stack. */
+.reports-filters .ask-row {
+  flex-direction: column;
+}
+.reports-filters .ask-examples {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}

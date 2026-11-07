@@ -107,6 +107,15 @@ export interface ItemSchemaColumn {
   type: FieldType;
 }
 
+/** Where on a sample PDF a field was picked: a 1-based page and a box in fractions of the page (0 to 1 from the top left). */
+export interface FieldSource {
+  page: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface TemplateField {
   name: string;
   type: FieldType;
@@ -118,6 +127,8 @@ export interface TemplateField {
   filled_by_person?: boolean;
   /** May be left empty: when the form does not state it, an empty value is not flagged on Review. */
   optional?: boolean;
+  /** Where on a sample PDF the field was picked; absent for a field typed by hand. */
+  source?: FieldSource | null;
 }
 
 export interface ReportTemplate {

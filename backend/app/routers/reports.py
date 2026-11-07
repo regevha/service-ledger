@@ -135,6 +135,22 @@ def search_reports(
     return [list_item(r) for r in reports]
 
 
+@router.post("/reports/parse-search", response_model=schemas.ReportSearchParseOut)
+def parse_report_search(payload: schemas.ReportSearchParseIn, db: Session = Depends(get_db)):
+    """A request in plain words ("repairs of the FACSAria III last month") turned into the Reports
+    filters. Nothing is searched here: the screen applies the filters, shows what was understood,
+    and the person can change any of it."""
+    from app.services.report_query_parse import Known, parse_search  # noqa: PLC0415
+
+    known = Known(
+        models=[(str(m.id), m.name) for m in db.query(models.InstrumentModel).all()],
+        places=[(str(p.id), p.name) for p in db.query(models.Place).all()],
+        instruments=[(str(i.id), i.model, i.serial_number) for i in db.query(models.Instrument).all()],
+    )
+    parsed = parse_search(payload.text, known, date.today())
+    return {"filters": parsed.filters, "understood": parsed.understood}
+
+
 @router.get("/reports/export")
 def export_reports(
     instrument_id: uuid.UUID | None = None,
