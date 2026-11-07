@@ -40,6 +40,22 @@ from app.services.text_reader import extract_text, read_identifiers
 from app.services.documents import UnsupportedDocumentError
 from app.services.translation import accepted_text, is_hebrew_text_layer, source_block
 from app.services.templates import resolve_template
+from app.services.classification_prompt import (  # noqa: F401  (moved; re-exported here)
+    _CLASSIFY_INTRO,
+    _CLASSIFY_BODY,
+    _CLASSIFY_BRAND_NOTE,
+    build_classify_prompt,
+)
+from app.services.classification_reading import (  # noqa: F401  (moved; re-exported here)
+    _INVISIBLE,
+    _clean,
+    DocumentRead,
+    _TASK_CODE_REPORT_TYPES,
+    report_type_from_task_code,
+    _NO_SERIAL_WORDS,
+    _normalize_serial,
+    match_serial,
+)
 
 logger = logging.getLogger("app.services.classification")
 settings = get_settings()
@@ -51,148 +67,6 @@ _CLASSIFY_TOOL_NAME = "record_classification"
 # all BD). It is never stored as a model: the read becomes a zero-confidence
 # placeholder for the manual pick and the maker is kept for the screen.
 NOT_IN_FLEET = "(not in the fleet)"
-
-_CLASSIFY_INTRO = """This is a scanned service report for one instrument in a fixed fleet. \
-Identify the following and report a confidence (0 to 1) for each \
-independently — they are not the same call.
-
-"""
-
-_CLASSIFY_BODY = """1. Which instrument model this document is for. Look for the "Installed Product" or \
-"System" field, which prints a code and model name (e.g. "648282B3 - ARIA III ACDU \
-6B/3R/3V" is a FACSAria III; "665158 - FACSDiscover S8 ..." is a FACSDiscover S8). \
-Only choose from the allowed options. Always fill `instrument_model` with one of them, \
-even when `detected_model` says the same thing: both are required.
-
-2. What kind of service visit this is. The most reliable signal is the "Work Order \
-Task Code" field: a code starting T113 ("Repair / Troubleshooting Visit") means \
-repair; a code starting T111 ("Preventive Maintenance") means preventive_maintenance; \
-a code starting T107 ("Install: Options, Upgrades, S/W") means installation_upgrade; \
-anything referencing CS&T/QC calibration with no fault or PM-kit language is a \
-routine check, so choose preventive_maintenance. Repair, PM and installation visits otherwise share the same generic \
-form layout, so this is a genuinely harder call than #1 — give it a lower confidence \
-when the task code is unclear or missing rather than guessing high. Separately, copy \
-the Work Order Task Code exactly as printed (e.g. "T113") into `task_code` with a \
-`task_code_confidence`; the application maps the code to a report type itself, so \
-accuracy of the characters matters more than your interpretation of them. If there \
-is no task code, return an empty string with confidence 0.
-
-3. The instrument's serial number, exactly as printed in the "Installed Product" block \
-(its "Serial/Lot Number" line, e.g. "MP1000000000042"). Ignore the "Serial/Lot Number: \
-N/A" line under the SYSTEM column, which is not the instrument's. Copy the characters \
-exactly; never guess or complete a character you cannot read — give a lower confidence \
-instead. If the Installed Product has no serial number, or it is printed as N/A, return \
-an empty string with confidence 0.
-
-4. The work-order number, exactly as printed (e.g. "WO-04587090"), in \
-`work_order_number`; an empty string if the document shows none. On a form from \
-another company this is the number of the service call or service report itself \
-(labelled for example "service call", "call number" or "report number"). The \
-customer's order number, purchase-order number and customer number are not the \
-work-order number, even when they are printed near the top of the form; if the \
-form shows only those, return an empty string.
-
-5. Documents from another company, including translated ones. The company that issued \
-the form is often a distributor, not the instrument's maker: put it in `issuer` (empty if \
-unclear) and put the instrument's maker, as you can tell it from the model name, the \
-software or the part numbers, in `detected_manufacturer`, and its model name as printed \
-(for example "Cytek Aurora") in `detected_model`. If the instrument is not any \
-model in the fleet, answer "(not in the fleet)" for `instrument_model` with a low \
-confidence; never pick the nearest model in the fleet just to give an answer. On such a \
-form the serial is the number labelled "serial number" (or "S.N"), copied exactly. A number \
-labelled "device number" or "instrument number" can be the model code (for example AB12345 \
-on a form from another maker), not the serial, and an asset or inventory number is not the serial \
-either. The work-order number on such a form is the number that identifies this visit \
-(labelled "service call", "call number", "service report" or "report number"); a \
-customer order or purchase-order number is not the work order, and neither is a part \
-number or an asset number. If one visit \
-fits two report types (an upgrade done together with a preventive maintenance visit), give \
-the main one in `report_type` and name the other in `report_type_note`. Numbers without a \
-unit are not given one.
-
-Give confidence scores that reflect real uncertainty. A clean, legible, unambiguous \
-read deserves something like 0.9-0.98. Anything you had to infer rather than read \
-directly, or where the document is ambiguous between two categories, deserves \
-meaningfully lower — do not default to a high number out of politeness."""
-
-_CLASSIFY_BRAND_NOTE = """The numbered notes below describe BD Care Work Order Service Reports \
-(their "Installed Product" block and "Work Order Task Code" field). A report from \
-another maker prints the same facts under its own labels: use the equivalent \
-fields, and apply the same rule of lower confidence when you have to infer.
-
-"""
-
-
-_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u200e\u200f\u2060\ufeff"))
-
-
-def _clean(value: object) -> str | None:
-    """A text the model returned, with invisible characters and surrounding
-    space removed; None when nothing is left. (A live read once returned a lone
-    zero-width space for "no work-order number".)"""
-    if not isinstance(value, str):
-        return None
-    cleaned = value.translate(_INVISIBLE).strip()
-    return cleaned or None
-
-
-def build_classify_prompt(instruments: list[Instrument]) -> str:
-    """The classification prompt for the current fleet: a type-neutral intro
-    that lists the fleet's manufacturers, kinds and models, then the BD Care
-    reading notes (unchanged) for BD documents."""
-    seen: dict[tuple[str, str, str], None] = {}
-    for i in instruments:
-        seen[(i.manufacturer or "unknown maker", i.instrument_type, i.model)] = None
-    fleet = "\n".join(f"- {maker} {model} ({kind})" for maker, kind, model in seen)
-    return f"{_CLASSIFY_INTRO}The fleet:\n{fleet}\n\n{_CLASSIFY_BRAND_NOTE}{_CLASSIFY_BODY}"
-
-
-class DocumentRead(NamedTuple):
-    """Everything one classification read of a document produced. The first
-    three positions are the original (instrument, report type, serial) triple;
-    a plain 3-tuple still converts via `DocumentRead(*triple)`."""
-
-    instrument: ClassificationGuess
-    report_type: ClassificationGuess
-    serial: ClassificationGuess | None
-    work_order_number: str | None = None
-    # "none": no task code was read and nothing else says what kind of visit
-    # this is, so the report type below is a placeholder with zero confidence.
-    report_type_source: Literal["task_code", "model", "none"] = "model"
-    # Who read the document: "model" = Claude, "text_layer" = the PDF's own
-    # text parsed in code (services/text_reader.py, no API key needed),
-    # "stub" = the deterministic demo stand-in for a document with no text.
-    reader: Literal["model", "text_layer", "stub"] = "model"
-    # Read off a document from another company's form (a translated Hebrew
-    # service report, say): who issued the form, the instrument's maker as the
-    # model could tell it, whether that instrument is in the fleet at all, and
-    # a note when the visit fits a second report type.
-    issuer: str | None = None
-    detected_manufacturer: str | None = None
-    maker_in_fleet: bool = True
-    report_type_note: str | None = None
-    # The instrument's model name as printed or as the model could tell it
-    # (e.g. "Cytek Aurora"), so the screen can offer to add it to the fleet.
-    detected_model: str | None = None
-
-
-# What the Work Order Task Code says about the kind of visit. Only codes whose
-# meaning is documented are listed; any other code falls back to the model's
-# own judgment rather than being guessed at.
-_TASK_CODE_REPORT_TYPES = {
-    "T111": ReportType.preventive_maintenance,
-    "T107": ReportType.installation_upgrade,
-    "T113": ReportType.repair,
-}
-
-
-def report_type_from_task_code(code: object) -> ReportType | None:
-    """The report type a printed task code stands for, or None when the code
-    is missing, unparseable, or not one we know the meaning of."""
-    if not isinstance(code, str):
-        return None
-    match = re.match(r"\s*(T\d{3})", code.upper())
-    return _TASK_CODE_REPORT_TYPES.get(match.group(1)) if match else None
 
 
 def _apply_task_code(
@@ -358,10 +232,6 @@ def _live_classify(
     )
 
 
-# What a document prints when the instrument has no serial number.
-_NO_SERIAL_WORDS = {"n/a", "na", "none", "null", "unknown", "-", "--"}
-
-
 def _parse_serial_read(data: dict, attachment_path: str) -> ClassificationGuess | None:
     """The serial Claude read, or None when it found none. The serial fields
     are optional in what we accept (an older or sloppier answer without them
@@ -376,26 +246,6 @@ def _parse_serial_read(data: dict, attachment_path: str) -> ClassificationGuess 
         logger.warning("Non-numeric serial confidence on attachment %s — treating as 0.0", attachment_path)
         confidence = 0.0
     return ClassificationGuess(value=value.strip(), confidence=min(max(confidence, 0.0), 1.0))
-
-
-def _normalize_serial(serial: str) -> str:
-    """Case, spaces, hyphens and other punctuation vary between how a serial
-    is printed and how it was typed into the Instruments tab."""
-    return "".join(ch for ch in serial.upper() if ch.isalnum())
-
-
-def match_serial(serial: ClassificationGuess | None, instruments: list[Instrument]) -> Instrument | None:
-    """The one instrument whose serial equals the one read from the document.
-    None when no serial was read, nothing matches, or — rarely, since only the
-    exact serial is unique in the database — two serials differ only by
-    punctuation or case and the match would be a guess."""
-    if serial is None:
-        return None
-    wanted = _normalize_serial(serial.value)
-    if not wanted:
-        return None
-    matches = [i for i in instruments if _normalize_serial(i.serial_number) == wanted]
-    return matches[0] if len(matches) == 1 else None
 
 
 def _stub_serial_read(file_path: str, instruments: list[Instrument]) -> ClassificationGuess | None:
