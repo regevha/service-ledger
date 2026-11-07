@@ -121,7 +121,7 @@ backend/
 
 frontend/
   src/App.tsx                 The real app: document-first intake, report search, report review/finalize
-  src/api.ts                   Fetch wrappers for every route above
+  src/api/                     Fetch wrappers (one file per area, re-exported from index.ts) for every route above
   src/components/AnalyticsScreen.tsx  The Analytics tab — renders GET /analytics/fleet as stat tiles + bar charts,
                               then ModelComparison.tsx (same-model units: table + one-line-per-unit trend chart)
   src/components/TemplateManager.tsx  The Templates tab — structured field-schema editor + template list/CRUD
@@ -326,7 +326,7 @@ object's key order (it reorders by key length then lexicographically on the
 binary encoding), only a JSON array's element order, so a dict-shaped
 `item_schema` silently scrambled a template author's column order on every
 read. `TemplateFieldType`
-mirrors `frontend/src/api.ts`'s `FieldType` union exactly — the "one
+mirrors `frontend/src/api/types.ts`'s `FieldType` union exactly — the "one
 hand-typed enum gap" `frontend/README.md`'s codegen section used to call
 out — now closed the same way the other five shared enums are: `FieldType`
 is derived from this backend enum via `npm run codegen`, not hand-typed.
