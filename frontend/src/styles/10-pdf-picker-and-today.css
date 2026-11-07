@@ -558,3 +558,16 @@
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
 }
+.ask-examples .link-button {
+  padding: 0;
+  text-align: start;
+}
+/* In the filter column the box is narrow: the button goes under the field and the examples stack. */
+.reports-filters .ask-row {
+  flex-direction: column;
+}
+.reports-filters .ask-examples {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
