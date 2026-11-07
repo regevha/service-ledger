@@ -22,7 +22,7 @@ test('a document naming a serial number is assigned to that unit even when its m
   // unit and its report are removed whatever the outcome (deleting an instrument
   // deletes its reports).
   try {
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-new').click();
     await page.fill('input[placeholder="Your name (optional)"]', `Serial ${serial}`);
     await page.locator('input[type="file"]').setInputFiles({
@@ -53,7 +53,7 @@ test('a document naming a serial number is assigned to that unit even when its m
 // its own state, and a serial that belongs to another model shows up as two
 // fields that disagree rather than being folded into one dropdown label.
 test('the confirm screen shows the model and the serial as separate fields', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   // The sample work order reads as an LSRFortessa; this serial is the FACSAria III's.
   await page.locator('input[type="file"]').setInputFiles({

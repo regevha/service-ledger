@@ -6,11 +6,12 @@ import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { InstrumentManagerScreen } from './components/InstrumentManager';
 import { IntakeFlow } from './components/IntakeFlow';
 import { ReportsListScreen } from './components/ReportsListScreen';
-import { TodayScreen } from './components/TodayScreen';
+import { HomeScreen } from './components/HomeScreen';
 import { BatchIntake } from './components/BatchIntake';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { NavigationGuardContext, type LeaveGuard } from './navigationGuard';
+import type { ReportFilters } from './api';
 import type { TemplateRequest } from './templateRequest';
 import './App.css';
 import { ToastHost } from './components/ToastHost';
@@ -39,7 +40,7 @@ interface Route {
 
 function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
-  const view = VIEWS.find((v) => v === parts[0]) ?? 'new';
+  const view = VIEWS.find((v) => v === parts[0]) ?? 'home';
   return { view, sub: view === 'reports' || view === 'admin' ? parts.slice(1).join('/') : '' };
 }
 
@@ -88,6 +89,10 @@ export default function App() {
   const [intakeKey, setIntakeKey] = useState(0);
   // Once the several-files screen has been opened it stays mounted (hidden), so its list survives checking a report.
   const [batchOpened, setBatchOpened] = useState(false);
+  // Files dropped on Home, waiting for the several-files screen to take them (a new nonce is a new drop).
+  const [incomingFiles, setIncomingFiles] = useState<{ files: File[]; nonce: number } | null>(null);
+  // Filters a plain-words request on Home turned into, waiting for the Reports screen to start with them.
+  const [homeFilters, setHomeFilters] = useState<ReportFilters | null>(null);
   if (view === 'batch' && !batchOpened) setBatchOpened(true);
   // A report waiting for a template of its own: the Templates tab opens a
   // prefilled form for it, and when a template is saved the intake flow reads
@@ -226,14 +231,14 @@ export default function App() {
     <NavigationGuardContext.Provider value={guardApi}>
     <div className="wrap">
       <header className="topbar">
-        <div className="masthead">
+        <button type="button" className="masthead masthead-link" data-testid="masthead-home" aria-label="ServiceLedger, go to Home" onClick={() => selectView('home')}>
           <span className="mark" /> ServiceLedger
-        </div>
+        </button>
         <nav className="view-tabs" aria-label="Main">
-          {/* Wide screens only: on a phone the five-tab bar is full, so Today is the first item of More. */}
+          {/* Wide screens only: on a phone the five-tab bar is full, so Home is the first item of More. */}
           <button className={`view-tab tab-wide-only ${view === 'home' ? 'active' : ''}`} data-testid="tab-home" aria-current={view === 'home' ? 'page' : undefined} onClick={() => selectView('home')}>
             <TabIcon name="home" />
-            <span className="tab-label">Today</span>
+            <span className="tab-label">Home</span>
           </button>
           <button className={`view-tab ${view === 'new' || view === 'batch' ? 'active' : ''}`} data-testid="tab-new" aria-current={view === 'new' || view === 'batch' ? 'page' : undefined} onClick={() => selectView('new')}>
             <TabIcon name="new" />
@@ -302,11 +307,11 @@ export default function App() {
         )}
         {(view === 'batch' || batchOpened) && (
           <div hidden={view !== 'batch'}>
-            <BatchIntake active={view === 'batch'} onOpenReport={(reportId) => navigate('reports', reportId)} onBack={() => navigate('new')} />
+            <BatchIntake active={view === 'batch'} incoming={incomingFiles} onOpenReport={(reportId) => navigate('reports', reportId)} onBack={() => navigate('new')} />
           </div>
         )}
         {view === 'home' && (
-          <TodayScreen
+          <HomeScreen
             instruments={instruments}
             instrumentsLoading={instrumentsLoading}
             onOpenReport={(reportId) => navigate('reports', reportId)}
@@ -314,6 +319,14 @@ export default function App() {
             onNewReport={() => selectView('new')}
             onOpenReports={() => selectView('reports')}
             onOpenInstruments={() => selectView('instruments')}
+            onAsk={(filters) => {
+              setHomeFilters(filters);
+              navigate('reports');
+            }}
+            onFiles={(files) => {
+              setIncomingFiles((prev) => ({ files, nonce: (prev?.nonce ?? 0) + 1 }));
+              navigate('batch');
+            }}
           />
         )}
         {view === 'analytics' && <AnalyticsScreen />}
@@ -322,7 +335,7 @@ export default function App() {
           <nav className="more-screen" aria-label="More" data-testid="more-screen">
             <h1 className="more-title">More</h1>
             <button type="button" className="more-item" onClick={() => selectView('home')}>
-              <span><strong>Today</strong><small>What needs your attention</small></span>
+              <span><strong>Home</strong><small>What needs your attention</small></span>
             </button>
             <button type="button" className="more-item" onClick={() => selectView('templates')}>
               <span><strong>Templates</strong><small>What we read from each report type</small></span>
@@ -359,6 +372,8 @@ export default function App() {
             fieldConfidenceThreshold={config.field_confidence_threshold}
             path={route.sub}
             onPath={(sub) => navigate('reports', sub)}
+            initialFilters={homeFilters ?? undefined}
+            onInitialFiltersUsed={() => setHomeFilters(null)}
           />
         )}
       </div>

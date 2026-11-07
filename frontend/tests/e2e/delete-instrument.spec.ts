@@ -29,7 +29,7 @@ async function reportOn(request: import('@playwright/test').APIRequestContext, i
 }
 
 async function openInstruments(page: import('@playwright/test').Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await expect(page.locator('.section-title')).toContainText('Instruments');
 }

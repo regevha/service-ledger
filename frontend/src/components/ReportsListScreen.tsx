@@ -47,6 +47,8 @@ export function ReportsListScreen({
   fieldConfidenceThreshold,
   path = '',
   onPath,
+  initialFilters,
+  onInitialFiltersUsed,
 }: {
   instruments: Instrument[];
   fieldConfidenceThreshold: number;
@@ -54,8 +56,16 @@ export function ReportsListScreen({
   path?: string;
   /** Called when the person opens or leaves a report or instrument, so the address bar can follow. */
   onPath?: (path: string) => void;
+  /** Filters to start with, from a request typed on Home. Used once, when the screen opens. */
+  initialFilters?: ReportFilters;
+  onInitialFiltersUsed?: () => void;
 }) {
-  const [filters, setFilters] = useState<ReportFilters>({});
+  const [filters, setFilters] = useState<ReportFilters>(initialFilters ?? {});
+  useEffect(() => {
+    if (initialFilters) onInitialFiltersUsed?.();
+    // Once, on opening: the filters are already in state, this only tells the app they were taken.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // The filter bar keeps its typed fields in its own state; a new key makes it show filters set from outside.
   const [barKey, setBarKey] = useState(0);
   const [items, setItems] = useState<ReportListItem[]>([]);

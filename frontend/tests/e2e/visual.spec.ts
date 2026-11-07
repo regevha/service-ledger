@@ -40,7 +40,7 @@ async function trendSetup(request: APIRequestContext, prefix: string) {
 }
 
 async function openTrend(page: Page, instrumentId: string) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.click('.view-tab:has-text("Reports")');
   await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
@@ -98,7 +98,7 @@ test('the trend chart draws the same', { tag: '@visual' }, async ({ page, reques
     instrumentId = seeded.instrumentId;
   }
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
@@ -166,7 +166,7 @@ for (const theme of ['light', 'dark'] as const) {
       await seedReport(request, { model: 'E2E-Visual-Fixed', reportType: 'repair', instrumentId, templateId: templates[0]?.id, ...row, finalize: true });
     }
     if (theme === 'dark') await darkTheme(page);
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.click('.view-tab:has-text("Reports")');
     await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
     await expect(page.locator('.report-row-body')).toHaveCount(rows.length);

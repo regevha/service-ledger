@@ -108,7 +108,33 @@ def _confidence_key(name: str) -> str:
     return f"{name}__confidence"
 
 
-def _build_extract_tool(fields: list[dict]) -> dict:
+def _box_key(name: str) -> str:
+    return f"{name}__box"
+
+
+_BOX_SCHEMA = {
+    "type": "object",
+    "description": "Where on the page the value was read: page (1-based) and a box as fractions of the page from the top left.",
+    "properties": {
+        "page": {"type": "integer", "minimum": 1},
+        "x": {"type": "number", "minimum": 0, "maximum": 1},
+        "y": {"type": "number", "minimum": 0, "maximum": 1},
+        "w": {"type": "number", "minimum": 0, "maximum": 1},
+        "h": {"type": "number", "minimum": 0, "maximum": 1},
+    },
+    "required": ["page", "x", "y", "w", "h"],
+}
+
+# Added to the prompt only when boxes are asked for (a scan or photo, which has no text layer to search).
+_BOX_PROMPT = """
+
+Positions: for each field you found on the page, also give `<field>__box` (for example `labor_hours__box`): the page \
+number (1 for a single image) and a tight box around the printed value you read, as fractions of the page measured \
+from its top left corner (x and y are the box's top left corner; w and h its width and height; all between 0 and 1). \
+Box the value itself, not the label. Leave the box out for a field that is not on the page."""
+
+
+def _build_extract_tool(fields: list[dict], with_boxes: bool = False) -> dict:
     # Flat top-level properties (name -> value, name__confidence -> number)
     # rather than nesting {value, confidence} under each field name. A live
     # trial run showed the model reliably fills in flat, directly-typed
@@ -125,8 +151,13 @@ def _build_extract_tool(fields: list[dict]) -> dict:
         conf_key = _confidence_key(name)
         properties[conf_key] = {"type": "number", "minimum": 0, "maximum": 1}
         required.extend([name, conf_key])
+        if with_boxes:
+            # Optional: a missing box just means no position for that field.
+            properties[_box_key(name)] = _BOX_SCHEMA
     properties[REPORT_DATE_KEY] = {"type": "string", "description": "Service visit date, YYYY-MM-DD"}
     properties[_confidence_key(REPORT_DATE_KEY)] = {"type": "number", "minimum": 0, "maximum": 1}
+    if with_boxes:
+        properties[_box_key(REPORT_DATE_KEY)] = _BOX_SCHEMA
     required.extend([REPORT_DATE_KEY, _confidence_key(REPORT_DATE_KEY)])
     return {
         "name": _EXTRACT_TOOL_NAME,

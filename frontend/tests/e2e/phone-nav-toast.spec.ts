@@ -12,7 +12,7 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('the tabs are a bar at the bottom, five equal buttons with an icon and a label', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/new');
     // The screen of whichever phone this project emulates (Chromium: 412x915, the WebKit iPhone profile: 390x664).
     const PHONE = page.viewportSize()!;
     const bar = page.getByRole('navigation', { name: 'Main' });
@@ -48,7 +48,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
   });
 
   test('saving corrections shows "Saved" for a moment, then it goes', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-new').click();
     await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
     await page.click('button:has-text("Upload & classify")');
@@ -65,7 +65,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
 
 test('on a wide screen the tabs stay at the top as text, with no icons', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('/');
+  await page.goto('/#/new');
   const bar = page.getByRole('navigation', { name: 'Main' });
   await expect(bar).toBeVisible();
   expect((await bar.boundingBox())!.y).toBeLessThan(200);

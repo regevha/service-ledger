@@ -18,7 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(__dirname, 'fixtures', 'sample-work-order.pdf');
 
 test('uncertain report type routes through manual confirm before extracting', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
 
   await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Manual Confirm');

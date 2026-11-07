@@ -32,7 +32,7 @@ test('Cancel while the document is being read cancels the job, removes the draft
     await route.continue();
   });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', marker);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
@@ -56,7 +56,7 @@ test('Cancel while the document is being read cancels the job, removes the draft
 
 test('Cancel right after pressing Upload leaves no draft either', async ({ page, request }) => {
   const marker = `E2E-CancelEarly-${Date.now()}`;
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', marker);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));

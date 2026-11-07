@@ -115,7 +115,7 @@ test('Instruments: the list can be narrowed to one model', async ({ page, reques
   const stamp = Date.now();
   const a = await unitWithReport(request, stamp, 'A');
   const b = await unitWithReport(request, stamp, 'B');
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   const rowA = page.getByTestId('instrument-row').filter({ hasText: a.name });
   const rowB = page.getByTestId('instrument-row').filter({ hasText: b.name });

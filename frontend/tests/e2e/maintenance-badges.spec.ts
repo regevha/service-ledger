@@ -41,7 +41,7 @@ test('overdue shows on the list, the instrument page and the model page; the fil
   const { unit, record } = await setup(request, model);
   await maintenanceReport(request, model, unit.id, '2025-01-10');
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   const row = page.getByTestId('instrument-row').filter({ hasText: `E2E Maint ${model}` });
   await expect(row.locator('.maintenance-overdue')).toContainText('Overdue');
@@ -66,7 +66,7 @@ test('a unit without maintenance reports says so, and the manufacturer follows t
   const model = `E2E-MaintB-${Date.now()}`;
   const { unit } = await setup(request, model);
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   const row = page.getByTestId('instrument-row').filter({ hasText: `E2E Maint ${model}` });
   await expect(row.locator('.maintenance-no_record')).toContainText('No maintenance on record');

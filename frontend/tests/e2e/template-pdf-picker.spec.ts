@@ -14,7 +14,7 @@ test('click a word on a stored PDF to add it as a template field', async ({ page
     file: { name: 'pick-fields-form.pdf', contents: readFileSync(path.join(process.cwd(), 'tests/e2e/fixtures/pick-fields-form.pdf')) },
   });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await page.click('button:has-text("+ New template")');
   await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(model);
@@ -58,7 +58,7 @@ test('click a word on a stored PDF to add it as a template field', async ({ page
 
 test('the picker shows an empty state when no PDF is stored for the template', async ({ page }) => {
   await page.route('**/report-templates/sample-scans*', (route) => route.fulfill({ json: [] }));
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await page.click('button:has-text("+ New template")');
   await page.getByTestId('pdf-picker-open').click();

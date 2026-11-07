@@ -45,7 +45,7 @@ test('instrument detail page: reached from the reports filter, shows history, an
     extractedFields: { labor_hours: 2, fault_category: 'electronics' },
   });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
 
   // Filter to this instrument, then follow the new "View instrument
@@ -101,7 +101,7 @@ test('a report opened straight from the list still returns to the list, not an i
     extractedFields: { labor_hours: 1.5 },
   });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
 
   const row = page.getByTestId('report-row').filter({ hasText: technician });

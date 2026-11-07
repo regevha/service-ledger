@@ -34,6 +34,8 @@ export function useScanPreview(scanInlineUrl?: string, scanAttachmentId?: string
   const narrow = useMediaQuery('(max-width: 899px)');
   const [scanOpen, setScanOpen] = useState(readScanPref);
   const [phoneView, setPhoneView] = useState<'fields' | 'scan'>('fields');
+  // Beside the form: the page images with the fields drawn on them, or the browser's own PDF viewer.
+  const [scanMode, setScanMode] = useState<'fields' | 'original'>('fields');
   return {
     wide,
     phone,
@@ -44,6 +46,8 @@ export function useScanPreview(scanInlineUrl?: string, scanAttachmentId?: string
     },
     phoneView,
     setPhoneView,
+    scanMode,
+    setScanMode,
     scanInlineUrl,
     scanAttachmentId,
     // Side by side with the form (wide screens only).
@@ -90,7 +94,20 @@ export function PhoneScanSwitch({ preview }: { preview: ScanPreviewState }) {
 }
 
 /** The form (children) with the scan beside it on a wide screen; hidden on a phone while its scan is showing. */
-export function ScanSplit({ preview, rail, children }: { preview: ScanPreviewState; /** A jump list shown to the left of the scan on a wide screen. */ rail?: ReactNode; children: ReactNode }) {
+export function ScanSplit({
+  preview,
+  rail,
+  scanOverride,
+  children,
+}: {
+  preview: ScanPreviewState;
+  /** A jump list shown to the left of the scan on a wide screen. */
+  rail?: ReactNode;
+  /** The page images with the fields drawn on them; shown in place of the PDF viewer, which stays one click away. */
+  scanOverride?: ReactNode;
+  children: ReactNode;
+}) {
+  const drawn = Boolean(scanOverride) && preview.scanMode === 'fields';
   return (
     <div
       className={`review-split${preview.showScan ? ' with-scan' : ''}${rail ? ' with-rail' : ''}`}
@@ -98,8 +115,25 @@ export function ScanSplit({ preview, rail, children }: { preview: ScanPreviewSta
     >
       {rail}
       {preview.showScan && (
-        <aside className="review-scan" aria-label="Original scan">
-          <iframe src={`${preview.scanInlineUrl}#view=FitH`} title="Original scan" />
+        <aside className={`review-scan${drawn ? ' drawn' : ''}`} aria-label="Original scan">
+          {scanOverride && (
+            <div className="review-scan-modes" role="tablist" aria-label="How to show the original">
+              {(['fields', 'original'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={preview.scanMode === m}
+                  className={`view-switch-button${preview.scanMode === m ? ' active' : ''}`}
+                  data-testid={`scan-mode-${m}`}
+                  onClick={() => preview.setScanMode(m)}
+                >
+                  {m === 'fields' ? 'Fields on the page' : 'PDF viewer'}
+                </button>
+              ))}
+            </div>
+          )}
+          {drawn ? scanOverride : <iframe src={`${preview.scanInlineUrl}#view=FitH`} title="Original scan" />}
         </aside>
       )}
       <div className="review-fields">{children}</div>

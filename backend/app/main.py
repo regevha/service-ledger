@@ -19,6 +19,7 @@ from app.services.places import PlaceTextError
 from app.services.domain_errors import ConflictError, InvalidError, NotFoundError
 from app.routers import (
     analytics,
+    home,
     attachments,
     instrument_models,
     places,
@@ -138,6 +139,7 @@ app.include_router(field_aliases.router)
 app.include_router(attachments.router)
 app.include_router(translations.router)
 app.include_router(analytics.router)
+app.include_router(home.router)
 
 
 @app.get("/health", tags=["meta"])

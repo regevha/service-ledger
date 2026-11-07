@@ -10,7 +10,7 @@ test('report detail screen offers a PDF download for a resolved report', async (
   const marker = `E2E-PDF-${Date.now()}`;
   const report = { id: (await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker })).reportId };
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   await page.waitForSelector('.report-table');
   await page.click(`[data-testid="report-row"]:has-text("${marker}")`);
@@ -32,7 +32,7 @@ test('a report with no resolved template has no Download PDF link', async ({ pag
   const marker = `E2E-PDF-Unresolved-${Date.now()}`;
   await request.post(`${API_BASE}/reports`, { data: { technician_name: marker } });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   await page.waitForSelector('.report-table, .empty-hint');
   await page.click(`[data-testid="report-row"]:has-text("${marker}")`);

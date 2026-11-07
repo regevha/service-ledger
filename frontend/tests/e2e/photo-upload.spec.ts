@@ -52,7 +52,7 @@ test('jpegsToPdf: one page per image', () => {
 });
 
 test('one big photo goes up shrunk, as a JPEG', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   const big = await png(page, 3200, 2400, '#fff');
   const { seen, done } = await captureUpload(page);
   await page.getByTestId('intake-file-input').setInputFiles({ name: 'form.png', mimeType: 'image/png', buffer: big });
@@ -66,7 +66,7 @@ test('one big photo goes up shrunk, as a JPEG', async ({ page }) => {
 });
 
 test('several photos go up as one PDF and become one report', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   const files = [
     { name: 'page1.png', mimeType: 'image/png', buffer: await png(page, 800, 1000, '#fff') },
     { name: 'page2.png', mimeType: 'image/png', buffer: await png(page, 800, 1000, '#eee') },
@@ -86,7 +86,7 @@ test('several photos go up as one PDF and become one report', async ({ page }) =
 });
 
 test('photos mixed with a PDF are refused with the reason', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('intake-file-input').setInputFiles([
     { name: 'a.png', mimeType: 'image/png', buffer: await png(page, 50, 50, '#fff') },
     { name: 'b.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') },

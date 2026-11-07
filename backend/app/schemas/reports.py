@@ -176,3 +176,34 @@ class ReportSearchParseOut(BaseModel):
 
     filters: dict[str, str]
     understood: list[ReportSearchPart]
+
+
+class RectOut(BaseModel):
+    """A box on a page, as fractions of it (0 to 1, from the top left)."""
+
+    x: float
+    y: float
+    w: float
+    h: float
+
+
+class FieldLocationOut(BaseModel):
+    """Where one field's value sits on the document. `source` is "text" when it was found among the page's
+    words and "template" when it is the position the template gives. `ambiguous` means the same text is on the
+    page several times and nothing told them apart, so the position is a guess."""
+
+    page: int
+    rects: list[RectOut]
+    matches: int
+    ambiguous: bool
+    source: str
+
+
+class FieldLocationsOut(BaseModel):
+    """GET /attachments/{id}/field-locations: for each field of the report this document produced, where its
+    value is on the page. Only fields that could be placed are listed. `has_text` is false for a scan or photo,
+    which has no text layer to search."""
+
+    has_text: bool
+    page_count: int
+    fields: dict[str, FieldLocationOut]
