@@ -12,7 +12,7 @@ test('manufacturer can be set, shown in the list and detail page, and follows th
   const serial = `E2E-MFR-${stamp}`;
   const label = (text: string) => page.getByTestId('form-label').filter({ hasText: new RegExp('^\\s*' + text) }).locator('input');
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
   await label('Name').fill(name);

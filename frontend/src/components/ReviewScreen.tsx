@@ -6,6 +6,8 @@ import { ReviewSearchBar } from './ReviewSearchBar';
 import { useReviewSearch } from '../hooks/useReviewSearch';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
+import { markFor, sameValue, type FieldMark } from '../reviewMarks';
+import { FieldsOnPage } from './review/FieldsOnPage';
 import type { ReportTemplate } from '../api';
 import { AttentionStrip } from './review/AttentionStrip';
 import { EditConfirm, FinalizeConfirm } from './review/ConfirmBanners';
@@ -158,6 +160,21 @@ export function ReviewScreen({
   const preview = useScanPreview(scanInlineUrl, scanAttachmentId);
   const { phone, phoneScan } = preview;
 
+  // The fields drawn on the page: what each is called, how much it needs a person, and which one is pointed at.
+  // "Changed" means changed since this screen opened, which is what the person did here.
+  const [opened] = useState(() => ({ fields, reportDate }));
+  const labels: Record<string, string> = { report_date: 'Service date' };
+  const marks: Record<string, FieldMark> = {
+    report_date: markFor(!sameValue(reportDate, opened.reportDate), reportDateFlagged),
+  };
+  for (const f of template.field_schema.fields) {
+    labels[f.name] = fieldLabel(f.name, f.unit);
+    marks[f.name] = markFor(!sameValue(fields[f.name], opened.fields[f.name]), isFlagged(f.name));
+  }
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [focused, setFocused] = useState<string | null>(null);
+  const nameAt = (target: EventTarget | null) => (target instanceof Element ? target.closest<HTMLElement>('[data-field]')?.dataset.field ?? null : null);
+
   // "Next ↓" walks the fields that need attention, one press at a time, wrapping round.
   const listRef = useRef<HTMLDivElement>(null);
   const nextFlagged = useRef(-1);
@@ -268,13 +285,37 @@ export function ReviewScreen({
 
       <ScanSplit
         preview={preview}
+        scanOverride={
+          preview.showScan && scanAttachmentId ? (
+            <FieldsOnPage
+              attachmentId={scanAttachmentId}
+              marks={marks}
+              labels={labels}
+              active={hovered ?? focused}
+              reveal={hovered === null}
+              onHover={setHovered}
+              onPick={goToField}
+            />
+          ) : undefined
+        }
         rail={
           <ReviewRail template={template} reportDateFlagged={reportDateFlagged} isFlagged={isFlagged} readOnly={readOnly} onGo={goToField} />
         }
       >
       <fieldset className="review-fieldset" disabled={readOnly}>
       <ReadOnlyContext.Provider value={readOnly}>
-      <div className={`field-list${readOnly ? ' read-only' : ''}`} data-testid="field-list" data-read-only={readOnly ? 'true' : undefined} ref={listRef}>
+      <div
+        className={`field-list${readOnly ? ' read-only' : ''}`}
+        data-testid="field-list"
+        data-read-only={readOnly ? 'true' : undefined}
+        ref={listRef}
+        onMouseOver={(e) => setHovered(nameAt(e.target))}
+        onMouseLeave={() => setHovered(null)}
+        onFocus={(e) => setFocused(nameAt(e.target))}
+        onBlur={(e) => {
+          if (nameAt(e.relatedTarget) === null) setFocused(null);
+        }}
+      >
         <div className="field-list-head">
           <h2 className="field-list-title">What the report says</h2>
           <span className="field-list-count" data-testid="checked-count">

@@ -9,7 +9,7 @@ import { TIMEOUT } from './timeouts';
 // the fleet until it is added. Nothing here needs an API key.
 
 async function upload(page: import('@playwright/test').Page, name: string) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles({
     name,

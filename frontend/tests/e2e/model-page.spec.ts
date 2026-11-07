@@ -15,7 +15,7 @@ async function makeUnit(request: APIRequestContext, model: string, tag: string) 
 }
 
 async function openModelPage(page: Page, model: string) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('.sub-switch button:has-text("Models")');
   await page.locator('.model-name', { hasText: new RegExp(`^${model}$`) }).click();

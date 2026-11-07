@@ -19,7 +19,7 @@ async function newInstrument(request: APIRequestContext, marker: string): Promis
 }
 
 async function openInstrument(page: Page, instrumentId: string) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   const bar = page.locator('button:has-text("Show filters")');
   if (await bar.count()) await bar.click();

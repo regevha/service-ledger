@@ -42,7 +42,7 @@ function stubText(fieldName: string): RegExp {
 
 test('upload → auto-classify → extract → review → finalize', async ({ page, request }) => {
   const marker = `E2E-HappyPath-${Date.now()}`;
-  await page.goto('/');
+  await page.goto('/#/new');
 
   await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', marker);

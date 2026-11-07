@@ -24,7 +24,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // the stub always flags components_replaced (root_cause is optional, so a blank one is not), which are blank on the real document.
 // It lands on the manual-confirm step first, because its report type is below the threshold.
 async function readSampleWorkOrder(page: Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'sample-work-order.pdf')));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
@@ -73,6 +73,9 @@ test.describe('scan beside the fields', () => {
 
     const scan = page.locator('.review-scan');
     await expect(scan).toBeVisible();
+    // The page view with the fields drawn on it is the default; the browser's own viewer is one click away.
+    await expect(page.getByTestId('fields-on-page')).toBeVisible();
+    await page.getByTestId('scan-mode-original').click();
     await expect(scan.locator('iframe')).toHaveAttribute('src', /\/attachments\/.+\/file\?inline=1/);
     const [scanBox, listBox] = await Promise.all([scan.boundingBox(), page.getByTestId('field-list').boundingBox()]);
     expect(scanBox!.x + scanBox!.width).toBeLessThanOrEqual(listBox!.x);
@@ -174,7 +177,7 @@ test('Edit on a finalized report asks first; Cancel and Escape leave it locked',
 test('the banner lines up with the fields instead of being inset twice', async ({ page }) => {
   // Below 900px the scan pane is gone and the fields use the full width, so the two edges compare directly.
   await page.setViewportSize({ width: 800, height: 900 });
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('[data-testid="field-list"]', { timeout: TIMEOUT.flow });
@@ -221,7 +224,7 @@ test('the per-detector rows stay compact and each can be removed by name', async
 
 test('text "Remove" buttons in the template editor stay inside their card', async ({ page }) => {
   await page.setViewportSize({ width: 1300, height: 900 });
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await page.getByTestId('template-row').filter({ hasText: 'Preventive maintenance' }).first().locator('button:has-text("Edit")').click();
   const row = page.locator('.schema-field-row').first();
@@ -259,7 +262,7 @@ test('flagged fields are listed above the fields and clear only when marked as c
 const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 
 async function openIntakeReview(page: import('@playwright/test').Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(CONFIDENT_SCAN));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('[data-testid="field-list"]', { timeout: 30_000 });

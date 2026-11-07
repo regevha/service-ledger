@@ -1,4 +1,4 @@
-/* Picking template fields from a PDF page, and the Today screen. Loaded last; both only use tokens from index.css. */
+/* Picking template fields from a PDF page, and the Home screen. Loaded last; both only use tokens from index.css. */
 
 /* ---- Pick fields from a PDF (Templates tab, inside the template form) ---- */
 .pdf-picker-closed {
@@ -192,39 +192,39 @@
   color: var(--accent-strong);
 }
 
-/* ---- Today ---- */
-.today {
+/* ---- Home ---- */
+.home {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-5) var(--space-5) var(--space-6);
 }
-.today-head {
+.home-head {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--space-3);
 }
-.today-title {
+.home-title {
   margin: 0;
   font-size: var(--text-3xl);
   font-weight: 600;
 }
-.today-date {
+.home-date {
   color: var(--text-muted);
 }
-.today-tiles {
+.home-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: var(--space-4);
 }
-.today-tile .stat-value {
+.home-tile .stat-value {
   font-variant-numeric: tabular-nums;
 }
-.today-tile.attention {
+.home-tile.attention {
   border-left: 4px solid var(--flag);
 }
-.today-add {
+.home-add {
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -236,13 +236,8 @@
   border: 2px dashed var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
-  cursor: pointer;
 }
-.today-add:hover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-.today-add-icon {
+.home-add-icon {
   flex: none;
   width: 40px;
   height: 40px;
@@ -254,24 +249,24 @@
   background: var(--accent-fill);
   color: var(--on-fill);
 }
-.today-add small {
+.home-add small {
   display: block;
   color: var(--text-muted);
 }
-.today-cols {
+.home-cols {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
 }
-.today-card {
+.home-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow);
   overflow: hidden;
 }
-.today-card-head {
+.home-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -279,26 +274,26 @@
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border);
 }
-.today-card-head h2 {
+.home-card-head h2 {
   margin: 0;
   font-size: var(--text-lg);
   font-weight: 600;
 }
-.today-list {
+.home-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
-.today-list > li + li {
+.home-list > li + li {
   border-top: 1px solid var(--border);
 }
-.today-row {
+.home-row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
 }
-.today-row-button {
+.home-row-button {
   width: 100%;
   font: inherit;
   color: inherit;
@@ -307,43 +302,43 @@
   border: 0;
   cursor: pointer;
 }
-.today-row-button:hover {
+.home-row-button:hover {
   background: var(--surface-2);
 }
-.today-row-main {
+.home-row-main {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
-.today-row-title {
+.home-row-title {
   font-weight: 500;
   overflow-wrap: anywhere;
 }
-.today-row-sub {
+.home-row-sub {
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
-.today-empty,
-.today-more {
+.home-empty,
+.home-more {
   padding: var(--space-4);
   color: var(--text-muted);
 }
-.today-more {
+.home-more {
   border-top: 1px solid var(--border);
   font-size: var(--text-sm);
 }
 @media (max-width: 899px) {
-  .today {
+  .home {
     padding: var(--space-4);
   }
-  .today-cols {
+  .home-cols {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 /* "3 days over" is a sentence, not a status name: keep its own case. */
-.today-row .status-pill {
+.home-row .status-pill {
   text-transform: none;
 }
 
@@ -548,7 +543,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 8px;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 .ask-chip {
@@ -570,4 +565,195 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
+}
+
+/* The masthead is the way back to Home from any screen. */
+.masthead-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Home: the ask box, the drop box with its two buttons, and a note under each figure. */
+.home-ask {
+  max-width: 100%;
+}
+.home-add {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  text-align: left;
+  width: 100%;
+  cursor: default;
+}
+.home-add.dragging {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.home-add-text {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.home-add-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.home-tile-note {
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* Review: the page images with every field drawn where it was read. */
+.review-scan.drawn {
+  display: flex;
+  flex-direction: column;
+}
+.review-scan-modes {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.fop {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.fop-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.fop-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fop-swatch,
+.fop-box {
+  --mark: var(--good);
+}
+.fop-swatch.flag,
+.fop-box.flag {
+  --mark: var(--warn);
+}
+.fop-swatch.changed,
+.fop-box.changed {
+  --mark: var(--accent);
+}
+.fop-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 2px solid var(--mark);
+  display: inline-block;
+}
+.fop-note {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+.fop-pages {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  align-content: start;
+}
+.fop-page {
+  position: relative;
+  line-height: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.fop-page img {
+  width: 100%;
+  display: block;
+}
+.fop-box {
+  position: absolute;
+  padding: 0;
+  cursor: pointer;
+  border: 2px solid var(--mark);
+  background: color-mix(in srgb, var(--mark) 16%, transparent);
+  border-radius: 3px;
+  font: inherit;
+  transition: box-shadow 0.1s;
+}
+.fop-box.flag {
+  background: color-mix(in srgb, var(--warn) 22%, transparent);
+}
+.fop-box.guess {
+  border-style: dashed;
+}
+.fop-box.active {
+  box-shadow: 0 0 0 3px var(--accent);
+  z-index: 2;
+}
+.fop-name {
+  display: none;
+  position: absolute;
+  left: -2px;
+  bottom: 100%;
+  margin-bottom: 1px;
+  padding: 3px 6px;
+  font-size: 0.7rem;
+  line-height: 1;
+  white-space: nowrap;
+  color: #fff;
+  background: #1b1f2a;
+  border-radius: 3px;
+  pointer-events: none;
+}
+.fop-box.active .fop-name,
+.fop-box:hover .fop-name,
+.fop-box:focus-visible .fop-name {
+  display: block;
+}
+/* A field being pointed at in the list is lit in the list too. */
+.field-list .field:hover,
+.field-list .field:focus-within {
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.review-scan-modes .view-switch-button {
+  min-height: 32px;
+  font-size: 0.85rem;
+}
+/* On Home the ask box is the first thing: a roomy field, and the examples sit under it. */
+.home-ask .ask-box {
+  margin-bottom: 0;
+}
+.home-ask .ask-input {
+  min-height: 44px;
+  font-size: 1rem;
+}
+.home-ask .ask-row .btn {
+  min-height: 44px;
+}
+@media (max-width: 620px) {
+  /* A thumb-sized target: the name in the top bar is a button now. */
+  .masthead-link {
+    min-height: 44px;
+  }
 }

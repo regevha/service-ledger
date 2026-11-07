@@ -9,7 +9,7 @@ test('the Admin export link follows the chosen filters and downloads the filtere
   const marker = `E2E-Export-${Date.now()}`;
   await seedReport(request, { model: 'FACSAria III', reportType: 'preventive_maintenance', technician: marker, finalize: true });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-admin').click();
   await expect(page.getByTestId('admin-screen')).toBeVisible();
 

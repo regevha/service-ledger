@@ -58,6 +58,8 @@ from app.services.extraction_prompt import (  # noqa: F401  (moved; re-exported 
     _confidence_key,
     _build_extract_tool,
     _field_list_for_prompt,
+    _box_key,
+    _BOX_PROMPT,
 )
 
 logger = logging.getLogger("app.services.extraction")
@@ -81,6 +83,42 @@ class ExtractionResult(NamedTuple):
     field_confidences: dict
     # None when the document has no readable visit date.
     report_date: date | None
+    # Where the model says it read each value: {field name: {page, x, y, w, h}} as page fractions. Only asked
+    # of a scan or photo (a PDF with a text layer is searched instead), so None for anything else.
+    field_boxes: dict | None = None
+
+
+def _wants_boxes(attachment: Attachment, document_block: dict) -> bool:
+    """Boxes are asked for when the model reads the picture itself and nothing can find the values afterwards:
+    an image, or a PDF with no text layer. Not for a reviewed translation (its text is not on the page)."""
+    if document_block.get("type") == "text":
+        return False
+    if getattr(attachment, "file_type", None) != "application/pdf":
+        return True
+    try:
+        from app.services.page_text import page_words
+
+        return not page_words(attachment.file_path, 1)[1]
+    except Exception:  # an unreadable file fails later with a proper error; asking for boxes is harmless
+        return True
+
+
+def _parse_box(raw: object) -> dict | None:
+    """One `<field>__box` answer → {page, x, y, w, h}, or None when it is missing or not a usable box. The
+    model's tool input is not validated, so be strict here: numbers only, inside the page, with some size."""
+    if not isinstance(raw, dict):
+        return None
+    try:
+        page = int(raw["page"])
+        x, y, w, h = (float(raw[k]) for k in ("x", "y", "w", "h"))
+    except (KeyError, TypeError, ValueError):
+        return None
+    if page < 1 or not all(0 <= v <= 1 for v in (x, y, w, h)) or w <= 0 or h <= 0:
+        return None
+    w, h = min(w, 1 - x), min(h, 1 - y)
+    if w <= 0 or h <= 0:
+        return None
+    return {"page": page, "x": x, "y": y, "w": w, "h": h}
 
 
 def _stub_value(field: dict, attachment_key: str):
@@ -187,8 +225,11 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> Extractio
         document_block = source_block(attachment)
     except UnsupportedDocumentError as e:
         raise ExtractionError(str(e)) from e
-    tool = _build_extract_tool(fields)
+    with_boxes = _wants_boxes(attachment, document_block)
+    tool = _build_extract_tool(fields, with_boxes)
     prompt = _EXTRACT_PROMPT_HEADER + "\n\nFields to extract:\n" + _field_list_for_prompt(fields)
+    if with_boxes:
+        prompt += _BOX_PROMPT
 
     response = call_claude_tool(
         client=_get_client(),
@@ -229,9 +270,14 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> Extractio
 
     extracted_fields: dict = {}
     field_confidences: dict = {}
+    field_boxes: dict = {}
     for field in fields:
         name = field["name"]
         value = data.get(name)
+        if with_boxes:
+            box = _parse_box(data.get(_box_key(name)))
+            if box is not None:
+                field_boxes[name] = box
         confidence = data.get(_confidence_key(name))
         # Extra defensive unwrap: even with a flat schema, a live run showed
         # the model occasionally answers one field as {"value":...,
@@ -252,7 +298,11 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> Extractio
         if report_date is not None
         else 0.0
     )
-    return ExtractionResult(extracted_fields, field_confidences, report_date)
+    if with_boxes:
+        box = _parse_box(data.get(_box_key(REPORT_DATE_KEY)))
+        if box is not None and report_date is not None:
+            field_boxes[REPORT_DATE_KEY] = box
+    return ExtractionResult(extracted_fields, field_confidences, report_date, field_boxes if with_boxes else None)
 
 
 # Real values from the BD Care EU Work Order Service Report used throughout

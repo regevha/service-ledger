@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = path.join(__dirname, 'fixtures', 'sample-work-order.pdf');
 
 test('an unclear report type is explained, outlined and has to be chosen; Review names the unit', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(SAMPLE));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });

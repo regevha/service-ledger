@@ -6,7 +6,7 @@ import { API_BASE } from './helpers/api';
 // names is stored under its own, and the manufacturer boxes suggest the makers on file.
 
 async function openMakers(page: Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('.sub-switch button:has-text("Makers")');
   await expect(page.locator('#makers-section')).toBeVisible();
@@ -70,7 +70,7 @@ test('a name another maker already answers to is refused', async ({ page }) => {
 });
 
 test('the manufacturer box on a new model suggests the makers on file', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('.sub-switch button:has-text("Models")');
   await page.click('button:has-text("+ New model")');

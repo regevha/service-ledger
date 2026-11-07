@@ -16,7 +16,7 @@ import { test, expect } from './coverage';
 test('create, edit, and delete a report template through the structured field editor', async ({ page }) => {
   const uniqueModel = `E2E-Model-${Date.now()}`;
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await expect(page.locator('.section-title')).toContainText('Report templates');
 
@@ -110,7 +110,7 @@ test('a template the backend rejects shows the validation reason, not a bare sta
   // {loc, msg} entries; apiFetch used to read only a string `detail`, so
   // this showed "Unprocessable Content" (or nothing at all over HTTP/2)
   // instead of telling the user what to fix.
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await page.click('button:has-text("+ New template")');
   await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(`E2E-Invalid-${Date.now()}`);

@@ -1,6 +1,6 @@
-import type { Instrument, ReportListItem } from './api';
+import type { HomeSummary, Instrument, ReportListItem } from './api';
 
-// The pure parts of the Today screen: which instruments are due and how to say so, and which reports wait.
+// The pure parts of the Home screen: which instruments are due and how to say so, and which reports wait.
 
 /** Whole days from `today` to the ISO day `iso` (negative when it has passed). Both are read as local days. */
 export function daysUntil(iso: string, today: Date): number {
@@ -68,4 +68,28 @@ export function monthStart(today: Date): string {
 export function waitingReports(extracted: ReportListItem[], inReview: ReportListItem[]): ReportListItem[] {
   const key = (r: ReportListItem) => r.created_at;
   return [...extracted, ...inReview].sort((a, b) => key(b).localeCompare(key(a)));
+}
+
+/** How long the oldest waiting report has been waiting: "6 days", "today", "1 day". */
+export function waitingAge(oldestIso: string | null, today: Date): string | null {
+  if (!oldestIso) return null;
+  const created = new Date(oldestIso);
+  const days = Math.max(0, Math.floor((Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) - Date.UTC(created.getFullYear(), created.getMonth(), created.getDate())) / 86_400_000));
+  if (days === 0) return 'today';
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
+}
+
+/** Fewer fields than this and a percentage would swing on one edit, so none is shown. */
+export const MIN_FIELDS_FOR_PERCENT = 20;
+
+/** The share of read fields kept as read, as "91%", or null while there are too few to say. */
+export function keptAsReadPercent(summary: HomeSummary['read_without_edits']): string | null {
+  if (summary.fields < MIN_FIELDS_FOR_PERCENT) return null;
+  return `${Math.round((summary.unchanged / summary.fields) * 100)}%`;
+}
+
+/** The sentence under the finalized count: how this month compares with the last one. */
+export function finalizedNote(f: HomeSummary['finalized']): string {
+  if (f.this_month === 0 && f.last_month === 0) return 'Finalize your first report to start the count';
+  return `Last month: ${f.last_month}`;
 }

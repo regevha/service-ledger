@@ -20,7 +20,7 @@ test('a new instrument type can be added, used, and shows a clear message when i
   const serial = `EM-${stamp}`;
   const label = (text: string) => page.getByTestId('form-label').filter({ hasText: new RegExp('^\\s*' + text) }).locator('input');
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
 
@@ -83,7 +83,7 @@ test('the Templates tab lets a template be created for another instrument type',
   await request.post(`${API_BASE}/instrument-types`, { data: { display_name: typeName } });
   const model = `E2E-Spec-${stamp}`;
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await page.click('button:has-text("+ New template")');
   await page.locator('#template-instrument-type').selectOption({ label: typeName });

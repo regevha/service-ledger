@@ -16,3 +16,4 @@ from app.schemas.reports import *  # noqa: F401,F403
 from app.schemas.extraction import *  # noqa: F401,F403
 from app.schemas.analytics import *  # noqa: F401,F403
 from app.schemas.saved_filters import *  # noqa: F401,F403
+from app.schemas.home import *  # noqa: F401,F403

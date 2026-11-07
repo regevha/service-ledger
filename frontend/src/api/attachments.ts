@@ -123,3 +123,32 @@ export interface PageWords {
 export function getAttachmentPageWords(attachmentId: string, page: number): Promise<PageWords> {
   return apiFetch(`/attachments/${attachmentId}/pages/${page}/words`);
 }
+
+/** A box on a page, as fractions of it (0 to 1, from the top left). */
+export interface PageRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Where one field's value sits on the document. `ambiguous`: the same text is on the page several times and nothing told them apart. */
+export interface FieldLocation {
+  page: number;
+  rects: PageRect[];
+  matches: number;
+  ambiguous: boolean;
+  /** "text": found among the page's words. "template": the position the template gives. */
+  source: 'text' | 'template' | 'model';
+}
+
+export interface FieldLocations {
+  /** False for a scan or photo: it has no text to search, so no field is placed. */
+  has_text: boolean;
+  page_count: number;
+  fields: Record<string, FieldLocation>;
+}
+
+export function getFieldLocations(attachmentId: string): Promise<FieldLocations> {
+  return apiFetch(`/attachments/${attachmentId}/field-locations`);
+}

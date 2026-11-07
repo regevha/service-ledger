@@ -32,7 +32,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
   test('buttons, selects and text boxes are at least 44px high on every tab', async ({ page, request }) => {
     // A report in the list, so the sort buttons above the cards are measured too.
     await request.post(`${API_BASE}/reports`, { data: { technician_name: `E2E-Touch-${Date.now()}` } });
-    await page.goto('/');
+    await page.goto('/#/new');
     for (const tab of TABS) {
       if (BEHIND_MORE.includes(tab)) {
         await page.getByTestId('tab-more').click();
@@ -54,7 +54,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
   });
 
   test('the tab labels are readable and all five still fit without the page scrolling sideways', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/new');
     const size = await page.locator('.view-tab:visible').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     expect(size).toBeGreaterThanOrEqual(12);
     const fits = await page.evaluate(() => {

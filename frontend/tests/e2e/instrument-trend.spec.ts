@@ -29,7 +29,7 @@ async function createInstrument(request: APIRequestContext, marker: string): Pro
 }
 
 async function openInstrumentDetail(page: import('@playwright/test').Page, instrumentId: string) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
