@@ -73,8 +73,16 @@ test('several PDFs are read one by one and each is checked on its report screen'
   await expect(page).toHaveURL(/#\/reports\//);
   await finalizeFromReview(page);
   const reportId = page.url().split('/reports/')[1];
+  // When fields are flagged the screen asks "Finalize anyway?" a moment after the first click.
   await expect
-    .poll(async () => ((await (await request.get(`${API_BASE}/reports/${reportId}`)).json()) as { status: string }).status, { timeout: 15_000 })
+    .poll(
+      async () => {
+        const anyway = page.getByRole('button', { name: 'Finalize anyway' });
+        if (await anyway.isVisible().catch(() => false)) await anyway.click();
+        return ((await (await request.get(`${API_BASE}/reports/${reportId}`)).json()) as { status: string }).status;
+      },
+      { timeout: 20_000 }
+    )
     .toBe('finalized');
   await page.goto('/#/batch');
   await expect(page.getByTestId('batch-row').first()).toHaveAttribute('data-state', 'approved', { timeout: 15_000 });
