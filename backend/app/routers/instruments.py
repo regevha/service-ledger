@@ -2,64 +2,30 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
-from app import models, schemas
+from app import schemas
 from app.db import get_db
-from app.services.instrument_models import lock_manufacturer, type_conflict
-from app.services.maintenance import annotate
-from app.services.instrument_types import type_exists
+from app.services import instruments as svc
 from app.services.analytics import trend_points, trendable_fields
-from app.services.report_deletion import count_in_flight_jobs, remove_report_files
 
 router = APIRouter(tags=["instruments"])
-
-_SERIAL_CONFLICT = "An instrument with this serial number already exists"
 
 
 @router.post("/instruments", response_model=schemas.InstrumentOut, status_code=201)
 def create_instrument(payload: schemas.InstrumentCreate, db: Session = Depends(get_db)):
-    if not type_exists(db, payload.instrument_type):
-        raise HTTPException(422, f"Unknown instrument type '{payload.instrument_type}'. Add it first.")
-    if db.query(models.Instrument).filter(models.Instrument.serial_number == payload.serial_number).first():
-        raise HTTPException(409, _SERIAL_CONFLICT)
-    conflict = type_conflict(db, payload.model, payload.instrument_type)
-    if conflict:
-        raise HTTPException(422, conflict)
-    instrument = models.Instrument(**payload.model_dump())
-    lock_manufacturer(db, instrument)
-    db.add(instrument)
-    try:
-        db.commit()
-    except IntegrityError:
-        # Closes the race window between the pre-check above and the
-        # commit (two concurrent POSTs for the same serial number) — the
-        # DB's own unique constraint (models.py's Instrument.serial_number)
-        # is what actually stops the duplicate, this just turns the
-        # resulting IntegrityError into the same clean 409 as the pre-check.
-        db.rollback()
-        raise HTTPException(409, _SERIAL_CONFLICT)
-    db.refresh(instrument)
-    annotate(db, [instrument])
-    return instrument
+    return svc.create_instrument(db, payload)
 
 
 @router.get("/instruments", response_model=list[schemas.InstrumentOut])
 def list_instruments(db: Session = Depends(get_db)):
-    instruments = db.query(models.Instrument).options(joinedload(models.Instrument.model_record)).order_by(models.Instrument.name).all()
-    annotate(db, instruments)
-    return instruments
+    return svc.list_instruments(db)
 
 
 @router.get("/instruments/{instrument_id}", response_model=schemas.InstrumentOut)
 def get_instrument(instrument_id: uuid.UUID, db: Session = Depends(get_db)):
-    instrument = db.get(models.Instrument, instrument_id)
-    if not instrument:
-        raise HTTPException(404, "Instrument not found")
-    annotate(db, [instrument])
-    return instrument
+    return svc.get_annotated_instrument(db, instrument_id)
 
 
 @router.patch("/instruments/{instrument_id}", response_model=schemas.InstrumentOut)
@@ -69,46 +35,7 @@ def update_instrument(instrument_id: uuid.UUID, payload: schemas.InstrumentUpdat
     script by hand" as the only way to fix a typo'd serial number, rename an
     instrument, move it to a new room, or change its status once §5's fixed
     3-instrument fleet stops being fixed in practice."""
-    instrument = db.get(models.Instrument, instrument_id)
-    if not instrument:
-        raise HTTPException(404, "Instrument not found")
-
-    # model_fields_set, not model_dump(exclude_unset=True) directly, so an
-    # explicit null on one of these NOT NULL columns is caught below instead
-    # of silently no-op'ing (InstrumentUpdate's fields all default to None,
-    # so "not sent" and "sent as null" would otherwise look identical).
-    provided = payload.model_fields_set
-    for field in ("name", "model", "serial_number", "status"):
-        if field in provided and getattr(payload, field) is None:
-            raise HTTPException(422, f"{field} cannot be null — omit it to leave it unchanged.")
-
-    if "serial_number" in provided and payload.serial_number != instrument.serial_number:
-        conflict = (
-            db.query(models.Instrument)
-            .filter(models.Instrument.serial_number == payload.serial_number, models.Instrument.id != instrument.id)
-            .first()
-        )
-        if conflict:
-            raise HTTPException(409, _SERIAL_CONFLICT)
-
-    if "model" in provided and payload.model != instrument.model:
-        conflict = type_conflict(db, payload.model, instrument.instrument_type)
-        if conflict:
-            raise HTTPException(422, conflict)
-
-    for field in ("name", "model", "manufacturer", "distributor", "institution", "serial_number", "location", "status"):
-        if field in provided:
-            setattr(instrument, field, getattr(payload, field))
-    lock_manufacturer(db, instrument)
-
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(409, _SERIAL_CONFLICT)
-    db.refresh(instrument)
-    annotate(db, [instrument])
-    return instrument
+    return svc.update_instrument(db, instrument_id, payload)
 
 
 @router.delete("/instruments/{instrument_id}", status_code=204)
@@ -123,26 +50,7 @@ def delete_instrument(instrument_id: uuid.UUID, db: Session = Depends(get_db)):
     queued or being read (a pending, classifying or extracting job), the answer
     is 409 — the worker would be writing to rows that are about to disappear.
     Try again once the job finishes."""
-    instrument = db.get(models.Instrument, instrument_id)
-    if not instrument:
-        raise HTTPException(404, "Instrument not found")
-    reports = db.query(models.Report).filter(models.Report.instrument_id == instrument_id).all()
-    attachments = [a for r in reports for a in r.attachments]
-    if count_in_flight_jobs(db, [a.id for a in attachments]):
-        raise HTTPException(409, "A scan for one of this instrument's reports is still being read. Try again in a moment.")
-    files = {r.id: [a.file_path for a in r.attachments] for r in reports}
-    for report in reports:
-        db.delete(report)  # takes its attachments and their jobs with it
-    db.delete(instrument)
-    try:
-        db.commit()
-    except IntegrityError:
-        # A report was attached to this instrument after the list above was
-        # read; the FK stopped the delete (see Instrument.reports).
-        db.rollback()
-        raise HTTPException(409, "A report was attached to this instrument just now — try again.") from None
-    for report_id, paths in files.items():
-        remove_report_files(report_id, paths)
+    svc.delete_instrument(db, instrument_id)
 
 
 @router.get("/instruments/{instrument_id}/trend-fields", response_model=list[schemas.TrendFieldOut])
@@ -154,21 +62,7 @@ def instrument_trend_fields(instrument_id: uuid.UUID, db: Session = Depends(get_
     shows up as a dead end. Backs the instrument detail page's field picker
     (docs/instrument-timeline-demo.html's mockup skipped this entirely — it
     hardcoded one field for one instrument)."""
-    instrument = db.get(models.Instrument, instrument_id)
-    if not instrument:
-        raise HTTPException(404, "Instrument not found")
-
-    reports = (
-        db.query(models.Report)
-        .options(joinedload(models.Report.template))
-        .filter(
-            models.Report.instrument_id == instrument_id,
-            models.Report.status == models.ReportStatus.finalized,
-            models.Report.template_id.isnot(None),
-        )
-        .all()
-    )
-    return trendable_fields(reports)
+    return trendable_fields(svc.finalized_reports_with_templates(db, instrument_id))
 
 
 @router.get("/instruments/{instrument_id}/trend", response_model=schemas.TrendOut)
@@ -184,15 +78,5 @@ def instrument_trend(
     number or a dict containing at least one real number, contribute a
     point — a field only some report types carry on a repair-heavy instrument just
     yields a short series, not an error."""
-    instrument = db.get(models.Instrument, instrument_id)
-    if not instrument:
-        raise HTTPException(404, "Instrument not found")
-
-    reports = (
-        db.query(models.Report)
-        .filter(models.Report.instrument_id == instrument_id, models.Report.status == models.ReportStatus.finalized)
-        .order_by(*models.report_chronological_order())
-        .all()
-    )
-    points = trend_points(reports, field)
+    points = trend_points(svc.finalized_reports_in_order(db, instrument_id), field)
     return schemas.TrendOut(instrument_id=instrument_id, field=field, points=points)
