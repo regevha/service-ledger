@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import re
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import DEFAULT_INSTRUMENT_TYPE_KEY, InstrumentType
+from app.services.domain_errors import ConflictError, InvalidError
 
 DEFAULT_TYPE_KEY = DEFAULT_INSTRUMENT_TYPE_KEY
 DEFAULT_TYPE_NAME = "Flow cytometer"
@@ -50,3 +52,29 @@ def type_exists(db: Session, key: str) -> bool:
 def display_name_for(db: Session, key: str) -> str:
     row = db.query(InstrumentType).filter(InstrumentType.key == key).first()
     return row.display_name if row else key
+
+
+_CONFLICT = "An instrument type with this name already exists"
+
+
+def list_types(db: Session) -> list[InstrumentType]:
+    return db.query(InstrumentType).order_by(InstrumentType.display_name).all()
+
+
+def create_type(db: Session, display_name: str) -> InstrumentType:
+    """Adds a type; the key is derived from the name and is what instruments and
+    templates store. A name with no letter or digit, or one whose key exists, is refused."""
+    key = make_key(display_name)
+    if not key:
+        raise InvalidError("The type name needs at least one letter or digit")
+    if db.query(InstrumentType).filter(InstrumentType.key == key).first():
+        raise ConflictError(_CONFLICT)
+    row = InstrumentType(key=key, display_name=display_name.strip())
+    db.add(row)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ConflictError(_CONFLICT)
+    db.refresh(row)
+    return row

@@ -2,31 +2,22 @@ import { useEffect, useState } from 'react';
 import { LoadError } from './LoadError';
 import {
   ApiError,
-  createInstrument,
-  createInstrumentType,
   deleteInstrument,
-  listInstrumentModels,
   listInstrumentTypes,
   listPlaces,
   listReports,
-  updateInstrument,
   type Instrument,
-  type InstrumentStatus,
-  type InstrumentModel,
-  type InstrumentType,
-  type MaintenanceState,
   type Place,
 } from '../api';
-import { INSTRUMENT_STATUS_LABEL, MAINTENANCE_STATE_LABEL } from '../labels';
-import { idsInside, matchTypedPlaces, placeLabel, typedPlaceHint } from '../placeUtils';
-import { MaintenanceBadge } from './MaintenanceBadge';
+import { useInstrumentFilters } from '../hooks/useInstrumentFilters';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { useMakerNames } from './MakerSuggestions';
-import { SuggestInput } from './SuggestInput';
+import { DeleteInstrumentBanner, type PendingInstrumentDelete } from './DeleteInstrumentBanner';
+import { InstrumentFilters } from './InstrumentFilters';
+import { InstrumentFormScreen } from './InstrumentForm';
+import { InstrumentTable } from './InstrumentTable';
 import { MakersManager } from './MakersManager';
 import { ModelsManager } from './ModelsManager';
 import { PlacesManager } from './PlacesManager';
-import { RowMenu } from './RowMenu';
 
 /**
  * The Instruments tab: create/edit for the fleet, replacing "POST
@@ -48,333 +39,15 @@ import { RowMenu } from './RowMenu';
  * instrument's templates and reports are tied to it.
  */
 
-const STATUS_OPTIONS: InstrumentStatus[] = ['active', 'maintenance', 'retired'];
-
-function InstrumentFormScreen({
-  existing,
-  onCancel,
-  onSaved,
-}: {
-  existing?: Instrument;
-  onCancel: () => void;
-  onSaved: () => void;
-}) {
-  const [name, setName] = useState(existing?.name ?? '');
-  const [model, setModel] = useState(existing?.model ?? '');
-  const [manufacturer, setManufacturer] = useState(existing?.manufacturer ?? '');
-  const [distributor, setDistributor] = useState(existing?.distributor ?? '');
-  const [institution, setInstitution] = useState(existing?.institution ?? '');
-  const [serialNumber, setSerialNumber] = useState(existing?.serial_number ?? '');
-  const [location, setLocation] = useState(existing?.location ?? '');
-  const [status, setStatus] = useState<InstrumentStatus>(existing?.status ?? 'active');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [types, setTypes] = useState<InstrumentType[]>([]);
-  const [typeKey, setTypeKey] = useState(existing?.instrument_type ?? '');
-  const [newTypeName, setNewTypeName] = useState<string | null>(null);
-  const [knownModels, setKnownModels] = useState<InstrumentModel[]>([]);
-  const [knownPlaces, setKnownPlaces] = useState<Place[]>([]);
-  const makerNames = useMakerNames();
-
-  useEffect(() => {
-    listInstrumentTypes()
-      .then((list) => {
-        setTypes(list);
-        // A new instrument starts with the default type (an existing one keeps its own).
-        setTypeKey((current) => current || (list.find((t) => t.is_default)?.key ?? list[0]?.key ?? ''));
-      })
-      .catch(() => setTypes([]));
-    listInstrumentModels()
-      .then(setKnownModels)
-      .catch(() => setKnownModels([]));
-    listPlaces()
-      .then(setKnownPlaces)
-      .catch(() => setKnownPlaces([]));
-  }, []);
-
-  // The model typed is one that already exists (exact name), or a new one.
-  const matchedModel = knownModels.find((m) => m.name === model.trim());
-  // Places already on record: the institution typed is one of them (ignoring case
-  // and spaces) or a new one; rooms offered are those in the institution typed.
-  const { roomsHere } = matchTypedPlaces(knownPlaces, institution, location);
-  const placeHint = typedPlaceHint(knownPlaces, institution, location);
-
-  // An instrument's manufacturer follows its model: with an existing model that
-  // has one, it is shown read-only and changed only on the model.
-  const lockedManufacturer = matchedModel?.manufacturer ?? null;
-
-  // Choosing an existing model fills in its type for a new instrument. An
-  // effect, so it also applies when the list arrives after typing.
-  const matchedId = matchedModel?.id;
-  useEffect(() => {
-    if (existing || !matchedModel) return;
-    setTypeKey(matchedModel.instrument_type);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchedId]);
-
-  async function handleAddType() {
-    if (!newTypeName || !newTypeName.trim()) return;
-    setError(null);
-    try {
-      const created = await createInstrumentType(newTypeName.trim());
-      setTypes((prev) => [...prev, created].sort((a, b) => a.display_name.localeCompare(b.display_name)));
-      setTypeKey(created.key);
-      setNewTypeName(null);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not add this type.');
-    }
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
-    try {
-      const trimmedLocation = location.trim() ? location.trim() : null;
-      if (existing) {
-        await updateInstrument(existing.id, {
-          name: name.trim(),
-          model: model.trim(),
-          manufacturer: (lockedManufacturer ?? manufacturer).trim() || null,
-          distributor: distributor.trim() || null,
-          institution: institution.trim() || null,
-          serial_number: serialNumber.trim(),
-          location: trimmedLocation,
-          status,
-        });
-      } else {
-        await createInstrument({
-          name: name.trim(),
-          model: model.trim(),
-          instrument_type: typeKey,
-          manufacturer: (lockedManufacturer ?? manufacturer).trim(),
-          distributor: distributor.trim() || null,
-          institution: institution.trim() || null,
-          serial_number: serialNumber.trim(),
-          location: trimmedLocation,
-        });
-      }
-      onSaved();
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save this instrument.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const missing = [
-    name.trim().length === 0 ? 'name' : null,
-    model.trim().length === 0 ? 'model' : null,
-    existing === undefined && (lockedManufacturer ?? manufacturer).trim().length === 0 ? 'manufacturer' : null,
-    serialNumber.trim().length === 0 ? 'serial number' : null,
-  ].filter((m): m is string => m !== null);
-  const roomWithoutInstitution = location.trim() !== '' && institution.trim() === '';
-  const canSave = missing.length === 0 && !roomWithoutInstitution && !saving;
-
-  return (
-    <div className="section">
-      <button type="button" className="btn small back-link" onClick={onCancel}>
-        ← Back to instruments
-      </button>
-
-      <div className="section-title">{existing ? 'Edit instrument' : 'New instrument'}</div>
-
-      {error && <div className="banner banner-crit">{error}</div>}
-
-      <div className="schema-form-row type-row">
-        <label className="schema-form-label" data-testid="form-label">
-          Instrument type
-          <select
-            id="instrument-type"
-            value={typeKey}
-            disabled={existing !== undefined}
-            onChange={(e) => setTypeKey(e.target.value)}
-          >
-            {types.length === 0 && <option value={typeKey}>{typeKey}</option>}
-            {types.map((t) => (
-              <option key={t.key} value={t.key}>
-                {t.display_name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {!existing &&
-          (newTypeName === null ? (
-            <button type="button" className="btn small add-type-link" onClick={() => setNewTypeName('')}>
-              + Add a type
-            </button>
-          ) : (
-            <div className="schema-form-label" data-testid="form-label">
-              New type name
-              <input
-                type="text"
-                className="text-input"
-                placeholder="e.g. Electron microscope"
-                value={newTypeName}
-                autoFocus
-                enterKeyHint="done"
-                onChange={(e) => setNewTypeName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    void handleAddType();
-                  }
-                }}
-              />
-              <span className="type-adder-actions">
-                <button type="button" className="btn small" onClick={() => void handleAddType()}>
-                  Add
-                </button>
-                <button type="button" className="btn small" onClick={() => setNewTypeName(null)}>
-                  Cancel
-                </button>
-              </span>
-            </div>
-          ))}
-      </div>
-
-      {!existing && matchedModel && (
-        <small className="muted type-follows-hint">The type follows the model.</small>
-      )}
-
-      <div className="schema-form-row">
-        <label className="schema-form-label" data-testid="form-label">
-          <span>Name <Required /></span>
-          <input
-            type="text"
-            className="text-input"
-            placeholder="e.g. Aurora — Core Lab"
-            autoCapitalize="words"
-            enterKeyHint="next"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-        <label className="schema-form-label" data-testid="form-label">
-          <span>Model <Required /></span>
-          <SuggestInput
-            className="text-input"
-            placeholder="e.g. Aurora"
-            value={model}
-            onChange={setModel}
-            options={knownModels.map((m) => m.name)}
-          />
-          {model.trim() !== '' && (
-            <small className="muted model-hint" id="model-hint">
-              {matchedModel
-                ? `Existing model · ${matchedModel.unit_count} instrument${matchedModel.unit_count === 1 ? '' : 's'}`
-                : 'New model · it will be added to Models'}
-            </small>
-          )}
-        </label>
-      </div>
-
-      <div className="schema-form-row">
-        <div className="field-with-hint">
-          <label className="schema-form-label" data-testid="form-label">
-            <span>Manufacturer {!existing && <Required />}</span>
-            <SuggestInput
-              className="text-input"
-              placeholder="e.g. Cytek Biosciences"
-              value={lockedManufacturer ?? manufacturer}
-              onChange={setManufacturer}
-              options={makerNames}
-              disabled={lockedManufacturer !== null}
-            />
-          </label>
-          {lockedManufacturer !== null && (
-            <small className="muted manufacturer-lock-hint">Set by the model. Change it on the Models screen.</small>
-          )}
-        </div>
-        <label className="schema-form-label" data-testid="form-label">
-          <span>Serial number <Required /></span>
-          <input type="text" className="text-input" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
-        </label>
-      </div>
-
-      <div className="schema-form-row">
-        <label className="schema-form-label" data-testid="form-label">
-          Institute
-          <SuggestInput
-            className="text-input"
-            placeholder="e.g. Bar-Ilan University (optional)"
-            value={institution}
-            onChange={setInstitution}
-            options={knownPlaces.filter((p) => p.kind === 'institution').map((p) => p.name)}
-          />
-        </label>
-        <label className="schema-form-label" data-testid="form-label">
-          Room name
-          <SuggestInput
-            className="text-input"
-            placeholder="e.g. Core Lab"
-            value={location}
-            onChange={setLocation}
-            options={roomsHere.map((p) => p.name)}
-          />
-        </label>
-        <label className="schema-form-label" data-testid="form-label">
-          Distributor
-          <input
-            type="text"
-            className="text-input"
-            placeholder="e.g. Rhenium (optional)"
-            value={distributor}
-            onChange={(e) => setDistributor(e.target.value)}
-          />
-        </label>
-      </div>
-
-      {placeHint && (
-        <small className="muted place-hint" id="place-hint">
-          {placeHint}
-        </small>
-      )}
-
-      {/* A brand-new instrument is always created active (schemas.py's
-          InstrumentCreate has no status field) — status only becomes
-          something to change once the instrument already exists. */}
-      {existing && (
-        <div className="schema-form-row">
-          <label className="schema-form-label" data-testid="form-label">
-            Status
-            <select value={status} onChange={(e) => setStatus(e.target.value as InstrumentStatus)}>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {INSTRUMENT_STATUS_LABEL[s]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-
-      {missing.length > 0 && !saving && (
-        <p className="form-missing" id="instrument-missing">
-          Still needed: {missing.join(', ')}.
-        </p>
-      )}
-      <div className="cta-row">
-        <button type="button" className="btn" onClick={onCancel} disabled={saving}>
-          Cancel
-        </button>
-        <button type="button" className="btn primary" onClick={() => void handleSave()} disabled={!canSave}>
-          {saving ? 'Saving…' : existing ? 'Save changes' : 'Create instrument'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 type ManagerMode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; instrument: Instrument };
 
-/** The mark next to a field the form cannot be saved without. */
-function Required() {
-  return (
-    <span className="required-mark" aria-label="required" title="Required">
-      *
-    </span>
-  );
-}
+type Section = 'instruments' | 'models' | 'makers' | 'places';
+const SECTIONS: [Section, string][] = [
+  ['instruments', 'Instruments'],
+  ['models', 'Models'],
+  ['makers', 'Makers'],
+  ['places', 'Places'],
+];
 
 export function InstrumentManagerScreen({
   instruments,
@@ -391,17 +64,13 @@ export function InstrumentManagerScreen({
   // The instrument awaiting a delete confirmation, with how many reports go
   // with it (looked up when Delete is clicked, so the warning is specific).
   const phone = useMediaQuery('(max-width: 620px)');
-  const [pendingDelete, setPendingDelete] = useState<{ instrument: Instrument; total: number; finalized: number } | null>(
-    null
-  );
+  const [pendingDelete, setPendingDelete] = useState<PendingInstrumentDelete | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [typeNames, setTypeNames] = useState<Record<string, string>>({});
-  const [section, setSection] = useState<'instruments' | 'models' | 'makers' | 'places'>('instruments');
-  const [stateFilter, setStateFilter] = useState<'all' | MaintenanceState>('all');
-  const [modelFilter, setModelFilter] = useState('all');
-  const [placeFilter, setPlaceFilter] = useState('');
+  const [section, setSection] = useState<Section>('instruments');
   const [allPlaces, setAllPlaces] = useState<Place[]>([]);
+  const filters = useInstrumentFilters(instruments, allPlaces);
   useEffect(() => {
     listPlaces()
       .then(setAllPlaces)
@@ -448,34 +117,6 @@ export function InstrumentManagerScreen({
     }
   }
 
-  // The two pickers narrow each other: Model lists only models that have an instrument in the chosen
-  // place, Place lists only places that hold an instrument of the chosen model. A choice that no longer
-  // fits counts as "all", so the list is never empty because of a stale choice.
-  const inPlace = (i: Instrument, ids: Set<string> | null) => !ids || (i.place_id != null && ids.has(i.place_id));
-  const insideRaw = idsInside(allPlaces, placeFilter || undefined);
-  const modelOptions = Array.from(
-    new Map(
-      instruments.filter((i) => i.model_id && inPlace(i, insideRaw)).map((i) => [i.model_id as string, i.model])
-    ).entries()
-  ).sort((a, b) => a[1].localeCompare(b[1]));
-  const activeModel = modelOptions.some(([id]) => id === modelFilter) ? modelFilter : 'all';
-  const modelMatches = instruments.filter((i) => activeModel === 'all' || i.model_id === activeModel);
-  const placeOptions = allPlaces.filter((p) => {
-    const ids = idsInside(allPlaces, p.id);
-    return modelMatches.some((i) => inPlace(i, ids));
-  });
-  const activePlace = !placeFilter || placeOptions.some((p) => p.id === placeFilter) ? placeFilter : '';
-  const insidePlace = idsInside(allPlaces, activePlace || undefined);
-  const shownInstruments = modelMatches
-    .filter((i) => stateFilter === 'all' || i.maintenance_state === stateFilter)
-    .filter((i) => inPlace(i, insidePlace));
-  const filtersActive = stateFilter !== 'all' || activeModel !== 'all' || activePlace !== '';
-  function clearFilters() {
-    setStateFilter('all');
-    setModelFilter('all');
-    setPlaceFilter('');
-  }
-
   function handleSaved() {
     setMode({ kind: 'list' });
     onRefresh();
@@ -492,18 +133,18 @@ export function InstrumentManagerScreen({
 
   const switcher = (
     <div className="sub-switch" role="tablist" aria-label="Instruments, models, makers or places">
-      <button type="button" role="tab" aria-selected={section === 'instruments'} className={section === 'instruments' ? 'active' : ''} onClick={() => setSection('instruments')}>
-        Instruments
-      </button>
-      <button type="button" role="tab" aria-selected={section === 'models'} className={section === 'models' ? 'active' : ''} onClick={() => setSection('models')}>
-        Models
-      </button>
-      <button type="button" role="tab" aria-selected={section === 'makers'} className={section === 'makers' ? 'active' : ''} onClick={() => setSection('makers')}>
-        Makers
-      </button>
-      <button type="button" role="tab" aria-selected={section === 'places'} className={section === 'places' ? 'active' : ''} onClick={() => setSection('places')}>
-        Places
-      </button>
+      {SECTIONS.map(([key, label]) => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={section === key}
+          className={section === key ? 'active' : ''}
+          onClick={() => setSection(key)}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 
@@ -548,64 +189,26 @@ export function InstrumentManagerScreen({
       {error && <LoadError message={error} onRetry={onRefresh} />}
       {deleteError && <div className="banner banner-crit">{deleteError}</div>}
       {pendingDelete && (
-        <div className="banner banner-crit" role="alertdialog" aria-label="Confirm delete instrument">
-          <div>
-            Delete {pendingDelete.instrument.name} ({pendingDelete.instrument.serial_number})?{' '}
-            {pendingDelete.total === 0
-              ? 'It has no reports.'
-              : `This also permanently deletes its ${pendingDelete.total} report${pendingDelete.total === 1 ? '' : 's'}${
-                  pendingDelete.finalized > 0 ? ` (${pendingDelete.finalized} finalized)` : ''
-                } and their scans.`}{' '}
-            This cannot be undone.
-          </div>
-          <button type="button" className="btn small danger solid" onClick={() => void handleDelete()} disabled={deleting}>
-            Confirm delete
-          </button>{' '}
-          <button type="button" className="btn small" onClick={() => setPendingDelete(null)} disabled={deleting}>
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {!loading && instruments.length > 0 && allPlaces.length > 0 && (
-        <label className="maintenance-filter">
-          <span>Place</span>
-          <select className="text-input" aria-label="Filter by place" value={activePlace} onChange={(e) => setPlaceFilter(e.target.value)}>
-            <option value="">All places</option>
-            {placeOptions.map((p) => (
-              <option key={p.id} value={p.id}>
-                {placeLabel(p)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <DeleteInstrumentBanner
+          pending={pendingDelete}
+          deleting={deleting}
+          onConfirm={() => void handleDelete()}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
 
       {!loading && instruments.length > 0 && (
-        <div className="instrument-filters">
-          <label className="maintenance-filter">
-            <span>Model</span>
-            <select className="text-input" aria-label="Filter by model" value={activeModel} onChange={(e) => setModelFilter(e.target.value)}>
-              <option value="all">All models</option>
-              {modelOptions.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="maintenance-filter">
-            <span>Maintenance</span>
-            <select className="text-input" aria-label="Filter by maintenance" value={stateFilter} onChange={(e) => setStateFilter(e.target.value as 'all' | MaintenanceState)}>
-              <option value="all">All</option>
-              {(['overdue', 'due_soon', 'ok', 'no_record', 'not_tracked'] as MaintenanceState[]).map((k) => (
-                <option key={k} value={k}>
-                  {MAINTENANCE_STATE_LABEL[k]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <InstrumentFilters
+          showPlace={allPlaces.length > 0}
+          placeOptions={filters.placeOptions}
+          activePlace={filters.activePlace}
+          onPlaceChange={filters.setPlaceFilter}
+          modelOptions={filters.modelOptions}
+          activeModel={filters.activeModel}
+          onModelChange={filters.setModelFilter}
+          stateFilter={filters.stateFilter}
+          onStateChange={filters.setStateFilter}
+        />
       )}
 
       {loading ? (
@@ -616,65 +219,23 @@ export function InstrumentManagerScreen({
       ) : instruments.length === 0 ? (
         // A failed load says so above; it is not an empty fleet.
         error ? null : <div className="empty-hint">No instruments yet.</div>
-      ) : shownInstruments.length === 0 ? (
+      ) : filters.shownInstruments.length === 0 ? (
         <div className="empty-hint">
           No instruments match these filters.{' '}
-          {filtersActive && (
-            <button type="button" className="btn small" onClick={clearFilters}>
+          {filters.filtersActive && (
+            <button type="button" className="btn small" onClick={filters.clearFilters}>
               Clear filters
             </button>
           )}
         </div>
       ) : (
-        <div className="template-table">
-          <div className="instrument-row template-row-head">
-            <span>Name</span>
-            <span>Manufacturer</span>
-            <span>Distributor</span>
-            <span>Model</span>
-            <span>Serial number</span>
-            <span>Room name</span>
-            <span>Status</span>
-            <span>Actions</span>
-          </div>
-          {shownInstruments.map((inst) => (
-            <div className="instrument-row instrument-card template-row-body" data-testid="instrument-row" key={inst.id}>
-              <span data-label="Name">
-                {inst.name}
-                {inst.institution && <small className="muted instrument-institution">{inst.institution}</small>}
-              </span>
-              <span data-label="Manufacturer">{inst.manufacturer ?? '—'}</span>
-              <span data-label="Distributor">{inst.distributor ?? '—'}</span>
-              <span data-label="Model" data-same={inst.model === inst.name ? '' : undefined}>
-                {inst.model}
-                <small className="muted instrument-type"> · {typeNames[inst.instrument_type] ?? inst.instrument_type}</small>
-              </span>
-              <span data-label="Serial number">{inst.serial_number}</span>
-              <span data-label="Room name" data-empty={inst.location ? undefined : ''}>{inst.location ?? '—'}</span>
-              <span data-label="Status">
-                <span className={`status-pill instrument-status-${inst.status}${inst.status === 'active' ? ' status-default' : ''}`}>
-                  {INSTRUMENT_STATUS_LABEL[inst.status]}
-                </span>{' '}
-                <MaintenanceBadge state={inst.maintenance_state} dueDate={inst.maintenance_due_date} />
-              </span>
-              <span className="template-row-actions">
-                <button type="button" className="btn small" onClick={() => setMode({ kind: 'edit', instrument: inst })}>
-                  Edit
-                </button>
-                {phone ? (
-                  <RowMenu
-                    label={`More actions for ${inst.name}`}
-                    items={[{ label: 'Delete', danger: true, onSelect: () => void askToDelete(inst) }]}
-                  />
-                ) : (
-                  <button type="button" className="btn small danger" onClick={() => void askToDelete(inst)}>
-                    Delete
-                  </button>
-                )}
-              </span>
-            </div>
-          ))}
-        </div>
+        <InstrumentTable
+          instruments={filters.shownInstruments}
+          typeNames={typeNames}
+          phone={phone}
+          onEdit={(instrument) => setMode({ kind: 'edit', instrument })}
+          onDelete={(instrument) => void askToDelete(instrument)}
+        />
       )}
     </div>
     </>
