@@ -39,9 +39,9 @@ test.describe('address bar', () => {
     await expect(page).toHaveURL(/#\/instruments$/);
   });
 
-  test('an unknown address falls back to New report', async ({ page }) => {
+  test('an unknown address falls back to Home', async ({ page }) => {
     await page.goto('/#/nonsense/whatever');
-    await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('New report');
+    await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Home');
   });
 
   test('an open report has its own address; Refresh keeps it open and Back returns to the list', async ({ page }) => {
