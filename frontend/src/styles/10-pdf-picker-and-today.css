@@ -346,3 +346,24 @@
 .today-row .status-pill {
   text-transform: none;
 }
+
+/* A field already in the template, drawn where it was picked. Not clickable: the field editor below edits it. */
+.pdf-marker {
+  position: absolute;
+  pointer-events: none;
+  border: 1.5px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 2px;
+}
+.pdf-marker-name {
+  position: absolute;
+  left: -1.5px;
+  bottom: 100%;
+  padding: 0 5px;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 3px 3px 0 0;
+}

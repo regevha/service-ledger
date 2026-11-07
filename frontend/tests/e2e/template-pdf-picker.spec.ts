@@ -37,6 +37,23 @@ test('click a word on a stored PDF to add it as a template field', async ({ page
   const row = page.locator('.schema-field-row').last();
   await expect(row.locator('[aria-label="Field name"]')).toHaveValue('laser_delay');
   await expect(row.locator('[aria-label="Field type"]')).toHaveValue('number');
+
+  // The field is drawn back over the page where it was picked.
+  await expect(page.getByTestId('pdf-marker')).toHaveCount(1);
+  await expect(page.getByTestId('pdf-marker')).toContainText('laser_delay');
+
+  // And the place is saved with the template: reopening it shows the same marker.
+  await page.click('button:has-text("Create template")');
+  const listRow = page.getByTestId('template-row').filter({ hasText: model });
+  await listRow.locator('button:has-text("Edit")').click();
+  await page.getByTestId('pdf-picker-open').click();
+  await expect(page.getByTestId('pdf-word').first()).toBeAttached();
+  await expect(page.getByTestId('pdf-marker')).toHaveCount(1);
+  await expect(page.getByTestId('pdf-marker')).toContainText('laser_delay');
+
+  // Removing the field removes its marker.
+  await page.locator('.schema-field-row').first().getByRole('button', { name: /Remove/ }).click();
+  await expect(page.getByTestId('pdf-marker')).toHaveCount(0);
 });
 
 test('the picker shows an empty state when no PDF is stored for the template', async ({ page }) => {

@@ -223,6 +223,8 @@ def _field_to_dict(field: schemas.TemplateFieldIn) -> dict:
         out["filled_by_person"] = True
     if field.optional:
         out["optional"] = True
+    if field.source is not None:
+        out["source"] = field.source.model_dump()
     return out
 
 
