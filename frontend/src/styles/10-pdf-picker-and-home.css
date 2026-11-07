@@ -236,11 +236,6 @@
   border: 2px dashed var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
-  cursor: pointer;
-}
-.home-add:hover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
 }
 .home-add-icon {
   flex: none;
@@ -580,4 +575,39 @@
   font: inherit;
   color: inherit;
   cursor: pointer;
+}
+
+/* Home: the ask box, the drop box with its two buttons, and a note under each figure. */
+.home-ask {
+  max-width: 100%;
+}
+.home-add {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  text-align: left;
+  width: 100%;
+  cursor: default;
+}
+.home-add.dragging {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.home-add-text {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.home-add-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.home-tile-note {
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }

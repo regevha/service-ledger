@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ApiError, listReports, type Instrument, type ReportListItem } from '../api';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ApiError, getHomeSummary, listReports, type HomeSummary, type Instrument, type ReportFilters, type ReportListItem } from '../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
-import { dueText, instrumentLabel, maintenanceItems, monthStart, waitingReports } from '../home';
+import { dueText, finalizedNote, instrumentLabel, keptAsReadPercent, maintenanceItems, MIN_FIELDS_FOR_PERCENT, waitingAge, waitingReports } from '../home';
+import { AskReportsBox } from './AskReportsBox';
 import { LoadError } from './LoadError';
 
 // How many waiting reports and upcoming services the lists show before pointing at the full screens.
@@ -9,7 +10,7 @@ const SHOWN = 6;
 
 interface Loaded {
   waiting: ReportListItem[];
-  finalizedThisMonth: number;
+  summary: HomeSummary;
 }
 
 function formatDay(iso: string): string {
@@ -17,9 +18,10 @@ function formatDay(iso: string): string {
 }
 
 /**
- * The Home tab: what needs a person's attention, in the order they would do it. The reports that are read
- * and wait for a check, the instruments whose maintenance is overdue or close, and a way to start a new
- * report. Everything here is read from the same data the other tabs show; nothing is stored on this screen.
+ * The Home screen, where the app opens: a box to ask about the reports in plain words, a place to drop new
+ * reports (anywhere on the page), four figures that say how the work stands, and the two short lists a person
+ * acts on, the reports waiting for a check and the instruments whose maintenance is overdue or close.
+ * Everything here is read from the same data the other screens show; nothing is stored on this screen.
  */
 export function HomeScreen({
   instruments,
@@ -29,6 +31,8 @@ export function HomeScreen({
   onNewReport,
   onOpenReports,
   onOpenInstruments,
+  onAsk,
+  onFiles,
 }: {
   instruments: Instrument[];
   instrumentsLoading: boolean;
@@ -37,24 +41,62 @@ export function HomeScreen({
   onNewReport: () => void;
   onOpenReports: () => void;
   onOpenInstruments: () => void;
+  /** The filters a typed request turned into; the app opens Reports with them. */
+  onAsk: (filters: ReportFilters) => void;
+  /** Files dropped on the page or chosen with the button; the app opens the several-files screen with them. */
+  onFiles: (files: File[]) => void;
 }) {
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Fixed for the life of the screen, so the lists do not shift if midnight passes while it is open.
   const [today] = useState(() => new Date());
+  // True while files are being dragged over the page, so the drop box can show it will take them.
+  const [dragging, setDragging] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const onFilesRef = useRef(onFiles);
+  useEffect(() => {
+    onFilesRef.current = onFiles;
+  }, [onFiles]);
+
+  // Files can be dropped anywhere on this screen, not only on the box.
+  useEffect(() => {
+    const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+    const over = (e: DragEvent) => {
+      if (hasFiles(e)) setDragging(true);
+    };
+    const leave = (e: DragEvent) => {
+      if (e.relatedTarget === null) setDragging(false);
+    };
+    const drop = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      setDragging(false);
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      if (files.length > 0) onFilesRef.current(files);
+    };
+    window.addEventListener('dragenter', over);
+    window.addEventListener('dragover', over);
+    window.addEventListener('dragleave', leave);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragenter', over);
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('dragleave', leave);
+      window.removeEventListener('drop', drop);
+    };
+  }, []);
 
   const load = useCallback(() => {
     return Promise.all([
       listReports({ status: 'extracted' }),
       listReports({ status: 'in_review' }),
-      listReports({ status: 'finalized', date_from: monthStart(today) }),
+      getHomeSummary(),
     ])
-      .then(([extracted, inReview, finalized]) => {
+      .then(([extracted, inReview, summary]) => {
         setError(null);
-        setData({ waiting: waitingReports(extracted, inReview), finalizedThisMonth: finalized.length });
+        setData({ waiting: waitingReports(extracted, inReview), summary });
       })
       .catch((e: unknown) => setError(e instanceof ApiError ? e.message : 'Could not load the reports.'));
-  }, [today]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -75,34 +117,100 @@ export function HomeScreen({
 
       {error && <LoadError message={error} onRetry={() => void load()} />}
 
+      <div className="home-ask" data-testid="home-ask">
+        <AskReportsBox
+          onApply={onAsk}
+          showUnderstood={false}
+          label="Ask about your reports"
+          placeholder="PM reports on the FACSAria III in September"
+          submitLabel="Show reports"
+        />
+      </div>
+
+      <div
+        className={`home-add${dragging ? ' dragging' : ''}`}
+        data-testid="home-drop"
+        onDragOver={(e) => e.preventDefault()}
+      >
+        <span className="home-add-icon" aria-hidden="true">
+          +
+        </span>
+        <span className="home-add-text">
+          <strong>Drop service reports anywhere on this page</strong>
+          <small>PDFs or photos, one or many. Each one becomes its own report that you confirm.</small>
+        </span>
+        <div className="home-add-actions">
+          <button type="button" className="btn" data-testid="home-choose-files" onClick={() => fileInput.current?.click()}>
+            Choose files
+          </button>
+          <button type="button" className="btn primary" data-testid="home-new-report" onClick={onNewReport}>
+            Add one by hand
+          </button>
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          multiple
+          hidden
+          accept="application/pdf,image/*"
+          aria-label="Choose service reports"
+          data-testid="home-file-input"
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            e.target.value = '';
+            if (files.length > 0) onFiles(files);
+          }}
+        />
+      </div>
+
       <div className="home-tiles" aria-label="Summary">
-        <div className={`stat-tile home-tile${data && data.waiting.length > 0 ? ' attention' : ''}`} data-testid="home-tile-review">
-          <span className="stat-value">{data ? data.waiting.length : '–'}</span>
-          <span className="stat-label">Reports to review</span>
+        <div className={`stat-tile home-tile${data && data.summary.waiting.count > 0 ? ' attention' : ''}`} data-testid="home-tile-review">
+          <span className="stat-value">{data ? data.summary.waiting.count : '–'}</span>
+          <span className="stat-label">Waiting for you</span>
+          <span className="home-tile-note">
+            {data === null
+              ? ' '
+              : data.summary.waiting.count === 0
+                ? 'Nothing is waiting for review'
+                : `Oldest has waited ${waitingAge(data.summary.waiting.oldest_created_at, today) ?? 'a while'}`}
+          </span>
         </div>
         <div className={`stat-tile home-tile${overdue > 0 ? ' attention' : ''}`} data-testid="home-tile-overdue">
           <span className="stat-value">{instrumentsLoading ? '–' : overdue}</span>
           <span className="stat-label">Instruments overdue for maintenance</span>
-        </div>
-        <div className="stat-tile home-tile" data-testid="home-tile-soon">
-          <span className="stat-value">{instrumentsLoading ? '–' : dueSoon}</span>
-          <span className="stat-label">Maintenance due soon</span>
+          <span className="home-tile-note">
+            {instrumentsLoading
+              ? ' '
+              : instruments.length === 0
+                ? 'Add instruments to track their service'
+                : overdue > 0
+                  ? maintenance
+                      .filter((m) => m.overdue)
+                      .slice(0, 2)
+                      .map((m) => `${m.label} (${dueText(m.days)})`)
+                      .join(', ')
+                  : dueSoon > 0
+                    ? `${dueSoon} more due soon`
+                    : 'None due soon either'}
+          </span>
         </div>
         <div className="stat-tile home-tile" data-testid="home-tile-finalized">
-          <span className="stat-value">{data ? data.finalizedThisMonth : '–'}</span>
+          <span className="stat-value">{data ? data.summary.finalized.this_month : '–'}</span>
           <span className="stat-label">Finalized this month</span>
+          <span className="home-tile-note">{data ? finalizedNote(data.summary.finalized) : ' '}</span>
+        </div>
+        <div className="stat-tile home-tile" data-testid="home-tile-accuracy">
+          <span className="stat-value">{data ? (keptAsReadPercent(data.summary.read_without_edits) ?? '–') : '–'}</span>
+          <span className="stat-label">Fields read without edits</span>
+          <span className="home-tile-note">
+            {data === null
+              ? ' '
+              : keptAsReadPercent(data.summary.read_without_edits) !== null
+                ? `${data.summary.read_without_edits.fields} fields on ${data.summary.read_without_edits.reports} reports, last ${data.summary.read_without_edits.days} days`
+                : `Shown after ${MIN_FIELDS_FOR_PERCENT} fields are finalized (${data.summary.read_without_edits.fields} so far)`}
+          </span>
         </div>
       </div>
-
-      <button type="button" className="home-add" data-testid="home-new-report" onClick={onNewReport}>
-        <span className="home-add-icon" aria-hidden="true">
-          +
-        </span>
-        <span>
-          <strong>Add a service report</strong>
-          <small>Upload a PDF or take photos of a form. It is read for you to check.</small>
-        </span>
-      </button>
 
       <div className="home-cols">
         <section className="home-card" aria-labelledby="home-waiting-title">

@@ -17,11 +17,14 @@ const MAX_FILES = 30;
  */
 export function BatchIntake({
   active,
+  incoming,
   onOpenReport,
   onBack,
 }: {
   /** Whether this screen is the one showing. It stays mounted while the person checks a report, so the list is kept. */
   active: boolean;
+  /** Files handed over from Home. Each new nonce adds its files to the list (nothing is read until the person starts it). */
+  incoming?: { files: File[]; nonce: number } | null;
   onOpenReport: (reportId: string) => void;
   onBack: () => void;
 }) {
@@ -35,6 +38,15 @@ export function BatchIntake({
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+
+  // Files dropped on Home arrive here; each drop (a new nonce) is added once.
+  const handledNonce = useRef(0);
+  useEffect(() => {
+    if (incoming && incoming.nonce !== handledNonce.current) {
+      handledNonce.current = incoming.nonce;
+      add(incoming.files);
+    }
+  });
 
   const patch = useCallback((id: number, change: Partial<BatchItem>) => {
     setItems((current) => current.map((i) => (i.id === id ? { ...i, ...change } : i)));
