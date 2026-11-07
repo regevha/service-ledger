@@ -7,6 +7,7 @@ import { InstrumentManagerScreen } from './components/InstrumentManager';
 import { IntakeFlow } from './components/IntakeFlow';
 import { ReportsListScreen } from './components/ReportsListScreen';
 import { TodayScreen } from './components/TodayScreen';
+import { BatchIntake } from './components/BatchIntake';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { NavigationGuardContext, type LeaveGuard } from './navigationGuard';
@@ -24,8 +25,8 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   classification_confidence_threshold: 0.85,
 };
 
-type View = 'home' | 'new' | 'reports' | 'analytics' | 'templates' | 'instruments' | 'admin' | 'more';
-const VIEWS: View[] = ['home', 'new', 'reports', 'analytics', 'templates', 'instruments', 'admin', 'more'];
+type View = 'home' | 'new' | 'batch' | 'reports' | 'analytics' | 'templates' | 'instruments' | 'admin' | 'more';
+const VIEWS: View[] = ['home', 'new', 'batch', 'reports', 'analytics', 'templates', 'instruments', 'admin', 'more'];
 
 // Where the app is lives in the address bar (#/reports, #/reports/<report id>,
 // #/reports/instrument/<instrument id>), so Refresh keeps the place, Back and Forward
@@ -85,6 +86,9 @@ export default function App() {
   const view = route.view;
   // Changing this discards the intake flow's state (and any work still running in it): "Cancel".
   const [intakeKey, setIntakeKey] = useState(0);
+  // Once the several-files screen has been opened it stays mounted (hidden), so its list survives checking a report.
+  const [batchOpened, setBatchOpened] = useState(false);
+  if (view === 'batch' && !batchOpened) setBatchOpened(true);
   // A report waiting for a template of its own: the Templates tab opens a
   // prefilled form for it, and when a template is saved the intake flow reads
   // the report again (templateCreated; its nonce changes on every save).
@@ -231,7 +235,7 @@ export default function App() {
             <TabIcon name="home" />
             <span className="tab-label">Today</span>
           </button>
-          <button className={`view-tab ${view === 'new' ? 'active' : ''}`} data-testid="tab-new" aria-current={view === 'new' ? 'page' : undefined} onClick={() => selectView('new')}>
+          <button className={`view-tab ${view === 'new' || view === 'batch' ? 'active' : ''}`} data-testid="tab-new" aria-current={view === 'new' || view === 'batch' ? 'page' : undefined} onClick={() => selectView('new')}>
             <TabIcon name="new" />
             <span className="tab-label">New report</span>
           </button>
@@ -289,10 +293,16 @@ export default function App() {
                 setTemplateRequest(request);
                 navigate('templates', '', { force: true });
               }}
+              onOpenBatch={() => navigate('batch')}
               onOpenReport={(reportId) => navigate('reports', reportId)}
               onViewInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
               onCancel={() => setIntakeKey((k) => k + 1)}
             />
+          </div>
+        )}
+        {(view === 'batch' || batchOpened) && (
+          <div hidden={view !== 'batch'}>
+            <BatchIntake active={view === 'batch'} onOpenReport={(reportId) => navigate('reports', reportId)} onBack={() => navigate('new')} />
           </div>
         )}
         {view === 'home' && (

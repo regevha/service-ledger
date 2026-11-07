@@ -149,12 +149,14 @@ function IntakeScreen({
   files,
   setFiles,
   onStart,
+  onOpenBatch,
 }: {
   technicianName: string;
   setTechnicianName: (v: string) => void;
   files: File[];
   setFiles: (f: File[]) => void;
   onStart: () => void;
+  onOpenBatch?: () => void;
 }) {
   const file = files[0] ?? null;
   const chosenLabel = files.length > 1 ? `${files.length} photos — one report` : file?.name;
@@ -178,6 +180,14 @@ function IntakeScreen({
     <div className="section">
       <h2 className="intake-heading">Add a service report</h2>
       <p className="intake-subheading">Upload the scan or photos. We read the instrument and visit type, then you check the details.</p>
+      {onOpenBatch && (
+        <p className="intake-batch-link">
+          Have a pile of PDFs?{' '}
+          <button type="button" className="link-button" data-testid="open-batch" onClick={onOpenBatch}>
+            Upload several at once
+          </button>
+        </p>
+      )}
 
       <div className="section-title">Scanned original</div>
       <div className="upload-layout">
@@ -692,6 +702,7 @@ export function IntakeFlow({
   onCancel,
   onInstrumentAdded,
   onCreateTemplate,
+  onOpenBatch,
   templateCreated,
 }: {
   instruments: Instrument[];
@@ -709,6 +720,8 @@ export function IntakeFlow({
   onInstrumentAdded?: () => Promise<void> | void;
   /** Ask the Templates tab for a template for this model and report type (prefilled, with the closest one as the start). */
   onCreateTemplate?: (request: TemplateRequest) => void;
+  /** Opens the several-files screen; without it the intake screen shows no link to it. */
+  onOpenBatch?: () => void;
   /** Set when a template was just saved for a request made here; `nonce` changes on every save. */
   templateCreated?: { template: ReportTemplate; nonce: number } | null;
 }) {
@@ -1324,6 +1337,7 @@ export function IntakeFlow({
           files={files}
           setFiles={setFiles}
           onStart={() => void handleStart()}
+          onOpenBatch={onOpenBatch}
         />
       )}
 
