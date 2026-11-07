@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { PromptReview } from './PromptReview';
 import { plainMessage } from '../plainMessages';
 import { deleteReport, ApiError, acceptTranslation, attachmentFileUrl, classifyAttachment, confirmTemplate, createReport, discardTranslation, extractAttachment, findTemplate, listInstrumentTypes, finalizeReport, getReport, getReportTemplate, getTranslation, PollAborted, cancelExtractionJob, reportPdfUrl, translateAttachment, updateReportFields, uploadAttachment, type ClassificationResult, type Instrument, type Report, type ReportTemplate, type ReportType, type Translation } from '../api';
@@ -20,7 +20,7 @@ import { useReviewState } from './intake/useReviewState';
 import { useIntakeJobs } from './intake/useIntakeJobs';
 import { usePromptReview } from './intake/usePromptReview';
 import { WorkingPanel } from './intake/WorkingPanel';
-import { STEP_FAILED, stepOf, templateApplies, type Phase, type WaitingForTemplate } from './intake/phases';
+import { STEP_FAILED, phaseReducer, templateApplies, type Phase, type WaitingForTemplate } from './intake/phases';
 import { describeDuplicates, describeSerialMatch, type SerialNotice } from './intake/serialNotices';
 
 /**
@@ -69,7 +69,7 @@ export function IntakeFlow({
   /** Set when a template was just saved for a request made here; `nonce` changes on every save. */
   templateCreated?: { template: ReportTemplate; nonce: number } | null;
 }) {
-  const [phase, setPhase] = useState<Phase>({ name: 'intake' });
+  const [phase, dispatchPhase] = useReducer(phaseReducer, { name: 'intake' } as Phase);
   // The fleet as the in-flight steps below should see it: the prop, plus any
   // instrument added during this intake (the prop only catches up after the
   // app reloads its list, and these async steps hold an older render's copy).
@@ -143,13 +143,13 @@ export function IntakeFlow({
   // Back to the upload screen with the name kept and no file chosen.
   function chooseAnotherFile() {
     draftIdRef.current = null;
-    setPhase({ name: 'intake' });
+    dispatchPhase({ type: 'reset' });
     setFiles([]);
     setReport(null);
   }
 
   function resetToIntake() {
-    setPhase({ name: 'intake' });
+    dispatchPhase({ type: 'reset' });
     submittedJobs.current.clear();
     setTechnicianName('');
     setFiles([]);
@@ -207,15 +207,14 @@ export function IntakeFlow({
     if (cancelledRef.current) return;
     // The step that was running stays the one the step bar shows, and names what failed.
     const plain = plainMessage(message);
-    setPhase((prev) => ({
-      name: 'error',
+    dispatchPhase({
+      type: 'fail',
       message: plain,
       detail: plain === message ? undefined : message,
       retry,
       retryLabel,
       action,
-      step: prev.name === 'error' ? prev.step : stepOf(prev),
-    }));
+    });
   }
 
   async function attempt(fallbackMessage: string, retry: () => void, fn: () => Promise<void>) {
@@ -257,7 +256,7 @@ export function IntakeFlow({
   }
 
   async function runExtraction(attId: string, reportId: string, tpl: ReportTemplate) {
-    setPhase({ name: 'working', label: 'Reading the fields from the document…' });
+    dispatchPhase({ type: 'working', label: 'Reading the fields from the document…' });
     await attempt('Extraction failed unexpectedly.', () => void runExtraction(attId, reportId, tpl), async () => {
       // §3/§9: this only enqueues the job — app/worker.py is what actually
       // runs it — so wait for it to leave pending/extracting before reading
@@ -272,7 +271,7 @@ export function IntakeFlow({
       }
       const refreshed = await getReport(reportId);
       loadExtraction(refreshed, job.field_confidences ?? {}, elapsedSeconds);
-      setPhase({ name: 'review' });
+      dispatchPhase({ type: 'show', name: 'review' });
     });
   }
 
@@ -284,7 +283,7 @@ export function IntakeFlow({
     instrumentId: string,
     instrumentType: string
   ) {
-    setPhase({ name: 'working', label: 'Finding the right form…' });
+    dispatchPhase({ type: 'working', label: 'Finding the right form…' });
     await attempt(
       'Could not resolve a template.',
       () => void resolveAndExtract(reportId, attId, model, reportType, instrumentId, instrumentType),
@@ -324,8 +323,8 @@ export function IntakeFlow({
   // review screen; anything else, or a discarded translation, goes straight on
   // to classification.
   async function runTranslation(attId: string, reportId: string, includePages: number[] = []) {
-    setPhase({
-      name: 'working',
+    dispatchPhase({
+      type: 'working',
       label: includePages.length ? 'Translating again…' : 'Checking the language of the document…',
     });
     await attempt('Translation failed unexpectedly.', () => void runTranslation(attId, reportId, includePages), async () => {
@@ -340,7 +339,7 @@ export function IntakeFlow({
       const current = await getTranslation(attId);
       if (current.status === 'pending_review') {
         setTranslation(current);
-        setPhase({ name: 'review-translation' });
+        dispatchPhase({ type: 'show', name: 'review-translation' });
         return;
       }
       await runClassification(attId, reportId);
@@ -386,7 +385,7 @@ export function IntakeFlow({
 
   async function runClassification(attId: string, reportId: string) {
     setUnitChosen(false);
-    setPhase({ name: 'working', label: 'Reading the instrument and visit type…' });
+    dispatchPhase({ type: 'working', label: 'Reading the instrument and visit type…' });
     await attempt('Classification failed unexpectedly.', () => void runClassification(attId, reportId), async () => {
       // §3/§9: submit returns a pending job immediately; app/worker.py picks
       // it up in the background and this polls until it's done.
@@ -441,7 +440,7 @@ export function IntakeFlow({
         setPickReportType(
           result.report_type.confidence >= classificationConfidenceThreshold ? ((result.report_type.value as ReportType) ?? '') : ''
         );
-        setPhase({ name: 'confirm-classification' });
+        dispatchPhase({ type: 'show', name: 'confirm-classification' });
       }
     });
   }
@@ -453,7 +452,7 @@ export function IntakeFlow({
   // it (§10). Now a retry after the report exists re-runs only the upload.
   async function handleStart() {
     if (files.length === 0) return;
-    setPhase({ name: 'working', label: 'Creating report…' });
+    dispatchPhase({ type: 'working', label: 'Creating report…' });
     await attempt('Could not create the report.', () => void handleStart(), async () => {
       const newReport = await createReport({ technician_name: technicianName || null });
       draftIdRef.current = newReport.id;
@@ -467,7 +466,7 @@ export function IntakeFlow({
   }
 
   async function uploadScan(reportId: string, scan: File) {
-    setPhase({ name: 'working', label: 'Uploading scan…' });
+    dispatchPhase({ type: 'working', label: 'Uploading scan…' });
     await attempt('Upload failed unexpectedly.', () => void uploadScan(reportId, scan), async () => {
       let attachment;
       try {
@@ -480,7 +479,7 @@ export function IntakeFlow({
           await deleteReport(reportId).catch(() => undefined);
           draftIdRef.current = null;
           setReport(null);
-          setPhase({ name: 'already-on-file', existingReportId: e.existingReportId });
+          dispatchPhase({ type: 'already-on-file', existingReportId: e.existingReportId });
           return;
         }
         if (e instanceof ApiError && [413, 415, 422].includes(e.status)) {
@@ -520,7 +519,7 @@ export function IntakeFlow({
     confirmLeave(() => {
       if (!pickInstrumentId && report?.instrument_id) setPickInstrumentId(report.instrument_id);
       if (template?.report_type) setPickReportType(template.report_type);
-      setPhase({ name: 'confirm-classification' });
+      dispatchPhase({ type: 'show', name: 'confirm-classification' });
     }, 'Going back to Classify and reading the document again replaces edits that are not saved.');
   }
 
@@ -536,7 +535,7 @@ export function IntakeFlow({
       let final = updated;
       if (finalize) final = await finalizeReport(report.id);
       setReport(final);
-      if (finalize) setPhase({ name: 'done' });
+      if (finalize) dispatchPhase({ type: 'show', name: 'done' });
       else showToast('Saved');
       return true;
     } catch (e) {
