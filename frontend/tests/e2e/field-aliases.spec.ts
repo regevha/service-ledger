@@ -8,7 +8,7 @@ import { API_BASE } from './helpers/api';
 // label and model is unique to the run because the suite shares one database.
 
 async function openAliases(page: Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await page.click('#field-aliases');
   await expect(page.getByText('Field aliases', { exact: true }).first()).toBeVisible();
@@ -118,7 +118,7 @@ test('differently named fields in one group show as a possible match in a compar
   let created: { id: string } | undefined;
   try {
     const compare = async () => {
-      await page.goto('/');
+      await page.goto('/#/new');
       await page.getByTestId('tab-templates').click();
       await page.click('#compare-templates');
       const pick = async (selector: string, pattern: RegExp) => {

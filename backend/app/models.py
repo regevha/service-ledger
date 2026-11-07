@@ -378,6 +378,9 @@ class Report(Base):
         Enum(ReportStatus, name="report_status"), nullable=False, default=ReportStatus.draft
     )
     extracted_fields: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # What the reading first produced, copied once when it finishes and never edited afterwards, so the
+    # Home screen can tell how many fields needed no correction. NULL for a report read before this existed.
+    original_fields: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # The searchable text of this report (text fields, table text cells, the
     # instrument's model and serial), kept current by
     # services/report_search.py; never returned by the API.

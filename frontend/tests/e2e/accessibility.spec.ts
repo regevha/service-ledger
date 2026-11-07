@@ -27,7 +27,7 @@ async function scan(page: Page, screen: string) {
 }
 
 test('intake screen', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await expect(page.getByTestId('intake-dropzone')).toBeVisible();
   await scan(page, 'intake');
@@ -63,7 +63,7 @@ for (const [part, ready] of [
   test(`instruments tab: ${part.toLowerCase()}`, async ({ page, request }) => {
     // Something to list on the screens that list reports against units.
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-A11y-${Date.now()}`, finalize: true });
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-instruments').click();
     if (part !== 'Instruments') await page.click(`.sub-switch button:has-text("${part}")`);
     await expect(page.locator(ready).first()).toBeVisible();
@@ -72,7 +72,7 @@ for (const [part, ready] of [
 }
 
 test('templates', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await expect(page.getByTestId('template-row').first()).toBeVisible();
   await scan(page, 'templates');
@@ -84,7 +84,7 @@ for (const [section, link, ready] of [
   ['appearance', 'Appearance', '.admin-body h2'],
 ] as const) {
   test(`admin: ${section}`, async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-admin').click();
     await page.click(`.admin-nav-item:has-text("${link}")`);
     await expect(page.locator(ready).first()).toBeVisible();

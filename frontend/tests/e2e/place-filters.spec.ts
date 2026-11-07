@@ -47,7 +47,7 @@ test('the Instruments list filters by institution and by room', async ({ page, r
   await unit(request, model, 'b', uniA, 'Room 2');
   await unit(request, model, 'c', uniB, 'Room 1');
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   const rows = page.getByTestId('instrument-row').filter({ hasText: model });
   await expect(rows).toHaveCount(3);
@@ -71,7 +71,7 @@ test('the Reports list filters by place and the instrument choices follow', asyn
   await repair(request, model, a.id, 2);
   await repair(request, model, b.id, 3);
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   const reportRows = page.getByTestId('report-row').filter({ hasText: model });
   await expect(reportRows).toHaveCount(2);
@@ -94,7 +94,7 @@ test('Analytics shows reports and hours per place and narrows by place', async (
   await repair(request, model, a.id, 3);
   await repair(request, model, b.id, 7);
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-analytics').click();
   const chart = page.getByTestId('place-chart');
   await expect(chart).toContainText(uniA);
@@ -118,7 +118,7 @@ test('the Place and Model filters narrow each other, and an empty result can be 
   await unit(request, modelA, 'a', uniA, 'Room 1');
   await unit(request, modelB, 'b', uniB, 'Room 1');
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   const rows = page.getByTestId('instrument-row').filter({ hasText: stamp.toString() });
   await expect(rows).toHaveCount(2);

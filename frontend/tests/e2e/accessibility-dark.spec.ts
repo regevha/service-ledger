@@ -33,7 +33,7 @@ async function scanDark(page: Page, screen: string) {
 }
 
 test('dark: intake screen', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await expect(page.getByTestId('intake-dropzone')).toBeVisible();
   await scanDark(page, 'intake');
@@ -67,7 +67,7 @@ for (const [part, ready] of [
 ] as const) {
   test(`dark: instruments tab: ${part.toLowerCase()}`, async ({ page, request }) => {
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-A11yDark-${Date.now()}`, finalize: true });
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-instruments').click();
     if (part !== 'Instruments') await page.click(`.sub-switch button:has-text("${part}")`);
     await expect(page.locator(ready).first()).toBeVisible();
@@ -76,7 +76,7 @@ for (const [part, ready] of [
 }
 
 test('dark: templates', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await expect(page.getByTestId('template-row').first()).toBeVisible();
   await scanDark(page, 'templates');
@@ -88,7 +88,7 @@ for (const [section, link, ready] of [
   ['appearance', 'Appearance', '.admin-body h2'],
 ] as const) {
   test(`dark: admin: ${section}`, async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-admin').click();
     await page.click(`.admin-nav-item:has-text("${link}")`);
     await expect(page.locator(ready).first()).toBeVisible();

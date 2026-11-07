@@ -41,7 +41,7 @@ test('a serial that is not registered offers the add-instrument panel, pre-fille
     'WORK ORDER DETAILS',
     'Work Order Task CodeT113 Repair / Troubleshooting Visit',
   ]);
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('intake-file-input').setInputFiles({ name: `report-${stamp}.pdf`, mimeType: 'application/pdf', buffer: pdf });
   await page.click('button:has-text("Upload & classify")');
 
@@ -81,7 +81,7 @@ test('the add-instrument panel takes an institute and a room, creating a new ins
     'WORK ORDER DETAILS',
     'Work Order Task CodeT113 Repair / Troubleshooting Visit',
   ]);
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('intake-file-input').setInputFiles({ name: `report-${stamp}.pdf`, mimeType: 'application/pdf', buffer: pdf });
   await page.click('button:has-text("Upload & classify")');
 

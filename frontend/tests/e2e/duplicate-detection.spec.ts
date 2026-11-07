@@ -13,7 +13,7 @@ import { API_BASE, waitForExtraction } from './helpers/api';
 // what other specs left in the shared database.
 
 async function uploadAndClassify(page: import('@playwright/test').Page, name: string, contents: string) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Duplicate');
   await page.locator('input[type="file"]').setInputFiles({
@@ -67,7 +67,7 @@ test('the same file as a report that was already read is refused and opens the e
   expect((await (await request.get(`${API_BASE}/reports/${first.id}`)).json()).status).toBe('extracted');
 
   // Loading the same bytes again through the UI is turned away…
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Second Try');
   await page.locator('input[type="file"]').setInputFiles({

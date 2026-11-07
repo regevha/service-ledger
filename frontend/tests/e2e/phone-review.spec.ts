@@ -15,7 +15,7 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 const PHONE = { width: 412, height: 915 };
 
 async function reachReview(page: import('@playwright/test').Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');

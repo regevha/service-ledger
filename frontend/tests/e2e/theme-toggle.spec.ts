@@ -7,7 +7,7 @@ const bg = (page: import('@playwright/test').Page) => page.evaluate(() => getCom
 
 test('the first visit follows the device; the toggle then keeps the choice', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.goto('/');
+  await page.goto('/#/new');
   const html = page.locator('html');
   await expect(html).not.toHaveAttribute('data-theme', /.+/);
   const darkBg = await bg(page);

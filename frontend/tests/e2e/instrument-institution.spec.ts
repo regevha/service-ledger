@@ -8,7 +8,7 @@ import { API_BASE } from './helpers/api';
 test('institution: set on create, shown in the list, changed and cleared on edit', async ({ page }) => {
   const name = `E2E-Inst-${Date.now()}`;
   const serial = `E2E-INST-SN-${Date.now()}`;
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
   await page.getByTestId('form-label').filter({ hasText: /^\s*Name/ }).locator('input').fill(name);
@@ -52,7 +52,7 @@ test('Analytics hours chart: the bar is labelled with the instrument name and sh
 });
 
 test('a room needs an institution: the form will not save a room alone', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
   const field = (label: string | RegExp) => page.getByTestId('form-label').filter({ hasText: label }).locator('input');

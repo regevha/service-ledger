@@ -18,7 +18,7 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   const uniqueName = `E2E-Instrument-${Date.now()}`;
   const serial = `E2E-SN-${Date.now()}`;
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await expect(page.locator('.section-title')).toContainText('Instruments');
 
@@ -96,7 +96,7 @@ test('editing an instrument to reuse another one\'s serial number shows an error
     await expect(page.getByTestId('instrument-row').filter({ hasText: name })).toBeVisible();
   }
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await createInstrument(nameA, serialA);
   await createInstrument(nameB, serialB);

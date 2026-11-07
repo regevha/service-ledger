@@ -6,7 +6,7 @@ import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { InstrumentManagerScreen } from './components/InstrumentManager';
 import { IntakeFlow } from './components/IntakeFlow';
 import { ReportsListScreen } from './components/ReportsListScreen';
-import { TodayScreen } from './components/TodayScreen';
+import { HomeScreen } from './components/HomeScreen';
 import { BatchIntake } from './components/BatchIntake';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
@@ -39,7 +39,7 @@ interface Route {
 
 function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
-  const view = VIEWS.find((v) => v === parts[0]) ?? 'new';
+  const view = VIEWS.find((v) => v === parts[0]) ?? 'home';
   return { view, sub: view === 'reports' || view === 'admin' ? parts.slice(1).join('/') : '' };
 }
 
@@ -226,14 +226,14 @@ export default function App() {
     <NavigationGuardContext.Provider value={guardApi}>
     <div className="wrap">
       <header className="topbar">
-        <div className="masthead">
+        <button type="button" className="masthead masthead-link" data-testid="masthead-home" aria-label="ServiceLedger, go to Home" onClick={() => selectView('home')}>
           <span className="mark" /> ServiceLedger
-        </div>
+        </button>
         <nav className="view-tabs" aria-label="Main">
-          {/* Wide screens only: on a phone the five-tab bar is full, so Today is the first item of More. */}
+          {/* Wide screens only: on a phone the five-tab bar is full, so Home is the first item of More. */}
           <button className={`view-tab tab-wide-only ${view === 'home' ? 'active' : ''}`} data-testid="tab-home" aria-current={view === 'home' ? 'page' : undefined} onClick={() => selectView('home')}>
             <TabIcon name="home" />
-            <span className="tab-label">Today</span>
+            <span className="tab-label">Home</span>
           </button>
           <button className={`view-tab ${view === 'new' || view === 'batch' ? 'active' : ''}`} data-testid="tab-new" aria-current={view === 'new' || view === 'batch' ? 'page' : undefined} onClick={() => selectView('new')}>
             <TabIcon name="new" />
@@ -306,7 +306,7 @@ export default function App() {
           </div>
         )}
         {view === 'home' && (
-          <TodayScreen
+          <HomeScreen
             instruments={instruments}
             instrumentsLoading={instrumentsLoading}
             onOpenReport={(reportId) => navigate('reports', reportId)}
@@ -322,7 +322,7 @@ export default function App() {
           <nav className="more-screen" aria-label="More" data-testid="more-screen">
             <h1 className="more-title">More</h1>
             <button type="button" className="more-item" onClick={() => selectView('home')}>
-              <span><strong>Today</strong><small>What needs your attention</small></span>
+              <span><strong>Home</strong><small>What needs your attention</small></span>
             </button>
             <button type="button" className="more-item" onClick={() => selectView('templates')}>
               <span><strong>Templates</strong><small>What we read from each report type</small></span>

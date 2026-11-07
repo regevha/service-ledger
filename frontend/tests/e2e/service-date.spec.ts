@@ -16,7 +16,7 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 test('the extracted service date is shown on review, can be corrected, and is saved', async ({ page }) => {
   const technician = `E2E Service Date ${Date.now()}`;
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', technician);
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));

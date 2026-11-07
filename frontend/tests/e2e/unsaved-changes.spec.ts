@@ -48,7 +48,7 @@ async function seedDraft(request: APIRequestContext, technician: string): Promis
 }
 
 async function openSavedReport(page: Page, marker: string) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   await page.waitForSelector('.report-table');
   await page.click(`[data-testid="report-row"]:has-text("${marker}")`);

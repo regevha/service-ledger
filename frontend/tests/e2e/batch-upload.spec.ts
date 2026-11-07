@@ -41,7 +41,7 @@ test('pure helpers: counts, states and the pool limit', async () => {
 
 test('several PDFs are read one by one and each is checked on its report screen', async ({ page, request }) => {
   const tech = `E2E-Batch-${Date.now()}`;
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.getByTestId('open-batch').click();
   await expect(page.getByTestId('batch-screen')).toBeVisible();

@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 
 async function finalizeOne(page: import('@playwright/test').Page, technician: string) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.fill('input[placeholder="Your name (optional)"]', technician);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
@@ -25,7 +25,7 @@ async function finalizeOne(page: import('@playwright/test').Page, technician: st
 
 test.describe('address bar', () => {
   test('tabs are addressable: the hash follows, Refresh keeps the tab, Back returns to the last one', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-instruments').click();
     await expect(page).toHaveURL(/#\/instruments$/);
     await page.getByTestId('tab-templates').click();
@@ -89,7 +89,7 @@ test.describe('intake flow', () => {
       if (route.request().method() === 'POST') await new Promise((r) => setTimeout(r, 2500));
       await route.continue();
     });
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
     // Cancel cannot stop the upload already on its way: it carries on in the background. Waiting for
     // its answer (and for the network to go quiet after it) is how the test knows the abandoned run is over.
@@ -117,7 +117,7 @@ test.describe('intake flow', () => {
       await new Promise((r) => setTimeout(r, 1200));
       await route.continue();
     });
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
     await page.click('button:has-text("Upload & classify")');
     await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
@@ -156,7 +156,7 @@ test.describe('intake flow', () => {
 
   test('the classify screen asks for one thing, in one line', async ({ page }) => {
     // The sample work order's name is one of the stub's "needs confirming" markers (see manual-confirm.spec.ts).
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'sample-work-order.pdf')));
     await page.click('button:has-text("Upload & classify")');
     const hint = page.locator('.section:has(.section-title:has-text("Detected from the document")) .hint-text');

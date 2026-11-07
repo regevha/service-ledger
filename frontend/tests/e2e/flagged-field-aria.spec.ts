@@ -17,7 +17,7 @@ test('flagged fields are named groups that say they need checking, and checking 
     if (job && typeof job === 'object') job.field_confidences = { ...(job.field_confidences ?? {}), report_date: 0.1 };
     await route.fulfill({ response, json: job });
   });
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(CONFIDENT_SCAN));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('[data-testid="field-list"]', { timeout: 30_000 });

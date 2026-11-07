@@ -1,9 +1,9 @@
 import { test, expect } from './coverage';
 import type { PageWord } from '../../src/api';
 import { boundsOf, guessType, labelBefore, selectedText, suggestFieldName, suggestNotes, toFieldName, wordAt, wordsInBox, wordsOnLine } from '../../src/pdfPicker';
-import { dueText, daysUntil, maintenanceItems, monthStart, waitingReports } from '../../src/today';
+import { dueText, daysUntil, maintenanceItems, monthStart, waitingReports } from '../../src/home';
 
-// Pure logic behind the PDF field picker and the Today screen; no browser needed.
+// Pure logic behind the PDF field picker and the Home screen; no browser needed.
 
 const w = (text: string, x: number, line: number): PageWord => ({ text, x, y: 0.1 * line, w: 0.05 * Math.max(text.length, 1) / 3, h: 0.02, line });
 const words: PageWord[] = [w('Laser', 0.1, 1), w('delay', 0.18, 1), w('29.40', 0.3, 1), w('Sheath', 0.1, 2), w('pressure', 0.2, 2), w('4.9', 0.35, 2), w('psi', 0.4, 2)];
@@ -32,7 +32,7 @@ test('picker: names, types and notes', () => {
   expect(suggestNotes('', 1)).toBe('Printed on page 1.');
 });
 
-test('today: due text, month start, ordering', () => {
+test('home: due text, month start, ordering', () => {
   const now = new Date(2026, 10, 6);
   expect(daysUntil('2026-11-09', now)).toBe(3);
   expect(dueText(-3)).toBe('3 days over');
