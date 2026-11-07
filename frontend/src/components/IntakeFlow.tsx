@@ -1,6 +1,6 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { PromptReview } from './PromptReview';
-import { attachmentFileUrl, getReport, reportPdfUrl, type Instrument, type Report, type ReportTemplate, type ReportType } from '../api';
+import { attachmentFileUrl, reportPdfUrl, type Instrument, type ReportTemplate } from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
 import type { TemplateRequest } from '../templateRequest';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
@@ -16,11 +16,12 @@ import { StepBar } from './intake/StepBar';
 import { useReviewState } from './intake/useReviewState';
 import { useIntakeSteps } from './intake/useIntakeSteps';
 import { useTranslationReview } from './intake/useTranslationReview';
+import { useIntakeSelection } from './intake/useIntakeSelection';
+import { useTemplateRequest } from './intake/useTemplateRequest';
 import { useIntakeJobs } from './intake/useIntakeJobs';
 import { usePromptReview } from './intake/usePromptReview';
 import { WorkingPanel } from './intake/WorkingPanel';
-import { STEP_FAILED, phaseReducer, templateApplies, type Phase, type WaitingForTemplate } from './intake/phases';
-import { type SerialNotice } from './intake/serialNotices';
+import { STEP_FAILED, phaseReducer, templateApplies, type Phase } from './intake/phases';
 
 /**
  * The "New report" tab's full upload → classify → review → finalize wizard
@@ -102,42 +103,13 @@ export function IntakeFlow({
   useUnsavedChangesGuard(dirty);
   const confirmLeave = useConfirmLeave();
 
-  // The report that asked for a template of its own, until one is saved.
-  const waitingRef = useRef<WaitingForTemplate | null>(null);
-  const [genericNoticeDismissed, setGenericNoticeDismissed] = useState(false);
-  // Said in the review screen when a saved template did not apply to this report.
-  const [templateNote, setTemplateNote] = useState<string | null>(null);
-
-  // Identifies the manual-confirm pick by instrument id, not model — model
-  // isn't unique across the fleet (see the <select>'s own comment in
-  // ConfirmClassificationScreen), so keying this on model risked resolving
-  // to a different instrument than the one actually selected whenever two
-  // shared a model.
-  const [pickInstrumentId, setPickInstrumentId] = useState('');
-  const [serialNotice, setSerialNotice] = useState<SerialNotice | null>(null);
-  const [pickReportType, setPickReportType] = useState<ReportType | ''>('');
-  // True when the person chose the unit on the Classify screen (rather than it being matched by the serial).
-  const [unitChosen, setUnitChosen] = useState(false);
-  // Reports that already hold this document, keyed by id (see describeDuplicates).
-  const [duplicates, setDuplicates] = useState<Record<string, Report | null>>({});
-
-  // Merge newly flagged report ids into the warning and load each one's
-  // details in the background. Never awaited and never fails the flow: the
-  // warning is advisory, so a report that cannot be loaded just stays generic.
-  function noteDuplicates(ids: string[] | undefined) {
-    const incoming = ids ?? [];
-    if (incoming.length === 0) return;
-    setDuplicates((prev) => {
-      const next = { ...prev };
-      for (const id of incoming) if (!(id in next)) next[id] = null;
-      return next;
-    });
-    for (const id of incoming) {
-      getReport(id)
-        .then((loaded) => setDuplicates((prev) => (id in prev ? { ...prev, [id]: loaded } : prev)))
-        .catch(() => {});
-    }
-  }
+  const {
+    waitingRef, genericNoticeDismissed, setGenericNoticeDismissed, templateNote, setTemplateNote, requestTemplate, resetTemplateRequest,
+  } = useTemplateRequest(onCreateTemplate);
+  const {
+    pickInstrumentId, setPickInstrumentId, pickReportType, setPickReportType, unitChosen, setUnitChosen, serialNotice, setSerialNotice,
+    duplicates, noteDuplicates, clearDuplicates,
+  } = useIntakeSelection();
 
   // Back to the upload screen with the name kept and no file chosen.
   function chooseAnotherFile() {
@@ -154,20 +126,8 @@ export function IntakeFlow({
     setFiles([]);
     resetReview();
     setTranslation(null);
-    setDuplicates({});
-    waitingRef.current = null;
-    setGenericNoticeDismissed(false);
-    setTemplateNote(null);
-  }
-
-  function requestTemplate(waiting: WaitingForTemplate) {
-    waitingRef.current = waiting;
-    setTemplateNote(null);
-    onCreateTemplate?.({
-      instrumentType: waiting.instrument.instrument_type,
-      reportType: waiting.reportType,
-      model: waiting.instrument.model,
-    });
+    clearDuplicates();
+    resetTemplateRequest();
   }
 
   const steps = useIntakeSteps({
