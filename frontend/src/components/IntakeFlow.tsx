@@ -1,12 +1,11 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { PromptReview } from './PromptReview';
 import { plainMessage } from '../plainMessages';
-import { deleteReport, ApiError, acceptTranslation, attachmentFileUrl, classifyAttachment, confirmTemplate, createReport, discardTranslation, extractAttachment, findTemplate, listInstrumentTypes, finalizeReport, getReport, getReportTemplate, getTranslation, PollAborted, cancelExtractionJob, reportPdfUrl, translateAttachment, updateReportFields, uploadAttachment, type ClassificationResult, type Instrument, type Report, type ReportTemplate, type ReportType, type Translation } from '../api';
+import { deleteReport, ApiError, attachmentFileUrl, classifyAttachment, confirmTemplate, createReport, extractAttachment, findTemplate, listInstrumentTypes, finalizeReport, getReport, getReportTemplate, getTranslation, PollAborted, cancelExtractionJob, reportPdfUrl, translateAttachment, updateReportFields, uploadAttachment, type ClassificationResult, type Instrument, type Report, type ReportTemplate, type ReportType } from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { showToast } from '../toast';
 import { prepareUpload } from '../imageUpload';
 import type { TemplateRequest } from '../templateRequest';
-import { Notice } from './Notice';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { useConfirmLeave, useNavigationGuard } from '../navigationGuard';
 import { reviewSnapshot } from '../reviewSnapshot';
@@ -15,13 +14,15 @@ import { TranslationReview } from './TranslationReview';
 import { ConfirmClassificationScreen } from './intake/ConfirmClassificationScreen';
 import { DoneScreen } from './intake/DoneScreen';
 import { IntakeScreen } from './intake/IntakeScreen';
+import { SerialAndDuplicateNotices, TemplateNotices } from './intake/IntakeNotices';
 import { StepBar } from './intake/StepBar';
 import { useReviewState } from './intake/useReviewState';
+import { useTranslationReview } from './intake/useTranslationReview';
 import { useIntakeJobs } from './intake/useIntakeJobs';
 import { usePromptReview } from './intake/usePromptReview';
 import { WorkingPanel } from './intake/WorkingPanel';
 import { STEP_FAILED, phaseReducer, templateApplies, type Phase, type WaitingForTemplate } from './intake/phases';
-import { describeDuplicates, describeSerialMatch, type SerialNotice } from './intake/serialNotices';
+import { describeSerialMatch, type SerialNotice } from './intake/serialNotices';
 
 /**
  * The "New report" tab's full upload → classify → review → finalize wizard
@@ -75,8 +76,6 @@ export function IntakeFlow({
   // app reloads its list, and these async steps hold an older render's copy).
   const instrumentsRef = useRef(instruments);
   instrumentsRef.current = instruments;
-  const [translation, setTranslation] = useState<Translation | null>(null);
-  const [translationBusy, setTranslationBusy] = useState(false);
   const {
     cancelledRef,
     abortRef,
@@ -99,6 +98,12 @@ export function IntakeFlow({
     fieldConfidences, extractionSeconds, fields, setFields, reportDate, setReportDate, savedSnapshot, setSavedSnapshot,
     saving, setSaving, saveError, setSaveError, resetReview, loadExtraction,
   } = useReviewState();
+  const { translation, setTranslation, translationBusy, handleAcceptTranslation, handleDiscardTranslation } = useTranslationReview({
+    attachmentId,
+    report,
+    failPhase,
+    runClassification,
+  });
   const dirty = phase.name === 'review' && savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
   useUnsavedChangesGuard(dirty);
   const confirmLeave = useConfirmLeave();
@@ -346,35 +351,6 @@ export function IntakeFlow({
     });
   }
 
-  async function handleAcceptTranslation(editedText: string | undefined) {
-    if (!translation || !attachmentId || !report) return;
-    setTranslationBusy(true);
-    try {
-      await acceptTranslation(translation.id, editedText);
-    } catch (e) {
-      setTranslationBusy(false);
-      failPhase(e instanceof ApiError ? e.message : 'Could not accept the translation.', () => void handleAcceptTranslation(editedText));
-      return;
-    }
-    setTranslationBusy(false);
-    await runClassification(attachmentId, report.id);
-  }
-
-  async function handleDiscardTranslation() {
-    if (!translation || !attachmentId || !report) return;
-    setTranslationBusy(true);
-    try {
-      await discardTranslation(translation.id);
-    } catch (e) {
-      setTranslationBusy(false);
-      failPhase(e instanceof ApiError ? e.message : 'Could not discard the translation.', () => void handleDiscardTranslation());
-      return;
-    }
-    setTranslationBusy(false);
-    setTranslation(null);
-    await runClassification(attachmentId, report.id);
-  }
-
   async function handleInstrumentAdded() {
     if (!attachmentId || !report) return;
     // Wait for the app to reload the fleet, then classify the same document
@@ -592,17 +568,7 @@ export function IntakeFlow({
         />
       )}
 
-      {serialNotice && (phase.name === 'confirm-classification' || phase.name === 'review') && (
-        <Notice tone={serialNotice.tone === 'warn' ? 'warn' : 'info'} id="serial-notice">
-          {serialNotice.text}
-        </Notice>
-      )}
-
-      {Object.keys(duplicates).length > 0 && (phase.name === 'confirm-classification' || phase.name === 'review') && (
-        <Notice tone="warn" id="duplicate-notice">
-          {describeDuplicates(duplicates)}
-        </Notice>
-      )}
+      <SerialAndDuplicateNotices phase={phase} serialNotice={serialNotice} duplicates={duplicates} />
 
       {phase.name === 'review-translation' && translation && attachmentId && report && (
         <TranslationReview
@@ -634,38 +600,18 @@ export function IntakeFlow({
         />
       )}
 
-      {phase.name === 'review' && templateNote && (
-        <Notice tone="info" id="template-note">
-          {templateNote}
-        </Notice>
-      )}
-
-      {phase.name === 'review' && template && template.model === null && reviewInstrument && attachmentId && report && onCreateTemplate && !genericNoticeDismissed && (
-        <Notice
-          tone="info"
-          id="generic-template-notice"
-          actions={
-            <div className="banner-actions">
-              <button
-                type="button"
-                className="btn small"
-                title="Saving a template reads this report again and replaces what is on screen, so correct after, not before."
-                onClick={() =>
-                  requestTemplate({ reportId: report.id, attachmentId, instrument: reviewInstrument, reportType: template.report_type })
-                }
-              >
-                Create a {reviewInstrument.model} template
-              </button>{' '}
-              <button type="button" className="link-button" onClick={() => setGenericNoticeDismissed(true)}>
-                Not now
-              </button>
-            </div>
-          }
-        >
-          Generic {REPORT_TYPE_LABEL[template.report_type]} template in use. A {reviewInstrument.model} template can ask for this model's own
-          fields.
-        </Notice>
-      )}
+      <TemplateNotices
+        phase={phase}
+        templateNote={templateNote}
+        template={template}
+        reviewInstrument={reviewInstrument}
+        attachmentId={attachmentId}
+        report={report}
+        canCreateTemplate={!!onCreateTemplate}
+        genericNoticeDismissed={genericNoticeDismissed}
+        onDismissGeneric={() => setGenericNoticeDismissed(true)}
+        onCreateTemplate={requestTemplate}
+      />
 
       {phase.name === 'review' && template && (
         <ReviewScreen
