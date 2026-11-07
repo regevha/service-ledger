@@ -21,7 +21,7 @@ const COLUMNS = [
 ];
 
 async function openExport(page: Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-admin').click();
   await expect(page.getByTestId('admin-screen')).toBeVisible();
   await expect(page.getByTestId('admin-export-link')).toHaveAttribute('href', /status=finalized/);

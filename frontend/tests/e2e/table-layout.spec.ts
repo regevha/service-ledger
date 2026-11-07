@@ -26,7 +26,7 @@ for (const width of [1440, 1100]) {
     // The Reports table needs a row to measure; nothing else in the run is relied on to leave one.
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-TableLayout-${Date.now()}` });
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/');
+    await page.goto('/#/new');
 
     await page.getByTestId('tab-instruments').click();
     await expect(page.getByTestId('instrument-row').first()).toBeVisible();
@@ -41,7 +41,7 @@ for (const width of [1440, 1100]) {
 
 test('no screen scrolls sideways at phone width', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/#/new');
   // Templates and Admin sit behind the More tab on a phone.
   for (const tab of ['New report', 'Reports', 'Analytics', 'Instruments', 'More', 'Templates', 'Admin']) {
     if (tab === 'Templates' || tab === 'Admin') {
@@ -56,7 +56,7 @@ test('no screen scrolls sideways at phone width', async ({ page }) => {
 });
 
 test('the Reports search box is styled like the other filters', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   const [search, lab] = await Promise.all([
     page.locator('input[type="search"]').evaluate((e) => getComputedStyle(e).borderRadius),
@@ -66,7 +66,7 @@ test('the Reports search box is styled like the other filters', async ({ page })
 });
 
 test('a template with a seeded choice field can be opened and saved', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   // The generic repair row (any model) carries the fault_category choice field.
   const row = page.getByTestId('template-row').filter({ hasText: 'Malfunction / repair' }).filter({ hasText: '(any model)' }).first();

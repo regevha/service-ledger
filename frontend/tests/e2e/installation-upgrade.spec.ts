@@ -10,7 +10,7 @@ import { finalizeFromReview } from './finalize-helper';
 // screen, where the technician can now pick the new type and land on its
 // template's fields.
 test('a technician can confirm a report as an installation / upgrade and review its fields', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Install Upgrade');
   await page.locator('input[type="file"]').setInputFiles({

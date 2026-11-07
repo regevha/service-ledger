@@ -26,7 +26,7 @@ test('Try again after a timeout waits for the same job instead of submitting ano
     await route.fulfill({ response: real, json: { ...job, status: 'pending', error_message: null } });
   });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');

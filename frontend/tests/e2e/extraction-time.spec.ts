@@ -10,7 +10,7 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 // The extraction duration is measured in the browser during intake and shown
 // on Review & finalize only; it is not stored.
 test('review screen shows how long the extraction took', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
@@ -20,7 +20,7 @@ test('review screen shows how long the extraction took', async ({ page }) => {
 });
 
 test('review screen can go back to Classify', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');

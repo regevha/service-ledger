@@ -14,7 +14,7 @@ async function makeUnit(request: import('@playwright/test').APIRequestContext, m
 }
 
 async function openModels(page: import('@playwright/test').Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('.sub-switch button:has-text("Models")');
   await expect(page.locator('#models-section')).toBeVisible();
@@ -29,7 +29,7 @@ const modelRow = (page: import('@playwright/test').Page, name: string) =>
 test('the instrument form says whether the model is new or existing and fills in its manufacturer', async ({ page, request }) => {
   const model = `E2E-Form-${Date.now()}`;
   await makeUnit(request, model, 'form', 'Acme Corp');
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
   const modelInput = page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input');
@@ -42,7 +42,7 @@ test('the instrument form says whether the model is new or existing and fills in
 
 test('a new instrument with a new model adds it to the Models list', async ({ page }) => {
   const model = `E2E-Added-${Date.now()}`;
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
   await page.getByTestId('form-label').filter({ hasText: /^\s*Name/ }).locator('input').fill(`E2E ${model}`);

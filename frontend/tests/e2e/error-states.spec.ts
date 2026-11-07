@@ -19,7 +19,7 @@ test('an unreachable backend surfaces a clear connection error', async ({ page }
     return route.continue();
   });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
@@ -37,7 +37,7 @@ test('a failed classification surfaces the backend error and Try again re-attemp
     return route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ detail: 'Simulated classification failure' }) });
   });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
@@ -56,7 +56,7 @@ test('a failed classification surfaces the backend error and Try again re-attemp
 });
 
 test('a file that is not a PDF or an image is refused with the reason', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles({
     name: 'notes.txt',
@@ -76,7 +76,7 @@ test('an image scan is accepted, not just a PDF', async ({ page }) => {
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     'base64'
   );
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles({ name: 'scan.png', mimeType: 'image/png', buffer: png });
   await page.click('button:has-text("Upload & classify")');

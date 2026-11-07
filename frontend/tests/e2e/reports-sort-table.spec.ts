@@ -25,7 +25,7 @@ test('clicking a column header sorts the table, again reverses it, a third time 
   // which is neither the ascending nor the descending order.
   for (const letter of ['b', 'c', 'a']) await reportFor(request, `${prefix}${letter}`);
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   await showFlatList(page);
   await page.fill('input[aria-label="Lab manager"]', prefix);
@@ -57,7 +57,7 @@ test('sorting by another column replaces the first, and survives a change of fil
   const prefix = `E2E-Sort2-${stamp}-`;
   for (const letter of ['b', 'c', 'a']) await reportFor(request, `${prefix}${letter}`);
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   await showFlatList(page);
   await page.fill('input[aria-label="Lab manager"]', prefix);
@@ -91,7 +91,7 @@ test('the sort is still there after opening a report and coming back', async ({ 
   const prefix = `E2E-Sort3-${stamp}-`;
   for (const letter of ['b', 'c', 'a']) await reportFor(request, `${prefix}${letter}`);
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   await showFlatList(page);
   await page.fill('input[aria-label="Lab manager"]', prefix);

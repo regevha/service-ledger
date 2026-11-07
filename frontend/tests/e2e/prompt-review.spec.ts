@@ -65,7 +65,7 @@ async function parkFirstJob(page: Page) {
 }
 
 async function startUpload(page: Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');

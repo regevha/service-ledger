@@ -15,7 +15,7 @@ test('distributor is optional, shown in the list and detail page, edited and cle
 
   // A new model per run: an existing model would lock the manufacturer.
   const model = `E2E-Cytometer-${Date.now()}`;
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
 
   // Created without a distributor: allowed, shown as a dash.

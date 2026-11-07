@@ -29,7 +29,7 @@ async function useTemplate(request: APIRequestContext, templateId: string) {
 }
 
 async function openTemplates(page: Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await page.waitForSelector('.template-table, .empty-hint');
 }
@@ -257,7 +257,7 @@ test.describe('when the backend is unhappy', () => {
 
   test('a list that cannot be loaded says so', async ({ page }) => {
     await page.route('**/report-templates/all', (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"Database is down"}' }));
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-templates').click();
     await expect(page.locator('.banner-warn')).toContainText('Database is down');
   });

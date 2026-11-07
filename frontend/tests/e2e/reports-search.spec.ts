@@ -19,7 +19,7 @@ test.describe('reports search screen', () => {
     const marker = `E2E-Search-${Date.now()}`;
     await seedReport(request, { model: 'FACSDiscover S8', reportType: 'installation_upgrade', technician: marker, finalize: true });
 
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-reports').click();
     await page.waitForSelector('.report-table, .empty-hint');
 
@@ -58,7 +58,7 @@ test.describe('reports search screen', () => {
     await seedReport(request, { model: 'FACSDiscover S8', reportType: 'installation_upgrade', technician: marker, finalize: true });
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: otherMarker, finalize: true });
 
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-reports').click();
     await page.waitForSelector('.report-table, .empty-hint');
     await expect(page.getByTestId('report-row').filter({ hasText: marker })).toBeVisible();
@@ -80,7 +80,7 @@ test.describe('reports search screen', () => {
     const marker = `E2E-Detail-${Date.now()}`;
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
 
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-reports').click();
     await page.waitForSelector('.report-table');
     await page.click(`[data-testid="report-row"]:has-text("${marker}")`);
@@ -104,7 +104,7 @@ test.describe('reports search screen', () => {
     const marker = `E2E-Finalize-${Date.now()}`;
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: false });
 
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-reports').click();
     await page.waitForSelector('.report-table');
     await page.click(`[data-testid="report-row"]:has-text("${marker}")`);

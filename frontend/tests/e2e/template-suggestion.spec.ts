@@ -35,7 +35,7 @@ async function createTemplate(request: APIRequestContext, data: Record<string, u
 // Reads the sample work order as this instrument's repair report, through the
 // manual pick, and stops on the review screen (the generic repair template).
 async function readSampleAs(page: Page, instrumentId: string) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(SAMPLE));
   await page.click('button:has-text("Upload & classify")');
@@ -173,7 +173,7 @@ test('a type with no template at all offers to create one and then reads the rep
     serial_number: serial,
   });
   try {
-    await page.goto('/');
+    await page.goto('/#/new');
     await page.getByTestId('tab-new').click();
     await page.locator('input[type="file"]').setInputFiles({
       name: `service_${serial}.pdf`,
@@ -207,7 +207,7 @@ test('a type with no template at all offers to create one and then reads the rep
 });
 
 test('"+ New template" lists the closest templates for the typed model and asks before replacing edited fields', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-templates').click();
   await page.click('button:has-text("+ New template")');
 

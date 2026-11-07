@@ -37,7 +37,7 @@ test('the Analytics tab shows this run\'s own labor hours and parts', async ({ p
     fields: { labor_hours: 2.5 },
   });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-analytics').click();
 
   await expect(page.locator('.section-title')).toContainText('Fleet analytics');

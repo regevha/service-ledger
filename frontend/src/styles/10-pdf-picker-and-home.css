@@ -1,4 +1,4 @@
-/* Picking template fields from a PDF page, and the Today screen. Loaded last; both only use tokens from index.css. */
+/* Picking template fields from a PDF page, and the Home screen. Loaded last; both only use tokens from index.css. */
 
 /* ---- Pick fields from a PDF (Templates tab, inside the template form) ---- */
 .pdf-picker-closed {
@@ -192,39 +192,39 @@
   color: var(--accent-strong);
 }
 
-/* ---- Today ---- */
-.today {
+/* ---- Home ---- */
+.home {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-5) var(--space-5) var(--space-6);
 }
-.today-head {
+.home-head {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--space-3);
 }
-.today-title {
+.home-title {
   margin: 0;
   font-size: var(--text-3xl);
   font-weight: 600;
 }
-.today-date {
+.home-date {
   color: var(--text-muted);
 }
-.today-tiles {
+.home-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: var(--space-4);
 }
-.today-tile .stat-value {
+.home-tile .stat-value {
   font-variant-numeric: tabular-nums;
 }
-.today-tile.attention {
+.home-tile.attention {
   border-left: 4px solid var(--flag);
 }
-.today-add {
+.home-add {
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -238,11 +238,11 @@
   background: var(--surface);
   cursor: pointer;
 }
-.today-add:hover {
+.home-add:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
-.today-add-icon {
+.home-add-icon {
   flex: none;
   width: 40px;
   height: 40px;
@@ -254,24 +254,24 @@
   background: var(--accent-fill);
   color: var(--on-fill);
 }
-.today-add small {
+.home-add small {
   display: block;
   color: var(--text-muted);
 }
-.today-cols {
+.home-cols {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
 }
-.today-card {
+.home-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow);
   overflow: hidden;
 }
-.today-card-head {
+.home-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -279,26 +279,26 @@
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border);
 }
-.today-card-head h2 {
+.home-card-head h2 {
   margin: 0;
   font-size: var(--text-lg);
   font-weight: 600;
 }
-.today-list {
+.home-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
-.today-list > li + li {
+.home-list > li + li {
   border-top: 1px solid var(--border);
 }
-.today-row {
+.home-row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
 }
-.today-row-button {
+.home-row-button {
   width: 100%;
   font: inherit;
   color: inherit;
@@ -307,43 +307,43 @@
   border: 0;
   cursor: pointer;
 }
-.today-row-button:hover {
+.home-row-button:hover {
   background: var(--surface-2);
 }
-.today-row-main {
+.home-row-main {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
-.today-row-title {
+.home-row-title {
   font-weight: 500;
   overflow-wrap: anywhere;
 }
-.today-row-sub {
+.home-row-sub {
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
-.today-empty,
-.today-more {
+.home-empty,
+.home-more {
   padding: var(--space-4);
   color: var(--text-muted);
 }
-.today-more {
+.home-more {
   border-top: 1px solid var(--border);
   font-size: var(--text-sm);
 }
 @media (max-width: 899px) {
-  .today {
+  .home {
     padding: var(--space-4);
   }
-  .today-cols {
+  .home-cols {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 /* "3 days over" is a sentence, not a status name: keep its own case. */
-.today-row .status-pill {
+.home-row .status-pill {
   text-transform: none;
 }
 
@@ -570,4 +570,14 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
+}
+
+/* The masthead is the way back to Home from any screen. */
+.masthead-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
 }

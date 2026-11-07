@@ -14,7 +14,7 @@ async function makeUnit(request: APIRequestContext, tag: string, institution: st
 }
 
 async function openPlaces(page: Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('.sub-switch button:has-text("Places")');
   await expect(page.locator('#places-section')).toBeVisible();
@@ -106,7 +106,7 @@ test('the instrument form says whether the institution and room are new or exist
   const uni = `E2E Form Uni ${Date.now()}`;
   await makeUnit(request, 'f', uni, 'Lab 7');
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
   const inst = page.getByTestId('form-label').filter({ hasText: 'Institute' }).locator('input');

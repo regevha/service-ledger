@@ -33,7 +33,7 @@ test('finalize sent twice at once: one wins, the other is refused, nothing break
 
 test('a double click on Save & finalize in the intake flow makes one finalized report', async ({ page, request }) => {
   const marker = `E2E-DoubleClick-${Date.now()}`;
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', marker);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
@@ -95,7 +95,7 @@ test('an extraction that never finishes stays pending, then offers Try again', a
     await route.fulfill({ response: real, json: { ...job, status: 'pending', error_message: null } });
   });
 
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');

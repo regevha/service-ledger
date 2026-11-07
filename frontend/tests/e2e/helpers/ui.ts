@@ -5,7 +5,7 @@ import { TIMEOUT } from '../timeouts';
 
 /** The Reports tab, once its table (or its empty-state hint) is showing. */
 export async function openReports(page: Page): Promise<void> {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-reports').click();
   await page.waitForSelector('.report-table, .empty-hint');
   await showFlatList(page);
@@ -38,7 +38,7 @@ export async function openReviewFromList(page: Page, marker: string): Promise<vo
 
 /** The Analytics tab, once its filter bar is showing. */
 export async function openAnalytics(page: Page): Promise<void> {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.getByTestId('tab-analytics').click();
   await expect(page.getByTestId('analytics-filters')).toBeVisible({ timeout: TIMEOUT.ui });
 }
@@ -55,6 +55,6 @@ export async function confirmClassification(page: Page, reportType: string = 're
 
 /** The test id of a main-navigation tab, from its label ("New report" -> tab-new). */
 export function tabTestId(label: string): string {
-  const ids: Record<string, string> = { 'New report': 'tab-new', Reports: 'tab-reports', Analytics: 'tab-analytics', Templates: 'tab-templates', Today: 'tab-home', Instruments: 'tab-instruments', Admin: 'tab-admin', More: 'tab-more' };
+  const ids: Record<string, string> = { 'New report': 'tab-new', Reports: 'tab-reports', Analytics: 'tab-analytics', Templates: 'tab-templates', Home: 'tab-home', Instruments: 'tab-instruments', Admin: 'tab-admin', More: 'tab-more' };
   return ids[label] ?? `tab-${label.toLowerCase()}`;
 }

@@ -1,6 +1,6 @@
 import type { Instrument, ReportListItem } from './api';
 
-// The pure parts of the Today screen: which instruments are due and how to say so, and which reports wait.
+// The pure parts of the Home screen: which instruments are due and how to say so, and which reports wait.
 
 /** Whole days from `today` to the ISO day `iso` (negative when it has passed). Both are read as local days. */
 export function daysUntil(iso: string, today: Date): number {
