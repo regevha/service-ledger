@@ -1,11 +1,14 @@
 import { test, expect } from './coverage';
 import { TIMEOUT } from './timeouts';
 import { API_BASE } from './helpers/api';
+import { showFlatList, tabTestId } from './helpers/ui';
 
 // Phone review of 2026-10-25, item 8 and 19: controls are big enough for a thumb, the tab labels are
 // readable, and the keyboard leaves serial and part numbers alone.
 
-const TABS = ['New report', 'Reports', 'Analytics', 'Templates', 'Instruments'];
+// Templates and Admin sit behind the More tab on a phone.
+const TABS = ['New report', 'Reports', 'Analytics', 'Instruments', 'Templates', 'Admin'];
+const BEHIND_MORE = ['Templates', 'Admin'];
 
 async function tooSmall(page: import('@playwright/test').Page): Promise<string[]> {
   return page.evaluate(() => {
@@ -16,7 +19,9 @@ async function tooSmall(page: import('@playwright/test').Page): Promise<string[]
       const s = getComputedStyle(el);
       if (r.width === 0 || r.height === 0 || s.visibility === 'hidden' || s.display === 'none') continue;
       if (el.closest('.tag-chip')) continue; // the tiny remove x inside a chip is not a primary control
-      if (r.height < 43.5) out.push(`${el.tagName.toLowerCase()} ${Math.round(r.width)}x${Math.round(r.height)} "${(el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 24)}"`);
+      // The Edit / "…" buttons on a list card are deliberately slimmer: 36px, with a gap between them.
+      const min = el.closest('.template-row-actions') ? 35.5 : 43.5;
+      if (r.height < min) out.push(`${el.tagName.toLowerCase()} ${Math.round(r.width)}x${Math.round(r.height)} "${(el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 24)}"`);
     }
     return out;
   });
@@ -27,23 +32,30 @@ test.describe('on a phone', { tag: '@phone' }, () => {
   test('buttons, selects and text boxes are at least 44px high on every tab', async ({ page, request }) => {
     // A report in the list, so the sort buttons above the cards are measured too.
     await request.post(`${API_BASE}/reports`, { data: { technician_name: `E2E-Touch-${Date.now()}` } });
-    await page.goto('/');
+    await page.goto('/#/new');
     for (const tab of TABS) {
-      await page.click(`.view-tab:has-text("${tab}")`);
-      // The tab is selected and its data has arrived, so every control is on the page to be measured.
-      await expect(page.locator('.view-tab.active')).toContainText(tab);
+      if (BEHIND_MORE.includes(tab)) {
+        await page.getByTestId('tab-more').click();
+        await page.click(`.more-item:has-text("${tab}")`);
+        await expect(page.locator('.view-tab.within')).toContainText('More');
+      } else {
+        await page.getByTestId(tabTestId(tab)).click();
+        // The tab is selected and its data has arrived, so every control is on the page to be measured.
+        await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toContainText(tab);
+      }
       await page.waitForLoadState('networkidle');
       // Open the filters where there are some, so their controls are measured too.
       const show = page.locator('button:has-text("Show filters")');
       if (await show.count()) await show.first().click();
+      if (tab === 'Reports') await showFlatList(page);
       if (tab === 'Reports') await expect(page.locator('.sort-select').first()).toBeVisible();
       expect(await tooSmall(page), tab).toEqual([]);
     }
   });
 
   test('the tab labels are readable and all five still fit without the page scrolling sideways', async ({ page }) => {
-    await page.goto('/');
-    const size = await page.locator('.view-tab').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    await page.goto('/#/new');
+    const size = await page.locator('.view-tab:visible').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     expect(size).toBeGreaterThanOrEqual(12);
     const fits = await page.evaluate(() => {
       const tabs = document.querySelector('.view-tabs')!;

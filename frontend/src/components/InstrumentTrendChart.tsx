@@ -302,7 +302,7 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
       )}
 
       {showTable && (
-        <div className="trend-table-wrap">
+        <div className="trend-table-wrap" tabIndex={0} role="region" aria-label="Trend values, as a table">
           <table className="trend-table">
             <thead>
               <tr>

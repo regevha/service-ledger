@@ -1,6 +1,7 @@
 import { type APIRequestContext, type Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { API_BASE } from './helpers/api';
+import { showFlatList } from './helpers/ui';
 
 // Sorting the Reports table by clicking a column header. The rules themselves
 // (blank cells last, status by progress, ties keep their order) are covered on
@@ -13,7 +14,7 @@ async function reportFor(request: APIRequestContext, technician: string) {
 
 /** The lab managers of the rows currently shown, top to bottom, reduced to their last letter. */
 async function order(page: Page, prefix: string): Promise<string[]> {
-  const rows = await page.locator('.report-row-body').allTextContents();
+  const rows = await page.getByTestId('report-row').allTextContents();
   return rows.filter((t) => t.includes(prefix)).map((t) => t.split(prefix)[1].charAt(0));
 }
 
@@ -24,10 +25,11 @@ test('clicking a column header sorts the table, again reverses it, a third time 
   // which is neither the ascending nor the descending order.
   for (const letter of ['b', 'c', 'a']) await reportFor(request, `${prefix}${letter}`);
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-reports').click();
+  await showFlatList(page);
   await page.fill('input[aria-label="Lab manager"]', prefix);
-  await expect(page.locator('.report-row-body', { hasText: `${prefix}a` })).toBeVisible();
+  await expect(page.getByTestId('report-row').filter({ hasText: `${prefix}a` })).toBeVisible();
   await expect.poll(() => order(page, prefix)).toEqual(['a', 'c', 'b']);
 
   const head = page.locator('[data-testid="sort-lab_manager"]');
@@ -55,8 +57,9 @@ test('sorting by another column replaces the first, and survives a change of fil
   const prefix = `E2E-Sort2-${stamp}-`;
   for (const letter of ['b', 'c', 'a']) await reportFor(request, `${prefix}${letter}`);
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-reports').click();
+  await showFlatList(page);
   await page.fill('input[aria-label="Lab manager"]', prefix);
   await expect.poll(() => order(page, prefix)).toEqual(['a', 'c', 'b']);
 
@@ -88,8 +91,9 @@ test('the sort is still there after opening a report and coming back', async ({ 
   const prefix = `E2E-Sort3-${stamp}-`;
   for (const letter of ['b', 'c', 'a']) await reportFor(request, `${prefix}${letter}`);
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-reports').click();
+  await showFlatList(page);
   await page.fill('input[aria-label="Lab manager"]', prefix);
   await expect.poll(() => order(page, prefix)).toEqual(['a', 'c', 'b']);
   const head = page.locator('[data-testid="sort-lab_manager"]');
@@ -97,9 +101,9 @@ test('the sort is still there after opening a report and coming back', async ({ 
   await head.click();
   await expect.poll(() => order(page, prefix)).toEqual(['c', 'b', 'a']);
 
-  await page.locator('.report-row-body', { hasText: `${prefix}b` }).click();
+  await page.getByTestId('report-row').filter({ hasText: `${prefix}b` }).click();
   await page.click('button:has-text("Back to reports")');
-  await expect(page.locator('.report-row-body').first()).toBeVisible();
+  await expect(page.getByTestId('report-row').first()).toBeVisible();
   await expect(head).toHaveAttribute('data-sort', 'desc');
   await expect.poll(() => order(page, prefix)).toEqual(['c', 'b', 'a']);
 });

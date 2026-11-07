@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nir Proposals Mockups</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a numbered switcher over seven framed screens, each drawn in ServiceLedger's own Slate and indigo tokens (copied from frontend/src/index.css). */
+:root {
+  --bg: #f4f6fa; --surface: #ffffff; --surface-2: #eef1f7; --border: #dde2ec; --border-strong: #c9d0de;
+  --text: #1b2230; --text-muted: #566074; --text-faint: #636d83;
+  --accent: #3b4fb8; --accent-strong: #2c3b8f; --accent-fill: #3b4fb8; --accent-fill-hover: #2c3b8f; --accent-soft: #e3e8fa;
+  --flag: #b57308; --flag-soft: #fdf6e6; --input-border: #b4bdd0;
+  --good: #1f5a35; --good-soft: #e0f0e6; --warn: #7a4f08; --warn-soft: #fbeccb; --crit: #b3261e; --crit-soft: #fce8e6;
+  --on-fill: #ffffff; --scrim: rgba(27,34,48,.45);
+  --shadow: 0 1px 2px rgba(27,31,35,.06), 0 10px 28px -14px rgba(27,31,35,.16);
+  --shadow-pop: 0 8px 30px rgba(27,34,48,.28);
+  --paper: #ffffff; --paper-ink: #1b2230; --paper-line: #c9d0de; --well: #e4e8f0;
+  --font-ui: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  --bar: #3b4fb8; --bar-2: #aab6ea;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #232a3b; --surface: #2c3448; --surface-2: #353e54; --border: #424c63; --border-strong: #505a72;
+    --text: #eef1f7; --text-muted: #b4bdd0; --text-faint: #a3adc4;
+    --accent: #aebcff; --accent-strong: #d0d8ff; --accent-fill: #5468d8; --accent-fill-hover: #6577e0; --accent-soft: #313b72;
+    --flag: #e8ae42; --flag-soft: #3a3216; --input-border: #7280a0;
+    --good: #9ddbb3; --good-soft: #244a35; --warn: #f3d089; --warn-soft: #4a3a14; --crit: #ff7b72; --crit-soft: #4a2630;
+    --scrim: rgba(0,0,0,.55); --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.5); --shadow-pop: 0 8px 30px rgba(0,0,0,.5);
+    --well: #1b2130; --bar: #7f93f0; --bar-2: #4b5694; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #232a3b; --surface: #2c3448; --surface-2: #353e54; --border: #424c63; --border-strong: #505a72;
+  --text: #eef1f7; --text-muted: #b4bdd0; --text-faint: #a3adc4;
+  --accent: #aebcff; --accent-strong: #d0d8ff; --accent-fill: #5468d8; --accent-fill-hover: #6577e0; --accent-soft: #313b72;
+  --flag: #e8ae42; --flag-soft: #3a3216; --input-border: #7280a0;
+  --good: #9ddbb3; --good-soft: #244a35; --warn: #f3d089; --warn-soft: #4a3a14; --crit: #ff7b72; --crit-soft: #4a2630;
+  --scrim: rgba(0,0,0,.55); --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.5); --shadow-pop: 0 8px 30px rgba(0,0,0,.5);
+  --well: #1b2130; --bar: #7f93f0; --bar-2: #4b5694; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px; }
+h1, h2, h3, p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); }
+
+/* Page chrome */
+.head { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); border-bottom: 1px solid var(--border); margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+.head-in { max-width: 1240px; margin: 0 auto; }
+.head h1 { font-size: 19px; font-weight: 600; }
+.head .sub { color: var(--text-muted); font-size: 13px; }
+.switch { display: flex; gap: 2px; overflow-x: auto; margin-top: 10px; scrollbar-width: thin; }
+.switch button { flex: none; border: 0; background: none; padding: 9px 13px 10px; font-size: 13.5px; font-weight: 500; color: var(--text-muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+.switch button b { font-family: var(--font-mono); font-weight: 500; color: var(--text-faint); margin-right: 6px; }
+.switch button[aria-selected="true"] { color: var(--accent-strong); border-bottom-color: var(--accent-fill); }
+.switch button:hover { color: var(--text); }
+.stage { max-width: 1240px; margin: 0 auto; padding-top: 24px; }
+.screen { display: none; }
+.screen.on { display: block; }
+.intro { max-width: 78ch; margin-bottom: 18px; }
+.intro h2 { font-size: 22px; font-weight: 600; margin-bottom: 4px; text-wrap: balance; }
+.intro p { color: var(--text-muted); }
+.intro ul { margin: 10px 0 0; padding-left: 18px; color: var(--text-muted); }
+.intro li { margin-bottom: 3px; }
+.intro li b { color: var(--text); font-weight: 600; }
+.scroller { overflow-x: auto; border-radius: 14px; }
+.frame { min-width: 960px; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); position: relative; }
+
+/* App building blocks */
+.topbar { display: flex; align-items: center; gap: 18px; height: 56px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 16px; color: var(--accent-strong); white-space: nowrap; }
+.brand i { width: 24px; height: 24px; border-radius: 7px; background: var(--accent-fill); display: grid; place-items: center; }
+.brand i svg { width: 14px; height: 14px; stroke: var(--on-fill); }
+.tabs { display: flex; height: 100%; gap: 2px; flex: 1; min-width: 0; }
+.tab { display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 14px; font-weight: 500; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tab.on { color: var(--accent-strong); border-bottom-color: var(--accent-fill); }
+.tab.end { margin-left: auto; }
+.tab svg { width: 17px; height: 17px; display: none; }
+.btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--input-border); background: var(--surface); color: var(--accent-strong); font-size: 13.5px; font-weight: 500; white-space: nowrap; }
+.btn:hover { background: var(--surface-2); }
+.btn svg { width: 16px; height: 16px; flex: none; }
+.btn.primary { background: var(--accent-fill); border-color: transparent; color: var(--on-fill); }
+.btn.primary:hover { background: var(--accent-fill-hover); }
+.btn.sm { height: 30px; padding: 0 11px; font-size: 13px; }
+.btn.quiet { border-color: transparent; background: none; }
+.btn.quiet:hover { background: var(--surface-2); }
+.btn[disabled] { opacity: .55; cursor: default; }
+.pill { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 500; background: var(--accent-soft); color: var(--accent-strong); white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.crit { background: var(--crit-soft); color: var(--crit); }
+.pill.mute { background: var(--surface-2); color: var(--text-muted); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+.page { padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.page-title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.page-title h3 { font-size: 24px; font-weight: 600; }
+.page-title span { color: var(--text-muted); font-size: 14px; }
+.lbl { font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+.input { height: 38px; width: 100%; border: 1px solid var(--input-border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 0 11px; font: inherit; font-size: 14px; }
+.sel { height: 38px; border: 1px solid var(--input-border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 0 10px; font: inherit; font-size: 14px; width: 100%; }
+mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 var(--flag); padding: 0 1px; }
+.seg { display: inline-flex; border: 1px solid var(--input-border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; height: 32px; padding: 0 13px; font-size: 13px; font-weight: 500; color: var(--text-muted); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); flex: none; }
+.dot.good { background: var(--good); } .dot.warn { background: var(--flag); } .dot.crit { background: var(--crit); }
+.row-list > * + * { border-top: 1px solid var(--border); }
+
+/* 1. AI search */
+.aibox { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px; padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; }
+.aibox-top { display: flex; align-items: flex-start; gap: 10px; }
+.aibox-top > svg { width: 22px; height: 22px; margin-top: 10px; stroke: var(--accent); flex: none; }
+.aibox textarea { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 17px; line-height: 1.45; resize: none; padding: 8px 0; outline: none; height: 58px; }
+.aibox-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ex { border: 1px dashed var(--border-strong); background: none; border-radius: 999px; padding: 3px 11px; font-size: 12.5px; color: var(--text-muted); }
+.ex:hover, .ex.on { border-style: solid; color: var(--accent-strong); background: var(--accent-soft); border-color: transparent; }
+.interp { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.interp .lbl { margin-right: 4px; }
+.fchip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 6px 0 11px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border-strong); font-size: 13px; }
+.fchip b { font-weight: 600; }
+.fchip span.k { color: var(--text-muted); }
+.fchip button { border: 0; background: none; width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; color: var(--text-muted); padding: 0; }
+.fchip button:hover { background: var(--surface-2); }
+.fchip svg { width: 12px; height: 12px; }
+.res { padding: 14px 18px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr) auto; gap: 18px; align-items: center; }
+.res h4 { margin: 0; font-size: 15px; font-weight: 600; }
+.res .meta { color: var(--text-muted); font-size: 13px; }
+.why { font-size: 13.5px; border-left: 3px solid var(--flag); background: var(--flag-soft); padding: 6px 10px; border-radius: 0 8px 8px 0; }
+.sum { padding: 18px 20px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 28px; }
+.sum h4 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+.sum ul { margin: 0; padding-left: 18px; } .sum li { margin-bottom: 6px; }
+.bars { display: flex; flex-direction: column; gap: 9px; }
+.bars div { display: grid; grid-template-columns: 62px 1fr 46px; gap: 10px; align-items: center; font-size: 13px; color: var(--text-muted); }
+.bars i { display: block; height: 10px; border-radius: 0 4px 4px 0; background: var(--bar); }
+.bars em { font-style: normal; font-family: var(--font-mono); color: var(--text); text-align: right; }
+
+/* 2. Template editor */
+.ed { display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-height: 640px; }
+.ed-left { background: var(--well); padding: 18px; position: relative; display: flex; flex-direction: column; gap: 12px; }
+.ed-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); }
+.ed-tools label { display: inline-flex; gap: 6px; align-items: center; }
+.pdfwrap { position: relative; margin: 0 auto; width: 100%; max-width: 560px; user-select: none; touch-action: none; }
+.paper { background: var(--paper); color: var(--paper-ink); border-radius: 4px; padding: 30px 34px 34px; box-shadow: 0 2px 10px rgba(0,0,0,.18); cursor: crosshair; font-size: 13px; }
+.p-title { font-weight: 700; letter-spacing: .06em; font-size: 14px; border-bottom: 2px solid var(--paper-ink); padding-bottom: 8px; margin-bottom: 14px; display: flex; justify-content: space-between; }
+.p-row { display: grid; grid-template-columns: 112px 1fr; gap: 8px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--paper-line); }
+.p-row.two { grid-template-columns: 112px 1fr 100px 1fr; }
+.paper .lbl { color: #566074; font-size: 11px; }
+.tx { position: relative; padding: 1px 4px; border-radius: 3px; display: inline-block; font-family: var(--font-mono); font-size: 12.5px; }
+.paper .tx:hover, .hl-all .tx { outline: 1px dashed #7a8bdc; background: rgba(59,79,184,.07); }
+.tx.sel { background: rgba(181,115,8,.22); outline: 2px solid #b57308; }
+.tx.mapped { background: rgba(59,79,184,.14); outline: 1.5px solid #3b4fb8; cursor: default; }
+.tx.mapped::after { content: attr(data-n); position: absolute; top: -9px; left: -9px; min-width: 18px; height: 18px; border-radius: 9px; background: #3b4fb8; color: #fff; font: 600 11px/18px var(--font-ui); text-align: center; }
+.p-sec { font-weight: 700; margin: 16px 0 4px; font-size: 12px; letter-spacing: .05em; }
+.p-note { display: block; line-height: 1.7; }
+.rubber { position: absolute; border: 1.5px solid #b57308; background: rgba(181,115,8,.14); pointer-events: none; z-index: 4; }
+.pop { position: absolute; z-index: 6; width: 290px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: var(--shadow-pop); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.pop { user-select: text; -webkit-user-select: text; cursor: default; }
+.pop .picked { font-family: var(--font-mono); font-size: 12.5px; background: var(--flag-soft); border-left: 3px solid var(--flag); padding: 5px 8px; border-radius: 0 6px 6px 0; word-break: break-word; }
+.pop .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pop .acts { display: flex; gap: 8px; justify-content: flex-end; }
+.ed-right { background: var(--surface); border-left: 1px solid var(--border); padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.tpl-head h4 { margin: 0; font-size: 17px; font-weight: 600; }
+.tpl-head p { color: var(--text-muted); font-size: 13px; }
+.flist { display: flex; flex-direction: column; gap: 6px; }
+.fld { display: grid; grid-template-columns: 24px 1fr auto 22px; gap: 8px; align-items: center; padding: 8px 8px; border: 1px solid var(--border); border-radius: 10px; font-size: 13.5px; }
+.fld .n { width: 22px; height: 22px; border-radius: 11px; background: var(--accent-fill); color: var(--on-fill); font-size: 11px; font-weight: 600; display: grid; place-items: center; }
+.fld .nm { font-family: var(--font-mono); font-size: 13px; }
+.fld .sm { grid-column: 2 / 4; color: var(--text-muted); font-size: 12.5px; margin-top: -4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fld button { border: 0; background: none; color: var(--text-faint); padding: 0; width: 22px; height: 22px; }
+.fld.new { animation: flash 1.6s ease-out; }
+@keyframes flash { from { background: var(--flag-soft); border-color: var(--flag); } to { background: transparent; } }
+.hint { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; background: var(--accent-soft); color: var(--accent-strong); border-radius: 10px; padding: 10px 12px; }
+.hint svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+
+/* 3. Home */
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.tile { padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.tile .v { font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.tile .l { color: var(--text-muted); font-size: 13px; }
+.tile.hot { border-left: 4px solid var(--flag); }
+.home-cols { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.sec-h { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px; }
+.sec-h h4 { margin: 0; font-size: 16px; font-weight: 600; }
+.q-row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 11px 18px; }
+.q-row .t { font-weight: 500; } .q-row .m { color: var(--text-muted); font-size: 13px; }
+.due { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 11px 18px; align-items: center; }
+.due .m { color: var(--text-muted); font-size: 13px; }
+.dropline { display: flex; align-items: center; gap: 14px; border: 2px dashed var(--border-strong); border-radius: 14px; padding: 14px 18px; background: var(--surface); }
+.dropline svg { width: 26px; height: 26px; stroke: var(--accent); flex: none; }
+.dropline b { font-weight: 600; }
+.dropline span { color: var(--text-muted); font-size: 13.5px; }
+.home-top { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 18px; }
+.mini-ai { display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface); height: 100%; min-height: 62px; color: var(--text-muted); }
+.mini-ai svg { width: 20px; height: 20px; stroke: var(--accent); flex: none; }
+.kbd { font-family: var(--font-mono); font-size: 11.5px; border: 1px solid var(--border-strong); border-radius: 5px; padding: 1px 6px; color: var(--text-muted); background: var(--surface-2); margin-left: auto; }
+
+/* 4. Small laptop */
+.s4-controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 12px; }
+.s4-controls .cap { color: var(--text-muted); font-size: 13px; }
+.scalebox { position: relative; border-radius: 14px; }
+.scalebox .frame { position: absolute; left: 0; top: 0; transform-origin: top left; min-width: 0; container-type: inline-size; border-radius: 14px; }
+.s4 .topbar { height: 48px; padding: 0 14px; gap: 12px; }
+.s4 .tab { padding: 0 10px; font-size: 13.5px; }
+.s4body { display: flex; flex-direction: column; height: calc(100% - 49px); }
+@container (max-width: 1200px) {
+  .s4 .tab.opt { display: none; }
+  .s4 .tab svg { display: block; }
+  .s4 .tab { padding: 0 9px; }
+  .s4 .brand span { display: none; }
+}
+@container (max-width: 1100px) {
+  .s4 .tab svg { display: none; }
+  .s4 .tab { font-size: 13px; padding: 0 7px; }
+  .s4 .btn.newbtn span { display: none; }
+}
+.s4head { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 13.5px; flex-wrap: nowrap; }
+.s4head h3 { font-size: 16px; font-weight: 600; white-space: nowrap; }
+.s4head .grow { flex: 1; min-width: 0; }
+.prog { display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; white-space: nowrap; }
+.prog i { display: block; width: 90px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.prog i b { display: block; height: 100%; width: 75%; background: var(--good); }
+.s4split { display: grid; grid-template-columns: 38% 1fr; flex: 1; min-height: 0; transition: grid-template-columns .2s; }
+.s4split.noscan { grid-template-columns: 44px 1fr; }
+.s4scan { background: var(--well); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow: hidden; }
+.s4scan .bar { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--text-muted); }
+.s4scan .thumb { background: var(--paper); border-radius: 3px; flex: 1; min-height: 0; padding: 14px; display: flex; flex-direction: column; gap: 7px; }
+.s4scan .thumb i { display: block; height: 6px; border-radius: 3px; background: var(--paper-line); }
+.s4scan .thumb i.hot { background: #e8ae42; }
+.noscan .s4scan .thumb, .noscan .s4scan .bar span { display: none; }
+.noscan .s4scan { align-items: center; padding: 10px 4px; }
+.s4fields { overflow: hidden; min-width: 0; background: var(--bg); padding: 8px 14px 0; }
+.frow { display: grid; grid-template-columns: 26px minmax(90px, 170px) minmax(0, 1fr) auto; gap: 10px; align-items: center; height: 40px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.dense .frow { height: 34px; font-size: 13px; }
+.frow .n { color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; }
+.frow .l { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.frow .v { font-family: var(--font-mono); font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.frow.flagged { background: var(--flag-soft); box-shadow: inset 4px 0 0 var(--flag); padding-left: 8px; margin-left: -8px; }
+.s4bar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--surface); border-top: 1px solid var(--border); }
+.s4bar .grow { flex: 1; }
+.s4list { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; flex: 1; }
+.s4tools { display: flex; align-items: center; gap: 8px; }
+.s4tools .input { max-width: 260px; height: 32px; }
+.s4tools .btn { height: 32px; }
+.gcard { overflow: hidden; }
+.gcard .gh { display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: var(--surface-2); font-size: 13.5px; }
+.gcard .gr { display: grid; grid-template-columns: 110px minmax(0, 1fr) 130px 90px; gap: 10px; align-items: center; padding: 6px 12px; border-top: 1px solid var(--border); font-size: 13px; }
+@container (max-width: 1100px) { .gcard .gr { grid-template-columns: 100px minmax(0, 1fr) 90px; } .gcard .gr .opt { display: none; } }
+.changes { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.changes .card { padding: 12px 14px; font-size: 13.5px; }
+.changes b { display: block; font-weight: 600; margin-bottom: 2px; }
+.changes span { color: var(--text-muted); }
+.viewport-note { font-size: 12.5px; color: var(--text-muted); margin-top: 8px; }
+
+/* 5. Batch upload */
+.steps { display: flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--text-muted); flex-wrap: wrap; }
+.steps .s { display: inline-flex; gap: 8px; align-items: center; }
+.steps .s i { width: 24px; height: 24px; border-radius: 12px; border: 1.5px solid var(--border-strong); display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 600; }
+.steps .s.on { color: var(--text); font-weight: 600; } .steps .s.on i { background: var(--accent-fill); border-color: transparent; color: var(--on-fill); }
+.steps .s.done i { background: var(--good-soft); border-color: transparent; color: var(--good); }
+.steps .ln { width: 28px; height: 2px; background: var(--border-strong); }
+.batch { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 18px; align-items: start; }
+.bq-head { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); }
+.bq-sum { display: flex; flex-wrap: wrap; gap: 6px; }
+.bq-item { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 14px; border: 0; background: none; width: 100%; text-align: left; border-top: 1px solid var(--border); }
+.bq-item:first-of-type { border-top: 0; }
+.bq-item:hover { background: var(--surface-2); }
+.bq-item[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent-fill); }
+.mini-pg { width: 34px; height: 44px; background: var(--paper); border: 1px solid var(--border-strong); border-radius: 3px; display: flex; flex-direction: column; gap: 4px; padding: 6px 5px; }
+.mini-pg i { display: block; height: 3px; background: var(--paper-line); border-radius: 2px; }
+.bq-item .nm { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.bq-item .ds { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent-fill); animation: sp 1s linear infinite; }
+@keyframes sp { to { transform: rotate(360deg); } }
+.bdetail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.bd-scan { background: var(--well); padding: 16px; border-radius: 14px 0 0 14px; min-height: 420px; }
+.bd-scan .paper { cursor: default; padding: 18px 20px; font-size: 11px; }
+.bd-form { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.bd-form h4 { margin: 0; font-size: 17px; font-weight: 600; word-break: break-word; }
+.bd-form .why2 { font-size: 13px; color: var(--text-muted); background: var(--surface-2); padding: 9px 11px; border-radius: 10px; }
+.bd-form .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+
+/* 6. Filters */
+.fbar { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.fbar-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.fbar-top .search { position: relative; flex: 1; min-width: 220px; }
+.fbar-top .search svg { position: absolute; left: 11px; top: 10px; width: 17px; height: 17px; stroke: var(--text-muted); }
+.fbar-top .search .input { padding-left: 36px; }
+.fbar-chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 32px; }
+.fchip.btnlike { cursor: pointer; padding-right: 8px; }
+.fchip.btnlike:hover { background: var(--surface-2); }
+.fchip.open { border-color: var(--accent-fill); box-shadow: 0 0 0 2px var(--accent-soft); }
+.addf { border-style: dashed; color: var(--accent-strong); background: none; padding: 0 11px; }
+.fpop { position: absolute; z-index: 8; min-width: 240px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: var(--shadow-pop); padding: 8px; }
+.fpop .input { height: 32px; margin-bottom: 6px; }
+.fpop label { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 7px; font-size: 14px; cursor: pointer; }
+.fpop label:hover { background: var(--surface-2); }
+.fpop label span.c { margin-left: auto; color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; }
+.fpop input[type=checkbox], .fpop input[type=radio] { accent-color: var(--accent-fill); width: 16px; height: 16px; margin: 0; }
+.fpop .foot { display: flex; justify-content: space-between; border-top: 1px solid var(--border); margin-top: 6px; padding: 8px 4px 2px; font-size: 13px; color: var(--text-muted); }
+.fpop .menu-i { width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 7px; font-size: 14px; display: flex; gap: 9px; align-items: center; }
+.fpop .menu-i:hover { background: var(--surface-2); }
+.fpop .menu-i svg { width: 16px; height: 16px; stroke: var(--text-muted); }
+.count { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.count b { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.count span { color: var(--text-muted); font-size: 13.5px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tbl th { text-align: left; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; padding: 10px 16px; background: var(--surface-2); }
+.tbl td { padding: 10px 16px; border-top: 1px solid var(--border); }
+.presets { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.presets .pre { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--text-muted); }
+.presets .pre:hover { color: var(--accent-strong); background: var(--accent-soft); border-color: transparent; }
+
+/* 7. More ideas */
+.ideas { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.idea { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.idea h4 { margin: 0; font-size: 16px; font-weight: 600; }
+.idea p { color: var(--text-muted); font-size: 14px; }
+.idea .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
+.idea.wide { grid-column: span 2; }
+.cmdk { border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; font-size: 14px; }
+.cmdk .in { display: flex; gap: 9px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+.cmdk .in svg { width: 17px; height: 17px; stroke: var(--accent); }
+.cmdk .it { display: flex; gap: 10px; padding: 8px 12px; align-items: center; }
+.cmdk .it.on { background: var(--accent-soft); color: var(--accent-strong); }
+.cmdk .it small { margin-left: auto; color: var(--text-faint); font-size: 12px; }
+.redact { background: var(--paper); color: var(--paper-ink); border-radius: 6px; padding: 12px 14px; font-family: var(--font-mono); font-size: 12px; line-height: 1.9; box-shadow: 0 1px 6px rgba(0,0,0,.14); }
+.redact .rd { background: #1b2230; color: #1b2230; border-radius: 2px; padding: 0 3px; position: relative; }
+.redact .rd.hint-on { background: rgba(181,115,8,.25); color: #1b2230; outline: 1.5px solid #b57308; }
+.diffrow { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; font-size: 13px; padding: 5px 0; border-top: 1px solid var(--border); }
+.diffrow:first-child { border-top: 0; }
+.diffrow .a { color: var(--text-faint); text-decoration: line-through; font-family: var(--font-mono); }
+.diffrow .b { font-family: var(--font-mono); font-weight: 600; }
+@media (max-width: 760px) { .idea.wide { grid-column: auto; } }
+@media (prefers-reduced-motion: reduce) { .spin, .fld.new { animation: none; } .s4split { transition: none; } }
+</style>
+<style>html{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+
+<div class="head"><div class="head-in">
+  <h1>ServiceLedger · Nir proposals</h1>
+  <div class="sub">Seven mockups on branch <span class="mono">nir</span>. Visuals only: click around, nothing here saves or calls the backend. Example data is made up.</div>
+  <div class="switch" role="tablist" aria-label="Proposals">
+    <button role="tab" data-s="s1"><b>1</b>AI search</button>
+    <button role="tab" data-s="s2"><b>2</b>Template editor</button>
+    <button role="tab" data-s="s3"><b>3</b>Home page</button>
+    <button role="tab" data-s="s4"><b>4</b>Small laptops</button>
+    <button role="tab" data-s="s5"><b>5</b>Batch upload</button>
+    <button role="tab" data-s="s6"><b>6</b>Filters</button>
+    <button role="tab" data-s="s7"><b>7</b>More ideas</button>
+  </div>
+</div></div>
+
+<div class="stage">
+
+<!-- 1 -->
+<section class="screen" id="s1">
+  <div class="intro">
+    <h2>One box to search, filter and summarize</h2>
+    <p>The person types a question in plain words. The app shows how it understood the question as ordinary filter chips, so the answer is checkable and every chip can be edited or removed.</p>
+    <ul>
+      <li><b>Understood as</b> turns the sentence into the same filters as the Reports screen. No hidden logic.</li>
+      <li><b>Why it matched</b> quotes the value or text that made each report a hit.</li>
+      <li><b>Summarize</b> answers across the matches and lists the reports it used.</li>
+    </ul>
+  </div>
+  <div class="scroller"><div class="frame">
+    <div data-topbar="reports"></div>
+    <div class="page">
+      <div class="page-title"><h3>Reports</h3><span id="s1count"></span></div>
+      <div class="aibox">
+        <div class="aibox-top">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
+          <textarea id="q" aria-label="Ask about your reports" spellcheck="false"></textarea>
+          <button class="btn primary" id="s1go">Search</button>
+        </div>
+        <div class="aibox-row">
+          <div class="seg" role="group" aria-label="Mode"><button id="m-find" aria-pressed="true">Find reports</button><button id="m-sum" aria-pressed="false">Summarize</button></div>
+          <span class="lbl" style="margin-left:6px">Try</span>
+          <button class="ex on" data-ex="0">PM reports, laser delay out of range</button>
+          <button class="ex" data-ex="1">Instruments with more than 2 repairs</button>
+          <button class="ex" data-ex="2">Reports by D. Levi mentioning a PMT</button>
+        </div>
+      </div>
+      <div class="interp" id="interp"></div>
+      <div id="s1res"></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 2 -->
+<section class="screen" id="s2">
+  <div class="intro">
+    <h2>Build a template by pointing at the PDF</h2>
+    <p>The template editor shows a real sample of the form. To add a field, click a piece of text or drag a box around it. A small card asks for the name and type, with the value already filled in from the page.</p>
+    <ul>
+      <li><b>Try it:</b> click “29.40”, or drag a box around “Sheath pressure” and its value.</li>
+      <li>Fields already in the template show as numbered marks on the page, matching the list on the right.</li>
+      <li>For a scan with no text layer, the same drag box reads that area by OCR.</li>
+    </ul>
+  </div>
+  <div class="scroller"><div class="frame">
+    <div data-topbar="templates"></div>
+    <div class="ed">
+      <div class="ed-left">
+        <div class="ed-tools">
+          <button class="btn sm">‹</button><span>Page 1 of 2</span><button class="btn sm">›</button>
+          <span style="flex:1"></span>
+          <label><input type="checkbox" id="hlall"> Show all selectable text</label>
+          <button class="btn sm" id="suggest">Suggest fields</button>
+        </div>
+        <div class="pdfwrap" id="wrap">
+          <div class="paper" id="paper">
+            <div class="p-title"><span>SERVICE REPORT</span><span>Preventive maintenance</span></div>
+            <div class="p-row"><span class="lbl">Customer</span><span><span class="tx" data-key="customer" data-type="Text">Demo Institution, Flow Cytometry Core</span></span></div>
+            <div class="p-row"><span class="lbl">Instrument</span><span><span class="tx" data-key="instrument_model" data-type="Text">BD FACSAria III</span></span></div>
+            <div class="p-row two"><span class="lbl">Serial no.</span><span><span class="tx" data-key="serial_number" data-type="Text">P69200123</span></span><span class="lbl">Work order</span><span><span class="tx" data-key="work_order" data-type="Text">WO-04215114</span></span></div>
+            <div class="p-row two"><span class="lbl">Visit date</span><span><span class="tx" data-key="visit_date" data-type="Date">14/09/2026</span></span><span class="lbl">Engineer</span><span><span class="tx" data-key="engineer" data-type="Text">D. Levi</span></span></div>
+            <div class="p-sec">MEASUREMENTS</div>
+            <div class="p-row two"><span class="lbl">Laser delay</span><span><span class="tx" data-key="laser_delay" data-type="Number">29.40</span></span><span class="lbl">Range</span><span><span class="tx" data-key="laser_delay_range" data-type="Text">24.0 – 28.0</span></span></div>
+            <div class="p-row two"><span class="lbl">Sheath pressure</span><span><span class="tx" data-key="sheath_pressure" data-type="Number">4.9</span> <span class="tx" data-key="sheath_unit" data-type="Text">psi</span></span><span class="lbl">Nozzle</span><span><span class="tx" data-key="nozzle_size" data-type="Number">100</span> µm</span></div>
+            <div class="p-sec">WORK PERFORMED</div>
+            <div class="p-note"><span class="tx" data-key="work_summary" data-type="Text (long)">Replaced sheath filter and O-rings. Cleaned fluidics path.</span> <span class="tx" data-key="work_summary2" data-type="Text (long)">Aligned drop delay after nozzle swap.</span></div>
+            <div class="p-sec">PARTS REPLACED</div>
+            <div class="p-row two"><span class="lbl">Part no.</span><span><span class="tx" data-key="part_number" data-type="Text">344287</span></span><span class="lbl">Qty</span><span><span class="tx" data-key="part_qty" data-type="Number">2</span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="ed-right">
+        <div class="tpl-head"><h4>Preventive maintenance</h4><p>BD FACSAria III · 4 fields · used by 38 reports</p></div>
+        <div class="hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg><span>Click text or drag a box on the page to add a field. Existing fields are marked with numbers.</span></div>
+        <div class="flist" id="flist"></div>
+        <div style="display:flex;gap:8px;margin-top:auto"><button class="btn primary" style="flex:1;justify-content:center">Save template</button><button class="btn">Test on another PDF</button></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 3 -->
+<section class="screen" id="s3">
+  <div class="intro">
+    <h2>A home page that answers “what needs me today?”</h2>
+    <p>For a core facility manager the useful first screen is a short to-do list, not a menu. It puts the work waiting on you first, the maintenance that is due next, and a place to drop new reports. It also holds the AI search box, so it is the one place to start.</p>
+    <ul>
+      <li><b>Needs your attention</b>: reports to review, jobs waiting for a classification choice, failed reads.</li>
+      <li><b>Maintenance due</b>: overdue first, then the next 30 days, taken from the instrument records.</li>
+      <li><b>Drop area</b>: drag in one or many PDFs from anywhere on this page.</li>
+      <li>Analytics stays its own tab; the home page only carries four numbers.</li>
+    </ul>
+  </div>
+  <div class="scroller"><div class="frame">
+    <div data-topbar="home"></div>
+    <div class="page">
+      <div class="page-title"><h3>Today</h3><span>Friday 6 November</span></div>
+      <div class="home-top">
+        <div class="mini-ai"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg><span>Ask about your reports, for example “which instruments are overdue for PM?”</span><span class="kbd">Ctrl K</span></div>
+        <div class="dropline"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg><div><b>Drop service reports here</b><br><span>PDF or photos, one or many</span></div></div>
+      </div>
+      <div class="tiles">
+        <div class="card tile hot"><span class="v">7</span><span class="l">Reports to review</span></div>
+        <div class="card tile hot"><span class="v">2</span><span class="l">Instruments overdue for PM</span></div>
+        <div class="card tile"><span class="v">34</span><span class="l">Finalized this month</span></div>
+        <div class="card tile"><span class="v">91%</span><span class="l">Fields read without edits</span></div>
+      </div>
+      <div class="home-cols">
+        <div class="card">
+          <div class="sec-h"><h4>Needs your attention</h4><button class="btn sm quiet">Open Reports ›</button></div>
+          <div class="row-list">
+            <div class="q-row"><span class="dot warn"></span><div><div class="t">FACSAria III · P69200123</div><div class="m">PM report, 14 Sep · 3 of 12 fields flagged</div></div><span class="pill warn">In review</span><button class="btn sm">Review</button></div>
+            <div class="q-row"><span class="dot warn"></span><div><div class="t">Cytek Aurora · R1-0412</div><div class="m">PM report, 9 Sep · 1 of 14 fields flagged</div></div><span class="pill warn">In review</span><button class="btn sm">Review</button></div>
+            <div class="q-row"><span class="dot crit"></span><div><div class="t">scan0042.pdf</div><div class="m">Serial number unreadable · choose the instrument</div></div><span class="pill crit">Needs a choice</span><button class="btn sm">Choose</button></div>
+            <div class="q-row"><span class="dot"></span><div><div class="t">FACSDiscover S8 · S8-2210</div><div class="m">Installation report · extracted, not yet opened</div></div><span class="pill">Extracted</span><button class="btn sm">Review</button></div>
+            <div class="q-row"><span class="dot crit"></span><div><div class="t">CytoFLEX_repair.pdf</div><div class="m">Reading failed after 2 tries</div></div><span class="pill crit">Failed</span><button class="btn sm">Retry</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sec-h"><h4>Maintenance due</h4><button class="btn sm quiet">All instruments ›</button></div>
+          <div class="row-list">
+            <div class="due"><span><b style="font-weight:600">LSRFortessa</b> · F-1187</span><span class="pill crit">14 days over</span><span class="m">Last PM 28 Jul · every 3 months</span><span></span></div>
+            <div class="due"><span><b style="font-weight:600">Attune NxT</b> · AT-5530</span><span class="pill crit">3 days over</span><span class="m">Last PM 3 Aug · every 3 months</span><span></span></div>
+            <div class="due"><span><b style="font-weight:600">FACSAria III</b> · P69200187</span><span class="pill warn">in 9 days</span><span class="m">Last PM 2 Aug · every 3 months</span><span></span></div>
+            <div class="due"><span><b style="font-weight:600">CytoFLEX LX</b> · C-0771</span><span class="pill mute">in 24 days</span><span class="m">Last PM 21 Aug · every 3 months</span><span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 4 -->
+<section class="screen" id="s4">
+  <div class="intro">
+    <h2>Laid out for a small laptop</h2>
+    <p>Small laptops give about 1280 × 580 px once the browser toolbar is counted, and every row of header takes space away from the work. The frame below is drawn at true size and scaled to fit this page, and it rearranges at each width.</p>
+  </div>
+  <div class="s4-controls">
+    <div class="seg" role="group" aria-label="Screen width"><button data-w="1024" aria-pressed="false">1024</button><button data-w="1280" aria-pressed="true">1280</button><button data-w="1366" aria-pressed="false">1366</button></div>
+    <div class="seg" role="group" aria-label="Screen"><button data-v="review" aria-pressed="true">Review</button><button data-v="list" aria-pressed="false">Reports list</button></div>
+    <span class="cap" id="s4cap"></span>
+  </div>
+  <div class="scalebox" id="scalebox"><div class="frame s4" id="s4frame">
+    <div data-topbar="reports" data-compact="1"></div>
+    <div class="s4body" id="s4body"></div>
+  </div></div>
+  <p class="viewport-note">The frame height is the visible area after a typical browser toolbar and tab strip. The grey well is the scan; it never needs more than a third of the width.</p>
+  <div class="changes">
+    <div class="card"><b>Tighter top bar</b><span>48 px instead of 56. Tab text shrinks, then becomes icons at 1200 px and below.</span></div>
+    <div class="card"><b>Filters in one button</b><span>“Filters (3)” opens a panel instead of a row of dropdowns, which frees about 120 px of height.</span></div>
+    <div class="card"><b>Scan collapses to a strip</b><span>One click hides the scan and gives the fields the full width. The choice is remembered.</span></div>
+    <div class="card"><b>Compact rows</b><span>A density switch takes field rows from 40 px to 34 px, so about 3 more fields fit without scrolling.</span></div>
+    <div class="card"><b>Action bar stays put</b><span>Back, Mark as checked and Finalize stay at the bottom edge, so there is nothing to scroll to.</span></div>
+    <div class="card"><b>Less important columns drop</b><span>Below 1100 px the list hides the engineer column first, then the visit type.</span></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="screen" id="s5">
+  <div class="intro">
+    <h2>Several PDFs in, one confirmation at a time</h2>
+    <p>Dropping many files starts one queue. Each file is read and classified on its own, and the person confirms them one by one or approves all the confident ones together. Extraction then runs in the background and each report lands in the review list.</p>
+    <ul>
+      <li>Confident files can be approved together; unclear ones wait for a choice and never block the rest.</li>
+      <li>Duplicates are caught before any money is spent on reading them.</li>
+      <li>Click a file in the queue, then <b>Confirm &amp; next</b>.</li>
+    </ul>
+  </div>
+  <div class="scroller"><div class="frame">
+    <div data-topbar="new"></div>
+    <div class="page">
+      <div class="steps"><span class="s done"><i>✓</i>Upload</span><span class="ln"></span><span class="s on"><i>2</i>Classify</span><span class="ln"></span><span class="s"><i>3</i>Review &amp; finalize</span></div>
+      <div class="batch">
+        <div class="card" style="overflow:hidden">
+          <div class="bq-head">
+            <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-weight:600;font-size:16px">6 files</b><button class="btn sm">+ Add more</button></div>
+            <div class="bq-sum" id="bqsum"></div>
+            <button class="btn primary" id="confirmall" style="justify-content:center"></button>
+          </div>
+          <div id="bq"></div>
+        </div>
+        <div class="card bdetail" id="bdetail"></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 6 -->
+<section class="screen" id="s6">
+  <div class="intro">
+    <h2>Filters that start small and grow</h2>
+    <p>Eight dropdowns in a row hide what is actually applied. This version shows only the filters in use, as chips. A chip opens a short checklist, “Add filter” brings in the rest, and the count updates as you tick.</p>
+    <ul>
+      <li><b>Try it:</b> click a chip, tick another model, then use “Add filter” for Status.</li>
+      <li>Saved filters and quick presets sit on the same line, so common views are one click.</li>
+      <li>Analytics can reuse this bar as it is today.</li>
+    </ul>
+  </div>
+  <div class="scroller"><div class="frame">
+    <div data-topbar="reports"></div>
+    <div class="page">
+      <div class="page-title"><h3>Reports</h3></div>
+      <div class="fbar" id="fbar">
+        <div class="fbar-top">
+          <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input class="input" id="s6q" placeholder="Search report text…" aria-label="Search report text"></div>
+          <button class="btn">Saved filters ▾</button>
+          <button class="btn">Save this view</button>
+        </div>
+        <div class="fbar-chips" id="chips"></div>
+        <div class="presets"><span class="lbl">Quick views</span><button class="pre" data-pre="review">Needs review</button><button class="pre" data-pre="repairs">Repairs this year</button><button class="pre" data-pre="pm">PM, last 6 months</button></div>
+      </div>
+      <div class="count"><b id="s6n"></b><span id="s6sub"></span></div>
+      <div class="card" style="overflow:hidden"><table class="tbl"><thead><tr><th>Instrument</th><th>Place</th><th>Type</th><th>Date</th><th>Status</th></tr></thead><tbody id="s6rows"></tbody></table></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 7 -->
+<section class="screen" id="s7">
+  <div class="intro">
+    <h2>More ideas</h2>
+    <p>Ordered by how much they would change daily work for a core facility. The two with pictures are the ones I would try first.</p>
+  </div>
+  <div class="ideas">
+    <div class="card idea wide">
+      <h4>Review before sharing between institutes</h4>
+      <p>Reports will travel between institutes, so removing names and personal details has to be reliable. Extraction marks every person name, signature, email and phone number. A person approves the redactions once, then the shared copy contains only the redacted text.</p>
+      <div class="redact">Customer: Demo Institution · Engineer: <span class="rd hint-on">D. Levi</span> · Contact: <span class="rd hint-on">dana.k@example.org</span><br>Signed: <span class="rd hint-on">▒▒▒▒▒▒▒</span> · Laser delay 29.40 · Nozzle 100 µm · Call back: <span class="rd hint-on">+00 0 000 0000</span></div>
+      <div class="tags"><span class="pill good">High impact</span><span class="pill mute">Medium effort</span><span class="pill">Shows before every share</span></div>
+    </div>
+    <div class="card idea">
+      <h4>Command palette (Ctrl K)</h4>
+      <p>One shortcut anywhere: ask a question, jump to an instrument, open the next report to review. It is the AI search box, everywhere.</p>
+      <div class="cmdk"><div class="in"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>P6920…</div>
+        <div class="it on">FACSAria III · P69200123<small>Instrument</small></div>
+        <div class="it">FACSAria III · P69200187<small>Instrument</small></div>
+        <div class="it">PM report, 14 Sep · P69200123<small>Report</small></div>
+        <div class="it">Ask: “repairs on P69200123 this year”<small>Search</small></div></div>
+      <div class="tags"><span class="pill good">High impact</span><span class="pill good">Low effort</span></div>
+    </div>
+    <div class="card idea">
+      <h4>Compare with the last visit</h4>
+      <p>On Review, each measured value shows what it was at the previous service of the same instrument, and flags a jump.</p>
+      <div style="padding:2px 0">
+        <div class="diffrow"><span>Laser delay</span><span class="a">28.20</span><span class="b">29.40</span></div>
+        <div class="diffrow"><span>Sheath pressure</span><span class="a">4.9</span><span class="b">4.9</span></div>
+        <div class="diffrow"><span>Drop delay</span><span class="a">31.10</span><span class="b">34.80</span></div>
+      </div>
+      <div class="tags"><span class="pill good">High impact</span><span class="pill mute">Medium effort</span></div>
+    </div>
+    <div class="card idea">
+      <h4>Keyboard-first review</h4>
+      <p><span class="kbd" style="margin:0">J</span> <span class="kbd" style="margin:0">K</span> move between fields, <span class="kbd" style="margin:0">Enter</span> marks one as checked, <span class="kbd" style="margin:0">N</span> jumps to the next flagged field. Reviewing a dozen reports stops needing the mouse.</p>
+      <div class="tags"><span class="pill">Medium impact</span><span class="pill good">Low effort</span></div>
+    </div>
+    <div class="card idea">
+      <h4>New template from a batch</h4>
+      <p>When several uploads in one batch fit no template, offer “these 4 look like the same new form” and start the template editor with all four PDFs side by side.</p>
+      <div class="tags"><span class="pill">Medium impact</span><span class="pill mute">Medium effort</span></div>
+    </div>
+    <div class="card idea">
+      <h4>Weekly digest by email</h4>
+      <p>Monday morning: what is overdue, what waits for review, which instruments failed a limit last week. Opt-in, per person.</p>
+      <div class="tags"><span class="pill">Medium impact</span><span class="pill good">Low effort</span></div>
+    </div>
+    <div class="card idea">
+      <h4>Saved searches that run on a schedule</h4>
+      <p>Turn any AI search into a standing question, such as “laser delay out of range”, and get told when a new report matches.</p>
+      <div class="tags"><span class="pill">Medium impact</span><span class="pill mute">Medium effort</span></div>
+    </div>
+    <div class="card idea">
+      <h4>Change history on every report</h4>
+      <p>Who edited which field and when, with the original reading kept. It builds trust when reports are shared outside the lab.</p>
+      <div class="tags"><span class="pill">Medium impact</span><span class="pill mute">Medium effort</span></div>
+    </div>
+    <div class="card idea">
+      <h4>Values trending toward a limit</h4>
+      <p>A calibration number inside range but drifting for three visits gets a quiet flag on the instrument page, before it fails.</p>
+      <div class="tags"><span class="pill good">High impact</span><span class="pill mute">Larger effort</span></div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function () {
+  var ICON = {
+    new: '<path d="M12 5v14M5 12h14"/>', reports: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/>', analytics: '<path d="M5 20V10M12 20V4M19 20v-8"/>',
+    templates: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/>', instruments: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+    admin: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>', home: '<path d="M4 11l8-7 8 7v9H4z"/>'
+  };
+  function ic(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + ICON[n] + '</svg>'; }
+  function topbar(active, compact) {
+    var tabs = [['home', 'Today'], ['new', 'New report'], ['reports', 'Reports'], ['analytics', 'Analytics'], ['templates', 'Templates'], ['instruments', 'Instruments']];
+    var h = '<div class="topbar"><div class="brand"><i>' + ic('reports') + '</i><span>ServiceLedger</span></div><nav class="tabs">';
+    tabs.forEach(function (t, i) {
+      var opt = (t[0] === 'templates' || t[0] === 'instruments') && compact ? ' opt' : '';
+      h += '<span class="tab' + (active === t[0] ? ' on' : '') + opt + '">' + ic(t[0]) + '<span>' + t[1] + '</span></span>';
+    });
+    h += '<span class="tab end' + (active === 'admin' ? ' on' : '') + (compact ? ' opt' : '') + '">Admin</span></nav><button class="btn primary newbtn sm">' + ic('new') + '<span>New report</span></button></div>';
+    return h;
+  }
+  document.querySelectorAll('[data-topbar]').forEach(function (el) {
+    var a = el.getAttribute('data-topbar');
+    var wantsHome = a === 'home';
+    el.outerHTML = topbar(a, el.getAttribute('data-compact') === '1');
+  });
+
+  /* switcher + hash route */
+  var screens = ['s1', 's2', 's3', 's4', 's5', 's6', 's7'];
+  function show(id) {
+    if (screens.indexOf(id) < 0) id = 's1';
+    screens.forEach(function (s) { document.getElementById(s).classList.toggle('on', s === id); });
+    document.querySelectorAll('.switch button').forEach(function (b) { b.setAttribute('aria-selected', b.getAttribute('data-s') === id ? 'true' : 'false'); });
+    if (id === 's4') fit4();
+  }
+  document.querySelectorAll('.switch button').forEach(function (b) {
+    b.addEventListener('click', function () { var id = b.getAttribute('data-s'); try { history.replaceState(null, '', '#' + id); } catch (e) {} show(id); window.scrollTo(0, 0); });
+  });
+  window.addEventListener('hashchange', function () { show(location.hash.slice(1)); });
+
+  /* ---------- 1. AI search ---------- */
+  var EX = [
+    { q: 'PM reports on FACSAria III at Demo Institution in the last 6 months where laser delay was out of range',
+      chips: [['Report type', 'Preventive maintenance'], ['Instrument model', 'FACSAria III'], ['Place', 'Demo Institution'], ['Date', '6 May – 6 Nov 2026'], ['Field', 'Laser delay outside template range']],
+      rows: [
+        ['FACSAria III · P69200123', 'Room 204 · PM · 14 Sep 2026', 'Laser delay <mark>29.40</mark> (range 24.0 – 28.0)', 'Finalized', 'good'],
+        ['FACSAria III · P69200187', 'Room 118 · PM · 2 Aug 2026', 'Laser delay <mark>28.65</mark> (range 24.0 – 28.0)', 'Finalized', 'good'],
+        ['FACSAria III · P69200123', 'Room 204 · PM · 8 Jun 2026', 'Laser delay <mark>28.20</mark> (range 24.0 – 28.0)', 'Finalized', 'good'],
+        ['FACSAria III · P69200311', 'Room 031 · PM · 19 May 2026', 'Laser delay <mark>23.70</mark> (range 24.0 – 28.0)', 'In review', 'warn']],
+      sum: ['4 of 17 PM reports on this model were out of range for laser delay.', 'Three of the four came from two instruments, P69200123 and P69200187.', 'The last two PM visits to P69200123 read higher each time: 28.20, then 29.40.'],
+      bars: [['May', 23.7], ['Jun', 28.2], ['Aug', 28.65], ['Sep', 29.4]], unit: 'laser delay' },
+    { q: 'Which instruments had more than 2 repairs this year?',
+      chips: [['Report type', 'Malfunction / repair'], ['Date', 'This year (2026)'], ['Group by', 'Instrument'], ['Only if', 'repairs > 2']],
+      rows: [
+        ['LSRFortessa · F-1187', 'Room 031 · 5 repairs', 'Repairs on <mark>12 Jan, 3 Apr, 19 Jun, 2 Sep, 21 Oct</mark>', '5 repairs', 'warn'],
+        ['FACSAria III · P69200187', 'Room 118 · 4 repairs', 'Repairs on <mark>27 Feb, 14 May, 8 Aug, 30 Sep</mark>', '4 repairs', 'warn'],
+        ['Attune NxT · AT-5530', 'Room 204 · 3 repairs', 'Repairs on <mark>9 Mar, 22 Jul, 11 Oct</mark>', '3 repairs', 'warn']],
+      sum: ['3 of 24 instruments had more than 2 repairs in 2026.', 'The LSRFortessa F-1187 accounts for 5 of the 31 repairs across the whole fleet.', 'Two of the three were also overdue for preventive maintenance.'],
+      bars: [['F-1187', 5], ['P6920…187', 4], ['AT-5530', 3]], unit: 'repairs' },
+    { q: 'Reports by D. Levi mentioning a PMT replacement',
+      chips: [['Engineer', 'D. Levi'], ['Text contains', 'PMT replacement']],
+      rows: [
+        ['CytoFLEX LX · C-0771', 'Room 118 · Repair · 21 Aug 2026', 'Work performed: “<mark>Replaced PMT</mark> on channel B2, recalibrated gains.”', 'Finalized', 'good'],
+        ['LSRFortessa · F-1187', 'Room 031 · Repair · 19 Jun 2026', 'Work performed: “<mark>PMT replacement</mark> (V450), laser alignment.”', 'Finalized', 'good']],
+      sum: ['D. Levi replaced a PMT on 2 reports this year.', 'Both were repairs on instruments that also have other repairs this year.'],
+      bars: [['Jun', 1], ['Aug', 1]], unit: 'PMT replacements' }
+  ];
+  var cur = 0, mode = 'find';
+  var X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  function renderS1() {
+    var e = EX[cur];
+    document.getElementById('q').value = e.q;
+    document.getElementById('s1count').textContent = e.rows.length + ' reports match';
+    var ih = '<span class="lbl">Understood as</span>';
+    e.chips.forEach(function (c) { ih += '<span class="fchip"><span class="k">' + c[0] + ':</span><b>' + c[1] + '</b><button aria-label="Remove ' + c[0] + '">' + X + '</button></span>'; });
+    ih += '<button class="btn sm quiet">Edit as filters</button>';
+    document.getElementById('interp').innerHTML = ih;
+    var out = '';
+    if (mode === 'sum') {
+      var max = Math.max.apply(null, e.bars.map(function (b) { return b[1]; }));
+      out += '<div class="card sum"><div><h4>Summary</h4><ul>' + e.sum.map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ul><p style="color:var(--text-muted);font-size:13px;margin-top:10px">Based on the ' + e.rows.length + ' reports below. Figures come from finalized and in-review fields.</p></div><div><div class="lbl" style="margin-bottom:10px">' + e.unit + '</div><div class="bars">' + e.bars.map(function (b) { return '<div><span>' + b[0] + '</span><span><i style="width:' + Math.round(b[1] / max * 100) + '%"></i></span><em>' + b[1] + '</em></div>'; }).join('') + '</div><div style="display:flex;gap:8px;margin-top:14px"><button class="btn sm">Save as report</button><button class="btn sm">Copy</button></div></div></div>';
+    }
+    out += '<div class="card row-list" style="overflow:hidden">' + e.rows.map(function (r) {
+      return '<div class="res"><div><h4>' + r[0] + '</h4><div class="meta">' + r[1] + '</div></div><div class="why">' + r[2] + '</div><span class="pill ' + r[4] + '">' + r[3] + '</span></div>';
+    }).join('') + '</div>';
+    document.getElementById('s1res').innerHTML = out;
+    document.querySelectorAll('.ex').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-ex') === cur); });
+    document.getElementById('m-find').setAttribute('aria-pressed', mode === 'find');
+    document.getElementById('m-sum').setAttribute('aria-pressed', mode === 'sum');
+  }
+  document.querySelectorAll('.ex').forEach(function (b) { b.addEventListener('click', function () { cur = +b.getAttribute('data-ex'); renderS1(); }); });
+  document.getElementById('m-find').addEventListener('click', function () { mode = 'find'; renderS1(); });
+  document.getElementById('m-sum').addEventListener('click', function () { mode = 'sum'; renderS1(); });
+  document.getElementById('s1go').addEventListener('click', renderS1);
+  renderS1();
+
+  /* ---------- 2. Template editor ---------- */
+  var fields = [];
+  var wrap = document.getElementById('wrap'), paper = document.getElementById('paper'), flist = document.getElementById('flist');
+  var seed = [['customer', 'Text'], ['instrument_model', 'Text'], ['serial_number', 'Text'], ['visit_date', 'Date']];
+  function addField(key, type, spanEls, isNew) {
+    var n = fields.length + 1;
+    fields.push({ key: key, type: type, els: spanEls });
+    spanEls.forEach(function (el, i) { el.classList.remove('sel'); el.classList.add('mapped'); if (i === 0) el.setAttribute('data-n', n); });
+    drawFields(isNew ? n : 0);
+  }
+  function drawFields(flashN) {
+    flist.innerHTML = fields.map(function (f, i) {
+      var sample = f.els.map(function (e) { return e.textContent; }).join(' ');
+      return '<div class="fld' + (flashN === i + 1 ? ' new' : '') + '"><span class="n">' + (i + 1) + '</span><span class="nm">' + f.key + '</span><span class="pill mute">' + f.type + '</span><button data-rm="' + i + '" aria-label="Remove field">' + X + '</button><span class="sm">from the PDF: “' + sample + '”</span></div>';
+    }).join('');
+  }
+  seed.forEach(function (s) { var el = paper.querySelector('[data-key="' + s[0] + '"]'); addField(s[0], s[1], [el], false); });
+  flist.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-rm]'); if (!b) return;
+    var f = fields.splice(+b.getAttribute('data-rm'), 1)[0];
+    f.els.forEach(function (el) { el.classList.remove('mapped'); el.removeAttribute('data-n'); });
+    fields.forEach(function (g, i) { g.els[0].setAttribute('data-n', i + 1); });
+    drawFields(0);
+  });
+  var pop = null, rub = null, start = null, picked = [];
+  function closePop() { if (pop) { pop.remove(); pop = null; } picked.forEach(function (e) { e.classList.remove('sel'); }); picked = []; }
+  function openPop(els) {
+    closePop(); picked = els; els.forEach(function (e) { e.classList.add('sel'); });
+    var first = els[0], row = first.closest('.p-row'), label = row && row.querySelector('.lbl') ? row.querySelector('.lbl').textContent : first.getAttribute('data-key');
+    var guess = (els.length > 1 || !first.getAttribute('data-key')) ? label : first.getAttribute('data-key');
+    guess = guess.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    var type = first.getAttribute('data-type') || 'Text';
+    var sample = els.map(function (e) { return e.textContent; }).join(' ');
+    var wr = wrap.getBoundingClientRect(), r = els[els.length - 1].getBoundingClientRect();
+    var left = Math.min(Math.max(8, r.left - wr.left), wr.width - 300), top = r.bottom - wr.top + 10;
+    pop = document.createElement('div'); pop.className = 'pop'; pop.style.left = left + 'px'; pop.style.top = top + 'px';
+    pop.innerHTML = '<div class="lbl">Add as a new field</div><div class="picked">' + sample + '</div><div><label class="lbl" for="pn">Field name</label><input class="input" id="pn" value="' + guess + '"></div><div class="two"><div><label class="lbl" for="pt">Type</label><select class="sel" id="pt"><option>Text</option><option>Text (long)</option><option>Number</option><option>Date</option><option>Yes / No</option></select></div><div><label class="lbl">Sample value</label><div class="input" style="display:flex;align-items:center;font-family:var(--font-mono);font-size:13px;background:var(--surface-2);overflow:hidden;white-space:nowrap">' + sample + '</div></div></div><div class="acts"><button class="btn sm" id="pc">Cancel</button><button class="btn sm primary" id="pa">Add field</button></div>';
+    wrap.appendChild(pop);
+    pop.querySelector('#pt').value = type.indexOf('Text') === 0 && els.length > 1 ? 'Text (long)' : type;
+    pop.addEventListener('pointerdown', function (ev) { ev.stopPropagation(); });
+    pop.querySelector('#pc').addEventListener('click', closePop);
+    pop.querySelector('#pa').addEventListener('click', function () {
+      var name = pop.querySelector('#pn').value || guess, t = pop.querySelector('#pt').value, els2 = picked.slice();
+      picked = []; pop.remove(); pop = null; addField(name, t, els2, true);
+    });
+  }
+  paper.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0) return; closePop();
+    var wr = wrap.getBoundingClientRect(); start = { x: e.clientX, y: e.clientY, wx: e.clientX - wr.left, wy: e.clientY - wr.top };
+    rub = document.createElement('div'); rub.className = 'rubber'; wrap.appendChild(rub); paper.setPointerCapture(e.pointerId);
+  });
+  paper.addEventListener('pointermove', function (e) {
+    if (!rub) return; var wr = wrap.getBoundingClientRect(), x = e.clientX - wr.left, y = e.clientY - wr.top;
+    rub.style.left = Math.min(start.wx, x) + 'px'; rub.style.top = Math.min(start.wy, y) + 'px';
+    rub.style.width = Math.abs(x - start.wx) + 'px'; rub.style.height = Math.abs(y - start.wy) + 'px';
+  });
+  paper.addEventListener('pointerup', function (e) {
+    if (!rub) return; rub.remove(); rub = null;
+    var dx = Math.abs(e.clientX - start.x), dy = Math.abs(e.clientY - start.y), els = [];
+    if (dx < 5 && dy < 5) {
+      var t = document.elementFromPoint(e.clientX, e.clientY); t = t && t.closest ? t.closest('.tx') : null;
+      if (t && !t.classList.contains('mapped')) els = [t];
+    } else {
+      var x1 = Math.min(start.x, e.clientX), x2 = Math.max(start.x, e.clientX), y1 = Math.min(start.y, e.clientY), y2 = Math.max(start.y, e.clientY);
+      paper.querySelectorAll('.tx').forEach(function (s) {
+        var r = s.getBoundingClientRect();
+        if (!s.classList.contains('mapped') && r.right > x1 && r.left < x2 && r.bottom > y1 && r.top < y2) els.push(s);
+      });
+    }
+    if (els.length) openPop(els);
+  });
+  document.getElementById('hlall').addEventListener('change', function (e) { wrap.classList.toggle('hl-all', e.target.checked); });
+  document.getElementById('suggest').addEventListener('click', function () {
+    closePop(); var cands = ['work_order', 'engineer', 'laser_delay', 'sheath_pressure'];
+    paper.querySelectorAll('.tx').forEach(function (s) { s.classList.remove('sel'); });
+    cands.forEach(function (k) { var el = paper.querySelector('[data-key="' + k + '"]'); if (el && !el.classList.contains('mapped')) el.classList.add('sel'); });
+  });
+
+  /* ---------- 4. Small laptop ---------- */
+  var W = 1280, V = 'review', scanOn = true, dense = true;
+  var HEIGHT = { 1024: 600, 1280: 580, 1366: 628 };
+  var FR = [['Customer', 'Demo Institution, Flow Cytometry Core', 0], ['Instrument', 'BD FACSAria III', 0], ['Serial number', 'P69200123', 0], ['Visit date', '14/09/2026', 0], ['Engineer', 'D. Levi', 0], ['Laser delay', '29.40', 1], ['Laser delay range', '24.0 – 28.0', 0], ['Sheath pressure', '4.9 psi', 1], ['Nozzle size', '100 µm', 0], ['Work performed', 'Replaced sheath filter and O-rings…', 1], ['Part number', '344287', 0], ['Quantity', '2', 0]];
+  function renderS4() {
+    var h = '';
+    if (V === 'review') {
+      h += '<div class="s4head"><button class="btn sm quiet">‹ Back</button><h3>FACSAria III · P69200123</h3><span class="pill warn">In review</span><span class="grow"></span><span class="prog"><i><b></b></i>9 of 12 checked</span><button class="btn sm" id="dn">' + (dense ? 'Comfortable rows' : 'Compact rows') + '</button></div>';
+      h += '<div class="s4split ' + (scanOn ? '' : 'noscan') + '"><div class="s4scan"><div class="bar"><span>Scan · page 1 of 2</span><button class="btn sm quiet" id="sc" style="padding:0 8px" aria-label="Toggle scan">' + (scanOn ? '⟨' : '⟩') + '</button></div><div class="thumb"><i style="width:60%"></i><i></i><i style="width:90%"></i><i class="hot" style="width:40%"></i><i style="width:80%"></i><i></i><i style="width:70%"></i><i style="width:55%"></i><i></i><i style="width:85%"></i></div></div>';
+      h += '<div class="s4fields ' + (dense ? 'dense' : '') + '">' + FR.map(function (f, i) { return '<div class="frow' + (f[2] ? ' flagged' : '') + '"><span class="n">' + (i + 1) + '</span><span class="l">' + f[0] + '</span><span class="v">' + f[1] + '</span><span>' + (f[2] ? '<span class="pill warn">Check</span>' : '') + '</span></div>'; }).join('') + '</div></div>';
+      h += '<div class="s4bar"><button class="btn sm">‹ Back to Classify</button><span class="grow"></span><span style="font-size:13px;color:var(--text-muted)">3 fields still need a look</span><button class="btn sm">Next flagged ↓</button><button class="btn sm primary">Finalize</button></div>';
+    } else {
+      h += '<div class="s4head"><h3>Reports</h3><span class="pill mute">214</span><span class="grow"></span><div class="s4tools"><input class="input" placeholder="Search report text…" aria-label="Search"><button class="btn">Filters (3)</button><button class="btn" id="dn">' + (dense ? 'Comfortable' : 'Compact') + '</button></div></div>';
+      h += '<div class="s4list">';
+      [['BD FACSAria III · P69200123', 'Room 204', [['14 Sep', 'Preventive maintenance', 'In review', 'warn'], ['8 Jun', 'Preventive maintenance', 'Finalized', 'good'], ['27 Mar', 'Malfunction / repair', 'Finalized', 'good']]],
+       ['Cytek Aurora · R1-0412', 'Room 118', [['9 Sep', 'Preventive maintenance', 'In review', 'warn'], ['2 Jun', 'Installation / upgrade', 'Finalized', 'good']]]].forEach(function (g) {
+        h += '<div class="card gcard"><div class="gh"><b style="font-weight:600">' + g[0] + '</b><span style="color:var(--text-muted)">' + g[1] + '</span><span class="pill warn" style="margin-left:auto">1 needs review</span></div>' + g[2].map(function (r) {
+          return '<div class="gr" style="' + (dense ? '' : 'padding:10px 12px') + '"><span class="mono">' + r[0] + ' 2026</span><span class="opt">' + r[1] + '</span><span class="opt" style="color:var(--text-muted)">D. Levi</span><span class="pill ' + r[3] + '">' + r[2] + '</span></div>';
+        }).join('') + '</div>';
+      });
+      h += '</div>';
+    }
+    document.getElementById('s4body').innerHTML = h;
+    var dn = document.getElementById('dn'); if (dn) dn.addEventListener('click', function () { dense = !dense; renderS4(); });
+    var sc = document.getElementById('sc'); if (sc) sc.addEventListener('click', function () { scanOn = !scanOn; renderS4(); });
+  }
+  function fit4() {
+    var box = document.getElementById('scalebox'), fr = document.getElementById('s4frame');
+    var availW = box.parentElement.clientWidth, s = Math.min(1, availW / W), H = HEIGHT[W];
+    fr.style.width = W + 'px'; fr.style.height = H + 'px'; fr.style.transform = 'scale(' + s + ')';
+    box.style.height = Math.round(H * s) + 'px'; box.style.width = Math.round(W * s) + 'px';
+    document.getElementById('s4cap').textContent = W + ' × ' + (W === 1366 ? 768 : W === 1280 ? 720 : 768) + ' screen, ' + H + ' px visible, shown at ' + Math.round(s * 100) + '%';
+  }
+  document.querySelectorAll('[data-w]').forEach(function (b) { b.addEventListener('click', function () { W = +b.getAttribute('data-w'); document.querySelectorAll('[data-w]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); fit4(); }); });
+  document.querySelectorAll('[data-v]').forEach(function (b) { b.addEventListener('click', function () { V = b.getAttribute('data-v'); document.querySelectorAll('[data-v]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); renderS4(); }); });
+  window.addEventListener('resize', function () { if (document.getElementById('s4').classList.contains('on')) fit4(); });
+  renderS4();
+
+  /* ---------- 5. Batch upload ---------- */
+  var FILES = [
+    { f: 'FACSAria_PM_Sep.pdf', inst: 'BD FACSAria III · P69200123', type: 'Preventive maintenance', c: 97, st: 'ready', why: 'Serial P69200123 found on page 1, matches one instrument. Title reads “Preventive maintenance”.' },
+    { f: 'S8_install_report.pdf', inst: 'FACSDiscover S8 · S8-2210', type: 'Installation / upgrade', c: 94, st: 'ready', why: 'Serial S8-2210 found on page 1. Title reads “Installation Report”.' },
+    { f: 'scan0042.pdf', inst: 'Not found', type: 'Preventive maintenance', c: 41, st: 'choose', why: 'The serial number is smudged. The form looks like a PM report from the Cytek template.' },
+    { f: 'Aurora_PM.pdf', inst: 'Cytek Aurora · R1-0412', type: 'Preventive maintenance', c: 91, st: 'ready', why: 'Serial R1-0412 found on page 1. Cytek PM layout recognised.' },
+    { f: 'CytoFLEX_repair.pdf', inst: '', type: '', c: 0, st: 'reading', why: '' },
+    { f: 'FACSAria_PM_Sep (1).pdf', inst: 'BD FACSAria III · P69200123', type: 'Preventive maintenance', c: 97, st: 'dup', why: 'Same content as FACSAria_PM_Sep.pdf, already in this batch.' }
+  ];
+  var sel = 0;
+  var STL = { ready: ['Ready to confirm', 'good'], choose: ['Needs your choice', 'crit'], reading: ['Reading…', 'mute'], dup: ['Duplicate', 'warn'], done: ['Confirmed', 'good'] };
+  function renderS5() {
+    var cnt = { ready: 0, choose: 0, reading: 0, dup: 0, done: 0 };
+    FILES.forEach(function (x) { cnt[x.st]++; });
+    document.getElementById('bqsum').innerHTML = ['done', 'ready', 'choose', 'reading', 'dup'].filter(function (k) { return cnt[k]; }).map(function (k) { return '<span class="pill ' + STL[k][1] + '">' + cnt[k] + ' ' + STL[k][0].toLowerCase().replace('…', '') + '</span>'; }).join('');
+    var ca = document.getElementById('confirmall'); ca.textContent = cnt.ready ? 'Confirm ' + cnt.ready + ' confident ' + (cnt.ready === 1 ? 'file' : 'files') : 'Nothing confident left to confirm'; ca.disabled = !cnt.ready;
+    document.getElementById('bq').innerHTML = FILES.map(function (x, i) {
+      var s = STL[x.st];
+      return '<button class="bq-item" data-i="' + i + '" aria-current="' + (i === sel) + '"><span class="mini-pg"><i></i><i></i><i></i><i></i></span><span><span class="nm">' + x.f + '</span><span class="ds">' + (x.st === 'reading' ? 'Finding the instrument…' : x.inst + (x.c ? ' · ' + x.c + '%' : '')) + '</span></span><span class="pill ' + s[1] + '">' + (x.st === 'reading' ? '<span class="spin"></span>' : '') + s[0] + '</span></button>';
+    }).join('');
+    var x = FILES[sel], d = '';
+    var scan = '<div class="bd-scan"><div class="paper"><div class="p-title" style="font-size:11px"><span>SERVICE REPORT</span><span>' + (x.type || '…') + '</span></div><div class="p-row" style="grid-template-columns:88px 1fr"><span class="lbl">Instrument</span><span class="mono">' + (x.inst.split(' · ')[0] || '…') + '</span></div><div class="p-row" style="grid-template-columns:88px 1fr"><span class="lbl">Serial</span><span class="mono" style="' + (x.st === 'choose' ? 'filter:blur(2.5px)' : '') + '">' + (x.inst.split(' · ')[1] || '…') + '</span></div><div class="p-row" style="grid-template-columns:88px 1fr"><span class="lbl">Date</span><span class="mono">14/09/2026</span></div><div class="p-sec">WORK PERFORMED</div><div class="p-note" style="line-height:1.6"><span style="display:block;height:6px;background:#dde2ec;margin:6px 0;border-radius:3px"></span><span style="display:block;height:6px;background:#dde2ec;margin:6px 0;width:80%;border-radius:3px"></span><span style="display:block;height:6px;background:#dde2ec;margin:6px 0;width:90%;border-radius:3px"></span><span style="display:block;height:6px;background:#dde2ec;margin:6px 0;width:55%;border-radius:3px"></span></div></div></div>';
+    var form;
+    if (x.st === 'reading') form = '<div class="bd-form"><h4>' + x.f + '</h4><div class="why2" style="display:flex;gap:10px;align-items:center"><span class="spin"></span>Reading the first pages. This file can be confirmed as soon as it finishes; the others are not waiting for it.</div><div class="acts"><button class="btn">Cancel this file</button></div></div>';
+    else if (x.st === 'dup') form = '<div class="bd-form"><h4>' + x.f + '</h4><div class="why2">' + x.why + '</div><div class="pill warn" style="align-self:flex-start">Duplicate</div><div class="acts"><button class="btn primary">Remove from batch</button><button class="btn">Keep it anyway</button></div></div>';
+    else form = '<div class="bd-form"><h4>' + x.f + '</h4><div><label class="lbl" for="bi">Instrument</label><select class="sel" id="bi"><option>' + (x.inst === 'Not found' ? 'Choose an instrument…' : x.inst) + '</option><option>BD FACSAria III · P69200187</option><option>Cytek Aurora · R1-0412</option></select></div><div><label class="lbl" for="bt">Report type</label><select class="sel" id="bt"><option>' + x.type + '</option><option>Malfunction / repair</option><option>Installation / upgrade</option></select></div><div class="why2">' + (x.c ? '<b style="font-weight:600">' + x.c + '% sure.</b> ' : '') + x.why + '</div><div class="acts"><button class="btn primary" id="cn"' + (x.st === 'choose' ? ' disabled' : '') + '>Confirm &amp; next</button><button class="btn" id="sk">Skip for now</button><button class="btn quiet" style="color:var(--crit)">Remove</button></div></div>';
+    document.getElementById('bdetail').innerHTML = scan + form;
+    var cn = document.getElementById('cn');
+    if (cn) cn.addEventListener('click', function () { FILES[sel].st = 'done'; nextOpen(); renderS5(); });
+    var sk = document.getElementById('sk');
+    if (sk) sk.addEventListener('click', function () { nextOpen(); renderS5(); });
+    var bi = document.getElementById('bi');
+    if (bi && x.st === 'choose') bi.addEventListener('change', function () { var b = document.getElementById('cn'); if (b) b.disabled = bi.selectedIndex === 0; });
+  }
+  function nextOpen() { for (var k = 1; k <= FILES.length; k++) { var j = (sel + k) % FILES.length; if (FILES[j].st === 'ready' || FILES[j].st === 'choose') { sel = j; return; } } }
+  document.getElementById('bq').addEventListener('click', function (e) { var b = e.target.closest('.bq-item'); if (b) { sel = +b.getAttribute('data-i'); renderS5(); } });
+  document.getElementById('confirmall').addEventListener('click', function () { FILES.forEach(function (x) { if (x.st === 'ready') x.st = 'done'; }); renderS5(); });
+  renderS5();
+
+  /* ---------- 6. Filters ---------- */
+  var DEF = {
+    model: { label: 'Instrument model', kind: 'multi', opts: [['FACSAria III', 61], ['FACSDiscover S8', 22], ['Cytek Aurora', 48], ['CytoFLEX LX', 31], ['Attune NxT', 29], ['LSRFortessa', 23]] },
+    place: { label: 'Place', kind: 'multi', opts: [['Demo Institution · Faculty of Science', 120], ['Demo Institution · Medical School', 64], ['Northern Campus Core', 30]] },
+    type: { label: 'Report type', kind: 'multi', opts: [['Preventive maintenance', 118], ['Malfunction / repair', 71], ['Installation / upgrade', 25]] },
+    status: { label: 'Status', kind: 'multi', opts: [['Draft', 3], ['Extracted', 9], ['In review', 7], ['Finalized', 195]] },
+    date: { label: 'Date', kind: 'one', opts: [['Last 30 days', 0.15], ['Last 6 months', 0.5], ['This year', 0.8], ['All time', 1]] },
+    manager: { label: 'Lab manager', kind: 'multi', opts: [['D. Cohen', 80], ['R. Mizrahi', 70], ['A. Shalev', 64]] }
+  };
+  var order = ['model', 'place', 'type', 'status', 'date', 'manager'];
+  var active = ['model', 'type', 'date'];
+  var SELV = { model: ['FACSAria III', 'Cytek Aurora'], type: ['Preventive maintenance'], date: ['Last 6 months'], place: [], status: [], manager: [] };
+  var openKey = null;
+  var chipsEl = document.getElementById('chips'), fbar = document.getElementById('fbar');
+  function count6() {
+    var n = 214;
+    active.forEach(function (k) {
+      var d = DEF[k], s = SELV[k];
+      if (d.kind === 'one') { var o = d.opts.filter(function (o) { return o[0] === s[0]; })[0]; n *= o ? o[1] : 1; }
+      else if (s.length) { var tot = 0, got = 0; d.opts.forEach(function (o) { tot += o[1]; if (s.indexOf(o[0]) >= 0) got += o[1]; }); n *= got / tot; }
+    });
+    return Math.max(0, Math.round(n));
+  }
+  var ROWS = [['FACSAria III · P69200123', 'Room 204', 'Preventive maintenance', '14 Sep 2026', 'In review', 'warn'], ['Cytek Aurora · R1-0412', 'Room 118', 'Preventive maintenance', '9 Sep 2026', 'In review', 'warn'], ['FACSAria III · P69200187', 'Room 118', 'Preventive maintenance', '2 Aug 2026', 'Finalized', 'good'], ['Cytek Aurora · R1-0388', 'Room 031', 'Preventive maintenance', '17 Jul 2026', 'Finalized', 'good'], ['FACSAria III · P69200123', 'Room 204', 'Preventive maintenance', '8 Jun 2026', 'Finalized', 'good']];
+  function chipText(k) {
+    var d = DEF[k], s = SELV[k];
+    if (!s.length) return '<span class="k">' + d.label + ':</span><b>any</b>';
+    return '<span class="k">' + d.label + ':</span><b>' + s[0] + '</b>' + (s.length > 1 ? '<span class="pill" style="height:18px;padding:0 6px">+' + (s.length - 1) + '</span>' : '');
+  }
+  function renderS6() {
+    var h = '';
+    active.forEach(function (k) {
+      h += '<span class="fchip btnlike' + (openKey === k ? ' open' : '') + '" data-k="' + k + '" role="button" tabindex="0">' + chipText(k) + '<button data-x="' + k + '" aria-label="Remove ' + DEF[k].label + ' filter">' + X + '</button></span>';
+    });
+    var rest = order.filter(function (k) { return active.indexOf(k) < 0; });
+    if (rest.length) h += '<button class="fchip addf" id="addf" data-k="__add">+ Add filter</button>';
+    if (active.length) h += '<button class="btn sm quiet" id="clr">Clear all</button>';
+    chipsEl.innerHTML = h;
+    var n = count6();
+    document.getElementById('s6n').textContent = n + ' reports';
+    document.getElementById('s6sub').textContent = active.length ? 'match ' + active.length + ' filter' + (active.length === 1 ? '' : 's') : 'in total';
+    document.getElementById('s6rows').innerHTML = ROWS.slice(0, Math.min(5, Math.max(n, 0))).map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td><td class="mono" style="font-size:13px">' + r[3] + '</td><td><span class="pill ' + r[5] + '">' + r[4] + '</span></td></tr>'; }).join('') || '<tr><td colspan="5" style="color:var(--text-muted);padding:22px 16px">No reports match. Remove a filter to see more.</td></tr>';
+    var old = fbar.querySelector('.fpop'); if (old) old.remove();
+    if (openKey) drawPop();
+  }
+  function drawPop() {
+    var anchor = chipsEl.querySelector(openKey === '__add' ? '#addf' : '[data-k="' + openKey + '"]'); if (!anchor) return;
+    var p = document.createElement('div'); p.className = 'fpop';
+    p.style.left = Math.min(anchor.offsetLeft + chipsEl.offsetLeft, fbar.clientWidth - 260) + 'px';
+    p.style.top = (chipsEl.offsetTop + anchor.offsetTop + anchor.offsetHeight + 6) + 'px';
+    if (openKey === '__add') {
+      p.innerHTML = order.filter(function (k) { return active.indexOf(k) < 0; }).map(function (k) { return '<button class="menu-i" data-add="' + k + '">+ ' + DEF[k].label + '</button>'; }).join('');
+    } else {
+      var d = DEF[openKey], s = SELV[openKey];
+      p.innerHTML = (d.kind === 'multi' && d.opts.length > 5 ? '<input class="input" placeholder="Find…" aria-label="Find an option">' : '') + d.opts.map(function (o, i) {
+        var on = s.indexOf(o[0]) >= 0;
+        return '<label><input type="' + (d.kind === 'one' ? 'radio' : 'checkbox') + '" name="opt" data-o="' + i + '"' + (on ? ' checked' : '') + '>' + o[0] + (d.kind === 'multi' ? '<span class="c">' + o[1] + '</span>' : '') + '</label>';
+      }).join('') + '<div class="foot"><button class="btn sm quiet" data-clr>' + (d.kind === 'multi' ? 'Select none' : '') + '</button><button class="btn sm primary" data-done>Done</button></div>';
+    }
+    fbar.appendChild(p);
+  }
+  fbar.addEventListener('click', function (e) {
+    var t = e.target;
+    var x = t.closest('[data-x]'); if (x) { var k = x.getAttribute('data-x'); active.splice(active.indexOf(k), 1); SELV[k] = []; openKey = null; renderS6(); e.stopPropagation(); return; }
+    if (t.closest('#clr')) { active.forEach(function (k) { SELV[k] = []; }); active = []; openKey = null; renderS6(); return; }
+    var add = t.closest('[data-add]'); if (add) { var a = add.getAttribute('data-add'); active.push(a); openKey = a; renderS6(); return; }
+    if (t.closest('[data-done]')) { openKey = null; renderS6(); return; }
+    if (t.closest('[data-clr]')) { SELV[openKey] = []; renderS6(); return; }
+    var inp = t.closest('input[data-o]');
+    if (inp) {
+      var d = DEF[openKey], o = d.opts[+inp.getAttribute('data-o')][0];
+      if (d.kind === 'one') SELV[openKey] = [o]; else { var i = SELV[openKey].indexOf(o); if (i >= 0) SELV[openKey].splice(i, 1); else SELV[openKey].push(o); }
+      renderS6(); return;
+    }
+    var chip = t.closest('[data-k]');
+    if (chip) { var kk = chip.getAttribute('data-k'); openKey = openKey === kk ? null : kk; renderS6(); return; }
+    var pre = t.closest('[data-pre]');
+    if (pre) {
+      var v = pre.getAttribute('data-pre');
+      active = []; Object.keys(SELV).forEach(function (k) { SELV[k] = []; });
+      if (v === 'review') { active = ['status']; SELV.status = ['In review']; }
+      if (v === 'repairs') { active = ['type', 'date']; SELV.type = ['Malfunction / repair']; SELV.date = ['This year']; }
+      if (v === 'pm') { active = ['type', 'date']; SELV.type = ['Preventive maintenance']; SELV.date = ['Last 6 months']; }
+      openKey = null; renderS6();
+    }
+  });
+  document.addEventListener('click', function (e) { var path = e.composedPath ? e.composedPath() : []; if (openKey && path.indexOf(fbar) < 0) { openKey = null; renderS6(); } });
+  renderS6();
+
+  show(location.hash.slice(1));
+  if (!location.hash) show('s1');
+})();
+</script>
+
+</body>
+</html>

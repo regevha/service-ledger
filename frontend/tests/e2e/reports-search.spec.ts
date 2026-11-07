@@ -19,17 +19,17 @@ test.describe('reports search screen', () => {
     const marker = `E2E-Search-${Date.now()}`;
     await seedReport(request, { model: 'FACSDiscover S8', reportType: 'installation_upgrade', technician: marker, finalize: true });
 
-    await page.goto('/');
-    await page.click('.view-tab:has-text("Reports")');
+    await page.goto('/#/new');
+    await page.getByTestId('tab-reports').click();
     await page.waitForSelector('.report-table, .empty-hint');
 
     // No filters: the seeded row is visible somewhere in the table.
-    await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
+    await expect(page.getByTestId('report-row').filter({ hasText: marker })).toBeVisible();
 
     // Matching filters keep it.
     await page.getByLabel('Report type', { exact: true }).selectOption('installation_upgrade');
     await page.getByLabel('Status', { exact: true }).selectOption('finalized');
-    await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
+    await expect(page.getByTestId('report-row').filter({ hasText: marker })).toBeVisible();
 
     // Scoped to this test's own marker: the report above is finalized, so
     // filtering to "classified" while still searching for its technician
@@ -41,12 +41,12 @@ test.describe('reports search screen', () => {
     await page.getByLabel('Report type', { exact: true }).selectOption('');
     await page.getByLabel('Status', { exact: true }).selectOption('classified');
     await page.locator('input[aria-label="Lab manager"]').fill(marker);
-    await expect(page.locator('.report-row-body')).toHaveCount(0);
+    await expect(page.getByTestId('report-row')).toHaveCount(0);
     await expect(page.locator('.empty-hint')).toBeVisible();
     await expect(page.locator('a.btn:has-text("Export CSV")')).toHaveCount(0);
 
     await page.click('button:has-text("Clear filters")');
-    await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
+    await expect(page.getByTestId('report-row').filter({ hasText: marker })).toBeVisible();
   });
 
   test('filters by technician with a case-insensitive partial match', async ({ page, request }) => {
@@ -58,34 +58,34 @@ test.describe('reports search screen', () => {
     await seedReport(request, { model: 'FACSDiscover S8', reportType: 'installation_upgrade', technician: marker, finalize: true });
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: otherMarker, finalize: true });
 
-    await page.goto('/');
-    await page.click('.view-tab:has-text("Reports")');
+    await page.goto('/#/new');
+    await page.getByTestId('tab-reports').click();
     await page.waitForSelector('.report-table, .empty-hint');
-    await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
-    await expect(page.locator('.report-row-body', { hasText: otherMarker })).toBeVisible();
+    await expect(page.getByTestId('report-row').filter({ hasText: marker })).toBeVisible();
+    await expect(page.getByTestId('report-row').filter({ hasText: otherMarker })).toBeVisible();
 
     // A lowercased substring of just one marker's distinguishing part — the
     // input is debounced (300ms), so wait for the list to actually narrow
     // rather than asserting immediately after typing.
     await page.fill('input[aria-label="Lab manager"]', 'tech-match');
-    await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
-    await expect(page.locator('.report-row-body', { hasText: otherMarker })).toHaveCount(0);
+    await expect(page.getByTestId('report-row').filter({ hasText: marker })).toBeVisible();
+    await expect(page.getByTestId('report-row').filter({ hasText: otherMarker })).toHaveCount(0);
 
     await page.click('button:has-text("Clear filters")');
     await expect(page.locator('input[aria-label="Lab manager"]')).toHaveValue('');
-    await expect(page.locator('.report-row-body', { hasText: otherMarker })).toBeVisible();
+    await expect(page.getByTestId('report-row').filter({ hasText: otherMarker })).toBeVisible();
   });
 
   test('opens a report, hides finalize once already finalized, and back-navigates', async ({ page, request }) => {
     const marker = `E2E-Detail-${Date.now()}`;
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
 
-    await page.goto('/');
-    await page.click('.view-tab:has-text("Reports")');
+    await page.goto('/#/new');
+    await page.getByTestId('tab-reports').click();
     await page.waitForSelector('.report-table');
-    await page.click(`.report-row-body:has-text("${marker}")`);
+    await page.click(`[data-testid="report-row"]:has-text("${marker}")`);
 
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+    await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.report-heading-meta')).toContainText('Finalized');
     // A finalized report opens read-only: Edit unlocks it, and only then is there anything to save.
     await expect(page.locator('button:has-text("Save corrections")')).toHaveCount(0);
@@ -97,19 +97,19 @@ test.describe('reports search screen', () => {
 
     await page.click('.back-link');
     await expect(page.locator('.report-table')).toBeVisible();
-    await expect(page.locator('.report-row-body', { hasText: marker })).toBeVisible();
+    await expect(page.getByTestId('report-row').filter({ hasText: marker })).toBeVisible();
   });
 
   test('a report still in "extracted" status can be finalized from the detail view', async ({ page, request }) => {
     const marker = `E2E-Finalize-${Date.now()}`;
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: false });
 
-    await page.goto('/');
-    await page.click('.view-tab:has-text("Reports")');
+    await page.goto('/#/new');
+    await page.getByTestId('tab-reports').click();
     await page.waitForSelector('.report-table');
-    await page.click(`.report-row-body:has-text("${marker}")`);
+    await page.click(`[data-testid="report-row"]:has-text("${marker}")`);
 
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+    await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.report-heading-meta')).toContainText('Extracted');
     const finalizeButton = page.locator('button:has-text("Save & finalize report")');
     await expect(finalizeButton).toBeVisible();

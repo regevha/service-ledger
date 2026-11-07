@@ -1,0 +1,180 @@
+/* Reports grouped by instrument: one card per instrument, its reports inside. */
+.group-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.group-select-wrap .group-select {
+  width: auto;
+}
+.report-table.report-groups {
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  gap: var(--space-4);
+}
+.report-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.report-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.report-group-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.report-group-title strong {
+  font-size: var(--text-lg);
+}
+.report-group-serial {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.report-group-place,
+.report-group-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.report-group-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.report-group-rows {
+  display: flex;
+  flex-direction: column;
+}
+.report-group-rows .report-row-body {
+  border-top: none;
+  border-bottom: 1px solid var(--border);
+}
+.report-group-rows .report-row-body:last-child {
+  border-bottom: none;
+}
+
+/* Reading the scan: a centred card with a larger spinner. */
+.section.working-panel {
+  justify-content: center;
+  padding: 56px 24px;
+}
+.section.working-panel .spinner {
+  width: 40px;
+  height: 40px;
+  border-width: 5px;
+}
+.section.working-panel .working-text {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+/* Status pills above the Reports list: one tap narrows the list to a status; the number is how many there are. */
+.status-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+.status-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--input-border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.status-filter-pill:hover {
+  background: var(--surface-2);
+}
+.status-filter-pill[aria-pressed='true'] {
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: var(--on-fill);
+}
+.status-filter-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  opacity: 0.85;
+}
+@media (max-width: 620px) {
+  .status-filter-pill {
+    min-height: 44px;
+  }
+}
+
+/* From small laptops up: the filters are a column on the left of the list instead of a row above it, so the list
+   starts on the first screen. The column scrolls on its own when it is taller than the window. */
+.reports-layout {
+  display: block;
+}
+@media (min-width: 1000px) {
+  .reports-layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: start;
+  }
+  .reports-filters {
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100vh - 2 * var(--space-4));
+    overflow-y: auto;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .reports-filters .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 0;
+  }
+  .reports-filters .filter-row select,
+  .reports-filters .filter-row input,
+  .reports-filters .filter-row .date-input,
+  .reports-filters .search-box {
+    width: 100%;
+    max-width: none;
+  }
+  .reports-filters .search-box {
+    flex: none; /* the row's own flex-basis is a width; in a column it would make the box 220px tall */
+  }
+  .reports-filters .filter-row .filter-sep {
+    display: none;
+  }
+  .reports-filters .filter-row .date-pair-label {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: -4px;
+  }
+  .reports-results .status-filter:first-child {
+    margin-top: 0;
+  }
+}

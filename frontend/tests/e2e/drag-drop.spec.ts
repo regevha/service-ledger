@@ -3,6 +3,7 @@ import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { dropProblem } from '../../src/uploadFiles';
 import { TIMEOUT } from './timeouts';
+import { tabTestId } from './helpers/ui';
 
 // Dragging a scan onto the upload box on the New report tab. A real drag can't be
 // scripted, so these dispatch the same drag events a browser would, carrying a real
@@ -24,7 +25,7 @@ async function dataTransfer(page: Page, items: Dropped[], content: Buffer) {
 const PDF = () => uniquePdf('%PDF-1.4 drop test');
 
 test('dropping a PDF on the upload box selects it, and it can be read', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   const zone = page.locator('.dropzone');
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeDisabled();
 
@@ -40,11 +41,11 @@ test('dropping a PDF on the upload box selects it, and it can be read', async ({
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Upload & classify' }).click();
-  await page.waitForSelector('.field-list, .class-row, .banner-crit', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"], .class-row, [data-testid="intake-error"]', { timeout: TIMEOUT.flow });
 });
 
 test('the highlight goes away when the drag leaves the box', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   const zone = page.locator('.dropzone');
   const dt = await dataTransfer(page, [{ name: 'x.pdf', type: 'application/pdf' }], PDF());
   await zone.dispatchEvent('dragover', { dataTransfer: dt });
@@ -54,7 +55,7 @@ test('the highlight goes away when the drag leaves the box', async ({ page }) =>
 });
 
 test('a drag that carries no files (selected text) does not light up the box', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   const zone = page.locator('.dropzone');
   const dt = await page.evaluateHandle(() => {
     const d = new DataTransfer();
@@ -66,7 +67,7 @@ test('a drag that carries no files (selected text) does not light up the box', a
 });
 
 test('a file that is not a PDF or an image is refused on the spot, with the reason', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   const zone = page.locator('.dropzone');
   const dt = await dataTransfer(page, [{ name: 'notes.txt', type: 'text/plain' }], Buffer.from('hello'));
   await zone.dispatchEvent('drop', { dataTransfer: dt });
@@ -76,7 +77,7 @@ test('a file that is not a PDF or an image is refused on the spot, with the reas
 });
 
 test('several PDFs at once are refused: one PDF per report', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   const dt = await dataTransfer(
     page,
     [
@@ -91,7 +92,7 @@ test('several PDFs at once are refused: one PDF per report', async ({ page }) =>
 });
 
 test('a good drop after a refused one clears the message, and so does using the file picker', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   const zone = page.locator('.dropzone');
   await zone.dispatchEvent('drop', { dataTransfer: await dataTransfer(page, [{ name: 'n.txt', type: 'text/plain' }], Buffer.from('x')) });
   await expect(page.getByRole('alert')).toBeVisible();
@@ -113,9 +114,9 @@ test('a good drop after a refused one clears the message, and so does using the 
 });
 
 test('a file dropped anywhere else on the page does not make the browser open it', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/new');
   for (const tab of ['New report', 'Reports', 'Analytics']) {
-    await page.click(`.view-tab:has-text("${tab}")`);
+    await page.getByTestId(tabTestId(tab)).click();
     const cancelled = await page.evaluate(() => {
       const dt = new DataTransfer();
       dt.items.add(new File(['x'], 'stray.pdf', { type: 'application/pdf' }));

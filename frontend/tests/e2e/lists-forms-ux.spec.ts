@@ -1,13 +1,20 @@
-import type { Page } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { isIsoDay } from '../../src/isoDay';
 import { uniquePdf } from './unique-upload';
 import { TIMEOUT } from './timeouts';
-import { API_BASE } from './helpers/api';
+import { API_BASE, seedReport } from './helpers/api';
+import { showFlatList } from './helpers/ui';
 
 // UI review items #20-#25: destructive actions that look destructive, a quieter Templates row,
 // labelled fields in the template editor, required fields marked on the new-instrument form,
 // stacked phone cards that say what each value is, and one date format everywhere.
+
+// The Reports tests below need a row to look at. They used to find one left behind by other specs,
+// which is why they failed whenever the specs ran in another order (the nightly shuffled run).
+async function aReportToLookAt(request: APIRequestContext) {
+  await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-ListsForms-${Date.now()}`, finalize: true });
+}
 
 async function color(page: Page, selector: string): Promise<string> {
   return page.locator(selector).first().evaluate((el) => getComputedStyle(el).color);
@@ -25,9 +32,9 @@ test('isIsoDay accepts real days only', () => {
 test.describe('destructive actions', () => {
   test('Delete on an instrument row reads as destructive, its confirmation is solid red', async ({ page }) => {
     await page.goto('/#/instruments');
-    await expect(page.locator('.instrument-row.template-row-body').first()).toBeVisible();
-    const del = page.locator('.instrument-row.template-row-body').first().locator('button:has-text("Delete")');
-    const edit = page.locator('.instrument-row.template-row-body').first().locator('button:has-text("Edit")');
+    await expect(page.getByTestId('instrument-row').first()).toBeVisible();
+    const del = page.getByTestId('instrument-row').first().locator('button:has-text("Delete")');
+    const edit = page.getByTestId('instrument-row').first().locator('button:has-text("Edit")');
     await expect(del).toHaveClass(/danger/);
     expect(await del.evaluate((el) => getComputedStyle(el).color)).not.toBe(await edit.evaluate((el) => getComputedStyle(el).color));
     await del.click();
@@ -62,7 +69,7 @@ test.describe('templates table actions', () => {
   test('one visible Edit and a "⋯" menu; the row stays on one line', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/#/templates');
-    const row = page.locator('.template-row-body').first();
+    const row = page.getByTestId('template-row').first();
     await expect(row).toBeVisible();
     await expect(row.getByRole('button', { name: 'Edit' })).toBeVisible();
     await expect(row.getByRole('button', { name: 'Duplicate' })).toHaveCount(0);
@@ -88,7 +95,7 @@ test.describe('templates table actions', () => {
   test('phone: actions are one row, not four stacked buttons', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/#/templates');
-    const row = page.locator('.template-row-body').first();
+    const row = page.getByTestId('template-row').first();
     await expect(row).toBeVisible();
     const actions = await row.locator('.template-row-actions').boundingBox();
     expect(actions!.height).toBeLessThan(50);
@@ -97,7 +104,7 @@ test.describe('templates table actions', () => {
 
 test('template editor: every box has a caption, and the field name shows how it will read', async ({ page }) => {
   await page.goto('/#/templates');
-  const row = page.locator('.template-row-body', { hasText: 'Preventive maintenance' }).first();
+  const row = page.getByTestId('template-row').filter({ hasText: 'Preventive maintenance' }).first();
   await row.getByRole('button', { name: 'Edit' }).click();
   const first = page.locator('.schema-field-row').first();
   await expect(first).toBeVisible();
@@ -122,19 +129,19 @@ test.describe('new instrument form', () => {
   test('required fields are marked and the button says what is missing', async ({ page }) => {
     await openForm(page);
     for (const label of ['Name', 'Model', 'Manufacturer', 'Serial number']) {
-      await expect(page.locator('.schema-form-label', { hasText: label }).locator('.required-mark')).toBeVisible();
+      await expect(page.getByTestId('form-label').filter({ hasText: label }).locator('.required-mark')).toBeVisible();
     }
-    await expect(page.locator('.schema-form-label', { hasText: 'Room name' }).locator('.required-mark')).toHaveCount(0);
-    await expect(page.locator('.schema-form-label', { hasText: 'Distributor' }).locator('.required-mark')).toHaveCount(0);
+    await expect(page.getByTestId('form-label').filter({ hasText: 'Room name' }).locator('.required-mark')).toHaveCount(0);
+    await expect(page.getByTestId('form-label').filter({ hasText: 'Distributor' }).locator('.required-mark')).toHaveCount(0);
     await expect(page.locator('button:has-text("Create instrument")')).toBeDisabled();
     await expect(page.locator('#instrument-missing')).toHaveText('Still needed: name, model, manufacturer, serial number.');
 
-    await page.locator('.schema-form-label', { hasText: 'Model' }).first().locator('input').fill('X1');
+    await page.getByTestId('form-label').filter({ hasText: 'Model' }).first().locator('input').fill('X1');
     await expect(page.locator('#instrument-missing')).toHaveText('Still needed: name, manufacturer, serial number.');
 
-    await page.locator('.schema-form-label', { hasText: 'Name' }).first().locator('input').fill('Scratch');
-    await page.locator('.schema-form-label', { hasText: 'Manufacturer' }).locator('input').fill('Acme');
-    await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill('S-1');
+    await page.getByTestId('form-label').filter({ hasText: 'Name' }).first().locator('input').fill('Scratch');
+    await page.getByTestId('form-label').filter({ hasText: 'Manufacturer' }).locator('input').fill('Acme');
+    await page.getByTestId('form-label').filter({ hasText: 'Serial number' }).locator('input').fill('S-1');
     await expect(page.locator('#instrument-missing')).toHaveCount(0);
     await expect(page.locator('button:has-text("Create instrument")')).toBeEnabled();
   });
@@ -156,19 +163,25 @@ test.describe('phone cards say what each value is', () => {
 
   test('Instruments', async ({ page }) => {
     await page.goto('/#/instruments');
-    const row = '.instrument-row.template-row-body';
+    const row = '[data-testid="instrument-row"]';
     await expect(page.locator(row).first()).toBeVisible();
     await expect(page.locator('.instrument-row.template-row-head')).toBeHidden();
-    expect(await before(page, `${row} > span[data-label="Manufacturer"]`)).toBe('Manufacturer');
-    expect(await before(page, `${row} > span[data-label="Room name"]`)).toBe('Room name');
-    expect(await before(page, `${row} > span[data-label="Serial number"]`)).toBe('Serial number');
+    // A compact card: the name and manufacturer read for themselves; room, serial and distributor carry a short prefix.
+    const captionShown = (selector: string) =>
+      page.locator(selector).first().evaluate((el) => getComputedStyle(el, '::before').display);
+    expect(await captionShown(`${row} > span[data-label="Manufacturer"]`)).toBe('none');
+    expect(await before(page, `${row} > span[data-label="Room name"]`)).toBe('Room: ');
+    expect(await before(page, `${row} > span[data-label="Serial number"]`)).toBe('SN ');
+    await expect(page.locator(`${row} > span[data-label="Distributor"]`).first()).toBeHidden(); // kept off the phone card; it is on the Edit screen
   });
 
   test('Reports: a card puts instrument and status on top, type and date under, lab manager small; sort buttons introduced as such', async ({
     page,
+    request,
   }) => {
+    await aReportToLookAt(request);
     await page.goto('/#/reports');
-    const row = '.report-row-body';
+    const row = '[data-testid="report-row"]';
     await expect(page.locator(row).first()).toBeVisible();
     // The list can re-render while it loads, so retry the whole check until the layout settles.
     await expect(async () => {
@@ -187,6 +200,7 @@ test.describe('phone cards say what each value is', () => {
       expect(type!.y).toBeGreaterThan(inst!.y + 8);
       expect(tech!.y).toBeGreaterThan(type!.y + 8); // lab manager last
       expect(status!.x).toBeGreaterThan(inst!.x); // status to the right of the instrument
+      await showFlatList(page);
       await expect(page.locator('.sort-select-wrap')).toContainText('Sort by'); // one menu, not a run of column names
     }).toPass({ timeout: 10_000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -194,9 +208,10 @@ test.describe('phone cards say what each value is', () => {
 });
 
 test.describe('dates read YYYY-MM-DD everywhere', () => {
-  test('the report filters take and show ISO dates; half-typed dates are not applied', async ({ page }) => {
+  test('the report filters take and show ISO dates; half-typed dates are not applied', async ({ page, request }) => {
+    await aReportToLookAt(request);
     await page.goto('/#/reports');
-    await expect(page.locator('.report-row-body').first()).toBeVisible();
+    await expect(page.getByTestId('report-row').first()).toBeVisible();
     const from = page.getByLabel('From date', { exact: true });
     await expect(from).toHaveAttribute('placeholder', 'YYYY-MM-DD');
 
@@ -212,14 +227,15 @@ test.describe('dates read YYYY-MM-DD everywhere', () => {
 
     await from.fill('2090-01-01');
     await expect(from).not.toHaveAttribute('aria-invalid', 'true');
-    await expect(page.locator('.report-row-body')).toHaveCount(0);
+    await expect(page.getByTestId('report-row')).toHaveCount(0);
     await from.fill('');
-    await expect(page.locator('.report-row-body').first()).toBeVisible();
+    await expect(page.getByTestId('report-row').first()).toBeVisible();
   });
 
-  test('the calendar button fills the box in the same format', async ({ page }) => {
+  test('the calendar button fills the box in the same format', async ({ page, request }) => {
+    await aReportToLookAt(request);
     await page.goto('/#/reports');
-    await expect(page.locator('.report-row-body').first()).toBeVisible();
+    await expect(page.getByTestId('report-row').first()).toBeVisible();
     const box = page.locator('.date-input').first();
     // The browser's own picker cannot be driven; its hidden input is what the button opens.
     await box.locator('input[type="date"]').evaluate((el: HTMLInputElement) => {
@@ -236,7 +252,7 @@ test.describe('dates read YYYY-MM-DD everywhere', () => {
     await page.goto('/#/new');
     await page.locator('input[type="file"]').setInputFiles({ name: 'confident-scan.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 datefmt') });
     await page.click('button:has-text("Upload & classify")');
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
+    await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
     await expect(page.locator('#review-report-date')).toHaveAttribute('placeholder', 'YYYY-MM-DD');
   });
 });

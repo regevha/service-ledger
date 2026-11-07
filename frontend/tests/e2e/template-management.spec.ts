@@ -16,15 +16,15 @@ import { test, expect } from './coverage';
 test('create, edit, and delete a report template through the structured field editor', async ({ page }) => {
   const uniqueModel = `E2E-Model-${Date.now()}`;
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-templates').click();
   await expect(page.locator('.section-title')).toContainText('Report templates');
 
   // ---- Create ----
   await page.click('button:has-text("+ New template")');
   await expect(page.locator('.section-title').first()).toContainText('New template');
 
-  await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(uniqueModel);
+  await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(uniqueModel);
 
   // Field 1: a plain text field (the default type for a freshly-added row).
   await page.click('button:has-text("+ Add field")');
@@ -47,7 +47,7 @@ test('create, edit, and delete a report template through the structured field ed
 
   // ---- Verify it landed in the list ----
   await expect(page.locator('.section-title').first()).toContainText('Report templates');
-  const listRow = page.locator('.template-row-body', { hasText: uniqueModel });
+  const listRow = page.getByTestId('template-row').filter({ hasText: uniqueModel });
   await expect(listRow).toBeVisible();
   // The "Fields" column is the row's 3rd span (report type, model, field
   // count, actions) — asserting on the row's full text instead would also
@@ -80,7 +80,7 @@ test('create, edit, and delete a report template through the structured field ed
   await page.click('button:has-text("Save changes")');
 
   await expect(page.locator('.section-title').first()).toContainText('Report templates');
-  const updatedRow = page.locator('.template-row-body', { hasText: uniqueModel });
+  const updatedRow = page.getByTestId('template-row').filter({ hasText: uniqueModel });
   await expect(updatedRow.locator('span').nth(2)).toHaveText('3');
 
   // ---- Reopen and confirm the column order survived the save (the actual
@@ -97,12 +97,12 @@ test('create, edit, and delete a report template through the structured field ed
   await updatedRow.getByRole('button', { name: /More actions/ }).click();
   await updatedRow.getByRole('menuitem', { name: 'Delete' }).click();
   await updatedRow.locator('button:has-text("Cancel")').click();
-  await expect(page.locator('.template-row-body', { hasText: uniqueModel })).toBeVisible();
+  await expect(page.getByTestId('template-row').filter({ hasText: uniqueModel })).toBeVisible();
 
   await updatedRow.getByRole('button', { name: /More actions/ }).click();
   await updatedRow.getByRole('menuitem', { name: 'Delete' }).click();
   await updatedRow.locator('button:has-text("Confirm delete")').click();
-  await expect(page.locator('.template-row-body', { hasText: uniqueModel })).toHaveCount(0);
+  await expect(page.getByTestId('template-row').filter({ hasText: uniqueModel })).toHaveCount(0);
 });
 
 test('a template the backend rejects shows the validation reason, not a bare status', async ({ page }) => {
@@ -110,10 +110,10 @@ test('a template the backend rejects shows the validation reason, not a bare sta
   // {loc, msg} entries; apiFetch used to read only a string `detail`, so
   // this showed "Unprocessable Content" (or nothing at all over HTTP/2)
   // instead of telling the user what to fix.
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-templates').click();
   await page.click('button:has-text("+ New template")');
-  await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(`E2E-Invalid-${Date.now()}`);
+  await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(`E2E-Invalid-${Date.now()}`);
 
   // The form catches blank names, repeated names and empty option lists
   // itself (see template-manager-improvements.spec.ts). A reserved name is

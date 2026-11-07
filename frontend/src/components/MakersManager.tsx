@@ -66,13 +66,13 @@ function MakerForm({
         </div>
       )}
       <div className="schema-form-row">
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Name
           <input type="text" className="text-input" value={name} placeholder="e.g. Beckman Coulter" onChange={(e) => setName(e.target.value)} />
         </label>
       </div>
       <div className="schema-form-row">
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Other names (optional, separated by semicolons)
           <input
             type="text"
@@ -165,7 +165,7 @@ export function MakersManager({ onChanged }: { onChanged: () => void }) {
       {error && <div className="banner banner-warn">{error}</div>}
 
       {pendingDelete && (
-        <div className="banner banner-warn" role="alertdialog" aria-label="Confirm delete maker">
+        <div className="banner banner-crit" role="alertdialog" aria-label="Confirm delete maker">
           <div>Delete the maker “{pendingDelete.name}”? It has no instruments or models. This cannot be undone.</div>
           <button type="button" className="btn small danger solid" onClick={() => void confirmDelete()} disabled={busy}>
             Confirm delete
@@ -195,9 +195,9 @@ export function MakersManager({ onChanged }: { onChanged: () => void }) {
           {makers.map((m) => {
             const used = m.instrument_count > 0 || m.model_count > 0;
             return (
-              <div className="instrument-row maker-row template-row-body" key={m.id}>
+              <div className="instrument-row maker-row template-row-body" data-testid="maker-row" key={m.id}>
                 <span data-label="Maker">{m.name}</span>
-                <span data-label="Other names">{m.aliases.length ? m.aliases.join('; ') : '—'}</span>
+                <span data-label="Other names" data-empty={m.aliases.length ? undefined : ''}>{m.aliases.length ? m.aliases.join('; ') : '—'}</span>
                 <span data-label="Instruments">{m.instrument_count}</span>
                 <span data-label="Models">{m.model_count}</span>
                 <span className="template-row-actions">

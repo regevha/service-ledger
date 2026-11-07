@@ -13,13 +13,13 @@ const GENERIC_REPAIR = 'Malfunction / repair · (any model)';
 const CYTOFLEX_REPAIR = 'Malfunction / repair · CytoFLEX S';
 
 async function openTemplates(page: Page) {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-templates').click();
   await expect(page.locator('.template-table')).toBeVisible();
 }
 
 function row(page: Page, reportType: string, model: string) {
-  return page.locator('.template-row-body').filter({ hasText: reportType }).filter({ hasText: model });
+  return page.getByTestId('template-row').filter({ hasText: reportType }).filter({ hasText: model });
 }
 
 // selectOption cannot match a label by pattern, and the first picker's labels

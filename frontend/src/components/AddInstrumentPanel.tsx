@@ -4,18 +4,23 @@ import {
   createInstrument,
   listInstrumentModels,
   listInstrumentTypes,
+  listPlaces,
   type ClassificationResult,
   type Instrument,
   type InstrumentModel,
   type InstrumentType,
+  type Place,
 } from '../api';
-import { MakerDatalist, MAKER_LIST_ID } from './MakerSuggestions';
+import { matchTypedPlaces, typedPlaceHint } from '../placeUtils';
+import { useMakerNames } from './MakerSuggestions';
+import { SuggestInput } from './SuggestInput';
 
 /**
  * Shown on the classification screen when the document's instrument is not in
- * the fleet (ClassificationResult.maker_in_fleet === false). The technician
- * adds it right here, with what the document says already filled in, and the
- * document is classified again against the new fleet.
+ * the fleet: another maker's instrument (maker_in_fleet === false), or one of
+ * the fleet's own models whose serial is not registered (serial_match ===
+ * 'not_found'). The technician adds it right here, with what the document says
+ * already filled in, and the document is classified again against the new fleet.
  */
 export function AddInstrumentPanel({
   classification,
@@ -29,29 +34,42 @@ export function AddInstrumentPanel({
 }) {
   const [types, setTypes] = useState<InstrumentType[]>([]);
   const [typeKey, setTypeKey] = useState('');
-  const [model, setModel] = useState(classification.detected_model ?? '');
-  const [name, setName] = useState(classification.detected_model ?? '');
+  // Another maker's form names its model; a fleet model's form is read as that model.
+  const otherMaker = classification.maker_in_fleet === false;
+  const startModel = classification.detected_model ?? (otherMaker ? '' : classification.instrument.value);
+  const [model, setModel] = useState(startModel);
+  const [name, setName] = useState(startModel);
   const [manufacturer, setManufacturer] = useState(classification.detected_manufacturer ?? '');
   // The form's issuer is usually the company that sold or services the
   // instrument, not its maker, so it goes in the distributor field.
   const [distributor, setDistributor] = useState(classification.issuer ?? '');
   const [serial, setSerial] = useState(classification.instrument_serial?.value ?? '');
+  const [institute, setInstitute] = useState('');
+  const makerNames = useMakerNames();
   const [room, setRoom] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [knownModels, setKnownModels] = useState<InstrumentModel[]>([]);
+  const [knownPlaces, setKnownPlaces] = useState<Place[]>([]);
 
   useEffect(() => {
     listInstrumentModels()
       .then(setKnownModels)
       .catch(() => setKnownModels([]));
+    listPlaces()
+      .then(setKnownPlaces)
+      .catch(() => setKnownPlaces([]));
   }, []);
 
   // A model that already exists has one instrument type; the new instrument has to match it.
   useEffect(() => {
     const match = knownModels.find((m) => m.name === model.trim());
-    if (match) setTypeKey(match.instrument_type);
+    if (match) {
+      setTypeKey(match.instrument_type);
+      // A model already in the fleet knows its maker.
+      if (match.manufacturer) setManufacturer((current) => current || match.manufacturer || '');
+    }
   }, [knownModels, model]);
 
   useEffect(() => {
@@ -63,7 +81,12 @@ export function AddInstrumentPanel({
       .catch(() => setError('Could not load the instrument types.'));
   }, []);
 
-  const ready = [name, model, manufacturer, serial].every((v) => v.trim() !== '') && typeKey !== '';
+  // The institute typed is one that exists (ignoring case and spaces) or a new one, created when the instrument is saved,
+  // exactly as on the Instruments tab. A room is only meaningful inside an institute.
+  const { roomsHere } = matchTypedPlaces(knownPlaces, institute, room);
+  const placeHint = typedPlaceHint(knownPlaces, institute, room);
+  const roomWithoutInstitute = room.trim() !== '' && institute.trim() === '';
+  const ready = [name, model, manufacturer, serial].every((v) => v.trim() !== '') && typeKey !== '' && !roomWithoutInstitute;
 
   async function submit() {
     setSaving(true);
@@ -76,6 +99,7 @@ export function AddInstrumentPanel({
         manufacturer: manufacturer.trim(),
         distributor: distributor.trim() || null,
         serial_number: serial.trim(),
+        institution: institute.trim() || null,
         location: room.trim() || null,
       });
       onAdded(created);
@@ -91,10 +115,16 @@ export function AddInstrumentPanel({
     <div className="section add-instrument-panel" id="add-instrument-panel">
       <div className="section-title">This instrument is not in your fleet</div>
       <p className="hint-text">
-        The document looks like {classification.detected_manufacturer ? `a ${classification.detected_manufacturer} ` : 'an '}
-        {classification.detected_model ?? 'instrument'} that has not been added yet
-        {classification.issuer ? `, on a form from ${classification.issuer}` : ''}. Add it here, check the details, and the document is classified
-        again.
+        {otherMaker ? (
+          <>
+            The document looks like {classification.detected_manufacturer ? `a ${classification.detected_manufacturer} ` : 'an '}
+            {classification.detected_model ?? 'instrument'} that has not been added yet
+            {classification.issuer ? `, on a form from ${classification.issuer}` : ''}.
+          </>
+        ) : (
+          <>The serial number on the document, {classification.instrument_serial?.value}, is not registered under {classification.instrument.value}.</>
+        )}{' '}
+        Add it here, check the details, and the document is classified again.
       </p>
       <div className="add-instrument-grid">
         <label>
@@ -117,8 +147,7 @@ export function AddInstrumentPanel({
         </label>
         <label>
           <span className="clabel">Manufacturer</span>
-          <input className="text-input" value={manufacturer} list={MAKER_LIST_ID} onChange={(e) => setManufacturer(e.target.value)} aria-label="Instrument manufacturer" />
-          <MakerDatalist />
+          <SuggestInput className="text-input" value={manufacturer} onChange={setManufacturer} aria-label="Instrument manufacturer" options={makerNames} />
         </label>
         <label>
           <span className="clabel">Distributor (optional)</span>
@@ -129,10 +158,32 @@ export function AddInstrumentPanel({
           <input className="text-input" value={serial} onChange={(e) => setSerial(e.target.value)} aria-label="Instrument serial number" autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
         </label>
         <label>
+          <span className="clabel">Institute (optional)</span>
+          <SuggestInput
+            className="text-input"
+            value={institute}
+            placeholder="e.g. Bar-Ilan University"
+            onChange={setInstitute}
+            aria-label="Instrument institute"
+            options={knownPlaces.filter((p) => p.kind === 'institution').map((p) => p.name)}
+          />
+        </label>
+        <label>
           <span className="clabel">Room name (optional)</span>
-          <input className="text-input" value={room} onChange={(e) => setRoom(e.target.value)} aria-label="Instrument room name" />
+          <SuggestInput
+            className="text-input"
+            value={room}
+            onChange={setRoom}
+            aria-label="Instrument room name"
+            options={roomsHere.map((p) => p.name)}
+          />
         </label>
       </div>
+      {placeHint && (
+        <small className="muted place-hint" id="add-instrument-place-hint">
+          {placeHint}
+        </small>
+      )}
       {error && <div className="banner banner-crit">{error}</div>}
       <div className="cta-row">
         <button className="btn primary" disabled={disabled || !ready} onClick={() => void submit()}>

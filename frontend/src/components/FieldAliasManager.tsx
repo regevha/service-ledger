@@ -57,7 +57,7 @@ function GroupForm({
       {error && <div className="banner banner-crit">{error}</div>}
 
       <div className="schema-form-row">
-        <label className="schema-form-label">
+        <label className="schema-form-label" data-testid="form-label">
           Label (optional)
           <input
             type="text"

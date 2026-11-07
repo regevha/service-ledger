@@ -10,12 +10,12 @@ test('report detail screen offers a PDF download for a resolved report', async (
   const marker = `E2E-PDF-${Date.now()}`;
   const report = { id: (await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker })).reportId };
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-reports').click();
   await page.waitForSelector('.report-table');
-  await page.click(`.report-row-body:has-text("${marker}")`);
+  await page.click(`[data-testid="report-row"]:has-text("${marker}")`);
 
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
 
   const pdfLink = page.locator('a.btn:has-text("Download PDF")');
   await expect(pdfLink).toHaveAttribute('href', `${API_BASE}/reports/${report.id}/pdf`);
@@ -32,10 +32,10 @@ test('a report with no resolved template has no Download PDF link', async ({ pag
   const marker = `E2E-PDF-Unresolved-${Date.now()}`;
   await request.post(`${API_BASE}/reports`, { data: { technician_name: marker } });
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-reports').click();
   await page.waitForSelector('.report-table, .empty-hint');
-  await page.click(`.report-row-body:has-text("${marker}")`);
+  await page.click(`[data-testid="report-row"]:has-text("${marker}")`);
 
   await expect(page.locator('.empty-hint')).toBeVisible();
   await expect(page.locator('a.btn:has-text("Download PDF")')).toHaveCount(0);

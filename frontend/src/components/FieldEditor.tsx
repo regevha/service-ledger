@@ -24,6 +24,9 @@ type LeafType = 'text' | 'number' | 'boolean' | 'date';
 /** True inside a finalized report that is not being edited: empty values then read as a dash, not a blank box. */
 export const ReadOnlyContext = createContext(false);
 
+/** The name of the field being edited: the accessible name of its box(es), so a screen reader hears which field it is on. */
+export const FieldLabelContext = createContext<string | undefined>(undefined);
+
 function fitToText(el: HTMLTextAreaElement) {
   if (el.closest('.read-only')) {
     el.style.height = 'auto';
@@ -36,6 +39,7 @@ function fitToText(el: HTMLTextAreaElement) {
 
 function AutoGrowTextarea({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const readOnly = useContext(ReadOnlyContext);
+  const label = useContext(FieldLabelContext);
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     if (ref.current) fitToText(ref.current);
@@ -63,14 +67,16 @@ function AutoGrowTextarea({ value, onChange }: { value: string; onChange: (v: st
       observer.disconnect();
     };
   }, [readOnly]);
-  return <textarea ref={ref} value={value} placeholder={readOnly ? '—' : undefined} onChange={(e) => onChange(e.target.value)} />;
+  return <textarea ref={ref} aria-label={label} value={value} placeholder={readOnly ? '—' : undefined} onChange={(e) => onChange(e.target.value)} />;
 }
 
-function NumberInput({ value, onChange }: { value: unknown; onChange: (v: unknown) => void }) {
+function NumberInput({ value, onChange, label }: { value: unknown; onChange: (v: unknown) => void; label?: string }) {
   const readOnly = useContext(ReadOnlyContext);
+  const outer = useContext(FieldLabelContext);
   return (
     <input
       type="number"
+      aria-label={label ?? outer}
       placeholder={readOnly ? '—' : undefined}
       value={typeof value === 'number' ? value : ''}
       onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
@@ -78,25 +84,28 @@ function NumberInput({ value, onChange }: { value: unknown; onChange: (v: unknow
   );
 }
 
-function leafInput(value: unknown, type: string, onChange: (v: unknown) => void) {
+function LeafInput({ value, type, onChange, label }: { value: unknown; type: string; onChange: (v: unknown) => void; label?: string }) {
+  const outer = useContext(FieldLabelContext);
+  const name = label ?? outer;
   if (type === 'boolean') {
     return (
-      <select value={value ? 'true' : 'false'} onChange={(e) => onChange(e.target.value === 'true')}>
+      <select aria-label={name} value={value ? 'true' : 'false'} onChange={(e) => onChange(e.target.value === 'true')}>
         <option value="true">Yes</option>
         <option value="false">No</option>
       </select>
     );
   }
   if (type === 'number') {
-    return <NumberInput value={value} onChange={onChange} />;
+    return <NumberInput value={value} onChange={onChange} label={name} />;
   }
   if (type === 'date') {
-    return <DateInput value={typeof value === 'string' ? value : ''} onChange={onChange} />;
+    return <DateInput value={typeof value === 'string' ? value : ''} onChange={onChange} ariaLabel={name} />;
   }
   // Part names, part numbers and lot numbers: the phone keyboard must not capitalise or "correct" them.
   return (
     <input
       type="text"
+      aria-label={name}
       autoCapitalize="off"
       autoCorrect="off"
       spellCheck={false}
@@ -110,6 +119,7 @@ function leafInput(value: unknown, type: string, onChange: (v: unknown) => void)
 // (an enum/enum[] field's `options` list is built with the exact same
 // type-a-value-press-Enter tag UI as an enum[] field's own runtime value).
 export function EnumArrayInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const label = useContext(FieldLabelContext);
   const items = Array.isArray(value) ? value : [];
   return (
     <div className="tag-input">
@@ -125,6 +135,7 @@ export function EnumArrayInput({ value, onChange }: { value: string[]; onChange:
       </div>
       <input
         type="text"
+        aria-label={label ? `${label}: add a value` : 'Add a value'}
         placeholder="Type a value, press Enter"
         onKeyDown={(e) => {
           if (e.key !== 'Enter') return;
@@ -206,7 +217,7 @@ function ObjectArrayInput({
             <div className="object-array-row" key={i} style={rowGridStyle}>
               {columns.map((c) => (
                 <span key={c.name} data-label={fieldLabel(c.name)}>
-                  {leafInput(row[c.name], c.type as LeafType, (v) => updateRow(i, c.name, v))}
+                  <LeafInput value={row[c.name]} type={c.type} onChange={(v) => updateRow(i, c.name, v)} label={`${fieldLabel(c.name)}, row ${i + 1}`} />
                 </span>
               ))}
               <button type="button" className="row-remove icon" onClick={() => removeRow(i)} aria-label="Remove row" title="Remove row">
@@ -259,7 +270,8 @@ function NumberMapInput({ value, onChange }: { value: Record<string, number>; on
 
 function TextInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const readOnly = useContext(ReadOnlyContext);
-  return <input type="text" value={value} placeholder={readOnly ? '—' : undefined} onChange={(e) => onChange(e.target.value)} />;
+  const label = useContext(FieldLabelContext);
+  return <input type="text" aria-label={label} value={value} placeholder={readOnly ? '—' : undefined} onChange={(e) => onChange(e.target.value)} />;
 }
 
 export function FieldControl({
@@ -271,16 +283,17 @@ export function FieldControl({
   value: unknown;
   onChange: (v: unknown) => void;
 }) {
+  const label = useContext(FieldLabelContext);
   switch (field.type) {
     case 'boolean':
     case 'number':
     case 'date':
-      return leafInput(value, field.type, onChange);
+      return <LeafInput value={value} type={field.type} onChange={onChange} />;
     case 'text':
       return <AutoGrowTextarea value={typeof value === 'string' ? value : ''} onChange={onChange} />;
     case 'enum':
       return (
-        <select value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)}>
+        <select aria-label={label} value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)}>
           <option value="" disabled>
             Choose…
           </option>

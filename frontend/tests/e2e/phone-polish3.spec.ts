@@ -1,18 +1,19 @@
 import { test, expect } from './coverage';
 import { TIMEOUT } from './timeouts';
 import { API_BASE, seedReport } from './helpers/api';
+import { showFlatList } from './helpers/ui';
 
 // Phone review 2 (2026-10-26), the third group: one sort menu, the page without a card inside a card,
 // Delete in a menu on Instruments, a tidy Templates header, Analytics bars with the number on the name's line,
 // and the wording of the upload box.
 
-const PHONE = { width: 412, height: 915 };
 
 test.describe('on a phone', { tag: '@phone' }, () => {
 
   test('Reports: one Sort by menu replaces the row of column names, and it sorts', async ({ page, request }) => {
     await request.post(`${API_BASE}/reports`, { data: { technician_name: `E2E-Sort-${Date.now()}` } });
     await page.goto('/#/reports');
+    await showFlatList(page);
     const select = page.getByTestId('sort-select');
     await expect(select).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.report-row-head')).toBeHidden();
@@ -26,12 +27,12 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     await page.goto('/#/reports');
     const box = await page.locator('.app-shell').boundingBox();
     expect(box!.x).toBeLessThan(1);
-    expect(box!.width).toBeGreaterThan(PHONE.width - 1);
+    expect(box!.width).toBeGreaterThan(page.viewportSize()!.width - 1); // the emulated phone's own width
   });
 
   test('Instruments: Delete is in a ⋯ menu, and still asks before deleting', async ({ page }) => {
     await page.goto('/#/instruments');
-    await expect(page.locator('.instrument-row.template-row-body').first()).toBeVisible({ timeout: TIMEOUT.ui });
+    await expect(page.getByTestId('instrument-row').first()).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: /^More actions for/ }).first().click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
@@ -82,6 +83,7 @@ test('on a wide screen: Delete stays a button, the sort row stays, the old wordi
   await page.goto('/#/instruments');
   await expect(page.getByRole('button', { name: 'Delete', exact: true }).first()).toBeVisible({ timeout: TIMEOUT.ui });
   await page.goto('/#/reports');
+  await showFlatList(page);
   await expect(page.locator('.sort-select-wrap')).toBeHidden();
   await expect(page.getByTestId('sort-date')).toBeVisible({ timeout: TIMEOUT.ui });
   await page.goto('/#/new');

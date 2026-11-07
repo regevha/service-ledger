@@ -22,7 +22,7 @@ router = APIRouter(tags=["analytics"])
 def analytics_filters(
     instrument_id: uuid.UUID | None = Query(None, description="Only this instrument (also limits the units listed)"),
     model_id: uuid.UUID | None = Query(None, description="Only instruments of this model record (also limits the units listed)"),
-    place_id: uuid.UUID | None = Query(None, description="Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed"),
+    place_id: uuid.UUID | None = Query(None, description="Only instruments in this place (an institute, building or room, with everything inside it); also limits the units listed"),
     manufacturer: str | None = Query(None, description="Only instruments from this manufacturer (also limits the units listed)"),
     report_type: models.ReportType | None = Query(None, description="Only reports of this type"),
     date_from: date | None = Query(None, description="Report date on or after this day"),
