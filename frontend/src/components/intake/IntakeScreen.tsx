@@ -35,12 +35,15 @@ export function IntakeScreen({
 
   return (
     <div className="section">
-      <h2 className="intake-heading">Add a service report</h2>
-      <p className="intake-subheading">Upload the scan or photos. We read the instrument and visit type, then you check the details.</p>
+      <div className="intake-head">
+        <h2 className="intake-heading">Add a service report</h2>
+        {/* The button sits at the top on every screen size, so it is in view without scrolling.
+            It stays disabled until a file is chosen. */}
+        <button className="btn primary intake-head-cta" disabled={!file} onClick={onStart}>
+          Upload &amp; classify
+        </button>
+      </div>
 
-      <div className="section-title">Scanned original</div>
-      <div className="upload-layout">
-      <div className="upload-main">
       <label
         data-testid="intake-dropzone"
         className={`dropzone${dragging ? ' dragging' : ''}`}
@@ -74,7 +77,6 @@ export function IntakeScreen({
         <div className="primary">
           {dragging ? 'Drop the file here' : file ? chosenLabel : phone ? 'Take a photo or choose a file' : 'Click to choose a scan or PDF, or drop it here'}
         </div>
-        <div className="secondary">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one PDF, or several photos of the pages, per report; any instrument, any report type</div>
         <input
           type="file"
           multiple
@@ -133,22 +135,6 @@ export function IntakeScreen({
           {dropError}
         </div>
       )}
-      </div>
-      <aside className="next-card" data-testid="intake-next-card" aria-label="What happens next">
-        <div className="next-card-title">What happens next</div>
-        <ol>
-          <li>
-            <strong>We read the form.</strong> Usually 10–60 seconds.
-          </li>
-          <li>
-            <strong>You confirm the instrument and report type.</strong> Only what we are unsure about is outlined.
-          </li>
-          <li>
-            <strong>You check the fields</strong> against the scan, then finalize.
-          </li>
-        </ol>
-      </aside>
-      </div>
 
       <div className="intake-name">
         <label htmlFor="intake-name">
@@ -164,10 +150,23 @@ export function IntakeScreen({
         />
       </div>
 
-      <div className="cta-row">
-        <button className="btn primary" disabled={!file} onClick={onStart}>
-          Upload &amp; classify
-        </button>
+      <div className="intake-info">
+        <p className="intake-subheading">Upload the scan or photos. We read the instrument and visit type, then you check the details.</p>
+        <p className="hint-text">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one PDF, or several photos of the pages, per report; any instrument, any report type</p>
+        <aside className="next-card" data-testid="intake-next-card" aria-label="What happens next">
+          <div className="next-card-title">What happens next</div>
+          <ol>
+            <li>
+              <strong>We read the form.</strong> Usually 10–60 seconds.
+            </li>
+            <li>
+              <strong>You confirm the instrument and report type.</strong> Only what we are unsure about is outlined.
+            </li>
+            <li>
+              <strong>You check the fields</strong> against the scan, then finalize.
+            </li>
+          </ol>
+        </aside>
       </div>
     </div>
   );

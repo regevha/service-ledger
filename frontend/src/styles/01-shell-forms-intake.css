@@ -311,7 +311,7 @@ textarea {
   border: 2px dashed var(--accent);
   background: var(--accent-soft);
   border-radius: var(--radius);
-  padding: 56px 24px;
+  padding: 28px 24px;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
@@ -358,7 +358,7 @@ textarea {
 .dropzone .icon {
   width: 60px;
   height: 60px;
-  margin: 0 auto 14px;
+  margin: 0 auto 10px;
   border-radius: 50%;
   background: var(--surface);
   display: flex;
@@ -459,9 +459,6 @@ textarea {
 }
 
 /* Upload: the drop box with a "What happens next" card beside it on a wide screen. */
-.upload-layout {
-  display: block;
-}
 .next-card {
   margin-top: var(--space-4);
   padding: var(--space-4);
@@ -488,17 +485,6 @@ textarea {
 }
 .next-card strong {
   color: var(--text);
-}
-@media (min-width: 1000px) {
-  .upload-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 300px;
-    gap: var(--space-5, 20px);
-    align-items: start;
-  }
-  .next-card {
-    margin-top: 0;
-  }
 }
 .phone-pick {
   display: flex;
@@ -629,6 +615,31 @@ textarea {
   font-size: var(--text-2xl);
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+.intake-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  margin-bottom: var(--space-4, 16px);
+}
+.intake-info {
+  margin-top: var(--space-6, 28px);
+}
+.intake-head-cta {
+  flex: none;
+  white-space: nowrap;
+}
+@media (max-width: 620px) {
+  /* On a phone the button goes under the heading, full width, so the text keeps its room. */
+  .intake-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3, 12px);
+  }
+  .intake-head-cta {
+    width: 100%;
+  }
 }
 .intake-subheading {
   margin: var(--space-1) 0 var(--space-5, 20px);
