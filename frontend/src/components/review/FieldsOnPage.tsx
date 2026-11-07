@@ -52,7 +52,9 @@ export function FieldsOnPage({
     : locations === null
       ? 'The positions could not be loaded, so the pages are shown without the fields.'
       : !locations.has_text
-        ? 'This is a scan or photo, so there is no text to place the fields on. The fields on a PDF with text are drawn here.'
+        ? placed > 0
+          ? 'This is a scan or photo, so the boxes are where the reading says it found each value. They are approximate and may be a little off.'
+          : 'This is a scan or photo with no recorded positions, so the fields cannot be drawn on it. Reports read from now on keep them.'
         : placed === 0
           ? 'None of the values could be found on the page.'
           : null;
@@ -85,10 +87,10 @@ export function FieldsOnPage({
                       key={`${name}-${k}`}
                       type="button"
                       data-box={name}
-                      className={`fop-box ${marks[name] ?? 'ok'}${active === name ? ' active' : ''}${loc.ambiguous ? ' guess' : ''}`}
+                      className={`fop-box ${marks[name] ?? 'ok'}${active === name ? ' active' : ''}${loc.ambiguous || loc.source === 'model' ? ' guess' : ''}`}
                       style={{ left: `${(r.x - 0.004) * 100}%`, top: `${(r.y - 0.003) * 100}%`, width: `${(r.w + 0.008) * 100}%`, height: `${(r.h + 0.006) * 100}%` }}
-                      aria-label={`${labels[name] ?? name}${loc.ambiguous ? ' (position is a guess)' : ''}`}
-                      title={`${labels[name] ?? name}${loc.ambiguous ? ': this text is on the page more than once, so the spot may be a different one' : ''}`}
+                      aria-label={`${labels[name] ?? name}${loc.ambiguous || loc.source === 'model' ? ' (position is approximate)' : ''}`}
+                      title={`${labels[name] ?? name}${loc.source === 'model' ? ': approximate position' : loc.ambiguous ? ': this text is on the page more than once, so the spot may be a different one' : ''}`}
                       onMouseEnter={() => onHover(name)}
                       onMouseLeave={() => onHover(null)}
                       onClick={() => onPick(name)}

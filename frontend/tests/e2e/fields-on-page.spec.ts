@@ -105,3 +105,29 @@ test('a scan with no text shows its pages plain and says why', async ({ page, re
   const note = page.getByTestId('fields-on-page-note');
   await expect(note).toBeVisible();
 });
+
+test('a scan whose reading recorded positions gets dashed approximate boxes', async ({ page, request }) => {
+  const templates = await okJson<{ field_schema: { fields: { name: string; type: string }[] } }[]>(
+    await request.get(`${API_BASE}/report-templates`, { params: { report_type: 'repair', model: 'LSRFortessa' } }),
+    'list templates',
+  );
+  const text = templates[0].field_schema.fields.find((f) => f.type === 'text')!;
+  const seeded = await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', fields: { [text.name]: 'Dana Levi' } });
+  // The backend side is covered by its own tests; here the screen is given what a scan's reading would return.
+  await page.route('**/attachments/*/field-locations', (route) =>
+    route.fulfill({
+      json: {
+        has_text: false,
+        page_count: 1,
+        fields: {
+          [text.name]: { page: 1, rects: [{ x: 0.1, y: 0.2, w: 0.4, h: 0.05 }], matches: 1, ambiguous: false, source: 'model' },
+        },
+      },
+    }),
+  );
+  await page.goto(`/#/reports/${seeded.reportId}`);
+  const box = page.getByTestId('fields-on-page').locator(`[data-box="${text.name}"]`).first();
+  await expect(box).toBeVisible();
+  await expect(box).toHaveClass(/guess/);
+  await expect(page.getByTestId('fields-on-page-note')).toContainText('approximate');
+});
