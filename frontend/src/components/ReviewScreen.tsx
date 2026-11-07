@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ConfidenceBadge } from './ConfidenceBadge';
-import { DateInput } from './DateInput';
 import { Notice } from './Notice';
-import { FieldControl, FieldLabelContext, ReadOnlyContext } from './FieldEditor';
-import { PhoneScanSwitch, ScanSplit, ScanToggleButton, useScanPreview } from './ScanPreview';
+import { ReadOnlyContext } from './FieldEditor';
+import { PhoneScanSwitch, ScanSplit, useScanPreview } from './ScanPreview';
 import { ReviewSearchBar } from './ReviewSearchBar';
 import { useReviewSearch } from '../hooks/useReviewSearch';
 import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
 import type { ReportTemplate } from '../api';
-
-/** "Extracted in 14.2 s": how long reading the document took. Under a tenth of a second (the demo reader) says so. */
-function extractionTimeText(seconds: number): string {
-  return seconds < 0.05 ? 'Extracted in under 0.1 s' : `Extracted in ${seconds.toFixed(1)} s`;
-}
+import { AttentionStrip } from './review/AttentionStrip';
+import { EditConfirm, FinalizeConfirm } from './review/ConfirmBanners';
+import { ReportDateField } from './review/ReportDateField';
+import { ReviewActions } from './review/ReviewActions';
+import { ReviewField } from './review/ReviewField';
+import { ReviewHeader } from './review/ReviewHeader';
+import { ReviewRail } from './review/ReviewRail';
 
 /**
  * The field-by-field review/correction UI (§5) — shared between the live
@@ -208,68 +208,19 @@ export function ReviewScreen({
 
   return (
     <div className="section">
-      <div className="section-title-row">
-        <div>
-          <div className="section-title report-heading">{heading}</div>
-          {instrumentLine && (
-            <div className="report-instrument-line" data-testid="review-instrument-line">
-              <span>{instrumentLine}</span>
-              {onChangeInstrument && (
-                <button type="button" className="link-button" onClick={onChangeInstrument}>
-                  Change
-                </button>
-              )}
-            </div>
-          )}
-          {(meta || extractionSeconds != null) && (
-            <div className="report-heading-meta">
-              {meta}
-              {meta && extractionSeconds != null && ' · '}
-              {extractionSeconds != null && <span data-testid="extraction-time">{extractionTimeText(extractionSeconds)}</span>}
-            </div>
-          )}
-        </div>
-        <div className="section-title-actions">
-          {onBack && (
-            <button
-              type="button"
-              className="btn small"
-              data-testid="back-to-classify"
-              title="Change the instrument or report type. Reading the document again replaces edits made here."
-              onClick={onBack}
-            >
-              ← Back to Classify
-            </button>
-          )}
-          {!(phone && phoneScan) && (
-            <button
-              type="button"
-              className="btn small"
-              data-testid="review-search-toggle"
-              aria-label="Search values"
-              aria-expanded={search.open}
-              title="Search the values (Ctrl+F)"
-              onClick={() => (search.open ? search.closeSearch() : search.openSearch())}
-            >
-              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </button>
-          )}
-          <ScanToggleButton preview={preview} />
-          {originalScanUrl && !(phone && (linksInMenu || phoneScan)) && (
-            <a className="btn small" href={originalScanUrl} target="_blank" rel="noreferrer">
-              View original scan
-            </a>
-          )}
-          {pdfUrl && !(phone && (linksInMenu || phoneScan)) && (
-            <a className="btn small" href={pdfUrl}>
-              Download PDF
-            </a>
-          )}
-        </div>
-      </div>
+      <ReviewHeader
+        heading={heading}
+        meta={meta}
+        extractionSeconds={extractionSeconds}
+        instrumentLine={instrumentLine}
+        onChangeInstrument={onChangeInstrument}
+        onBack={onBack}
+        search={search}
+        preview={preview}
+        originalScanUrl={originalScanUrl}
+        pdfUrl={pdfUrl}
+        linksInMenu={linksInMenu}
+      />
 
       {search.open && (
         <ReviewSearchBar
@@ -310,24 +261,7 @@ export function ReviewScreen({
       )}
 
       {!readOnly && flaggedCount > 0 && (
-        <div className="attention-strip" data-testid="attention-strip" role="status">
-          <span className="attention-strip-count">
-            {flaggedCount} field{flaggedCount === 1 ? '' : 's'} need{flaggedCount === 1 ? 's' : ''} attention
-          </span>
-          <span className="attention-strip-chips">
-            {flaggedList.map((f) => (
-              <button
-                key={f.name}
-                type="button"
-                className="attention-chip"
-                aria-label={`Go to ${f.label}`}
-                onClick={() => goToField(f.name)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </span>
-        </div>
+        <AttentionStrip flaggedCount={flaggedCount} flaggedList={flaggedList} onGo={goToField} />
       )}
 
       <PhoneScanSwitch preview={preview} />
@@ -335,20 +269,7 @@ export function ReviewScreen({
       <ScanSplit
         preview={preview}
         rail={
-          <nav className="review-rail" aria-label="Fields" data-testid="review-rail">
-            <div className="review-rail-title">Fields</div>
-            <ul>
-              {[{ name: 'report_date', label: 'Service date', n: '', flagged: reportDateFlagged }, ...template.field_schema.fields.map((f, i) => ({ name: f.name, label: fieldLabel(f.name, f.unit), n: String(i + 1), flagged: isFlagged(f.name) }))].map((r) => (
-                <li key={r.name}>
-                  <button type="button" className={`review-rail-item${r.flagged && !readOnly ? ' flagged' : ''}`} onClick={() => goToField(r.name)}>
-                    <span className="review-rail-num">{r.n}</span>
-                    <span className="review-rail-label">{r.label}</span>
-                    <span className="review-rail-mark" aria-label={r.flagged && !readOnly ? 'needs checking' : 'checked'}>{r.flagged && !readOnly ? '!' : '✓'}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          <ReviewRail template={template} reportDateFlagged={reportDateFlagged} isFlagged={isFlagged} readOnly={readOnly} onGo={goToField} />
         }
       >
       <fieldset className="review-fieldset" disabled={readOnly}>
@@ -360,193 +281,63 @@ export function ReviewScreen({
             {readOnly ? `${template.field_schema.fields.length + 1} fields` : `${template.field_schema.fields.length + 1 - flaggedCount} of ${template.field_schema.fields.length + 1} checked`}
           </span>
         </div>
-        <div
-          className={`field ${reportDateFlagged ? 'pending' : 'ok'}`}
-          data-field="report_date"
-          role="group"
-          aria-labelledby="review-report-date-label"
-        >
-          <div className="field-top">
-            <label className="field-label" id="review-report-date-label" htmlFor="review-report-date">
-              Service date
-            </label>
-            {reportDateFlagged && !readOnly && <span className="sr-only">Needs checking.</span>}
-            {reportDateConfidence !== undefined && (
-              <ConfidenceBadge
-                confidence={reportDateConfidence}
-                threshold={fieldConfidenceThreshold}
-                label={placeholderValues ? 'placeholder' : undefined}
-              />
-            )}
-          </div>
-          {reportDateFlagged && !readOnly && (
-            <button
-              type="button"
-              className="btn small mark-checked"
-              aria-label="Mark as checked: Service date"
-              onClick={() => markChecked('report_date')}
-            >
-              Mark as checked
-            </button>
-          )}
-          <DateInput id="review-report-date" value={reportDate ?? ''} onChange={(v) => onReportDateChange(v || null)} />
-          <div className="field-note">The date the service visit was carried out.</div>
-        </div>
-        {template.field_schema.fields.map((field, i) => {
-          const confidence = fieldConfidences[field.name];
-          const flagged = isFlagged(field.name);
-          return (
-            <div
-              className={`field ${flagged ? 'pending' : 'ok'}`}
-              key={field.name}
-              data-field={field.name}
-              role="group"
-              aria-labelledby={`review-field-${i}-label`}
-            >
-              <div className="field-top">
-                <span className="field-label" id={`review-field-${i}-label`}>
-                  <span className="badge-mini" style={{ background: flagged ? 'var(--flag)' : 'var(--good)' }}>
-                    {i + 1}
-                  </span>{' '}
-                  {fieldLabel(field.name, field.unit)}
-                  {field.unit && <span className="field-unit"> ({field.unit})</span>}
-                </span>
-                {flagged && !readOnly && <span className="sr-only">Needs checking.</span>}
-                {personFields.has(field.name) && !readOnly ? (
-                  <span className={`badge ${flagged ? 'badge-warn' : 'badge-good'}`} data-testid="person-field-badge">
-                    {flagged ? 'suggested, check it' : 'checked'}
-                  </span>
-                ) : (
-                  confidence !== undefined && (
-                    <ConfidenceBadge
-                      confidence={confidence}
-                      threshold={fieldConfidenceThreshold}
-                      label={placeholderValues ? 'placeholder' : undefined}
-                    />
-                  )
-                )}
-              </div>
-              {flagged && !readOnly && (
-                <button
-                  type="button"
-                  className="btn small mark-checked"
-                  aria-label={`Mark as checked: ${fieldLabel(field.name, field.unit)}`}
-                  onClick={() => markChecked(field.name)}
-                >
-                  Mark as checked
-                </button>
-              )}
-              <FieldLabelContext.Provider value={fieldLabel(field.name, field.unit)}>
-                <FieldControl field={field} value={fields[field.name]} onChange={(v) => onChange(field.name, v)} />
-              </FieldLabelContext.Provider>
-              {field.notes && <div className="field-note">{field.notes}</div>}
-            </div>
-          );
-        })}
+        <ReportDateField
+          flagged={reportDateFlagged}
+          readOnly={readOnly}
+          confidence={reportDateConfidence}
+          threshold={fieldConfidenceThreshold}
+          placeholderValues={placeholderValues}
+          value={reportDate}
+          onChange={onReportDateChange}
+          onMarkChecked={() => markChecked('report_date')}
+        />
+        {template.field_schema.fields.map((field, i) => (
+          <ReviewField
+            key={field.name}
+            field={field}
+            index={i}
+            confidence={fieldConfidences[field.name]}
+            flagged={isFlagged(field.name)}
+            readOnly={readOnly}
+            isPersonField={personFields.has(field.name)}
+            threshold={fieldConfidenceThreshold}
+            placeholderValues={placeholderValues}
+            value={fields[field.name]}
+            onChange={(v) => onChange(field.name, v)}
+            onMarkChecked={() => markChecked(field.name)}
+          />
+        ))}
       </div>
       </ReadOnlyContext.Provider>
 
       </fieldset>
 
       {confirmingEdit && onEdit && readOnly && (
-        <div
-          className="banner banner-warn"
-          id="edit-confirm"
-          role="alertdialog"
-          aria-label="Edit a finalized report"
-          onKeyDown={(e) => e.key === 'Escape' && setConfirmingEdit(false)}
-        >
-          <span>This report is finalized. Changes you save replace the finalized values.</span>{' '}
-          <button
-            type="button"
-            className="btn small"
-            autoFocus
-            onClick={() => {
-              setConfirmingEdit(false);
-              onEdit();
-            }}
-          >
-            Edit anyway
-          </button>
-          <button type="button" className="btn small" onClick={() => setConfirmingEdit(false)}>
-            Cancel
-          </button>
-        </div>
+        <EditConfirm onEdit={() => { setConfirmingEdit(false); onEdit(); }} onClose={() => setConfirmingEdit(false)} />
       )}
 
       {showFinalizeConfirm && (
-        <div
-          className="banner banner-warn finalize-confirm"
-          id="finalize-confirm"
-          role="alertdialog"
-          aria-label="Confirm finalize"
-          ref={confirmRef}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setConfirmingFinalize(false);
-          }}
-        >
-          <div>
-            {flaggedCount} field{flaggedCount === 1 ? '' : 's'} still need{flaggedCount === 1 ? 's' : ''} attention.
-            Finalize anyway? A finalized report goes into search, analytics and exports.
-          </div>
-          <button type="button" className="btn small" onClick={reviewFlagged}>
-            Review them
-          </button>{' '}
-          <button type="button" className="btn small" onClick={finalizeAnyway} disabled={busy !== null}>
-            Finalize anyway
-          </button>
-        </div>
+        <FinalizeConfirm
+          flaggedCount={flaggedCount}
+          busy={busy}
+          confirmRef={confirmRef}
+          onReview={reviewFlagged}
+          onFinalizeAnyway={finalizeAnyway}
+          onClose={() => setConfirmingFinalize(false)}
+        />
       )}
 
-      <div className="review-actions" aria-busy={busy !== null}>
-        <div className="review-actions-status">
-          {readOnly ? (
-            <span>Finalized. Press Edit to change it.</span>
-          ) : flaggedCount > 0 ? (
-            <>
-              <span className="review-actions-count">
-                {flaggedCount} field{flaggedCount === 1 ? '' : 's'} need{flaggedCount === 1 ? 's' : ''} attention
-              </span>
-              <button
-                type="button"
-                className="btn small"
-                onClick={goToNextFlagged}
-                title={`${flaggedCount} field${flaggedCount === 1 ? '' : 's'} need${flaggedCount === 1 ? 's' : ''} attention`}
-              >
-                <span className="next-long">Next ↓</span>
-                <span className="next-short" aria-hidden="true">
-                  {flaggedCount} ↓
-                </span>
-              </button>
-            </>
-          ) : null}
-        </div>
-        <div className="review-actions-buttons">
-          {readOnly ? (
-            onEdit && (
-              <button className="btn" onClick={() => setConfirmingEdit(true)} aria-expanded={confirmingEdit}>
-                Edit
-              </button>
-            )
-          ) : (
-            <>
-              {onCancelEdit && (
-                <button className="btn review-cancel-edit" onClick={onCancelEdit} disabled={busy !== null}>
-                  Cancel
-                </button>
-              )}
-              <button className="btn" onClick={onSave} disabled={busy !== null}>
-                {busy === 'save' ? 'Saving…' : 'Save corrections'}
-              </button>
-              {onFinalize && (
-                <button className="btn primary" onClick={requestFinalize} disabled={busy !== null}>
-                  {busy === 'finalize' ? 'Finalizing…' : <>Save &amp; finalize report</>}
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+      <ReviewActions
+        readOnly={readOnly}
+        flaggedCount={flaggedCount}
+        busy={busy}
+        confirmingEdit={confirmingEdit}
+        onNext={goToNextFlagged}
+        onAskEdit={onEdit ? () => setConfirmingEdit(true) : undefined}
+        onCancelEdit={onCancelEdit}
+        onSave={onSave}
+        onRequestFinalize={onFinalize ? requestFinalize : undefined}
+      />
       </ScanSplit>
     </div>
   );
