@@ -73,6 +73,9 @@ test.describe('scan beside the fields', () => {
 
     const scan = page.locator('.review-scan');
     await expect(scan).toBeVisible();
+    // The page view with the fields drawn on it is the default; the browser's own viewer is one click away.
+    await expect(page.getByTestId('fields-on-page')).toBeVisible();
+    await page.getByTestId('scan-mode-original').click();
     await expect(scan.locator('iframe')).toHaveAttribute('src', /\/attachments\/.+\/file\?inline=1/);
     const [scanBox, listBox] = await Promise.all([scan.boundingBox(), page.getByTestId('field-list').boundingBox()]);
     expect(scanBox!.x + scanBox!.width).toBeLessThanOrEqual(listBox!.x);
