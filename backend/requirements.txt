@@ -10,7 +10,7 @@ pytest==9.2.0
 pytest-cov==7.1.0  # coverage: python -m pytest --cov (settings in .coveragerc)
 pytest-randomly==5.0.0  # shuffles test order every run and prints the seed; reproduce a failure with: pytest -p randomly --randomly-seed=<seed>; turn off with: pytest -p no:randomly
 httpx==0.28.1
-anthropic==1.13.0
+anthropic==2.3.0
 reportlab==5.1.0
 pypdf==6.21.4  # reads the text layer of uploaded PDFs (services/text_reader.py); tests also use it to verify generated PDFs
 pypdfium2==5.14.0  # renders PDF pages to PNG for the phone's scan view (routers/attachments.py); Android Chrome cannot show a PDF in an <iframe>
