@@ -343,11 +343,28 @@ button.fleet-row:hover {
   /* Fixed status and actions columns, for the same reason as .report-row; minmax(0, …) so a
      long cell wraps instead of stretching its column in that row only. */
   grid-template-columns:
-    minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 84px 148px;
+    minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 132px 148px;
   gap: 10px;
   align-items: center;
   padding: 14px 20px;
   text-align: left;
+}
+
+/* The status cell holds two pills (status + maintenance), wrapping onto a second line
+   when they don't fit. The base .status-pill is nowrap, so a long label such as
+   "No maintenance record" ran out of the narrow Status column into Actions; inside this
+   cell a pill may wrap and never exceeds the cell. */
+.instrument-row > span[data-label='Status'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px;
+}
+.instrument-row > span[data-label='Status'] .status-pill {
+  white-space: normal;
+  max-width: 100%;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .schema-form-row {
