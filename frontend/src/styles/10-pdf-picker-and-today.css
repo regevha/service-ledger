@@ -341,3 +341,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* "3 days over" is a sentence, not a status name: keep its own case. */
+.today-row .status-pill {
+  text-transform: none;
+}
