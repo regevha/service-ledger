@@ -3,8 +3,11 @@ from __future__ import annotations
 import re
 from typing import Literal, NamedTuple
 
+from sqlalchemy.orm import Session
+
 from app.models import Instrument, ReportType
 from app.schemas import ClassificationGuess
+from app.services.manufacturers import is_maker
 
 
 _INVISIBLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u200e\u200f\u2060\ufeff"))
@@ -49,23 +52,37 @@ class DocumentRead(NamedTuple):
     detected_model: str | None = None
 
 
-# What the Work Order Task Code says about the kind of visit. Only codes whose
-# meaning is documented are listed; any other code falls back to the model's
-# own judgment rather than being guessed at.
-_TASK_CODE_REPORT_TYPES = {
-    "T111": ReportType.preventive_maintenance,
-    "T107": ReportType.installation_upgrade,
-    "T113": ReportType.repair,
+# What a printed task code says about the kind of visit. A task code is one maker's
+# own coding scheme, so the table is kept per maker (by a name the maker is known by,
+# see services/manufacturers.is_maker) and used only for that maker's documents: another
+# maker's "T113" must not be read as BD's repair code. Only codes whose meaning is
+# documented are listed; any other code falls back to the model's own judgment rather
+# than being guessed at.
+_TASK_CODE_REPORT_TYPES_BY_MAKER: dict[str, dict[str, ReportType]] = {
+    "BD": {
+        "T111": ReportType.preventive_maintenance,
+        "T107": ReportType.installation_upgrade,
+        "T113": ReportType.repair,
+    },
 }
+DEFAULT_TASK_CODE_SCHEME = "BD"
 
 
-def report_type_from_task_code(code: object) -> ReportType | None:
-    """The report type a printed task code stands for, or None when the code
-    is missing, unparseable, or not one we know the meaning of."""
-    if not isinstance(code, str):
+def task_code_scheme(db: Session, maker_text: str | None) -> str | None:
+    """The task-code scheme (a key of the table above) a document from this maker uses,
+    or None when the maker has none listed or is not known."""
+    return next((name for name in _TASK_CODE_REPORT_TYPES_BY_MAKER if is_maker(db, maker_text, name)), None)
+
+
+def report_type_from_task_code(code: object, scheme: str | None = DEFAULT_TASK_CODE_SCHEME) -> ReportType | None:
+    """The report type a printed task code stands for in `scheme` (one maker's coding),
+    or None when there is no scheme, or the code is missing, unparseable, or not one we
+    know the meaning of. `scheme` defaults to BD's, the only one listed."""
+    table = _TASK_CODE_REPORT_TYPES_BY_MAKER.get(scheme) if scheme else None
+    if not table or not isinstance(code, str):
         return None
     match = re.match(r"\s*(T\d{3})", code.upper())
-    return _TASK_CODE_REPORT_TYPES.get(match.group(1)) if match else None
+    return table.get(match.group(1)) if match else None
 
 
 # What a document prints when the instrument has no serial number.
