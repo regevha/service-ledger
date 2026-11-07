@@ -36,6 +36,8 @@ async function createTemplate(request: APIRequestContext, data: Record<string, u
 // manual pick, and stops on the review screen (the generic repair template).
 async function readSampleAs(page: Page, instrumentId: string) {
   await page.goto('/#/new');
+  // Same address as the last call is only a hash change; reload so each run starts from a fresh screen.
+  await page.reload();
   await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(SAMPLE));
   await page.click('button:has-text("Upload & classify")');

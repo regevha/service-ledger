@@ -751,3 +751,9 @@
 .home-ask .ask-row .btn {
   min-height: 44px;
 }
+@media (max-width: 620px) {
+  /* A thumb-sized target: the name in the top bar is a button now. */
+  .masthead-link {
+    min-height: 44px;
+  }
+}

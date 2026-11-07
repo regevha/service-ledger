@@ -14,6 +14,8 @@ import { API_BASE, waitForExtraction } from './helpers/api';
 
 async function uploadAndClassify(page: import('@playwright/test').Page, name: string, contents: string) {
   await page.goto('/#/new');
+  // Same address as the last call is only a hash change; reload so each upload starts from a fresh screen.
+  await page.reload();
   await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Duplicate');
   await page.locator('input[type="file"]').setInputFiles({
