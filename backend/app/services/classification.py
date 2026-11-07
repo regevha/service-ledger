@@ -39,6 +39,7 @@ from app.services.errors import ClassificationError
 from app.services.text_reader import extract_text, read_identifiers
 from app.services.documents import UnsupportedDocumentError
 from app.services.translation import accepted_text, is_hebrew_text_layer, source_block
+from app.services.manufacturers import is_maker
 from app.services.templates import resolve_template
 from app.services.classification_prompt import (  # noqa: F401  (moved; re-exported here)
     _CLASSIFY_INTRO,
@@ -50,7 +51,9 @@ from app.services.classification_reading import (  # noqa: F401  (moved; re-expo
     _INVISIBLE,
     _clean,
     DocumentRead,
-    _TASK_CODE_REPORT_TYPES,
+    _TASK_CODE_REPORT_TYPES_BY_MAKER,
+    DEFAULT_TASK_CODE_SCHEME,
+    task_code_scheme,
     report_type_from_task_code,
     _NO_SERIAL_WORDS,
     _normalize_serial,
@@ -63,14 +66,14 @@ settings = get_settings()
 _CLASSIFY_TOOL_NAME = "record_classification"
 
 # What the model answers for `instrument_model` when the document's instrument
-# is not any model in the fleet (for example a Cytek analyzer when the fleet is
+# is not any model in the fleet (for example an analyzer from a maker the fleet does not have, when the fleet is
 # all BD). It is never stored as a model: the read becomes a zero-confidence
 # placeholder for the manual pick and the maker is kept for the screen.
 NOT_IN_FLEET = "(not in the fleet)"
 
 
 def _apply_task_code(
-    type_guess: ClassificationGuess, data: dict, attachment_path: str
+    type_guess: ClassificationGuess, data: dict, attachment_path: str, scheme: str | None = DEFAULT_TASK_CODE_SCHEME
 ) -> tuple[ClassificationGuess, Literal["task_code", "model"]]:
     """Prefer the task code over the model's judgment of the visit type.
 
@@ -80,7 +83,7 @@ def _apply_task_code(
     the confidence of the *read*. A code read with doubt is ignored — the
     model's guess stands, so the report still falls through to manual
     confirmation when that guess is itself unsure."""
-    mapped = report_type_from_task_code(data.get("task_code"))
+    mapped = report_type_from_task_code(data.get("task_code"), scheme)
     if mapped is None:
         return type_guess, "model"
     try:
@@ -204,7 +207,13 @@ def _live_classify(
         )
         raise ClassificationError(f"Claude's classification response was missing or malformed fields: {e}") from e
 
-    type_guess, type_source = _apply_task_code(type_guess, data, attachment.file_path)
+    # The maker decides whether the printed task code means anything: the fleet unit the
+    # model named, else the maker the model detected on the form.
+    fleet_unit = next((i for i in instruments if i.model == instrument_guess.value), None)
+    maker_text = fleet_unit.manufacturer if fleet_unit is not None else _clean(data.get("detected_manufacturer"))
+    type_guess, type_source = _apply_task_code(
+        type_guess, data, attachment.file_path, task_code_scheme(db, maker_text)
+    )
     work_order = data.get("work_order_number")
 
     maker_in_fleet = True
@@ -291,7 +300,7 @@ def _text_classify(attachment: Attachment, instruments: list[Instrument]) -> Doc
     if not text.strip():
         return None
     read = read_identifiers(text, sorted({i.model for i in instruments}))
-    if not read.recognised:
+    if not read.in_bd_format:
         return None
 
     other_model: dict = {}

@@ -94,7 +94,7 @@ def test_a_service_report_is_read_completely():
     assert (read.model, read.serial, read.task_code, read.work_order_number) == (
         "LSRFortessa", "R647794E6092", "T113", "WO-90000001",
     )
-    assert read.product_code == "647794E6" and read.recognised
+    assert read.product_code == "647794E6" and read.in_bd_format
 
 
 def test_the_serial_is_the_token_that_contains_the_product_code_not_the_config_string_or_free_text():
@@ -141,20 +141,20 @@ def test_a_product_line_for_a_part_is_not_an_instrument():
     assert read.model is None and read.serial is None
 
 
-def test_a_bd_document_for_an_unknown_model_is_recognised_but_has_no_model():
+def test_a_bd_document_for_an_unknown_model_is_bd_format_but_has_no_model():
     read = read_identifiers("WORK ORDER NUMBER: WO-90000002\n999999 - ACME Cytometer 9000", MODELS)
-    assert read.model is None and read.work_order_number == "WO-90000002" and read.recognised
+    assert read.model is None and read.work_order_number == "WO-90000002" and read.in_bd_format
 
 
 def test_an_installed_product_outside_the_fleet_is_kept_with_its_serial():
     text = extract_text(make_pdf(service_report(product="665158 - FACSDiscover S8", serial="MP6651580000099")))
     read = read_identifiers(text, ["FACSAria III", "LSRFortessa", "CytoFLEX S"])  # the S8 was deleted
     assert read.model is None and read.unlisted_model == "FACSDiscover S8"
-    assert read.serial == "MP6651580000099" and read.recognised
+    assert read.serial == "MP6651580000099" and read.in_bd_format
 
 
-def test_text_that_is_not_a_service_document_is_not_recognised():
-    assert not read_identifiers("Quarterly invoice, page 1 of 3", MODELS).recognised
+def test_text_that_is_not_a_service_document_is_not_in_bd_format():
+    assert not read_identifiers("Quarterly invoice, page 1 of 3", MODELS).in_bd_format
 
 
 @pytest.mark.parametrize(
@@ -162,7 +162,10 @@ def test_text_that_is_not_a_service_document_is_not_recognised():
     [
         ("WORK ORDER NUMBER: WO-03424229", "WO-03424229"),
         ("WORK ORDER NUMBER:WO-03424229", "WO-03424229"),
-        ("see wo-0342 and WO-12345678 in notes", "WO-12345678"),
+        ("Work order raised: see wo-0342 and WO-12345678 in notes", "WO-12345678"),
+        # A bare WO-... number counts only when the document also says "work order": another
+        # maker's part or asset number must not be taken for one.
+        ("Part WO-12345678 on order", None),
         ("no number here", None),
         ("SWO-12345678", None),
     ],
