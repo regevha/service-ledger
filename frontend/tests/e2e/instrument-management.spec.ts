@@ -18,8 +18,8 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   const uniqueName = `E2E-Instrument-${Date.now()}`;
   const serial = `E2E-SN-${Date.now()}`;
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-instruments').click();
   await expect(page.locator('.section-title')).toContainText('Instruments');
 
   // ---- Create ----
@@ -28,19 +28,19 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
 
   // A fresh create form has no Status field — an instrument is always
   // created active (schemas.py's InstrumentCreate has no status field).
-  await expect(page.locator('.schema-form-label', { hasText: 'Status' })).toHaveCount(0);
+  await expect(page.getByTestId('form-label').filter({ hasText: 'Status' })).toHaveCount(0);
 
-  await page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input').fill(uniqueName);
-  await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(`E2E-Model-${Date.now()}`);
-  await page.locator('.schema-form-label', { hasText: 'Manufacturer' }).locator('input').fill('E2E Maker');
-  await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill(serial);
-  await page.locator('.schema-form-label', { hasText: 'Room name' }).locator('input').fill('E2E Room');
-  await page.locator('.schema-form-label', { hasText: 'Institution' }).locator('input').fill('E2E University');
+  await page.getByTestId('form-label').filter({ hasText: /^\s*Name/ }).locator('input').fill(uniqueName);
+  await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(`E2E-Model-${Date.now()}`);
+  await page.getByTestId('form-label').filter({ hasText: 'Manufacturer' }).locator('input').fill('E2E Maker');
+  await page.getByTestId('form-label').filter({ hasText: 'Serial number' }).locator('input').fill(serial);
+  await page.getByTestId('form-label').filter({ hasText: 'Room name' }).locator('input').fill('E2E Room');
+  await page.getByTestId('form-label').filter({ hasText: 'Institute' }).locator('input').fill('E2E University');
   await page.click('button:has-text("Create instrument")');
 
   // ---- Verify it landed in the list, active by default ----
   await expect(page.locator('.section-title').first()).toContainText('Instruments');
-  const listRow = page.locator('.instrument-row.template-row-body', { hasText: uniqueName });
+  const listRow = page.getByTestId('instrument-row').filter({ hasText: uniqueName });
   await expect(listRow).toBeVisible();
   await expect(listRow).toContainText('E2E-Model');
   await expect(listRow).toContainText(serial);
@@ -52,23 +52,23 @@ test('create an instrument, see it in the Reports filter, then edit it', async (
   // shared top-level `instruments` list, not just this tab's own view.
   // (The filter's own option text is "model (serial number)" — App.tsx's
   // filter-row select — not the instrument's name.) ----
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await expect(page.getByLabel('Instrument', { exact: true }).locator('option', { hasText: serial })).toHaveCount(1);
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
 
   // ---- Edit: rename, relocate, and retire it ----
   await listRow.locator('button:has-text("Edit")').click();
   await expect(page.locator('.section-title').first()).toContainText('Edit instrument');
 
-  const nameInput = page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input');
+  const nameInput = page.getByTestId('form-label').filter({ hasText: /^\s*Name/ }).locator('input');
   await nameInput.fill(`${uniqueName}-Renamed`);
-  await page.locator('.schema-form-label', { hasText: 'Room name' }).locator('input').fill('New Room');
-  await page.locator('.schema-form-label', { hasText: 'Institution' }).locator('input').fill('E2E University');
-  await page.locator('.schema-form-label', { hasText: 'Status' }).locator('select').selectOption('maintenance');
+  await page.getByTestId('form-label').filter({ hasText: 'Room name' }).locator('input').fill('New Room');
+  await page.getByTestId('form-label').filter({ hasText: 'Institute' }).locator('input').fill('E2E University');
+  await page.getByTestId('form-label').filter({ hasText: 'Status' }).locator('select').selectOption('maintenance');
   await page.click('button:has-text("Save changes")');
 
   await expect(page.locator('.section-title').first()).toContainText('Instruments');
-  const renamedRow = page.locator('.instrument-row.template-row-body', { hasText: `${uniqueName}-Renamed` });
+  const renamedRow = page.getByTestId('instrument-row').filter({ hasText: `${uniqueName}-Renamed` });
   await expect(renamedRow).toBeVisible();
   await expect(renamedRow).toContainText('New Room');
   await expect(renamedRow.locator('.status-pill.instrument-status-maintenance')).toContainText('In maintenance');
@@ -88,21 +88,21 @@ test('editing an instrument to reuse another one\'s serial number shows an error
 
   async function createInstrument(name: string, serial: string) {
     await page.click('button:has-text("+ New instrument")');
-    await page.locator('.schema-form-label', { hasText: /^\s*Name/ }).locator('input').fill(name);
-    await page.locator('.schema-form-label', { hasText: 'Model' }).locator('input').fill(`E2E-Model-${Date.now()}`);
-    await page.locator('.schema-form-label', { hasText: 'Manufacturer' }).locator('input').fill('E2E Maker');
-    await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill(serial);
+    await page.getByTestId('form-label').filter({ hasText: /^\s*Name/ }).locator('input').fill(name);
+    await page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input').fill(`E2E-Model-${Date.now()}`);
+    await page.getByTestId('form-label').filter({ hasText: 'Manufacturer' }).locator('input').fill('E2E Maker');
+    await page.getByTestId('form-label').filter({ hasText: 'Serial number' }).locator('input').fill(serial);
     await page.click('button:has-text("Create instrument")');
-    await expect(page.locator('.instrument-row.template-row-body', { hasText: name })).toBeVisible();
+    await expect(page.getByTestId('instrument-row').filter({ hasText: name })).toBeVisible();
   }
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-instruments').click();
   await createInstrument(nameA, serialA);
   await createInstrument(nameB, serialB);
 
-  await page.locator('.instrument-row.template-row-body', { hasText: nameB }).locator('button:has-text("Edit")').click();
-  await page.locator('.schema-form-label', { hasText: 'Serial number' }).locator('input').fill(serialA);
+  await page.getByTestId('instrument-row').filter({ hasText: nameB }).locator('button:has-text("Edit")').click();
+  await page.getByTestId('form-label').filter({ hasText: 'Serial number' }).locator('input').fill(serialA);
   await page.click('button:has-text("Save changes")');
 
   await expect(page.locator('.banner-crit')).toContainText('already exists');
@@ -111,6 +111,6 @@ test('editing an instrument to reuse another one\'s serial number shows an error
   await expect(page.locator('.section-title').first()).toContainText('Edit instrument');
 
   await page.click('button:has-text("Cancel")');
-  const rowB = page.locator('.instrument-row.template-row-body', { hasText: nameB });
+  const rowB = page.getByTestId('instrument-row').filter({ hasText: nameB });
   await expect(rowB).toContainText(serialB);
 });

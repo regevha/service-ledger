@@ -14,15 +14,15 @@ async function makeUnit(request: APIRequestContext, tag: string, institution: st
 }
 
 async function openPlaces(page: Page) {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-instruments').click();
   await page.click('.sub-switch button:has-text("Places")');
   await expect(page.locator('#places-section')).toBeVisible();
 }
 
 // The row whose place name is exactly this, of this kind.
 const placeRow = (page: Page, name: string, kind: string) =>
-  page.locator('.place-row.template-row-body', {
+  page.locator('[data-testid="place-row"]', {
     has: page.locator('.place-name-text', { hasText: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }),
     hasText: kind,
   });
@@ -34,9 +34,9 @@ test('the Places list shows institutions and rooms with their instrument counts'
   await makeUnit(request, 'c', uni, null);
 
   await openPlaces(page);
-  await expect(placeRow(page, uni, 'Institution').locator('[data-label="Instruments"]')).toContainText('3');
-  await expect(placeRow(page, uni, 'Institution').locator('[data-label="Instruments"]')).toContainText('1 directly');
-  const room = page.locator('.place-row.template-row-body', { hasText: 'Room 1' }).filter({ hasText: uni });
+  await expect(placeRow(page, uni, 'Institute').locator('[data-label="Instruments"]')).toContainText('3');
+  await expect(placeRow(page, uni, 'Institute').locator('[data-label="Instruments"]')).toContainText('1 directly');
+  const room = page.getByTestId('place-row').filter({ hasText: 'Room 1' }).filter({ hasText: uni });
   await expect(room.locator('[data-label="Instruments"]')).toHaveText('2');
 });
 
@@ -46,11 +46,11 @@ test('renaming an institution warns how many instruments change and updates them
   const unit = await makeUnit(request, 'ren', uni, 'R9');
 
   await openPlaces(page);
-  await placeRow(page, uni, 'Institution').locator('button:has-text("Edit")').click();
-  await page.locator('.schema-form-label', { hasText: 'Name' }).locator('input').fill(`${uni} II`);
-  await expect(page.locator('#place-rename-warning')).toContainText('Renaming changes the institution of 1 instrument to');
+  await placeRow(page, uni, 'Institute').locator('button:has-text("Edit")').click();
+  await page.getByTestId('form-label').filter({ hasText: 'Name' }).locator('input').fill(`${uni} II`);
+  await expect(page.locator('#place-rename-warning')).toContainText('Renaming changes the institute of 1 instrument to');
   await page.click('button:has-text("Save changes")');
-  await expect(placeRow(page, `${uni} II`, 'Institution')).toBeVisible();
+  await expect(placeRow(page, `${uni} II`, 'Institute')).toBeVisible();
   const after = await (await request.get(`${API_BASE}/instruments/${unit.id}`)).json();
   expect(after.institution).toBe(`${uni} II`);
   expect(after.location).toBe('R9');
@@ -65,7 +65,7 @@ test('look-alike places are flagged, and merge says exactly what moves', async (
   const moved = await makeUnit(request, 'm', uni, dupe);
 
   await openPlaces(page);
-  const dupeRow = page.locator('.place-row.template-row-body', { has: page.locator('.place-name-text', { hasText: new RegExp(`^${dupe}$`) }) });
+  const dupeRow = page.locator('[data-testid="place-row"]', { has: page.locator('.place-name-text', { hasText: new RegExp(`^${dupe}$`) }) });
   await expect(dupeRow.locator('.model-similar')).toContainText(`“${keep}”`);
 
   await dupeRow.locator('.row-menu-button').click();
@@ -89,11 +89,11 @@ test('delete is blocked while a place is in use and says what it deletes when it
   expect((await request.post(`${API_BASE}/places`, { data: { kind: 'room', name: 'Empty room', parent_id: parent.id } })).ok()).toBeTruthy();
 
   await openPlaces(page);
-  await placeRow(page, uni, 'Institution').locator('.row-menu-button').click();
+  await placeRow(page, uni, 'Institute').locator('.row-menu-button').click();
   await expect(page.locator('[role="menuitem"]:has-text("Delete")')).toBeDisabled();
   await page.keyboard.press('Escape');
 
-  const empty = page.locator('.place-row.template-row-body', { hasText: 'Empty room' }).filter({ hasText: uni });
+  const empty = page.getByTestId('place-row').filter({ hasText: 'Empty room' }).filter({ hasText: uni });
   await empty.locator('.row-menu-button').click();
   await page.click('[role="menuitem"]:has-text("Delete")');
   const dialog = page.locator('[role="alertdialog"][aria-label="Confirm delete place"]');
@@ -106,26 +106,26 @@ test('the instrument form says whether the institution and room are new or exist
   const uni = `E2E Form Uni ${Date.now()}`;
   await makeUnit(request, 'f', uni, 'Lab 7');
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-instruments').click();
   await page.click('button:has-text("+ New instrument")');
-  const inst = page.locator('.schema-form-label', { hasText: 'Institution' }).locator('input');
-  const room = page.locator('.schema-form-label', { hasText: 'Room name' }).locator('input');
+  const inst = page.getByTestId('form-label').filter({ hasText: 'Institute' }).locator('input');
+  const room = page.getByTestId('form-label').filter({ hasText: 'Room name' }).locator('input');
   await inst.fill(uni);
-  await expect(page.locator('#place-hint')).toContainText('Existing institution · 1 instrument');
+  await expect(page.locator('#place-hint')).toContainText('Existing institute · 1 instrument');
   await room.fill('Lab 7');
   await expect(page.locator('#place-hint')).toContainText('Existing room · 1 instrument');
   await room.fill('Lab 8');
   await expect(page.locator('#place-hint')).toContainText('New room · it will be added to Places');
   await inst.fill(`${uni} other`);
-  await expect(page.locator('#place-hint')).toContainText('New institution · it will be added to Places');
+  await expect(page.locator('#place-hint')).toContainText('New institute · it will be added to Places');
 });
 
 test('phone: the Places list has no sideways scroll and keeps captions', async ({ page, request }) => {
   await makeUnit(request, 'p', `E2E Phone Uni ${Date.now()}`, 'P1');
   await page.setViewportSize({ width: 390, height: 844 });
   await openPlaces(page);
-  const row = page.locator('.place-row.template-row-body').first();
+  const row = page.getByTestId('place-row').first();
   await expect(row.locator('[data-label="Kind"]')).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);

@@ -92,13 +92,22 @@ jobs:
             pytest -q --cov -p no:randomly
           fi
 
-  frontend:
-    name: Frontend (Playwright e2e)
+  # The e2e suite runs as two shards (`playwright test --shard=N/2`), each in its own job with its own
+  # Postgres service: the specs share one database with no reset between them, so two shards cannot
+  # share one. Each shard writes its Istanbul coverage files and uploads them; the job after the shards
+  # (named "Frontend (Playwright e2e)" as before) merges both sets and applies the coverage thresholds
+  # once, on the whole suite, as the single run used to. Add a shard (matrix and `/2` below) when a
+  # shard's run nears 15 minutes.
+  frontend-shards:
+    name: Playwright e2e shard ${{ matrix.shard }} of 2
     runs-on: ubuntu-latest
-    # The run takes about 10 minutes and grows with every spec. Past about 13, split the specs
-    # across shards (`--shard=1/2`), each with its own job and its own Postgres service: the suite
-    # shares one database, so shards cannot share one.
-    timeout-minutes: 20
+    timeout-minutes: 25
+
+    strategy:
+      # Let the other shard finish when one fails, so a run shows every failing spec at once.
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
 
     services:
       postgres:
@@ -154,26 +163,39 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright e2e suite with coverage
-        # test:e2e:coverage runs the same suite against an Istanbul-instrumented
-        # build and ends with `nyc report --check-coverage`, so this step fails
-        # when line coverage drops below 88% or branch coverage below 75% (the
-        # thresholds live in frontend/package.json — raise them as coverage
-        # improves). The table is printed in the log.
+      - name: Run this shard's specs with coverage
+        # COVERAGE=1 runs the suite against an Istanbul-instrumented build; the files land in
+        # frontend/.nyc_output and the next step uploads them. The thresholds are checked after
+        # the shards, by the "Frontend (Playwright e2e)" job, on both shards together.
         working-directory: frontend
+        env:
+          SHARD: ${{ matrix.shard }}/2
         #
         # Pushes and pull requests run the specs in the fixed order. The daily
         # scheduled run (and a manual "Run workflow") runs the spec files in a
         # random order (scripts/run-e2e-shuffled.mjs), to catch specs that only
-        # pass because of the order they ran in. The seed and the order are
-        # printed at the top of the step; to replay locally:
-        # E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled
+        # pass because of the order they ran in. Both shards must shuffle the
+        # same way, or they would split two different orders between them and
+        # skip or repeat specs, so the seed is the run's id, not a random number.
+        # It is printed at the top of the step. To replay the whole order locally
+        # (no --shard): E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled
         run: |
+          rm -rf .nyc_output coverage
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            npm run test:e2e:coverage:shuffled
+            COVERAGE=1 E2E_SHUFFLE_SEED="${{ github.run_id }}" node scripts/run-e2e-shuffled.mjs --shard="$SHARD"
           else
-            npm run test:e2e:coverage
+            COVERAGE=1 npx playwright test --shard="$SHARD"
           fi
+
+      - name: Keep this shard's coverage files
+        # .nyc_output starts with a dot: upload-artifact skips such folders unless told not to.
+        uses: actions/upload-artifact@v7
+        with:
+          name: nyc-output-${{ matrix.shard }}
+          path: frontend/.nyc_output
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Upload traces/screenshots on failure
         # playwright.config.ts writes an HTML report to playwright-report/ and
@@ -183,11 +205,56 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-test-results
+          name: playwright-test-results-shard-${{ matrix.shard }}
           path: |
             frontend/playwright-report/
             frontend/test-results/
           retention-days: 7
+
+  frontend:
+    # Keeps the name this check always had. It passes when both shards passed and the coverage of
+    # the two together meets the thresholds.
+    name: Frontend (Playwright e2e)
+    needs: frontend-shards
+    # Runs even when a shard failed, so the check reports that instead of staying "skipped".
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Both shards must have passed
+        if: needs.frontend-shards.result != 'success'
+        run: |
+          echo "The e2e shards finished as: ${{ needs.frontend-shards.result }}. See the shard jobs above."
+          exit 1
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Collect both shards' coverage files
+        uses: actions/download-artifact@v7
+        with:
+          pattern: nyc-output-*
+          merge-multiple: true
+          path: frontend/.nyc_output
+
+      - name: Check coverage of the whole suite
+        # `nyc report --check-coverage` fails when line coverage is below 88% or branch coverage
+        # below 75% (the thresholds live in frontend/package.json under coverage:report — raise
+        # them as coverage improves). It merges the files of both shards; the table is printed
+        # in the log. The source paths in the files are the runner's own checkout path, the same
+        # here as in the shard jobs.
+        working-directory: frontend
+        run: npm run coverage:report
 
   built:
     name: Built page behind the password (Playwright)
@@ -264,7 +331,7 @@ jobs:
     # WebKit's rendering is not what a change under review is likely to break.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -309,7 +376,20 @@ jobs:
 
       - name: Install Playwright's WebKit
         working-directory: frontend
-        run: npx playwright install --with-deps webkit
+        # The Ubuntu package mirror on the runner is sometimes very slow (minutes per small package), which
+        # used to hold this step until the whole job timed out. Each attempt is capped and tried again. A
+        # capped attempt leaves its apt-get running (it holds the package lock), so that is stopped before
+        # the next attempt; packages already downloaded are kept, so a retry carries on where it stopped.
+        run: |
+          for attempt in 1 2 3; do
+            timeout 6m npx playwright install --with-deps webkit && exit 0
+            echo "Install attempt $attempt did not finish; trying again."
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sleep 3
+            sudo dpkg --configure -a || true
+          done
+          exit 1
 
       - name: Run the phone tests in WebKit
         working-directory: frontend

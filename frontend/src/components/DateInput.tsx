@@ -73,6 +73,7 @@ export function DateInput({
         ref={picker}
         type="date"
         className="date-input-native"
+        aria-label="Calendar"
         tabIndex={-1}
         aria-hidden="true"
         value={isIsoDay(value) ? value : ''}

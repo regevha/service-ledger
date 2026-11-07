@@ -305,7 +305,7 @@ def test_live_extract_parses_a_well_formed_flat_response(tmp_path, monkeypatch, 
     )
     monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
 
-    fields, confidences, report_date = extraction._live_extract(attachment, _template())
+    fields, confidences, report_date, _boxes = extraction._live_extract(attachment, _template())
 
     assert fields == {"fault_description": "No see events", "labor_hours": 11.5, "retest_result": "pass"}
     assert confidences == {"fault_description": 0.92, "labor_hours": 0.88, "retest_result": 0.95, "report_date": 0.9}
@@ -335,7 +335,7 @@ def test_live_extract_unwraps_a_single_key_wrapped_response(tmp_path, monkeypatc
     fake_client = _FakeClient(response=_tool_use_response({"value": inner}))
     monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
 
-    fields, confidences, _ = extraction._live_extract(attachment, _template())
+    fields, confidences, _, _boxes = extraction._live_extract(attachment, _template())
 
     assert fields["fault_description"] == "No see events"
     assert fields["labor_hours"] == 4.0
@@ -362,7 +362,7 @@ def test_live_extract_rescues_a_per_field_nested_value_confidence_shape(tmp_path
     )
     monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
 
-    fields, confidences, _ = extraction._live_extract(attachment, _template())
+    fields, confidences, _, _boxes = extraction._live_extract(attachment, _template())
 
     assert fields["fault_description"] == "No see events"
     assert confidences["fault_description"] == 0.91
@@ -385,7 +385,7 @@ def test_live_extract_defaults_a_missing_field_to_none_value_and_zero_confidence
     )
     monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
 
-    fields, confidences, _ = extraction._live_extract(attachment, _template())
+    fields, confidences, _, _boxes = extraction._live_extract(attachment, _template())
 
     assert fields["labor_hours"] is None
     assert confidences["labor_hours"] == 0.0
@@ -413,7 +413,7 @@ def test_live_extract_treats_a_non_numeric_confidence_as_zero_without_dropping_t
     )
     monkeypatch.setattr(extraction, "_get_client", lambda: fake_client)
 
-    fields, confidences, _ = extraction._live_extract(attachment, _template())
+    fields, confidences, _, _boxes = extraction._live_extract(attachment, _template())
 
     assert fields["fault_description"] == "No see events"
     assert confidences["fault_description"] == 0.0
@@ -504,7 +504,7 @@ def test_live_extract_asks_for_report_date_in_the_tool_schema_and_prompt(tmp_pat
 
 
 def test_live_extract_accepts_an_iso_datetime_for_report_date(tmp_path, monkeypatch):
-    (_, confidences, report_date), _ = _extract_with_report_date(
+    (_, confidences, report_date, _boxes), _ = _extract_with_report_date(
         tmp_path, monkeypatch, {"report_date": "2024-03-07T00:00:00", "report_date__confidence": 0.8}
     )
     assert report_date == date(2024, 3, 7)
@@ -524,7 +524,7 @@ def test_live_extract_accepts_an_iso_datetime_for_report_date(tmp_path, monkeypa
 def test_live_extract_drops_a_missing_or_implausible_report_date(tmp_path, monkeypatch, caplog, answer):
     """None rather than a wrong date, and confidence 0 so the review screen
     flags it — whatever confidence Claude itself claimed."""
-    (_, confidences, report_date), _ = _extract_with_report_date(
+    (_, confidences, report_date, _boxes), _ = _extract_with_report_date(
         tmp_path, monkeypatch, {"report_date": answer, "report_date__confidence": 0.95}
     )
     assert report_date is None

@@ -11,12 +11,12 @@ test('distributor is optional, shown in the list and detail page, edited and cle
   const withSerial = `E2E-DST-${stamp}`;
   const withoutName = `E2E-NoDist-${stamp}`;
   const withoutSerial = `E2E-NDS-${stamp}`;
-  const label = (text: string) => page.locator('.schema-form-label', { hasText: new RegExp('^\\s*' + text) }).locator('input');
+  const label = (text: string) => page.getByTestId('form-label').filter({ hasText: new RegExp('^\\s*' + text) }).locator('input');
 
   // A new model per run: an existing model would lock the manufacturer.
   const model = `E2E-Cytometer-${Date.now()}`;
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-instruments').click();
 
   // Created without a distributor: allowed, shown as a dash.
   await page.click('button:has-text("+ New instrument")');
@@ -25,7 +25,7 @@ test('distributor is optional, shown in the list and detail page, edited and cle
   await label('Manufacturer').fill('Acme Optics');
   await label('Serial number').fill(withoutSerial);
   await page.click('button:has-text("Create instrument")');
-  const plainRow = page.locator('.instrument-row.template-row-body', { hasText: withoutName });
+  const plainRow = page.getByTestId('instrument-row').filter({ hasText: withoutName });
   await expect(plainRow).toContainText('Acme Optics');
   await expect(plainRow.locator('span').nth(2)).toHaveText('—');
 
@@ -37,11 +37,11 @@ test('distributor is optional, shown in the list and detail page, edited and cle
   await label('Distributor').fill('  Rhenium ');
   await label('Serial number').fill(withSerial);
   await page.click('button:has-text("Create instrument")');
-  const row = page.locator('.instrument-row.template-row-body', { hasText: withName });
+  const row = page.getByTestId('instrument-row').filter({ hasText: withName });
   await expect(row.locator('span').nth(2)).toHaveText('Rhenium');
 
   // Detail page (reached through the Reports tab's instrument filter).
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   const select = page.getByLabel('Instrument', { exact: true });
   const value = (await select.locator('option', { hasText: withSerial }).getAttribute('value')) ?? '';
   await select.selectOption({ value });
@@ -49,7 +49,7 @@ test('distributor is optional, shown in the list and detail page, edited and cle
   await expect(page.locator('.instrument-meta')).toContainText('Distributor: Rhenium');
 
   // Edit it, then clear it.
-  await page.click('.view-tab:has-text("Instruments")');
+  await page.getByTestId('tab-instruments').click();
   await row.locator('button:has-text("Edit")').click();
   await expect(label('Distributor')).toHaveValue('Rhenium');
   await label('Distributor').fill('almog diagnostic');

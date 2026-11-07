@@ -10,8 +10,8 @@ import { finalizeFromReview } from './finalize-helper';
 // screen, where the technician can now pick the new type and land on its
 // template's fields.
 test('a technician can confirm a report as an installation / upgrade and review its fields', async ({ page }) => {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', 'E2E Install Upgrade');
   await page.locator('input[type="file"]').setInputFiles({
     name: `sample-work-order-upgrade-${Date.now()}.pdf`,
@@ -25,7 +25,7 @@ test('a technician can confirm a report as an installation / upgrade and review 
   await typeSelect.selectOption({ label: 'Installation / upgrade' });
   await confirmClassification(page);
 
-  const fields = page.locator('.field-list');
+  const fields = page.getByTestId('field-list');
   await expect(fields).toBeVisible({ timeout: TIMEOUT.flow });
   await expect(fields).toContainText('Service description');
   await expect(fields).toContainText('Components replaced');
@@ -37,8 +37,8 @@ test('a technician can confirm a report as an installation / upgrade and review 
   await expect(page.locator('.success-panel')).toBeVisible({ timeout: TIMEOUT.ui });
 
   // It is filterable by its type in the reports list.
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await page.locator('input[aria-label="Lab manager"]').fill('E2E Install Upgrade');
-  await expect(page.locator('.report-row-body')).toHaveCount(1);
-  await expect(page.locator('.report-row-body')).toContainText('Installation / upgrade');
+  await expect(page.getByTestId('report-row')).toHaveCount(1);
+  await expect(page.getByTestId('report-row')).toContainText('Installation / upgrade');
 });

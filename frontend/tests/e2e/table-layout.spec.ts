@@ -1,10 +1,11 @@
 import { test, expect } from './coverage';
 import { seedReport } from './helpers/api';
+import { showFlatList, tabTestId } from './helpers/ui';
 
 // Layout regressions from the 2026-10-24 UI review: the table captions must sit
 // over their columns (header and rows are separate grids, so an "auto" column
 // used to size itself per row), and a phone-width screen must not scroll sideways
-// (the five tabs are wider than a phone).
+// (the tabs are wider than a phone).
 
 async function maxColumnDrift(page: import('@playwright/test').Page, head: string, body: string) {
   return page.evaluate(
@@ -25,31 +26,38 @@ for (const width of [1440, 1100]) {
     // The Reports table needs a row to measure; nothing else in the run is relied on to leave one.
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `E2E-TableLayout-${Date.now()}` });
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/');
+    await page.goto('/#/new');
 
-    await page.click('.view-tab:has-text("Instruments")');
-    await expect(page.locator('.instrument-row.template-row-body').first()).toBeVisible();
-    expect(await maxColumnDrift(page, '.instrument-row.template-row-head', '.instrument-row.template-row-body')).toBe(0);
+    await page.getByTestId('tab-instruments').click();
+    await expect(page.getByTestId('instrument-row').first()).toBeVisible();
+    expect(await maxColumnDrift(page, '.instrument-row.template-row-head', '[data-testid="instrument-row"]')).toBe(0);
 
-    await page.click('.view-tab:has-text("Reports")');
-    await expect(page.locator('.report-row-body').first()).toBeVisible();
-    expect(await maxColumnDrift(page, '.report-row-head', '.report-row-body')).toBe(0);
+    await page.getByTestId('tab-reports').click();
+    await showFlatList(page);
+    await expect(page.getByTestId('report-row').first()).toBeVisible();
+    expect(await maxColumnDrift(page, '.report-row-head', '[data-testid="report-row"]')).toBe(0);
   });
 }
 
 test('no screen scrolls sideways at phone width', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
-  for (const tab of ['New report', 'Reports', 'Analytics', 'Templates', 'Instruments']) {
-    await page.click(`.view-tab:has-text("${tab}")`);
+  await page.goto('/#/new');
+  // Templates and Admin sit behind the More tab on a phone.
+  for (const tab of ['New report', 'Reports', 'Analytics', 'Instruments', 'More', 'Templates', 'Admin']) {
+    if (tab === 'Templates' || tab === 'Admin') {
+      await page.getByTestId('tab-more').click();
+      await page.click(`.more-item:has-text("${tab}")`);
+    } else {
+      await page.getByTestId(tabTestId(tab)).click();
+    }
     const [scrollWidth, innerWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     expect(scrollWidth, `${tab} tab`).toBeLessThanOrEqual(innerWidth);
   }
 });
 
 test('the Reports search box is styled like the other filters', async ({ page }) => {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-reports').click();
   const [search, lab] = await Promise.all([
     page.locator('input[type="search"]').evaluate((e) => getComputedStyle(e).borderRadius),
     page.locator('.filter-row select').first().evaluate((e) => getComputedStyle(e).borderRadius),
@@ -58,10 +66,10 @@ test('the Reports search box is styled like the other filters', async ({ page })
 });
 
 test('a template with a seeded choice field can be opened and saved', async ({ page }) => {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-templates').click();
   // The generic repair row (any model) carries the fault_category choice field.
-  const row = page.locator('.template-row-body', { hasText: 'Malfunction / repair' }).filter({ hasText: '(any model)' }).first();
+  const row = page.getByTestId('template-row').filter({ hasText: 'Malfunction / repair' }).filter({ hasText: '(any model)' }).first();
   await row.getByRole('button', { name: 'Edit' }).click();
   await expect(page.getByText('needs at least one option')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Save changes' })).toBeEnabled();

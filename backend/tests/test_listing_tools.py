@@ -123,12 +123,12 @@ def test_places_listing_shows_each_kind_with_its_parent_and_counts(db_session, f
     out = capsys.readouterr().out
 
     assert "4 places; 0 instruments with no place" in out
-    assert "\ninstitutions\n  Bar-Ilan University: 1 instrument(s) pointing directly here" in out
-    assert "\nfaculties\n  Life Sciences in Bar-Ilan University: 0 instrument(s) pointing directly here" in out
+    assert "\ninstitutes\n  Bar-Ilan University: 1 instrument(s) pointing directly here" in out
+    assert "\nbuildings\n  Life Sciences in Bar-Ilan University: 0 instrument(s) pointing directly here" in out
     assert "  Room 205 in Bar-Ilan University: 1 instrument(s) pointing directly here" in out
     assert "  Room 7 in Life Sciences: 0 instrument(s) pointing directly here" in out
     # Kinds are listed in a fixed order.
-    assert out.index("institutions") < out.index("faculties") < out.index("rooms")
+    assert out.index("institutes") < out.index("buildings") < out.index("rooms")
     assert _counts(db_session) == before
 
 
@@ -156,7 +156,7 @@ def test_places_listing_flags_look_alike_institutions_and_rooms(db_session, fact
     list_places.main()
     out = capsys.readouterr().out
 
-    assert "Institution names that may be the same place (nothing was merged):" in out
+    assert "Institute names that may be the same place (nothing was merged):" in out
     assert "  - Bar Ilan  |  Bar-Ilan University" in out
     assert "Room names that may be the same place (nothing was merged):" in out
     assert "  - 205  |  Room 205" in out

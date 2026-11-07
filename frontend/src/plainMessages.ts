@@ -3,6 +3,16 @@
 // stays available under "Details for support" and in the server log.
 
 const RULES: Array<[RegExp, string]> = [
+  // The no-key stub mode refuses these on purpose. They must come before the general key rule below,
+  // which would call them "not set up correctly" and hide why the document was refused.
+  [
+    /in Hebrew and cannot be translated without/i,
+    'This document is in Hebrew, and reading it needs a Claude API key, which is not switched on. Tell your administrator.',
+  ],
+  [
+    /without an API key/i,
+    'This document can only be read with a Claude API key, which is not switched on. Tell your administrator.',
+  ],
   [/authentication failed|ANTHROPIC_API_KEY/i, 'The reading service is not set up correctly. Tell your administrator.'],
   [/Claude API request failed.*(529|overloaded|rate.?limit|429)/is, 'The reading service is busy. Try again in a minute.'],
   [/Claude API request failed.*(timed? ?out|timeout|connection)/is, 'The reading service did not answer. Try again in a minute.'],

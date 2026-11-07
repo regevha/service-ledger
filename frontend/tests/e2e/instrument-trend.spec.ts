@@ -29,8 +29,8 @@ async function createInstrument(request: APIRequestContext, marker: string): Pro
 }
 
 async function openInstrumentDetail(page: import('@playwright/test').Page, instrumentId: string) {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Reports")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-reports').click();
   await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
   await expect(page.locator('.trend-section')).toBeVisible();
@@ -119,6 +119,10 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   await expect(julRow).toContainText('2.7%');
   await expect(julRow).toContainText('3.6%');
   await expect(julRow).toContainText('1.7%');
+  // The table can scroll sideways, so the keyboard must be able to reach it.
+  const scroller = page.getByRole('region', { name: 'Trend values, as a table' });
+  await scroller.focus();
+  await expect(scroller).toBeFocused();
   await page.click('button:has-text("Hide table")');
 
   // ---- Switching to a flat "number" field: single series, no legend, a direct end-value label ----

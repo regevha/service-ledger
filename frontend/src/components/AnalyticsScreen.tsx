@@ -1,4 +1,5 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { LoadError } from './LoadError';
 import {
   getFleetAnalytics,
   listInstruments,
@@ -233,7 +234,7 @@ export function AnalyticsScreen() {
   const backwards = Boolean(filters.date_from && filters.date_to && filters.date_from > filters.date_to);
   const filterKey = JSON.stringify(filters);
 
-  const { loading: fleetLoading, error: fleetError } = useAsyncEffect(
+  const { loading: fleetLoading, error: fleetError, retry: retryFleet } = useAsyncEffect(
     async (isCancelled) => {
       if (backwards) return; // the server refuses it; the page says so instead
       const result = await getFleetAnalytics(filters);
@@ -249,7 +250,7 @@ export function AnalyticsScreen() {
   const detailFilters: AnalyticsFilters = selection ? { ...filters, [SELECTION_FILTER[selection.kind]]: selection.id } : filters;
   const detailKey = JSON.stringify(detailFilters);
 
-  const { loading: detailLoading, error: detailError } = useAsyncEffect(
+  const { loading: detailLoading, error: detailError, retry: retryDetail } = useAsyncEffect(
     async (isCancelled) => {
       if (backwards || !selection) return;
       const result = await getFleetAnalytics(detailFilters);
@@ -286,7 +287,7 @@ export function AnalyticsScreen() {
   if (!fleet) {
     return (
       <div className="section">
-        <div className="banner banner-warn">{fleetError ?? 'Could not load fleet analytics.'}</div>
+        <LoadError message={fleetError ?? 'Could not load fleet analytics.'} onRetry={retryFleet} />
       </div>
     );
   }
@@ -341,7 +342,7 @@ export function AnalyticsScreen() {
       )}
 
       {filterBar}
-      {error && <div className="banner banner-warn">{error}</div>}
+      {error && <LoadError message={error} onRetry={fleetError ? retryFleet : retryDetail} />}
 
       <p className="hint-text" data-testid="analytics-basis" aria-live="polite">
         {loading
@@ -387,7 +388,7 @@ export function AnalyticsScreen() {
                   <span className="stat-label">Total labor hours</span>
                 </div>
                 <div className="stat-tile">
-                  <span className="stat-value">{totalUnitsReplaced}</span>
+                  <span className="stat-value">{Number(totalUnitsReplaced.toFixed(2))}</span>
                   <span className="stat-label">Units replaced ({data.parts_replaced.length} distinct parts)</span>
                 </div>
                 <div className="stat-tile">
@@ -415,7 +416,7 @@ export function AnalyticsScreen() {
                 <ReportsPerModelChart rows={data.report_counts_by_model ?? []} />
               </ChartSection>
 
-              <ChartSection title="By place (institution, faculty, room)">
+              <ChartSection title="By place (institute, building, room)">
                 <PlaceCharts rows={data.place_rollups ?? []} reportsLabel={filters.status ? 'Reports' : 'Finalized reports'} />
               </ChartSection>
 

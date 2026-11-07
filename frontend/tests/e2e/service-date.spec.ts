@@ -16,8 +16,8 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 test('the extracted service date is shown on review, can be corrected, and is saved', async ({ page }) => {
   const technician = `E2E Service Date ${Date.now()}`;
 
-  await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-new').click();
   await page.fill('input[placeholder="Your name (optional)"]', technician);
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
@@ -26,7 +26,7 @@ test('the extracted service date is shown on review, can be corrected, and is sa
   // to (instrument-management.spec.ts adds two instruments sharing a model),
   // so depending on run order this may stop at the manual pick. Either path
   // ends on the same review screen, which is what this test is about.
-  await page.waitForSelector('.field-list, .class-row', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"], .class-row', { timeout: TIMEOUT.flow });
   if (await page.locator('.class-row').count()) {
     const instrumentSelect = page.locator('.class-row select').first();
     const firstInstrument = await instrumentSelect.locator('option:not([disabled])').first().getAttribute('value');
@@ -48,10 +48,10 @@ test('the extracted service date is shown on review, can be corrected, and is sa
   await expect(page.locator('.success-panel')).toBeVisible({ timeout: TIMEOUT.ui });
 
   // The corrected date is what's stored — and the date filter finds it.
-  await page.click('.view-tab:has-text("Reports")');
+  await page.getByTestId('tab-reports').click();
   await page.locator('input[aria-label="From date"]').fill('2025-03-14');
   await page.locator('input[aria-label="To date"]').fill('2025-03-14');
-  const row = page.locator('.report-row-body', { hasText: technician });
+  const row = page.getByTestId('report-row').filter({ hasText: technician });
   await expect(row).toBeVisible();
   await expect(row).toContainText('2025-03-14');
 });

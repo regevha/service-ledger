@@ -17,6 +17,7 @@ from app.services.duplicates import find_saved_duplicates
 from app.services import report_filters, report_search
 from app.services.pdf_report import render_report_pdf
 from app.services.report_deletion import count_in_flight_jobs, remove_report_files
+from app.services.report_views import list_item
 
 router = APIRouter(tags=["reports"])
 
@@ -60,21 +61,6 @@ def _filtered_reports_query(
         status=status,
         technician=technician,
         q=q,
-    )
-
-
-def _list_item(r: models.Report) -> schemas.ReportListItemOut:
-    """The denormalized list row for one report (see ReportListItemOut)."""
-    return schemas.ReportListItemOut(
-        id=r.id,
-        status=r.status,
-        instrument_model=r.instrument.model if r.instrument else None,
-        instrument_serial_number=r.instrument.serial_number if r.instrument else None,
-        report_type=r.template.report_type if r.template else None,
-        technician_name=r.technician_name,
-        report_date=r.report_date,
-        created_at=r.created_at,
-        finalized_at=r.finalized_at,
     )
 
 
@@ -138,7 +124,7 @@ def search_reports(
         reports = query.order_by(rank.desc(), models.Report.created_at.desc()).all()
         items = []
         for r in reports:
-            item = _list_item(r)
+            item = list_item(r)
             found = report_search.build_excerpt(report_search.report_segments(r), q)
             if found:
                 item.snippet = [schemas.SnippetPiece(**piece) for piece in found[0]]
@@ -146,7 +132,23 @@ def search_reports(
             items.append(item)
         return items
     reports = query.order_by(models.Report.created_at.desc()).all()
-    return [_list_item(r) for r in reports]
+    return [list_item(r) for r in reports]
+
+
+@router.post("/reports/parse-search", response_model=schemas.ReportSearchParseOut)
+def parse_report_search(payload: schemas.ReportSearchParseIn, db: Session = Depends(get_db)):
+    """A request in plain words ("repairs of the FACSAria III last month") turned into the Reports
+    filters. Nothing is searched here: the screen applies the filters, shows what was understood,
+    and the person can change any of it."""
+    from app.services.report_query_parse import Known, parse_search  # noqa: PLC0415
+
+    known = Known(
+        models=[(str(m.id), m.name) for m in db.query(models.InstrumentModel).all()],
+        places=[(str(p.id), p.name) for p in db.query(models.Place).all()],
+        instruments=[(str(i.id), i.model, i.serial_number) for i in db.query(models.Instrument).all()],
+    )
+    parsed = parse_search(payload.text, known, date.today())
+    return {"filters": parsed.filters, "understood": parsed.understood}
 
 
 @router.get("/reports/export")
@@ -250,7 +252,7 @@ def get_report_duplicates(report_id: uuid.UUID, db: Session = Depends(get_db)):
         raise HTTPException(404, "Report not found")
     return [
         schemas.DuplicateReportOut(
-            **_list_item(other).model_dump(),
+            **list_item(other).model_dump(),
             reason=reason,
             work_order_number=work_order,
         )

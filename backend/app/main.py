@@ -16,8 +16,10 @@ from app.trace import configure_logging
 from app.services.instrument_types import ensure_default_types
 from app.services.manufacturers import ensure_default_makers
 from app.services.places import PlaceTextError
+from app.services.domain_errors import ConflictError, InvalidError, NotFoundError
 from app.routers import (
     analytics,
+    home,
     attachments,
     instrument_models,
     places,
@@ -85,6 +87,21 @@ async def place_text_error(request: Request, exc: PlaceTextError) -> JSONRespons
     return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
+@app.exception_handler(NotFoundError)
+async def not_found_error(request: Request, exc: NotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(ConflictError)
+async def conflict_error(request: Request, exc: ConflictError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidError)
+async def invalid_error(request: Request, exc: InvalidError) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
 @app.exception_handler(Exception)
 async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
     """An exception no route handled used to reach the browser as a bare 500
@@ -122,6 +139,7 @@ app.include_router(field_aliases.router)
 app.include_router(attachments.router)
 app.include_router(translations.router)
 app.include_router(analytics.router)
+app.include_router(home.router)
 
 
 @app.get("/health", tags=["meta"])

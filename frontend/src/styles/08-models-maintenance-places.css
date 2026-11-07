@@ -1,0 +1,614 @@
+/* Makers list: the Actions column is a fixed width, as on Places, so the heading row lines up. */
+@media (min-width: 901px) {
+  .instrument-row.maker-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) 100px 100px 148px;
+  }
+}
+
+/* ---------- A model's page ---------- */
+.instrument-row.model-unit-row {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) 100px minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+}
+.instrument-row.model-report-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
+}
+@media (max-width: 900px) {
+  .instrument-row.model-unit-row,
+  .instrument-row.model-report-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .instrument-row.model-unit-row,
+  .instrument-row.model-report-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.model-standout {
+  color: var(--text);
+  font-weight: 600;
+}
+.model-notes-text {
+  white-space: pre-wrap;
+  margin: 0 0 12px;
+}
+.model-name.link-button {
+  text-align: left;
+  font-weight: 600;
+}
+
+/* Maintenance state pills (instrument list, instrument page, model page). */
+.maintenance-ok {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.maintenance-due_soon {
+  background: var(--flag-soft);
+  color: var(--text);
+}
+.maintenance-overdue {
+  background: var(--crit-soft);
+  color: var(--crit);
+}
+.maintenance-no_record,
+.maintenance-not_tracked {
+  background: var(--surface-2);
+  color: var(--text-faint);
+}
+.maintenance-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+/* The Model and Maintenance choices of the Instruments list, side by side, wrapping on a narrow screen. */
+.instrument-filters {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 16px;
+}
+.instrument-header-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.instrument-row.model-rel-row {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr);
+}
+@media (max-width: 620px) {
+  .instrument-row.model-rel-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.model-rel-notes {
+  margin: 8px 0;
+}
+
+/* Places screen. The header and every body row are separate grids, so the Actions column is a
+   fixed width: with `auto` each row sized it to its own content and the headings drifted off
+   their columns. */
+.instrument-row.place-row {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 1fr) 148px;
+}
+@media (max-width: 900px) {
+  .instrument-row.place-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .instrument-row.place-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.place-depth-1 .place-name-text {
+  padding-left: 16px;
+}
+.place-depth-2 .place-name-text {
+  padding-left: 32px;
+}
+.place-name-text {
+  font-weight: 500;
+}
+.place-depth-0 .place-name-text {
+  font-weight: 600;
+}
+.places-legend {
+  margin-top: 8px;
+}
+
+.place-chart-switch {
+  margin-bottom: 8px;
+}
+
+/* VIEW_PROMPTS: prompt preview dialog */
+.prompt-review-backdrop { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.prompt-review { background: var(--surface); border: 1px solid var(--border); color: inherit; max-width: 900px; width: 100%; max-height: 90vh; overflow: auto; padding: 20px; border-radius: var(--radius); }
+.prompt-review-text { white-space: pre-wrap; word-break: break-word; background: var(--surface-2); padding: 10px; border-radius: 6px; font-size: 0.85rem; max-height: 40vh; overflow: auto; }
+.prompt-review-doc code { word-break: break-all; }
+.prompt-review-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; position: sticky; bottom: 0; }
+
+.attention-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--flag-soft);
+  border: 1px solid var(--border);
+  box-shadow: inset 4px 0 0 var(--flag);
+  border-radius: 8px;
+}
+.attention-strip-count {
+  font-weight: 600;
+  color: var(--text);
+}
+.attention-strip-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.attention-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  min-height: 32px;
+  color: inherit;
+  cursor: pointer;
+}
+.mark-checked {
+  margin: 4px 0 6px;
+}
+
+/* Template editor: "Filled in by a person" under a field's unit and notes. */
+.schema-field-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.schema-field-check input {
+  margin-top: 2px;
+  flex: none;
+}
+
+/* Text for screen readers only. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* "Unsaved changes": Stay / Discard changes / Save and leave. */
+.leave-dialog-backdrop { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 60; }
+.leave-dialog { background: var(--surface); border: 1px solid var(--border); color: inherit; max-width: 440px; width: 100%; padding: 24px; border-radius: var(--radius); box-shadow: var(--shadow-pop); }
+.leave-dialog h2 { margin: 0 0 8px; font-size: 1.1rem; }
+.leave-dialog p { margin: 0 0 16px; }
+.leave-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+@media (max-width: 620px) {
+  .leave-dialog-actions { flex-direction: column-reverse; }
+  .leave-dialog-actions .btn { width: 100%; }
+}
+
+/* ---------- Phone: Models and Places rows are compact cards too ---------- */
+
+@media (max-width: 620px) {
+  .instrument-row.model-row.template-row-body,
+  .instrument-row.place-row.template-row-body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 12px;
+    padding: 10px 14px;
+    align-items: start;
+  }
+  .instrument-row.model-row.template-row-body {
+    grid-template-areas:
+      'name actions'
+      'maker type'
+      'count interval';
+  }
+  .instrument-row.place-row.template-row-body {
+    grid-template-areas:
+      'name actions'
+      'kind count'
+      'in in';
+  }
+  .instrument-row.model-row.template-row-body > .template-row-actions,
+  .instrument-row.place-row.template-row-body > .template-row-actions {
+    grid-area: actions;
+    justify-self: end;
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Models */
+  .instrument-row.model-row.template-row-body > span[data-label='Model'] {
+    grid-area: name;
+    font-weight: 700;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Manufacturer'] {
+    grid-area: maker;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Type'] {
+    grid-area: type;
+    justify-self: end;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Instruments'] {
+    grid-area: count;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Service interval'] {
+    grid-area: interval;
+    justify-self: end;
+  }
+
+  /* Places */
+  .instrument-row.place-row.template-row-body > span[data-label='Place'] {
+    grid-area: name;
+    font-weight: 700;
+  }
+  .instrument-row.place-row.template-row-body > span[data-label='Kind'] {
+    grid-area: kind;
+  }
+  .instrument-row.place-row.template-row-body > span[data-label='In'] {
+    grid-area: in;
+  }
+  .instrument-row.place-row.template-row-body > span[data-label='Instruments'] {
+    grid-area: count;
+    justify-self: end;
+    text-align: right;
+  }
+
+  /* Secondary values: muted and small; the field captions become short inline prefixes. */
+  .instrument-row.model-row.template-row-body > span:not([data-label='Model']):not(.template-row-actions),
+  .instrument-row.place-row.template-row-body > span:not([data-label='Place']):not(.template-row-actions) {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label]::before,
+  .instrument-row.place-row.template-row-body > span[data-label]::before {
+    display: none;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Instruments']::before,
+  .instrument-row.model-row.template-row-body > span[data-label='Service interval']::before,
+  .instrument-row.place-row.template-row-body > span[data-label='In']::before,
+  .instrument-row.place-row.template-row-body > span[data-label='Instruments']::before {
+    display: inline;
+    font-size: inherit;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    margin: 0;
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Instruments']::before,
+  .instrument-row.place-row.template-row-body > span[data-label='Instruments']::before {
+    content: 'Instruments: ';
+  }
+  .instrument-row.model-row.template-row-body > span[data-label='Service interval']::before {
+    content: 'Service: ';
+  }
+  .instrument-row.place-row.template-row-body > span[data-label='In']::before {
+    content: 'In: ';
+  }
+}
+
+/* Phone: Makers rows as compact cards, like Models and Places. */
+@media (max-width: 620px) {
+  .instrument-row.maker-row.template-row-body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name actions'
+      'aliases aliases'
+      'count models';
+    gap: 2px 12px;
+    padding: 10px 14px;
+    align-items: start;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Maker'] {
+    grid-area: name;
+    font-weight: 700;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Other names'] {
+    grid-area: aliases;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Instruments'] {
+    grid-area: count;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Models'] {
+    grid-area: models;
+    justify-self: end;
+  }
+  .instrument-row.maker-row.template-row-body > .template-row-actions {
+    grid-area: actions;
+    justify-self: end;
+    display: flex;
+    gap: 8px;
+  }
+  .instrument-row.maker-row.template-row-body > span:not([data-label='Maker']):not(.template-row-actions) {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label]::before {
+    display: none;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Other names']::before,
+  .instrument-row.maker-row.template-row-body > span[data-label='Instruments']::before,
+  .instrument-row.maker-row.template-row-body > span[data-label='Models']::before {
+    display: inline;
+    font-size: inherit;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    margin: 0;
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Other names']::before {
+    content: 'Also: ';
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Instruments']::before {
+    content: 'Instruments: ';
+  }
+  .instrument-row.maker-row.template-row-body > span[data-label='Models']::before {
+    content: 'Models: ';
+  }
+}
+
+/* Phone: the "may be the same as" and notes lines under a name are plain and small, not bold. */
+@media (max-width: 620px) {
+  .instrument-row.model-row.template-row-body > span[data-label='Model'] small,
+  .instrument-row.place-row.template-row-body > span[data-label='Place'] small {
+    font-weight: 400;
+    font-size: 0.78rem;
+    margin-top: 2px;
+  }
+}
+
+/* Names already on file, offered as chips under a text box (SuggestInput). They float over
+   what is below instead of pushing it down, so nothing moves when the box loses focus. */
+.suggest-wrap {
+  position: relative;
+  display: block;
+}
+.suggest-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.suggest-chip {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* New instrument form: a locked manufacturer looks locked and says why right under itself. */
+.manufacturer-lock-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.78rem;
+}
+.schema-form-label .text-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+/* "+ Add a type": Add and Cancel side by side, not two full-width bars. */
+.type-adder-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.type-adder-actions .btn {
+  flex: 1;
+}
+.type-follows-hint {
+  display: block;
+  margin: -4px 0 14px;
+  font-size: 0.78rem;
+}
+
+/* Phone: "+ Add a type" is a small link at the right of the "Instrument type" caption, so the dropdown keeps its full width. */
+@media (max-width: 620px) {
+  .schema-form-row.type-row {
+    position: relative;
+    flex-direction: column;
+  }
+  /* In a column, the labels' 220px flex size would become a minimum height. */
+  .schema-form-row.type-row > .schema-form-label {
+    flex: 0 0 auto;
+  }
+  .schema-form-row.type-row > .btn.add-type-link {
+    position: absolute;
+    top: -8px;
+    right: 0;
+    width: auto;
+    height: auto;
+    min-height: 40px;
+    padding: 0 4px;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: underline;
+  }
+}
+
+/* A field with a note under it, as one flex item of the row. */
+.field-with-hint {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.field-with-hint > .schema-form-label {
+  flex: 0 0 auto;
+}
+
+/* Phone: every list card is two lines. Line 1 is the name with its buttons; line 2 runs the few
+   remaining values side by side (and only wraps if they truly do not fit). */
+@media (max-width: 620px) {
+  .instrument-row.template-row-body.instrument-card,
+  .instrument-row.template-row-body.model-row,
+  .instrument-row.template-row-body.place-row,
+  .instrument-row.template-row-body.maker-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 12px;
+    padding: 8px 14px;
+  }
+  .instrument-row.template-row-body.instrument-card::after,
+  .instrument-row.template-row-body.model-row::after,
+  .instrument-row.template-row-body.place-row::after,
+  .instrument-row.template-row-body.maker-row::after {
+    content: '';
+    order: 2;
+    flex: 0 0 100%;
+    height: 0;
+  }
+  /* Line 1 */
+  .instrument-row.template-row-body.instrument-card > span[data-label='Name'],
+  .instrument-row.template-row-body.model-row > span[data-label='Model'],
+  .instrument-row.template-row-body.place-row > span[data-label='Place'],
+  .instrument-row.template-row-body.maker-row > span[data-label='Maker'] {
+    order: 0;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .instrument-row.template-row-body.instrument-card > .template-row-actions,
+  .instrument-row.template-row-body.model-row > .template-row-actions,
+  .instrument-row.template-row-body.place-row > .template-row-actions,
+  .instrument-row.template-row-body.maker-row > .template-row-actions {
+    order: 1;
+    flex: 0 0 auto;
+  }
+  /* Line 2 */
+  .instrument-row.template-row-body.instrument-card > span:not([data-label='Name']):not(.template-row-actions),
+  .instrument-row.template-row-body.model-row > span:not([data-label='Model']):not(.template-row-actions),
+  .instrument-row.template-row-body.place-row > span:not([data-label='Place']):not(.template-row-actions),
+  .instrument-row.template-row-body.maker-row > span:not([data-label='Maker']):not(.template-row-actions) {
+    order: 3;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    text-align: left;
+    font-size: 0.82rem;
+  }
+  /* The maker is set by the model, and is on the Models screen and the Edit screen. */
+  .instrument-row.template-row-body.instrument-card > span[data-label='Manufacturer'] {
+    display: none;
+  }
+  .instrument-row.template-row-body.instrument-card > span[data-label='Model'] {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .instrument-row.template-row-body.instrument-card > span[data-label='Status'] {
+    margin-top: 0;
+  }
+}
+
+/* Phone, two-line cards: leave out what is the usual case or is on the Edit screen. */
+@media (max-width: 620px) {
+  /* The model when it is just the name again; the instrument type; the "Active" pill (normal state). */
+  .instrument-row.instrument-card > span[data-label='Model'][data-same],
+  .instrument-row.instrument-card .instrument-type,
+  .instrument-row.instrument-card .status-default {
+    display: none;
+  }
+  .instrument-row.model-row > span[data-label='Type'],
+  .instrument-row.maker-row > span[data-label='Models'] {
+    display: none;
+  }
+  /* A long list of other names stays on one line. */
+  .instrument-row.template-row-body.maker-row > span[data-label='Other names'] {
+    flex: 1 1 0 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Phone polish: the four section tabs always fit; the three filters line up; an institution
+   that is too long for the card ends in "…" instead of pushing the card to a third line. */
+@media (max-width: 620px) {
+  .sub-switch {
+    gap: 2px;
+  }
+  .sub-switch button {
+    min-width: 0;
+    padding: 0 4px;
+    font-size: 0.92rem;
+  }
+  .instrument-filters {
+    display: block;
+  }
+  .maintenance-filter > span {
+    flex: 0 0 6.2rem;
+  }
+  .maintenance-filter > .text-input {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
+  .instrument-row.template-row-body.instrument-card > span[data-label='Name'] {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .instrument-row.template-row-body.instrument-card > span[data-label='Name'] .instrument-institution {
+    display: block;
+    margin-left: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* A report with no lab manager gives no "Lab manager: —" line. */
+  .report-row-body > span[data-empty] {
+    display: none;
+  }
+}
+
+/* Phone: the Edit and "…" buttons on a list card are slim rectangles (36px high, wider than tall),
+   not 44px squares. The gap between them keeps them easy to hit; the primary buttons stay 44px. */
+@media (max-width: 620px) {
+  .template-row-body .template-row-actions {
+    gap: 8px;
+  }
+  .template-row-body .template-row-actions .btn.small,
+  .template-row-body .template-row-actions .row-menu-button {
+    min-height: 36px;
+    height: 36px;
+    min-width: 52px;
+    padding: 0 12px;
+  }
+  .template-row-body .template-row-actions .row-menu-button {
+    min-width: 44px;
+  }
+}

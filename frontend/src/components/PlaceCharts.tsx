@@ -2,11 +2,11 @@ import { useState } from 'react';
 import type { PlaceRollup } from '../api';
 import { HorizontalBarChart } from './HorizontalBarChart';
 
-/** Reports and work hours per institution, faculty or room: one level at a time, most first. */
+/** Reports and work hours per institute, building or room: one level at a time, most first. */
 
 const LEVELS = [
-  { kind: 'institution', label: 'Institutions' },
-  { kind: 'faculty', label: 'Faculties' },
+  { kind: 'institution', label: 'Institutes' },
+  { kind: 'faculty', label: 'Buildings' },
   { kind: 'room', label: 'Rooms' },
 ] as const;
 
@@ -20,7 +20,7 @@ export function PlaceCharts({ rows, reportsLabel }: { rows: PlaceRollup[]; repor
   if (rows.length === 0) {
     return (
       <div className="empty-hint">
-        No places to show yet. Give instruments an institution and room, or add them under Instruments › Places.
+        No places to show yet. Give instruments an institute and room, or add them under Instruments › Places.
       </div>
     );
   }
@@ -52,7 +52,7 @@ export function PlaceCharts({ rows, reportsLabel }: { rows: PlaceRollup[]; repor
         </button>
       </div>
       {sorted.length === 0 ? (
-        <div className="empty-hint">No {kind === 'faculty' ? 'faculties' : `${kind}s`} with instruments yet.</div>
+        <div className="empty-hint">No {kind === 'faculty' ? 'buildings' : kind === 'institution' ? 'institutes' : 'rooms'} with instruments yet.</div>
       ) : (
         <HorizontalBarChart
           testId="place-chart"

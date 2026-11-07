@@ -1,47 +1,17 @@
 import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { listPlaces, type Instrument, type Place, type ReportFilters, type ReportStatus, type ReportType } from '../api';
-import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
-import { idsInside, placeLabel } from '../placeUtils';
-import { DateInput } from './DateInput';
+import { type Instrument, type ReportFilters, type ReportStatus } from '../api';
+import { idsInside } from '../placeUtils';
 import { SavedFilters } from './SavedFilters';
+import { ClearFiltersButton, DateRangeInputs, InstrumentSelect, ModelSelect, PlaceSelect, ReportTypeSelect, SearchBox, StatusSelect } from './reportFilters/FilterControls';
+import { readCollapsed, writeCollapsed } from './reportFilters/collapsePreference';
+import { modelsOf, summarizeFilters, type BarFilters, type ModelOption } from './reportFilters/filterSummary';
+import { usePlaces } from './reportFilters/usePlaces';
+
+// The types the bar's callers use still come from here.
+export type { BarFilters, ModelOption };
 
 const MIN_SEARCH_LENGTH = 2;
-const COLLAPSE_KEY = 'sl.filters.collapsed';
-
-// Per-viewer convenience only (shared by both tabs): browser storage can be empty or throw.
-function readCollapsed(): boolean {
-  try {
-    const saved = localStorage.getItem(COLLAPSE_KEY);
-    if (saved === 'yes') return true;
-    if (saved === 'no') return false;
-  } catch {
-    /* fall through to the default */
-  }
-  // Never chosen: folded on a phone, so the list is on the first screen; open elsewhere.
-  return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 620px)').matches === true;
-}
-function writeCollapsed(collapsed: boolean) {
-  try {
-    localStorage.setItem(COLLAPSE_KEY, collapsed ? 'yes' : 'no');
-  } catch {
-    /* not remembered; nothing else depends on it */
-  }
-}
 const STATUS_OPTIONS: ReportStatus[] = ['draft', 'classified', 'extracted', 'in_review', 'finalized'];
-
-/** A model as this bar knows it: one per model record that has instruments in the list it is given. */
-export type ModelOption = { id: string; name: string; manufacturer: string | null };
-
-function modelsOf(instruments: Instrument[]): ModelOption[] {
-  const byId = new Map<string, ModelOption>();
-  for (const i of instruments) {
-    if (i.model_id && !byId.has(i.model_id)) byId.set(i.model_id, { id: i.model_id, name: i.model, manufacturer: i.manufacturer });
-  }
-  return [...byId.values()];
-}
-
-/** The filters this bar edits: the Reports list's, with a status that may also be 'all' (Analytics). */
-export type BarFilters = Omit<ReportFilters, 'status'> & { status?: string };
 
 /**
  * The one filter bar of the Reports tab and the Analytics tab: saved filters, text search,
@@ -86,17 +56,7 @@ export function ReportFilterBar<F extends BarFilters>({
   onClear?: () => void;
 }) {
   const [technicianInput, setTechnicianInput] = useState(filters.technician ?? '');
-  // Institutions, faculties and rooms to filter by (an empty list hides the control).
-  const [places, setPlaces] = useState<Place[]>([]);
-  useEffect(() => {
-    let live = true;
-    listPlaces()
-      .then((p) => live && setPlaces(p))
-      .catch(() => live && setPlaces([]));
-    return () => {
-      live = false;
-    };
-  }, []);
+  const places = usePlaces();
   const [searchInput, setSearchInput] = useState(filters.q ?? '');
   // The filters can be folded away to leave room for the list; a one-line summary stays in their place.
   const [collapsed, setCollapsed] = useState(readCollapsed);
@@ -141,26 +101,14 @@ export function ReportFilterBar<F extends BarFilters>({
 
   const instrument = instruments.find((i) => i.id === filters.instrument_id);
   const model = models.find((m) => m.id === filters.model_id);
-  const statusText = filters.status === 'all' ? 'All statuses' : filters.status ? STATUS_LABEL[filters.status as ReportStatus] : '';
-  const dates =
-    filters.date_from && filters.date_to
-      ? `${filters.date_from} to ${filters.date_to}`
-      : filters.date_from
-        ? `from ${filters.date_from}`
-        : filters.date_to
-          ? `until ${filters.date_to}`
-          : '';
-  const summary = [
-    filters.q ? `“${filters.q}”` : '',
-    ...summaryExtra,
-    place ? placeLabel(place) : '',
-    model ? model.name : '',
-    instrument ? `${instrument.model} (${instrument.serial_number})` : '',
-    filters.report_type ? REPORT_TYPE_LABEL[filters.report_type] : '',
-    statusText,
-    dates,
-    filters.technician ? `Lab manager: ${filters.technician}` : '',
-  ].filter(Boolean);
+  const summary = summarizeFilters({ filters, instrument, model, place, summaryExtra });
+
+  function clearAll() {
+    setFilters({} as F);
+    setTechnicianInput('');
+    setSearchInput('');
+    onClear?.();
+  }
 
   const toggle = (
     <button
@@ -180,20 +128,7 @@ export function ReportFilterBar<F extends BarFilters>({
         <span className="filters-summary-text">
           {summary.length > 0 ? summary.join(' · ') : 'No filters'}
         </span>
-        {hasFilters && (
-          <button
-            type="button"
-            className="btn small"
-            onClick={() => {
-              setFilters({} as F);
-              setTechnicianInput('');
-              setSearchInput('');
-              onClear?.();
-            }}
-          >
-            Clear filters
-          </button>
-        )}
+        {hasFilters && <ClearFiltersButton onClick={clearAll} />}
       </div>
     );
   }
@@ -212,135 +147,21 @@ export function ReportFilterBar<F extends BarFilters>({
       />
 
       <div className="filter-row" data-testid={testId}>
-        <span className="search-box">
-          <input
-            type="search"
-            aria-label="Search reports"
-            placeholder="Search report text…"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            title='Finds finalized reports containing all the words. Use "quotes" for an exact phrase and a minus sign to leave a word out. Numbers are not searched.'
-          />
-          {searchInput && (
-            <button type="button" className="btn small" aria-label="Clear search" onClick={() => setSearchInput('')}>
-              ×
-            </button>
-          )}
-        </span>
+        <SearchBox value={searchInput} onChange={setSearchInput} />
 
         {leading}
 
-        {places.length > 0 && (
-          <select
-            aria-label="Place"
-            value={filters.place_id ?? ''}
-            onChange={(e) =>
-              setFilters((f) => {
-                const kept = instruments.find((i) => i.id === f.instrument_id);
-                const next = e.target.value || undefined;
-                const inside = idsInside(places, next);
-                // An instrument outside the newly chosen place cannot stay chosen.
-                const clash = next && kept && !(kept.place_id != null && inside?.has(kept.place_id));
-                return { ...f, place_id: next, instrument_id: clash ? undefined : f.instrument_id };
-              })
-            }
-          >
-            <option value="">All places</option>
-            {places.map((p) => (
-              <option key={p.id} value={p.id}>
-                {placeLabel(p)}
-              </option>
-            ))}
-          </select>
-        )}
+        {places.length > 0 && <PlaceSelect filters={filters} setFilters={setFilters} instruments={instruments} places={places} />}
 
-        <select
-          aria-label="Model"
-          value={filters.model_id ?? ''}
-          onChange={(e) => {
-            const model_id = e.target.value || undefined;
-            // Drop a chosen instrument that is not of this model, so the two never contradict.
-            setFilters((f) => {
-              const kept = instruments.find((i) => i.id === f.instrument_id);
-              const clash = model_id && kept && kept.model_id !== model_id;
-              return { ...f, model_id, instrument_id: clash ? undefined : f.instrument_id };
-            });
-          }}
-        >
-          <option value="">All models</option>
-          {filters.model_id && !model && <option value={filters.model_id}>(model no longer in use)</option>}
-          {shownModels.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
+        <ModelSelect filters={filters} setFilters={setFilters} instruments={instruments} models={shownModels} chosenModel={model} />
 
-        <select
-          aria-label="Instrument"
-          value={filters.instrument_id ?? ''}
-          onChange={(e) => setFilters((f) => ({ ...f, instrument_id: e.target.value || undefined }))}
-        >
-          <option value="">All instruments</option>
-          {shownInstruments.map((inst) => (
-            <option key={inst.id} value={inst.id}>
-              {inst.model} ({inst.serial_number})
-            </option>
-          ))}
-        </select>
+        <InstrumentSelect filters={filters} setFilters={setFilters} instruments={shownInstruments} />
 
-        <select
-          aria-label="Report type"
-          value={filters.report_type ?? ''}
-          onChange={(e) =>
-            setFilters((f) => ({ ...f, report_type: (e.target.value || undefined) as ReportType | undefined }))
-          }
-        >
-          <option value="">All report types</option>
-          {(Object.keys(REPORT_TYPE_LABEL) as ReportType[]).map((rt) => (
-            <option key={rt} value={rt}>
-              {REPORT_TYPE_LABEL[rt]}
-            </option>
-          ))}
-        </select>
+        <ReportTypeSelect filters={filters} setFilters={setFilters} />
 
-        <select
-          aria-label="Status"
-          value={filters.status ?? ''}
-          onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value || undefined }))}
-        >
-          {analytics ? (
-            <>
-              <option value="">Finalized</option>
-              <option value="all">All statuses</option>
-            </>
-          ) : (
-            <option value="">All statuses</option>
-          )}
-          {statuses.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABEL[s]}
-            </option>
-          ))}
-        </select>
+        <StatusSelect filters={filters} setFilters={setFilters} analytics={analytics} statuses={statuses} />
 
-        <span className="date-pair-label" aria-hidden="true">
-          From
-        </span>
-        <DateInput
-          ariaLabel="From date"
-          value={filters.date_from ?? ''}
-          onChange={(v) => setFilters((f) => ({ ...f, date_from: v || undefined }))}
-        />
-        <span className="filter-sep">to</span>
-        <span className="date-pair-label" aria-hidden="true">
-          To
-        </span>
-        <DateInput
-          ariaLabel="To date"
-          value={filters.date_to ?? ''}
-          onChange={(v) => setFilters((f) => ({ ...f, date_to: v || undefined }))}
-        />
+        <DateRangeInputs filters={filters} setFilters={setFilters} />
 
         <input
           type="text"
@@ -352,20 +173,7 @@ export function ReportFilterBar<F extends BarFilters>({
 
         {extra}
 
-        {hasFilters && (
-          <button
-            type="button"
-            className="btn small"
-            onClick={() => {
-              setFilters({} as F);
-              setTechnicianInput('');
-              setSearchInput('');
-              onClear?.();
-            }}
-          >
-            Clear filters
-          </button>
-        )}
+        {hasFilters && <ClearFiltersButton onClick={clearAll} />}
       </div>
 
       {searchTooShort && <div className="muted search-hint">Type at least {MIN_SEARCH_LENGTH} characters to search.</div>}

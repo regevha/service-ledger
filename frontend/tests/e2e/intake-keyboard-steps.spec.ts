@@ -14,12 +14,12 @@ const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 
 const activeStep = (page: import('@playwright/test').Page) => page.locator('.steps .step.active');
 
-test('the name box has a label, and Tab from it reaches the file picker', async ({ page }) => {
-  await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+test('the name box has a label, and Shift+Tab from it reaches the file picker', async ({ page }) => {
+  await page.goto('/#/new');
+  await page.getByTestId('tab-new').click();
   const name = page.getByLabel('Your name (optional)');
   await name.focus();
-  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
   const picker = page.getByLabel('Choose a scan or PDF');
   await expect(picker).toBeFocused();
   // The drop zone shows where the focus is.
@@ -38,8 +38,8 @@ test('the step bar counts the upload as step 1 until it is finished', async ({ p
     await gate;
     await route.continue();
   });
-  await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
@@ -55,8 +55,8 @@ test('when reading the document fails, the step bar stays on Classify and the me
   await page.route('**/attachments/*/classify', (route) =>
     route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ detail: 'The reading service is down.' }) })
   );
-  await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-new').click();
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');
 
@@ -77,8 +77,8 @@ test('a refused file offers another file, not the same retry, and removes the em
       ? route.fulfill({ status: 413, contentType: 'application/json', body: JSON.stringify({ detail: 'This image is 6.0 MB; the limit is 5 MB.' }) })
       : route.continue()
   );
-  await page.goto('/');
-  await page.click('.view-tab:has-text("New report")');
+  await page.goto('/#/new');
+  await page.getByTestId('tab-new').click();
   await page.getByLabel('Your name (optional)').fill(marker);
   await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
   await page.click('button:has-text("Upload & classify")');

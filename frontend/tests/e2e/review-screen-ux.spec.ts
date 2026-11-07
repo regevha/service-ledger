@@ -24,12 +24,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // the stub always flags components_replaced (root_cause is optional, so a blank one is not), which are blank on the real document.
 // It lands on the manual-confirm step first, because its report type is below the threshold.
 async function readSampleWorkOrder(page: Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'sample-work-order.pdf')));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
   await confirmClassification(page);
-  await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.flow });
+  await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
 }
 
 test('fieldLabel: readable names, abbreviations in capitals, no unit said twice', () => {
@@ -50,7 +50,7 @@ test('field names read as words, not as stored names', async ({ page, request })
   const model = await createNumericModel(request, 'E2E-Labels');
   await seedReport(request, { model, reportType: 'installation_upgrade', technician: marker });
   await openReviewFromList(page, marker);
-  const list = page.locator('.field-list');
+  const list = page.getByTestId('field-list');
   await expect(list).toContainText('CST beads lot');
   await expect(list).toContainText('PMT voltages');
   await expect(list).toContainText('Fluidics pressure');
@@ -73,8 +73,11 @@ test.describe('scan beside the fields', () => {
 
     const scan = page.locator('.review-scan');
     await expect(scan).toBeVisible();
+    // The page view with the fields drawn on it is the default; the browser's own viewer is one click away.
+    await expect(page.getByTestId('fields-on-page')).toBeVisible();
+    await page.getByTestId('scan-mode-original').click();
     await expect(scan.locator('iframe')).toHaveAttribute('src', /\/attachments\/.+\/file\?inline=1/);
-    const [scanBox, listBox] = await Promise.all([scan.boundingBox(), page.locator('.field-list').boundingBox()]);
+    const [scanBox, listBox] = await Promise.all([scan.boundingBox(), page.getByTestId('field-list').boundingBox()]);
     expect(scanBox!.x + scanBox!.width).toBeLessThanOrEqual(listBox!.x);
     // The scan takes the left half: it is as wide as the fields column (within a pixel or two).
     const fieldsBox = await page.locator('.review-fields').boundingBox();
@@ -83,9 +86,9 @@ test.describe('scan beside the fields', () => {
     await page.click('button:has-text("Hide scan")');
     await expect(scan).toHaveCount(0);
     await page.reload();
-    await page.click('.view-tab:has-text("Reports")');
-    await page.click(`.report-row-body:has-text("${marker}")`);
-    await expect(page.locator('.field-list')).toBeVisible({ timeout: TIMEOUT.ui });
+    await page.getByTestId('tab-reports').click();
+    await page.click(`[data-testid="report-row"]:has-text("${marker}")`);
+    await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.ui });
     await expect(page.locator('.review-scan')).toHaveCount(0);
     await page.click('button:has-text("Show scan")');
     await expect(page.locator('.review-scan')).toBeVisible();
@@ -132,7 +135,7 @@ test('a finalized report is read-only until Edit, and locks again after saving',
   await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
   await openReviewFromList(page, marker);
 
-  const firstText = page.locator('.field-list textarea').first();
+  const firstText = page.getByTestId('field-list').locator('textarea').first();
   await expect(firstText).toBeDisabled();
   await expect(page.locator('button:has-text("Save corrections")')).toHaveCount(0);
   await expect(page.locator('.review-actions')).toContainText('Finalized');
@@ -144,8 +147,8 @@ test('a finalized report is read-only until Edit, and locks again after saving',
   // Saving locks the form again; wait for that rather than for the progress panel, which may not have appeared yet.
   await expect(page.locator('.review-actions button:has-text("Edit")')).toBeVisible({ timeout: 20_000 });
 
-  await expect(page.locator('.field-list textarea').first()).toBeDisabled();
-  await expect(page.locator('.field-list textarea').first()).toHaveValue('Corrected after finalizing');
+  await expect(page.getByTestId('field-list').locator('textarea').first()).toBeDisabled();
+  await expect(page.getByTestId('field-list').locator('textarea').first()).toHaveValue('Corrected after finalizing');
   await expect(page.locator('.review-actions button:has-text("Edit")')).toBeVisible();
 });
 
@@ -153,7 +156,7 @@ test('Edit on a finalized report asks first; Cancel and Escape leave it locked',
   const marker = `E2E-EditConfirm-${Date.now()}`;
   await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
   await openReviewFromList(page, marker);
-  const firstText = page.locator('.field-list textarea').first();
+  const firstText = page.getByTestId('field-list').locator('textarea').first();
 
   await page.click('.review-actions button:has-text("Edit")');
   const confirm = page.locator('#edit-confirm');
@@ -174,13 +177,13 @@ test('Edit on a finalized report asks first; Cancel and Escape leave it locked',
 test('the banner lines up with the fields instead of being inset twice', async ({ page }) => {
   // Below 900px the scan pane is gone and the fields use the full width, so the two edges compare directly.
   await page.setViewportSize({ width: 800, height: 900 });
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: TIMEOUT.flow });
+  await page.waitForSelector('[data-testid="field-list"]', { timeout: TIMEOUT.flow });
   const banner = page.locator('#placeholder-notice');
   await expect(banner).toBeVisible();
-  const [b, l] = await Promise.all([banner.boundingBox(), page.locator('.field-list').boundingBox()]);
+  const [b, l] = await Promise.all([banner.boundingBox(), page.getByTestId('field-list').boundingBox()]);
   expect(Math.round(b!.x)).toBe(Math.round(l!.x));
   expect(Math.round(b!.width)).toBe(Math.round(l!.width));
 });
@@ -221,9 +224,9 @@ test('the per-detector rows stay compact and each can be removed by name', async
 
 test('text "Remove" buttons in the template editor stay inside their card', async ({ page }) => {
   await page.setViewportSize({ width: 1300, height: 900 });
-  await page.goto('/');
-  await page.click('.view-tab:has-text("Templates")');
-  await page.locator('.template-row-body', { hasText: 'Preventive maintenance' }).first().locator('button:has-text("Edit")').click();
+  await page.goto('/#/new');
+  await page.getByTestId('tab-templates').click();
+  await page.getByTestId('template-row').filter({ hasText: 'Preventive maintenance' }).first().locator('button:has-text("Edit")').click();
   const row = page.locator('.schema-field-row').first();
   await expect(row).toBeVisible();
   const [card, remove] = await Promise.all([row.boundingBox(), row.locator('.row-remove').first().boundingBox()]);
@@ -239,7 +242,7 @@ test('flagged fields are listed above the fields and clear only when marked as c
   const strip = page.getByTestId('attention-strip');
   await expect(strip).toContainText(`${n} field`);
   const stripBox = await strip.boundingBox();
-  const listBox = await page.locator('.field-list').boundingBox();
+  const listBox = await page.getByTestId('field-list').boundingBox();
   expect(stripBox!.y).toBeLessThan(listBox!.y);
 
   // Typing over a flagged value does not clear the flag.
@@ -259,10 +262,10 @@ test('flagged fields are listed above the fields and clear only when marked as c
 const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
 
 async function openIntakeReview(page: import('@playwright/test').Page) {
-  await page.goto('/');
+  await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(CONFIDENT_SCAN));
   await page.click('button:has-text("Upload & classify")');
-  await page.waitForSelector('.field-list', { timeout: 30_000 });
+  await page.waitForSelector('[data-testid="field-list"]', { timeout: 30_000 });
 }
 
 // Whether the stub flags any field varies from run to run. Reporting the service date at 10% confidence
@@ -278,7 +281,7 @@ async function flagServiceDate(page: import('@playwright/test').Page) {
 
 // The first text box or number box among the fields: something safe to type into.
 const editable = (page: import('@playwright/test').Page) =>
-  page.locator('.field-list textarea, .field-list input[type="number"]').first();
+  page.locator('[data-testid="field-list"] textarea, [data-testid="field-list"] input[type="number"]').first();
 
 // What the browser would do on reload or close: is leaving being questioned?
 async function leavingIsGuarded(page: import('@playwright/test').Page): Promise<boolean> {
@@ -330,7 +333,7 @@ test('a failed save stays on the screen with the reason and a Try again; nothing
   await page.click('button:has-text("Save corrections")');
   const error = page.locator('#save-error');
   await expect(error).toContainText('Simulated save failure');
-  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.getByTestId('field-list')).toBeVisible();
   await expect(page.locator('button:has-text("Start over")')).toHaveCount(0);
   await expect(editable(page)).toHaveValue('12');
   await expect(page.locator('button:has-text("Save corrections")')).toBeEnabled();
@@ -358,7 +361,7 @@ test('a failed finalize stays on the screen, and Try again finalizes', async ({ 
 
   await finalizeFromReview(page);
   await expect(page.locator('#save-error')).toContainText('Simulated finalize failure');
-  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.getByTestId('field-list')).toBeVisible();
   await expect(editable(page)).toHaveValue('12');
 
   await page.locator('#save-error').getByRole('button', { name: 'Try again' }).click();
@@ -390,7 +393,7 @@ test('a saved draft: edits are guarded until saved, and saving keeps the screen'
   await openReviewFromList(page, marker);
   expect(await leavingIsGuarded(page)).toBe(false);
 
-  const text = page.locator('.field-list textarea').first();
+  const text = page.getByTestId('field-list').locator('textarea').first();
   await text.fill('Edited on the saved report');
   expect(await leavingIsGuarded(page)).toBe(true);
 
@@ -406,7 +409,7 @@ test('a finalized report being edited: guarded until saved, then read-only again
   await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: marker, finalize: true });
   await openReviewFromList(page, marker);
   await startEditing(page);
-  await page.locator('.field-list textarea').first().fill('Changed after finalizing');
+  await page.getByTestId('field-list').locator('textarea').first().fill('Changed after finalizing');
   expect(await leavingIsGuarded(page)).toBe(true);
 
   await page.click('button:has-text("Save corrections")');
@@ -415,7 +418,7 @@ test('a finalized report being edited: guarded until saved, then read-only again
 
   // Cancelling an edit throws the changes away, so there is nothing left to guard.
   await startEditing(page);
-  await page.locator('.field-list textarea').first().fill('Never saved');
+  await page.getByTestId('field-list').locator('textarea').first().fill('Never saved');
   expect(await leavingIsGuarded(page)).toBe(true);
   await page.click('.review-actions button:has-text("Cancel")');
   expect(await leavingIsGuarded(page)).toBe(false);
@@ -437,7 +440,7 @@ test('finalizing with flagged fields asks first; Review them goes to the first f
 
   await confirm.getByRole('button', { name: 'Review them' }).click();
   await expect(confirm).toHaveCount(0);
-  await expect(page.locator('.field-list')).toBeVisible();
+  await expect(page.getByTestId('field-list')).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => document.activeElement?.closest('.field')?.className ?? ''))
     .toContain('pending');
