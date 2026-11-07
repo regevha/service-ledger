@@ -259,7 +259,7 @@
           <tr><td class="field">app/config.py</td><td><code class="mono">Settings</code> — DB URL, storage path, both confidence thresholds, upload size limits, worker poll interval, live-Claude switch + model/timeout/retry settings (§8)</td></tr>
           <tr><td class="field">app/db.py</td><td>SQLAlchemy engine, session factory, <code class="mono">Base</code>, the <code class="mono">get_db</code> dependency</td></tr>
           <tr><td class="field">app/models.py</td><td>Five ORM tables + five enums — direct implementation of spec §5 (§3, below)</td></tr>
-          <tr><td class="field">app/schemas.py</td><td>Pydantic request/response shapes, kept separate from the ORM models on purpose</td></tr>
+          <tr><td class="field">app/schemas/</td><td>Pydantic request/response shapes, kept separate from the ORM models on purpose</td></tr>
           <tr><td class="field">app/worker.py</td><td>The background worker (§1) — claims <code class="mono">pending</code> <code class="mono">extraction_jobs</code> rows, runs <code class="mono">classify()</code>/<code class="mono">extract()</code>, recovers orphaned jobs on startup</td></tr>
           <tr><td class="field">app/seed_instruments.py</td><td>The fixed 3-instrument fleet (§1 of the spec)</td></tr>
           <tr><td class="field">app/seed_templates.py</td><td>The <code class="mono">report_templates</code> rows, transcribed from spec §5</td></tr>

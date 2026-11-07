@@ -5,15 +5,21 @@ import {
   type Instrument,
   type ReportFilters,
   type ReportListItem,
-  type ReportStatus,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
-import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { InstrumentDetailScreen } from './InstrumentDetailScreen';
 import { ReportDetailScreen } from './ReportDetailScreen';
 import { ReportFilterBar } from './ReportFilterBar';
 import { AskReportsBox } from './AskReportsBox';
-import { defaultOrder, nextSort, SORT_LABEL, sortReports, type SortKey, type SortState } from '../reportSort';
+import { ReportGroups } from './reports/ReportGroups';
+import { ReportRow } from './reports/ReportRow';
+import { ReportTableHead } from './reports/ReportTableHead';
+import { ResultsToolbar } from './reports/ResultsToolbar';
+import { SortSelect } from './reports/SortSelect';
+import { StatusPills } from './reports/StatusPills';
+import { useStatusCounts } from './reports/useStatusCounts';
+import { groupByInstrument, groupByModel, readGroupMode, writeGroupMode, type GroupMode } from './reports/grouping';
+import { defaultOrder, sortReports, type SortState } from '../reportSort';
 
 // The reports list, one report's detail, and one instrument's detail are
 // three screens sharing this one tab — a small nav stack (rather than three
@@ -35,106 +41,6 @@ function screenPath(screen: ReportsScreen): string {
 }
 
 // Free-text search needs at least this many characters (the backend refuses less).
-
-type GroupMode = 'instrument' | 'model' | 'none';
-const GROUP_KEY = 'sl.reports.group';
-
-// Per-viewer convenience only: browser storage can be empty or throw.
-function readGroupMode(): GroupMode {
-  try {
-    const saved = localStorage.getItem(GROUP_KEY);
-    return saved === 'none' || saved === 'model' ? saved : 'instrument';
-  } catch {
-    return 'instrument';
-  }
-}
-function writeGroupMode(mode: GroupMode) {
-  try {
-    localStorage.setItem(GROUP_KEY, mode);
-  } catch {
-    /* not remembered; nothing else depends on it */
-  }
-}
-
-/** Reports of one instrument or one model (or of the uploads that have no instrument yet), newest first. */
-interface ReportGroup {
-  key: string;
-  title: string;
-  serial: string | null;
-  instrument: Instrument | null;
-  items: ReportListItem[];
-  needsReview: number;
-  /** Model groups only: the manufacturer, and how many different units the reports are about. */
-  maker?: string | null;
-  units?: number;
-}
-
-const NOT_READ_KEY = 'unread';
-
-/** Newest report first inside each group; the group holding the newest report leads and "Not read yet" is last. */
-function sortGroups(groups: ReportGroup[]): ReportGroup[] {
-  const newest = (g: ReportGroup) => g.items.reduce((m, r) => (r.created_at > m ? r.created_at : m), '');
-  return [...groups].sort((a, b) => (a.key === NOT_READ_KEY ? 1 : b.key === NOT_READ_KEY ? -1 : newest(b).localeCompare(newest(a))));
-}
-
-function groupByInstrument(items: ReportListItem[], instruments: Instrument[]): ReportGroup[] {
-  const byKey = new Map<string, ReportGroup>();
-  for (const r of items) {
-    const key = r.instrument_model || r.instrument_serial_number ? `${r.instrument_model ?? ''}|${r.instrument_serial_number ?? ''}` : NOT_READ_KEY;
-    let g = byKey.get(key);
-    if (!g) {
-      const instrument = instruments.find((i) => i.model === r.instrument_model && i.serial_number === r.instrument_serial_number) ?? null;
-      g = {
-        key,
-        title: key === NOT_READ_KEY ? 'Not read yet' : (r.instrument_model ?? 'Unknown instrument'),
-        serial: r.instrument_serial_number,
-        instrument,
-        items: [],
-        needsReview: 0,
-      };
-      byKey.set(key, g);
-    }
-    g.items.push(r);
-    if (r.status === 'in_review' || r.status === 'extracted') g.needsReview += 1;
-  }
-  // Instruments with the most recent report first; "Not read yet" last.
-  return sortGroups([...byKey.values()]);
-}
-
-/** One group per instrument model, however many units of it there are; the rows say which unit by serial number. */
-function groupByModel(items: ReportListItem[], instruments: Instrument[]): ReportGroup[] {
-  const byKey = new Map<string, ReportGroup>();
-  const serials = new Map<string, Set<string>>();
-  for (const r of items) {
-    const key = r.instrument_model ? `model|${r.instrument_model}` : r.instrument_serial_number ? 'model|' : NOT_READ_KEY;
-    let g = byKey.get(key);
-    if (!g) {
-      const known = r.instrument_model ? instruments.find((i) => i.model === r.instrument_model) : undefined;
-      g = {
-        key,
-        title: key === NOT_READ_KEY ? 'Not read yet' : (r.instrument_model ?? 'Unknown model'),
-        serial: null,
-        instrument: null,
-        items: [],
-        needsReview: 0,
-        maker: known?.manufacturer ?? null,
-        units: 0,
-      };
-      byKey.set(key, g);
-      serials.set(key, new Set());
-    }
-    g.items.push(r);
-    if (r.instrument_serial_number) serials.get(key)!.add(r.instrument_serial_number);
-    if (r.status === 'in_review' || r.status === 'extracted') g.needsReview += 1;
-  }
-  for (const [key, g] of byKey) g.units = serials.get(key)!.size;
-  return sortGroups([...byKey.values()]);
-}
-
-/** An upload that was never classified: it has no instrument or type to show yet. */
-function isUnread(r: ReportListItem): boolean {
-  return r.status !== 'finalized' && !r.instrument_model && !r.report_type;
-}
 
 export function ReportsListScreen({
   instruments,
@@ -166,27 +72,9 @@ export function ReportsListScreen({
   // while a report is open and fetches fresh when it mounts again.
   const [refreshNonce, setRefreshNonce] = useState(0);
 
-  // How many reports each status has under the other filters, for the pills above the list. Counted apart
-  // from `items` because the list itself is already narrowed by the status that is chosen.
-  const [statusCounts, setStatusCounts] = useState<Partial<Record<ReportStatus, number>> | null>(null);
   const { status: chosenStatus, ...withoutStatus } = filters;
   const withoutStatusKey = JSON.stringify(withoutStatus);
-  useEffect(() => {
-    let cancelled = false;
-    listReports(JSON.parse(withoutStatusKey) as ReportFilters)
-      .then((all) => {
-        if (cancelled) return;
-        const counts: Partial<Record<ReportStatus, number>> = {};
-        for (const r of all) counts[r.status] = (counts[r.status] ?? 0) + 1;
-        setStatusCounts(counts);
-      })
-      .catch(() => {
-        if (!cancelled) setStatusCounts(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [withoutStatusKey, refreshNonce]);
+  const statusCounts = useStatusCounts(withoutStatusKey, refreshNonce);
 
   const { loading, error, retry } = useAsyncEffect(
     async (isCancelled) => {
@@ -276,33 +164,11 @@ export function ReportsListScreen({
   const shown = sort || searching ? sortReports(items, sort) : defaultOrder(items);
   // Search covers finalized reports only, so another status filter can only be empty.
   const renderRow = (r: ReportListItem) => (
-              <button
-                className="report-row report-row-body" data-testid="report-row"
-                key={r.id}
-                onClick={() => setScreen({ kind: 'report', item: r, returnTo: { kind: 'list' }, highlight: filters.q })}
-              >
-                <span data-label="Instrument">
-                  {r.instrument_model ?? (isUnread(r) ? 'Not read yet' : '—')}
-                  {r.instrument_serial_number ? ` (${r.instrument_serial_number})` : ''}
-                </span>
-                <span data-label="Report type">{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
-                <span data-label="Lab manager" data-empty={r.technician_name ? undefined : ''}>{r.technician_name ?? '—'}</span>
-                <span data-label="Report date">
-                  {r.report_date ??
-                    (isUnread(r) ? <span className="muted">uploaded {r.created_at.slice(0, 10)}</span> : '—')}
-                </span>
-                <span data-label="Status">
-                  <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
-                </span>
-                {r.snippet && r.snippet.length > 0 && (
-                  <span className="report-excerpt" data-testid="excerpt">
-                    {r.matched_field && <span className="excerpt-field">{r.matched_field}: </span>}
-                    {r.snippet.map((piece, i) =>
-                      piece.matched ? <mark key={i}>{piece.text}</mark> : <span key={i}>{piece.text}</span>
-                    )}
-                  </span>
-                )}
-              </button>
+    <ReportRow
+      key={r.id}
+      r={r}
+      onOpen={() => setScreen({ kind: 'report', item: r, returnTo: { kind: 'list' }, highlight: filters.q })}
+    />
   );
 
   // Grouping suits browsing; a search (best match first) needs one flat list. A chosen sort order applies
@@ -342,29 +208,7 @@ export function ReportsListScreen({
       </aside>
       <div className="reports-results">
       {statusCounts && (
-        <div className="status-filter" role="group" aria-label="Filter by status" data-testid="status-pills">
-          <button
-            type="button"
-            className="status-filter-pill"
-            aria-pressed={!chosenStatus}
-            onClick={() => setFilters((f) => ({ ...f, status: undefined }))}
-          >
-            All <span className="status-filter-count">{Object.values(statusCounts).reduce((a, b) => a + (b ?? 0), 0)}</span>
-          </button>
-          {(['draft', 'classified', 'extracted', 'in_review', 'finalized'] as ReportStatus[])
-            .filter((st) => (statusCounts[st] ?? 0) > 0 || chosenStatus === st)
-            .map((st) => (
-              <button
-                key={st}
-                type="button"
-                className="status-filter-pill"
-                aria-pressed={chosenStatus === st}
-                onClick={() => setFilters((f) => ({ ...f, status: st }))}
-              >
-                {STATUS_LABEL[st]} <span className="status-filter-count">{statusCounts[st] ?? 0}</span>
-              </button>
-            ))}
-        </div>
+        <StatusPills statusCounts={statusCounts} chosenStatus={chosenStatus} setFilters={setFilters} />
       )}
       {error && <LoadError message={error} onRetry={retry} />}
 
@@ -383,109 +227,28 @@ export function ReportsListScreen({
         </div>
       ) : (
         <>
-          <div className="table-toolbar">
-            <span className="table-toolbar-count" data-testid="result-count">
-              {searching
-                ? `${items.length} finalized report${items.length === 1 ? '' : 's'} match “${filters.q}” · ${
-                    sort ? `sorted by ${SORT_LABEL[sort.key].toLowerCase()}` : 'best match first'
-                  }`
-                : `${items.length} report${items.length === 1 ? '' : 's'}${
-                    sort ? ` · sorted by ${SORT_LABEL[sort.key].toLowerCase()}` : ''
-                  }`}
-            </span>
-            <label className="group-select-wrap">
-              <span>Group</span>
-              <select
-                className="group-select"
-                data-testid="group-select"
-                value={groupMode}
-                onChange={(e) => {
-                  const mode: GroupMode = e.target.value === 'none' ? 'none' : e.target.value === 'model' ? 'model' : 'instrument';
-                  setGroupMode(mode);
-                  writeGroupMode(mode);
-                }}
-              >
-                <option value="instrument">Instrument</option>
-                <option value="model">Model</option>
-                <option value="none">None</option>
-              </select>
-            </label>
-          </div>
-          <label className={`sort-select-wrap${grouped ? ' sort-select-wrap-grouped' : ''}`}>
-            <span>Sort by</span>
-            <select
-              className="sort-select"
-              data-testid="sort-select"
-              value={sort ? `${sort.key}:${sort.direction}` : ''}
-              onChange={(e) => {
-                const [key, direction] = e.target.value.split(':');
-                setSort(key ? { key: key as SortKey, direction: direction as 'asc' | 'desc' } : null);
-              }}
-            >
-              <option value="">{searching ? 'Best match' : 'Default order'}</option>
-              {(Object.keys(SORT_LABEL) as SortKey[]).flatMap((key) => [
-                <option key={`${key}:asc`} value={`${key}:asc`}>{`${SORT_LABEL[key]} ▲`}</option>,
-                <option key={`${key}:desc`} value={`${key}:desc`}>{`${SORT_LABEL[key]} ▼`}</option>,
-              ])}
-            </select>
-          </label>
+          <ResultsToolbar
+            count={items.length}
+            searching={searching}
+            query={filters.q}
+            sort={sort}
+            groupMode={groupMode}
+            onGroupMode={(mode) => {
+              setGroupMode(mode);
+              writeGroupMode(mode);
+            }}
+          />
+          <SortSelect grouped={grouped} searching={searching} sort={sort} setSort={setSort} />
           {grouped ? (
-            <div className="report-table report-groups" data-testid="report-groups">
-              {groups.map((g) => (
-                <section className="report-group" key={g.key} data-testid="report-group">
-                  <header className="report-group-head">
-                    <div className="report-group-title">
-                      <strong>{g.title}</strong>
-                      {g.serial && <span className="report-group-serial">{g.serial}</span>}
-                      {g.instrument?.location && <span className="report-group-place">{g.instrument.location}</span>}
-                      {g.units !== undefined && g.units > 0 && (
-                        <span className="report-group-serial" data-testid="group-units">
-                          {g.units} instrument{g.units === 1 ? '' : 's'}
-                        </span>
-                      )}
-                      {g.maker && <span className="report-group-place">{g.maker}</span>}
-                    </div>
-                    <div className="report-group-meta">
-                      <span className="report-group-count">{g.items.length} report{g.items.length === 1 ? '' : 's'}</span>
-                      {g.needsReview > 0 && <span className="badge badge-warn">{g.needsReview} need{g.needsReview === 1 ? 's' : ''} review</span>}
-                      {g.instrument && (
-                        <button type="button" className="btn small" onClick={() => setScreen({ kind: 'instrument', instrumentId: g.instrument!.id })}>
-                          Instrument page →
-                        </button>
-                      )}
-                    </div>
-                  </header>
-                  <div className="report-group-rows">{g.items.map(renderRow)}</div>
-                </section>
-              ))}
-            </div>
+            <ReportGroups
+              groups={groups}
+              renderRow={renderRow}
+              onOpenInstrument={(instrumentId) => setScreen({ kind: 'instrument', instrumentId })}
+            />
           ) : (
           <>
           <div className="report-table">
-            <div className="report-row report-row-head">
-              {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => {
-                const active = sort?.key === key ? sort.direction : null;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`sort-head${active ? ' sort-head-active' : ''}`}
-                    data-sort={active ?? 'none'}
-                    data-testid={`sort-${key}`}
-                    title={`Sort by ${SORT_LABEL[key].toLowerCase()}`}
-                    aria-label={`Sort by ${SORT_LABEL[key].toLowerCase()}${
-                      active ? `, currently ${active === 'asc' ? 'ascending' : 'descending'}` : ''
-                    }`}
-                    onClick={() => setSort((cur) => nextSort(cur, key))}
-                  >
-                    {SORT_LABEL[key]}
-                    <span className="sort-arrow" aria-hidden="true">
-                      {active === 'asc' ? '▲' : active === 'desc' ? '▼' : ''}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <ReportTableHead sort={sort} setSort={setSort} />
             {shown.map(renderRow)}
           </div>
           </>
