@@ -543,7 +543,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 8px;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 .ask-chip {
@@ -610,4 +610,144 @@
   font-size: 0.82rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+/* Review: the page images with every field drawn where it was read. */
+.review-scan.drawn {
+  display: flex;
+  flex-direction: column;
+}
+.review-scan-modes {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.fop {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.fop-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.fop-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fop-swatch,
+.fop-box {
+  --mark: var(--good);
+}
+.fop-swatch.flag,
+.fop-box.flag {
+  --mark: var(--warn);
+}
+.fop-swatch.changed,
+.fop-box.changed {
+  --mark: var(--accent);
+}
+.fop-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 2px solid var(--mark);
+  display: inline-block;
+}
+.fop-note {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+.fop-pages {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  align-content: start;
+}
+.fop-page {
+  position: relative;
+  line-height: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.fop-page img {
+  width: 100%;
+  display: block;
+}
+.fop-box {
+  position: absolute;
+  padding: 0;
+  cursor: pointer;
+  border: 2px solid var(--mark);
+  background: color-mix(in srgb, var(--mark) 16%, transparent);
+  border-radius: 3px;
+  font: inherit;
+  transition: box-shadow 0.1s;
+}
+.fop-box.flag {
+  background: color-mix(in srgb, var(--warn) 22%, transparent);
+}
+.fop-box.guess {
+  border-style: dashed;
+}
+.fop-box.active {
+  box-shadow: 0 0 0 3px var(--accent);
+  z-index: 2;
+}
+.fop-name {
+  display: none;
+  position: absolute;
+  left: -2px;
+  bottom: 100%;
+  margin-bottom: 1px;
+  padding: 3px 6px;
+  font-size: 0.7rem;
+  line-height: 1;
+  white-space: nowrap;
+  color: #fff;
+  background: #1b1f2a;
+  border-radius: 3px;
+  pointer-events: none;
+}
+.fop-box.active .fop-name,
+.fop-box:hover .fop-name,
+.fop-box:focus-visible .fop-name {
+  display: block;
+}
+/* A field being pointed at in the list is lit in the list too. */
+.field-list .field:hover,
+.field-list .field:focus-within {
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.review-scan-modes .view-switch-button {
+  min-height: 32px;
+  font-size: 0.85rem;
+}
+/* On Home the ask box is the first thing: a roomy field, and the examples sit under it. */
+.home-ask .ask-box {
+  margin-bottom: 0;
+}
+.home-ask .ask-input {
+  min-height: 44px;
+  font-size: 1rem;
+}
+.home-ask .ask-row .btn {
+  min-height: 44px;
 }

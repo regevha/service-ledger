@@ -58,6 +58,7 @@ export function AskReportsBox({
       <div className="ask-row">
         <input
           id="ask-reports-input"
+          type="text"
           className="ask-input"
           data-testid="ask-input"
           value={text}
