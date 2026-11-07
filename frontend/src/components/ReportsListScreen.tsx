@@ -10,6 +10,7 @@ import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { InstrumentDetailScreen } from './InstrumentDetailScreen';
 import { ReportDetailScreen } from './ReportDetailScreen';
 import { ReportFilterBar } from './ReportFilterBar';
+import { AskReportsBox } from './AskReportsBox';
 import { ReportGroups } from './reports/ReportGroups';
 import { ReportRow } from './reports/ReportRow';
 import { ReportTableHead } from './reports/ReportTableHead';
@@ -55,6 +56,8 @@ export function ReportsListScreen({
   onPath?: (path: string) => void;
 }) {
   const [filters, setFilters] = useState<ReportFilters>({});
+  // The filter bar keeps its typed fields in its own state; a new key makes it show filters set from outside.
+  const [barKey, setBarKey] = useState(0);
   const [items, setItems] = useState<ReportListItem[]>([]);
   // Column the table is sorted by (null: the server's order). Sorting is done here, on the rows already loaded.
   const [sort, setSort] = useState<SortState | null>(null);
@@ -180,7 +183,14 @@ export function ReportsListScreen({
 
       <div className="reports-layout">
       <aside className="reports-filters" aria-label="Filters">
+      <AskReportsBox
+        onApply={(next) => {
+          setFilters(next);
+          setBarKey((k) => k + 1);
+        }}
+      />
       <ReportFilterBar
+        key={barKey}
         filters={filters}
         setFilters={setFilters}
         instruments={instruments}

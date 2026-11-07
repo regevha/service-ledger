@@ -93,3 +93,13 @@ export function finalizeReport(reportId: string): Promise<Report> {
 export function reportPdfUrl(reportId: string): string {
   return `${API_BASE}/reports/${reportId}/pdf`;
 }
+
+export interface ReportSearchPart {
+  key: string;
+  label: string;
+}
+
+/** A request in plain words turned into the Reports filters it names, plus what was understood from it. */
+export function parseReportSearch(text: string): Promise<{ filters: ReportFilters; understood: ReportSearchPart[] }> {
+  return apiFetch('/reports/parse-search', { method: 'POST', body: JSON.stringify({ text }) });
+}

@@ -39,6 +39,7 @@ export function fieldToPayload(field: TemplateField): TemplateFieldPayload {
     ...(field.item_schema ? { item_schema: field.item_schema } : {}),
     ...(field.filled_by_person ? { filled_by_person: true } : {}),
     ...(field.optional ? { optional: true } : {}),
+    ...(field.source ? { source: field.source } : {}),
   };
 }
 

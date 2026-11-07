@@ -59,7 +59,9 @@ test.describe('filters on a phone', { tag: '@phone' }, () => {
 });
 
 test('on a wide screen the filters still start open and the From / To captions are not shown', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  // Below 1000px the filters are a row above the list (no captions); from 1000px they are a column, which
+  // labels the two dates, so the no-captions check uses a width in between.
+  await page.setViewportSize({ width: 900, height: 800 });
   await page.goto('/#/reports');
   await expect(page.getByLabel('Lab manager', { exact: true })).toBeVisible({ timeout: TIMEOUT.ui });
   await expect(page.locator('.date-pair-label').first()).toBeHidden();

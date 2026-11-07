@@ -102,3 +102,24 @@ export async function pollExtractionJob(
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
 }
+
+/** One word on a PDF page, as fractions of the page (0 to 1 from the top left); `line` counts lines down the page. */
+export interface PageWord {
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  line: number;
+}
+
+/** The words of one page, for picking template fields straight from a PDF. `has_text` is false for a scan with no text layer. */
+export interface PageWords {
+  page: number;
+  has_text: boolean;
+  words: PageWord[];
+}
+
+export function getAttachmentPageWords(attachmentId: string, page: number): Promise<PageWords> {
+  return apiFetch(`/attachments/${attachmentId}/pages/${page}/words`);
+}

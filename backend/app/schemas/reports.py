@@ -5,7 +5,7 @@ import uuid
 from typing import Literal
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models import (
     ReportStatus,
@@ -135,3 +135,44 @@ class TemplateConfirmation(BaseModel):
 
     instrument_id: uuid.UUID
     template_id: uuid.UUID
+
+
+class WordBoxOut(BaseModel):
+    """One word on a PDF page and where it sits, as fractions of the page
+    (0 to 1 from the top left), so the browser can draw it over the page image
+    at any size. `line` counts lines down the page from 0."""
+
+    text: str
+    x: float
+    y: float
+    w: float
+    h: float
+    line: int
+
+
+class PageWordsOut(BaseModel):
+    """GET /attachments/{id}/pages/{n}/words: the words the template editor
+    lets a person pick. `has_text` is false for a scan with no text layer."""
+
+    page: int
+    has_text: bool
+    words: list[WordBoxOut]
+
+
+class ReportSearchParseIn(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+
+
+class ReportSearchPart(BaseModel):
+    """One thing that was understood from the request, in the words to show next to the filters."""
+
+    key: str
+    label: str
+
+
+class ReportSearchParseOut(BaseModel):
+    """The Reports filters a plain-words request asked for (the same keys GET /reports takes), plus what
+    was understood from it."""
+
+    filters: dict[str, str]
+    understood: list[ReportSearchPart]

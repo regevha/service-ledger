@@ -228,6 +228,25 @@ def _check_no_duplicate_column_names(columns: list[ItemSchemaColumn], field_name
         raise ValueError(f"Field '{field_name}': duplicate item_schema column name(s): {dupes}")
 
 
+class FieldSource(BaseModel):
+    """Where on a sample PDF a template field was picked: a 1-based page and a
+    box in fractions of the page (0 to 1 from the top left), the same units
+    GET /attachments/{id}/pages/{n}/words returns. The template editor draws it
+    back over the page so a person can see which text a field stands for."""
+
+    page: int = Field(ge=1, le=1000)
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    w: float = Field(gt=0, le=1)
+    h: float = Field(gt=0, le=1)
+
+    @model_validator(mode="after")
+    def _inside_page(self) -> "FieldSource":
+        if self.x + self.w > 1.0001 or self.y + self.h > 1.0001:
+            raise ValueError("source box must lie inside the page")
+        return self
+
+
 class TemplateFieldIn(BaseModel):
     """One row of the structured editor's field list. `options` and
     `item_schema` are conditionally required/forbidden by `type` — the same
@@ -247,6 +266,8 @@ class TemplateFieldIn(BaseModel):
     # May be left empty: when the form does not state it, an empty value is the
     # right answer and the review screen does not flag it.
     optional: bool = False
+    # Where on a sample PDF this field was picked; absent for fields typed by hand.
+    source: FieldSource | None = None
 
     @model_validator(mode="after")
     def _check_shape(self) -> "TemplateFieldIn":
@@ -329,3 +350,17 @@ class TemplateUpdate(BaseModel):
                 raise ValueError("A template needs at least one field")
             _check_no_duplicate_names(self.fields)
         return self
+
+
+class SampleScanOut(BaseModel):
+    """GET /report-templates/sample-scans: a stored PDF the template editor can
+    show while a person picks fields from it. `reason` says why it was offered."""
+
+    attachment_id: uuid.UUID
+    report_id: uuid.UUID
+    file_name: str
+    report_type: ReportType | None
+    instrument_model: str | None
+    instrument_serial_number: str | None
+    report_date: date | None
+    reason: str

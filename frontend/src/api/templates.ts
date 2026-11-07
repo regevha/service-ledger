@@ -1,5 +1,5 @@
 import { apiFetch } from './http';
-import type { FieldType, ItemSchemaColumn, ReportTemplate, ReportType, TemplateField } from './types';
+import type { FieldSource, FieldType, ItemSchemaColumn, ReportTemplate, ReportType, TemplateField } from './types';
 
 // ---------- Report templates ----------
 
@@ -89,6 +89,7 @@ export interface TemplateFieldPayload {
   item_schema?: ItemSchemaColumn[];
   filled_by_person?: boolean;
   optional?: boolean;
+  source?: FieldSource;
 }
 
 export interface TemplateCreatePayload {
@@ -143,4 +144,26 @@ export function updateReportTemplate(templateId: string, payload: TemplateUpdate
 
 export function deleteReportTemplate(templateId: string): Promise<void> {
   return apiFetch(`/report-templates/${templateId}`, { method: 'DELETE' });
+}
+
+/** A stored PDF the template editor can show while a person picks fields from it. */
+export interface SampleScan {
+  attachment_id: string;
+  report_id: string;
+  file_name: string;
+  report_type: ReportType | null;
+  instrument_model: string | null;
+  instrument_serial_number: string | null;
+  report_date: string | null;
+  /** Why it is offered: "Same report type and model", "Same report type", "Same model" or "Another report". */
+  reason: string;
+}
+
+export function listSampleScans(params: { report_type?: ReportType; model?: string; limit?: number } = {}): Promise<SampleScan[]> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') query.set(key, String(value));
+  }
+  const qs = query.toString();
+  return apiFetch(`/report-templates/sample-scans${qs ? `?${qs}` : ''}`);
 }

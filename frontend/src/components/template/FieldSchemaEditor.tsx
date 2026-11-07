@@ -27,7 +27,7 @@ export function FieldSchemaEditor({ fields, onChange }: { fields: TemplateField[
   }
   function changeType(i: number, type: FieldType) {
     const current = fields[i];
-    onChange(fields.map((f, j) => (i === j ? { ...defaultFieldFor(type), name: current.name, unit: current.unit, notes: current.notes, filled_by_person: current.filled_by_person, optional: current.optional } : f)));
+    onChange(fields.map((f, j) => (i === j ? { ...defaultFieldFor(type), name: current.name, unit: current.unit, notes: current.notes, filled_by_person: current.filled_by_person, optional: current.optional, source: current.source } : f)));
   }
   function removeField(i: number) {
     onChange(fields.filter((_, j) => j !== i));
