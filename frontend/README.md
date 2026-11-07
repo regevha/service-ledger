@@ -33,7 +33,7 @@ See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rule
 
 ## Regenerating API types from the backend
 
-`src/api.ts` derives its six backend-enum types (`InstrumentStatus`,
+`src/api/` derives its six backend-enum types (`InstrumentStatus`,
 `ReportType`, `ReportStatus`, `ExtractionJobStatus`, `ExtractionJobKind`,
 `FieldType`) from `src/generated/api-schema.ts` rather than hand-typing
 them — that file is generated from the backend's own OpenAPI schema, so it
@@ -55,7 +55,7 @@ python -m scripts.export_openapi > ../frontend/openapi.json
 npm run codegen
 ```
 
-The other hand-written interfaces in `api.ts` (`Instrument`, `Report`,
+The other hand-written interfaces in `src/api/types.ts` (`Instrument`, `Report`,
 `ReportTemplate`, ...) are left alone on purpose — they're small, stable, and
 more readable authored directly than as a deep generated-schema lookup; only
 the enums, where backend/frontend drift is easy and silent, are sourced from
