@@ -11,6 +11,7 @@ import { BatchIntake } from './components/BatchIntake';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { NavigationGuardContext, type LeaveGuard } from './navigationGuard';
+import type { ReportFilters } from './api';
 import type { TemplateRequest } from './templateRequest';
 import './App.css';
 import { ToastHost } from './components/ToastHost';
@@ -88,6 +89,10 @@ export default function App() {
   const [intakeKey, setIntakeKey] = useState(0);
   // Once the several-files screen has been opened it stays mounted (hidden), so its list survives checking a report.
   const [batchOpened, setBatchOpened] = useState(false);
+  // Files dropped on Home, waiting for the several-files screen to take them (a new nonce is a new drop).
+  const [incomingFiles, setIncomingFiles] = useState<{ files: File[]; nonce: number } | null>(null);
+  // Filters a plain-words request on Home turned into, waiting for the Reports screen to start with them.
+  const [homeFilters, setHomeFilters] = useState<ReportFilters | null>(null);
   if (view === 'batch' && !batchOpened) setBatchOpened(true);
   // A report waiting for a template of its own: the Templates tab opens a
   // prefilled form for it, and when a template is saved the intake flow reads
@@ -302,7 +307,7 @@ export default function App() {
         )}
         {(view === 'batch' || batchOpened) && (
           <div hidden={view !== 'batch'}>
-            <BatchIntake active={view === 'batch'} onOpenReport={(reportId) => navigate('reports', reportId)} onBack={() => navigate('new')} />
+            <BatchIntake active={view === 'batch'} incoming={incomingFiles} onOpenReport={(reportId) => navigate('reports', reportId)} onBack={() => navigate('new')} />
           </div>
         )}
         {view === 'home' && (
@@ -314,6 +319,14 @@ export default function App() {
             onNewReport={() => selectView('new')}
             onOpenReports={() => selectView('reports')}
             onOpenInstruments={() => selectView('instruments')}
+            onAsk={(filters) => {
+              setHomeFilters(filters);
+              navigate('reports');
+            }}
+            onFiles={(files) => {
+              setIncomingFiles((prev) => ({ files, nonce: (prev?.nonce ?? 0) + 1 }));
+              navigate('batch');
+            }}
           />
         )}
         {view === 'analytics' && <AnalyticsScreen />}
@@ -359,6 +372,8 @@ export default function App() {
             fieldConfidenceThreshold={config.field_confidence_threshold}
             path={route.sub}
             onPath={(sub) => navigate('reports', sub)}
+            initialFilters={homeFilters ?? undefined}
+            onInitialFiltersUsed={() => setHomeFilters(null)}
           />
         )}
       </div>

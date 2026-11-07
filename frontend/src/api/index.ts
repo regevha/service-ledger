@@ -13,6 +13,7 @@ export * from './analytics';
 export * from './templates';
 export * from './fieldAliases';
 export * from './reports';
+export * from './home';
 export * from './attachments';
 export * from './translations';
 export * from './savedFilters';
