@@ -640,6 +640,18 @@ textarea {
   flex: none;
   white-space: nowrap;
 }
+@media (max-width: 620px) {
+  /* On a phone the button goes under the heading, full width, so the text keeps its room. */
+  .intake-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+  .intake-head-cta {
+    width: 100%;
+    margin-bottom: var(--space-4, 16px);
+  }
+}
 .intake-subheading {
   margin: var(--space-1) 0 var(--space-5, 20px);
   color: var(--text-muted);
