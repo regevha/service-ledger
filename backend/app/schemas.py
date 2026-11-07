@@ -811,6 +811,25 @@ class SampleScanOut(BaseModel):
     reason: str
 
 
+class ReportSearchParseIn(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+
+
+class ReportSearchPart(BaseModel):
+    """One thing that was understood from the request, in the words to show next to the filters."""
+
+    key: str
+    label: str
+
+
+class ReportSearchParseOut(BaseModel):
+    """The Reports filters a plain-words request asked for (the same keys GET /reports takes), plus what
+    was understood from it."""
+
+    filters: dict[str, str]
+    understood: list[ReportSearchPart]
+
+
 # ---------- Reports ----------
 
 
