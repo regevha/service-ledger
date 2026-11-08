@@ -36,6 +36,7 @@ from typing import NamedTuple
 from app.config import get_settings
 from app.models import Attachment, ReportTemplate
 from app.schemas import REPORT_DATE_KEY, TemplateFieldType
+from app.services.attachment_names import source_name
 from app.services.claude_client import (
     is_sample_document as _is_sample_document,
     call_claude_tool,
@@ -323,7 +324,10 @@ _SAMPLE_REPAIR_VALUES = {
 
 def _stub_extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
     fields = template.field_schema.get("fields", [])
-    is_sample = _is_sample_document(attachment.file_path)
+    # Stub values are keyed on the uploaded file's own name, which stays the same however
+    # the file is stored on disk.
+    key = source_name(attachment)
+    is_sample = _is_sample_document(key)
 
     extracted_fields: dict = {}
     field_confidences: dict = {}
@@ -336,15 +340,15 @@ def _stub_extract(attachment: Attachment, template: ReportTemplate) -> Extractio
             # this," not a bad read, and both get flagged for review.
             field_confidences[name] = 0.35 if name in ("root_cause", "components_replaced") else 0.9
         else:
-            extracted_fields[name] = _stub_value(field, attachment.file_path)
-            field_confidences[name] = round(0.55 + _stable_unit(attachment.file_path, name, "conf") * 0.44, 2)
+            extracted_fields[name] = _stub_value(field, key)
+            field_confidences[name] = round(0.55 + _stable_unit(key, name, "conf") * 0.44, 2)
 
     # A stable date within the past year — not a value read from any real
     # document, just so the date filters and trend chart have something to
     # work with in stub mode.
-    report_date = date.today() - timedelta(days=int(_stable_unit(attachment.file_path, REPORT_DATE_KEY) * 365))
+    report_date = date.today() - timedelta(days=int(_stable_unit(key, REPORT_DATE_KEY) * 365))
     field_confidences[REPORT_DATE_KEY] = round(
-        0.55 + _stable_unit(attachment.file_path, REPORT_DATE_KEY, "conf") * 0.44, 2
+        0.55 + _stable_unit(key, REPORT_DATE_KEY, "conf") * 0.44, 2
     )
     return ExtractionResult(extracted_fields, field_confidences, report_date)
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -9,6 +8,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.db import get_db
 from app.models import DEFAULT_INSTRUMENT_TYPE_KEY, ReportType
+from app.services.attachment_names import source_name
 from app.services import template_records as svc
 
 router = APIRouter(tags=["report-templates"])
@@ -106,7 +106,6 @@ def list_sample_scans(
             rank, reason = 2, "Same model"
         else:
             rank, reason = 3, "Another report"
-        path_name = Path(attachment.file_path).name
         ranked.append(
             (
                 rank,
@@ -114,7 +113,7 @@ def list_sample_scans(
                 schemas.SampleScanOut(
                     attachment_id=attachment.id,
                     report_id=report.id,
-                    file_name=path_name.split("_", 1)[1] if "_" in path_name else path_name,
+                    file_name=source_name(attachment),
                     report_type=this_type,
                     instrument_model=this_model,
                     instrument_serial_number=report.instrument.serial_number if report.instrument else None,

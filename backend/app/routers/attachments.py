@@ -19,6 +19,7 @@ from app.db import get_db
 from app.services.duplicates import find_duplicate_report_ids, find_read_copy, normalize_work_order
 from app.services.field_locator import FieldToLocate, locate_fields
 from app.services.page_text import PDFIUM_LOCK, page_words
+from app.services.attachment_names import clean_original_filename, source_name, stored_filename
 from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
 from app.services.text_reader import extract_text, read_work_order
 from app.services.translation import translation_gate
@@ -99,36 +100,22 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, request: Req
 
     report_dir = settings.attachment_storage_path / str(report_id)
     report_dir.mkdir(parents=True, exist_ok=True)
-    # file.filename is entirely client-controlled — whatever name the
-    # uploader's browser/script sends, verbatim. Path(...).name strips any
-    # directory components (a "/" anywhere, a leading "/" for an absolute
-    # path, "../" traversal segments) down to the last path component before
-    # it ever reaches the filesystem, and falls back to a fixed name for the
-    # edge cases that have no usable name at all (no filename sent, or one
-    # that's just "." / ".." / empty after stripping). Previously, any
-    # filename containing "/" (e.g. "Scans/2024/report.pdf" from a
-    # nested-folder upload) embedded that slash as an extra, non-existent
-    # path segment below report_dir — write_bytes() then raised an unhandled
-    # FileNotFoundError, a hard 500 for what should just be an upload with an
-    # unusual name (confirmed via proof-of-concept during a file-handling
-    # security review; it never achieved a real path-traversal write, since
-    # the "<uuid>_" prefix glued onto the filename happened to turn a leading
-    # "../" into a literal, nonexistent directory name rather than a real
-    # parent reference — but crashing on ordinary-looking input is still a
-    # bug worth closing outright, independent of how it failed).
-    # Path(...).name on a bare "." or ".." returns the string unchanged (it
-    # only blanks out to "" for "", "/", or a path that *ends* in a trailing
-    # slash) — so those two need an explicit check, not just an `or "upload"`
-    # fallback on emptiness, to land on a real, unambiguous filename instead
-    # of a technically-harmless-but-confusing "<uuid>_.." on disk.
-    raw_name = Path(file.filename or "").name
-    safe_filename = raw_name if raw_name not in ("", ".", "..") else "upload"
-    dest = report_dir / f"{uuid.uuid4()}_{safe_filename}"
+    # file.filename is entirely client-controlled, so it never reaches the
+    # filesystem: the file is stored under a generated name (a UUID and the
+    # extension of the detected type), and the uploader's name is kept as
+    # cleaned text in the database for the download and the stub-mode hooks.
+    # That closes by construction what used to need care here: slashes and
+    # ".." in the name (a nested-folder upload once crashed with a 500),
+    # characters the Azure Files share refuses, names longer than the 255
+    # bytes a Hebrew name can reach, and NFC/NFD differences.
+    original_filename = clean_original_filename(file.filename, media_type)
+    dest = report_dir / stored_filename(media_type)
     dest.write_bytes(contents)
 
     attachment = models.Attachment(
         report_id=report_id,
         file_path=str(dest),
+        original_filename=original_filename,
         file_type=media_type,
         page_count=1,  # TODO: compute real page count once PDF preprocessing (§4 step 2) is wired in.
         content_sha256=content_sha256,
@@ -173,10 +160,9 @@ def get_attachment_file(attachment_id: uuid.UUID, inline: bool = False, db: Sess
         # like a bad attachment_id.
         raise HTTPException(404, "Attachment file is missing from storage")
 
-    # Strip the "<uuid>_" prefix upload_attachment added to dedupe filenames
-    # on disk, so the browser's download/save-as dialog shows the
-    # technician's own original filename rather than a UUID-prefixed one.
-    original_name = path.name.split("_", 1)[1] if "_" in path.name else path.name
+    # The browser's save-as name is the uploader's own file name. Starlette
+    # encodes a non-ASCII name (Hebrew) as filename*=utf-8''... for us.
+    original_name = source_name(attachment)
     return FileResponse(
         path,
         media_type=attachment.file_type or "application/octet-stream",

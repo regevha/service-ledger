@@ -1223,6 +1223,8 @@ export interface components {
             report_id: string;
             /** File Path */
             file_path: string;
+            /** Original Filename */
+            original_filename?: string | null;
             /** File Type */
             file_type: string;
             /** Page Count */

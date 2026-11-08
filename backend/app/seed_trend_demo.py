@@ -144,6 +144,7 @@ def seed(db: Session) -> list[Report]:
         attachment = Attachment(
             report_id=report.id,
             file_path=str(pdf_path),
+            original_filename=pdf_path.name,
             file_type="application/pdf",
             page_count=1,
         )
