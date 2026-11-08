@@ -70,6 +70,11 @@ CASES: list[dict[str, Any]] = [
     case("LSRFortessa", {"model_id": "m-fort"}),
     case("reports by D. Levi", {"technician": "d. levi"}),
     case("show me all reports", {}),
+    case("PM reports for the CytoFLEX LX in 2026", {"model_id": "m-cyto", "report_type": PM, "date_from": "2026-01-01", "date_to": "2026-12-31"}),
+    case("finalized repairs last month at Hadassah", {"status": "finalized", "report_type": REPAIR, "place_id": "p-had", "date_from": "2026-10-01", "date_to": "2026-10-31"}),
+    case("all in review reports since September 2026", {"status": "in_review", "date_from": "2026-09-01"}),
+    case("installation reports for FACSDiscover S8", {"report_type": INSTALL, "model_id": "m-s8"}),
+    case("how many repairs did we do in 2025", {"report_type": REPAIR, "date_from": "2025-01-01", "date_to": "2025-12-31"}),
     # --- the rules leave words over: the model finishes the job ---
     case("reports mentioning a PMT", {"q": "pmt"}, {"text": "pmt"}),
     case("sheath pressure problems", {"q": "sheath pressure"}, {"text": "sheath pressure"}),
@@ -100,6 +105,22 @@ CASES: list[dict[str, Any]] = [
         {"date_from": "2026-10-01", "date_to": "2026-10-31", "technician": "dana levi"},
         {"technician": "Dana Levi", "text": ""},
     ),
+    case("reports where the laser was replaced", {"q": "laser replaced"}, {"text": "laser replaced"}),
+    case(
+        "Aurora problems with the fluidics last quarter",
+        {"model_id": "m-aur", "date_from": "2026-07-01", "date_to": "2026-09-30", "q": "fluidics"},
+        {"date_from": "2026-07-01", "date_to": "2026-09-30", "text": "fluidics"},
+    ),
+    case(
+        "any broken instruments at Bar-Ilan University that nobody has reviewed",
+        {"report_type": REPAIR, "place_id": "p-bar", "status": "extracted"},
+        {"status": "extracted", "text": ""},
+    ),
+    case(
+        "PM visits by Dana Levi in 2025 mentioning calibration",
+        {"report_type": PM, "technician": "dana levi", "date_from": "2025-01-01", "date_to": "2025-12-31", "q": "calibration"},
+        {"text": "calibration"},
+    ),
     # --- asked for what no filter can express: say so instead of guessing ---
     case("which instruments are overdue for PM?", {"report_type": PM}, {"not_supported": ["overdue"], "text": ""}, ["overdue"]),
     case(
@@ -109,6 +130,7 @@ CASES: list[dict[str, Any]] = [
         ["more than 2 repairs"],
     ),
     case("laser delay above 29", {"q": "laser delay"}, {"text": "laser delay", "not_supported": ["above 29"]}, ["above 29"]),
+    case("reports without a serial number", {}, {"not_supported": ["without a serial number"], "text": ""}, ["without a serial number"]),
     case("failed extractions", {}, {"not_supported": ["failed extractions"], "text": ""}, ["failed extractions"]),
     case("everything for the FACSAria III that failed", {"model_id": "m-aria"}, {"not_supported": ["failed"], "text": ""}, ["failed"]),
     case("summarize the repairs of the Aurora", {"model_id": "m-aur", "report_type": REPAIR}, {"not_supported": ["summarize"], "text": ""}, ["summarize"]),
