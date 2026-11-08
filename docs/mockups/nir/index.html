@@ -7,7 +7,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: a numbered switcher over seven framed screens, each drawn in ServiceLedger's own Slate and indigo tokens (copied from frontend/src/index.css). */
+/* Layout: a numbered switcher over eight framed screens, each drawn in ServiceLedger's own Slate and indigo tokens (copied from frontend/src/index.css). */
 :root {
   --bg: #f4f6fa; --surface: #ffffff; --surface-2: #eef1f7; --border: #dde2ec; --border-strong: #c9d0de;
   --text: #1b2230; --text-muted: #566074; --text-faint: #636d83;
@@ -167,6 +167,75 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 .bars div { display: grid; grid-template-columns: 62px 1fr 46px; gap: 10px; align-items: center; font-size: 13px; color: var(--text-muted); }
 .bars i { display: block; height: 10px; border-radius: 0 4px 4px 0; background: var(--bar); }
 .bars em { font-style: normal; font-family: var(--font-mono); color: var(--text); text-align: right; }
+
+/* 8. Phone */
+.ph-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.ph-switch { display: inline-flex; max-width: 100%; overflow-x: auto; border: 1px solid var(--input-border); border-radius: 10px; background: var(--surface); }
+.ph-switch button { flex: none; border: 0; background: none; height: 40px; padding: 0 14px; font-size: 13.5px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+.ph-switch button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); }
+.phone { position: relative; width: min(390px, 100%); height: 800px; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); border: 9px solid #1c2230; border-radius: 46px; box-shadow: var(--shadow-pop); }
+.ph-status { flex: none; height: 34px; padding: 4px 22px 0; display: flex; align-items: center; justify-content: space-between; background: var(--surface); font-size: 13px; font-weight: 600; }
+.ph-status .sys { display: flex; align-items: center; gap: 6px; color: var(--text); }
+.ph-status .bat { width: 22px; height: 11px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+.ph-status .bat::after { content: ""; position: absolute; inset: 1.5px 5px 1.5px 1.5px; background: currentColor; border-radius: 1px; }
+.ph-bar { flex: none; height: 52px; padding: 0 12px 0 16px; display: flex; align-items: center; justify-content: space-between; background: var(--surface); border-bottom: 1px solid var(--border); }
+.ph-bar .brand { font-size: 16px; }
+.ph-icon { width: 44px; height: 44px; border: 0; background: none; border-radius: 50%; display: grid; place-items: center; color: var(--text-muted); padding: 0; }
+.ph-icon svg { width: 22px; height: 22px; }
+.ph-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px 20px; display: flex; flex-direction: column; gap: 14px; }
+.ph-body > * { flex: none; }
+.ph-body h3 { font-size: 22px; font-weight: 600; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ph-body h3 span { font-size: 13.5px; font-weight: 400; color: var(--text-muted); }
+.ph-field { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; min-height: 62px; border: 1px solid var(--border-strong); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
+.ph-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ph-field > svg { width: 20px; height: 20px; stroke: var(--accent); flex: none; }
+.ph-field textarea { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 15px; line-height: 21px; resize: none; padding: 0; outline: none; height: 42px; max-height: 126px; }
+.ph-field textarea::placeholder { color: var(--text-muted); opacity: 1; }
+.ph-round { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-muted); display: grid; place-items: center; padding: 0; }
+.ph-round svg { width: 21px; height: 21px; }
+.ph-round.go { background: var(--accent-fill); border-color: transparent; color: var(--on-fill); }
+.ph-ex { display: flex; gap: 8px; overflow-x: auto; margin: 0 -14px; padding: 0 14px 2px; scrollbar-width: none; }
+.ph-ex .ex { flex: none; height: 36px; padding: 0 13px; font-size: 13.5px; }
+.phone .seg { align-self: flex-start; }
+.phone .seg button { height: 40px; padding: 0 16px; font-size: 14px; }
+.ph-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ph-chips .fchip { height: 34px; font-size: 13px; }
+.ph-chips .fchip button { width: 26px; height: 26px; }
+.ph-res { padding: 13px 14px; display: flex; flex-direction: column; gap: 8px; }
+.ph-res h4 { margin: 0; font-size: 15.5px; font-weight: 600; }
+.ph-res .meta { color: var(--text-muted); font-size: 13px; }
+.ph-res .foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.phone .sum { grid-template-columns: 1fr; gap: 16px; padding: 16px; }
+.ph-recent { overflow: hidden; }
+.ph-recent .lbl { padding: 12px 16px 4px; display: block; }
+.ph-recent button { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 12px; padding: 8px 16px; border: 0; background: none; text-align: left; color: var(--text); font-size: 14.5px; }
+.ph-recent button + button { border-top: 1px solid var(--border); }
+.ph-recent button:hover { background: var(--surface-2); }
+.ph-recent svg { width: 18px; height: 18px; color: var(--text-muted); flex: none; }
+.ph-hint { padding: 14px 16px; color: var(--text-muted); font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.ph-hint b { color: var(--text); font-weight: 600; }
+.ph-nav { flex: none; height: 66px; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--border); padding-bottom: 6px; }
+.ph-nav span { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 500; color: var(--text-muted); min-height: 48px; }
+.ph-nav svg { width: 22px; height: 22px; }
+.ph-nav .on { color: var(--accent-strong); }
+.ph-nav .fab { width: 46px; height: 46px; border-radius: 50%; background: var(--accent-fill); color: var(--on-fill); display: grid; place-items: center; align-self: center; justify-self: center; margin-top: -14px; box-shadow: var(--shadow); }
+.ph-nav .fab svg { width: 24px; height: 24px; }
+.ph-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.ph-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 10px 20px 28px; display: flex; flex-direction: column; align-items: center; gap: 14px; box-shadow: var(--shadow-pop); }
+.ph-sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); }
+.ph-sheet h4 { margin: 4px 0 0; font-size: 18px; font-weight: 600; }
+.ph-sheet .clock { font-family: var(--font-mono); font-size: 30px; line-height: 1; }
+.ph-sheet .wave { width: 100%; height: 64px; justify-content: center; flex: none; gap: 4px; }
+.ph-sheet .wave i { width: 4px; }
+.ph-sheet .say { color: var(--text-muted); font-size: 14px; text-align: center; max-width: 30ch; }
+.ph-sheet .ctl { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; margin-top: 4px; }
+.ph-stop { width: 72px; height: 72px; border-radius: 50%; border: 0; background: var(--crit); color: #fff; display: grid; place-items: center; padding: 0; }
+.ph-stop svg { width: 28px; height: 28px; }
+.ph-stop[disabled] { opacity: .45; }
+.ph-sheet .ctl .btn { height: 48px; justify-self: start; }
+.ph-sheet.busy .wave i { animation: none; height: 6px; background: var(--text-faint); }
+.ph-sheet.busy .recdot { background: var(--text-faint); animation: none; }
+@media (max-width: 440px) { .phone { border-width: 0; border-radius: 0; height: 780px; box-shadow: none; } .ph-status { display: none; } }
 
 /* 2. Template editor */
 .ed { display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-height: 640px; }
@@ -374,7 +443,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 
 <div class="head"><div class="head-in">
   <h1>ServiceLedger · Nir proposals</h1>
-  <div class="sub">Seven mockups on branch <span class="mono">nir</span>. Visuals only: click around, nothing here saves or calls the backend. Example data is made up.</div>
+  <div class="sub">Eight mockups on branch <span class="mono">nir</span>. Visuals only: click around, nothing here saves or calls the backend. Example data is made up.</div>
   <div class="switch" role="tablist" aria-label="Proposals">
     <button role="tab" data-s="s1"><b>1</b>AI search</button>
     <button role="tab" data-s="s2"><b>2</b>Template editor</button>
@@ -383,6 +452,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
     <button role="tab" data-s="s5"><b>5</b>Batch upload</button>
     <button role="tab" data-s="s6"><b>6</b>Filters</button>
     <button role="tab" data-s="s7"><b>7</b>More ideas</button>
+    <button role="tab" data-s="s8"><b>8</b>Phone</button>
   </div>
 </div></div>
 
@@ -690,6 +760,35 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 
 </div>
 
+<!-- 8 -->
+<section class="screen" id="s8">
+  <div class="intro">
+    <h2>The AI search on a phone</h2>
+    <p>The same box, sized for a thumb: the question field on top, the microphone beside it, and the answer as stacked cards. A person in the lab can hold the phone, say which instrument they are standing at, and get its recent reports.</p>
+    <ul>
+      <li><b>Voice first</b>: tap the microphone, a sheet shows that it is listening, tap the red button to send. The words land in the field, so the person can read and fix them before trusting the answer.</li>
+      <li><b>Same checkable answer</b>: chips show how the question was understood, and each card says why it matched.</li>
+      <li><b>One hand</b>: the main controls sit in the lower half, and every tap target is at least 44 px.</li>
+    </ul>
+    <p style="margin-top:10px">Try it: tap the microphone, or use the switcher to jump between the four states. Recording is simulated; nothing is heard or sent.</p>
+  </div>
+  <div class="ph-wrap">
+    <div class="ph-switch" role="group" aria-label="Phone state">
+      <button data-ph="ask" aria-pressed="true">Ask</button>
+      <button data-ph="rec" aria-pressed="false">Listening</button>
+      <button data-ph="res" aria-pressed="false">Results</button>
+      <button data-ph="sum" aria-pressed="false">Summary</button>
+    </div>
+    <div class="phone" id="phone" aria-label="Phone mockup of the AI search">
+      <div class="ph-status"><span>9:41</span><span class="sys"><span>5G</span><span class="bat" aria-hidden="true"></span></span></div>
+      <div class="ph-bar"><span class="brand"><i id="phlogo"></i><span>ServiceLedger</span></span><button class="ph-icon" aria-label="More" type="button"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button></div>
+      <div class="ph-body" id="phbody"></div>
+      <nav class="ph-nav" id="phnav" aria-label="Main"></nav>
+      <div id="phsheet"></div>
+    </div>
+  </div>
+</section>
+
 <script>
 (function () {
   var ICON = {
@@ -715,7 +814,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
   });
 
   /* switcher + hash route */
-  var screens = ['s1', 's2', 's3', 's4', 's5', 's6', 's7'];
+  var screens = ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'];
   function show(id) {
     if (screens.indexOf(id) < 0) id = 's1';
     screens.forEach(function (s) { document.getElementById(s).classList.toggle('on', s === id); });
@@ -829,6 +928,89 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
     q.addEventListener('input', fit);
     if (window.ResizeObserver) new ResizeObserver(fit).observe(field); else window.addEventListener('resize', fit);
     fit();
+  })();
+
+  /* ---------- 8. Phone ---------- */
+  (function () {
+    var body = document.getElementById('phbody'), sheet = document.getElementById('phsheet'), nav = document.getElementById('phnav');
+    document.getElementById('phlogo').innerHTML = ic('reports');
+    nav.innerHTML = '<span>' + ic('home') + 'Today</span><span class="on">' + ic('reports') + 'Reports</span><span><b class="fab" style="font-weight:400">' + ic('new') + '</b></span><span>' + ic('analytics') + 'Analytics</span><span>' + ic('instruments') + 'More</span>';
+    var SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>';
+    var MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+    var SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+    var STOP = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>';
+    var PH_PLACEHOLDER = 'Ask about your reports, or tap the microphone';
+    var SHORT = ['PM reports, laser delay', 'More than 2 repairs', 'Reports mentioning a PMT'];
+    var st = 'ask', pcur = 0, secs = 0, timer = null, pend = null;
+    function fmt(n) { return Math.floor(n / 60) + ':' + ('0' + (n % 60)).slice(-2); }
+    function stopTimer() { if (timer) { clearInterval(timer); timer = null; } if (pend) { clearTimeout(pend); pend = null; } }
+
+    function field(filled) {
+      return '<div class="ph-field">' + SPARK + '<textarea id="phq" rows="2" aria-label="Ask about your reports" placeholder="' + PH_PLACEHOLDER + '" spellcheck="false">' + (filled ? EX[pcur].q : '') + '</textarea>' +
+        '<button class="ph-round" id="phmic" type="button" aria-label="Ask by voice">' + MIC + '</button>' +
+        '<button class="ph-round go" id="phgo" type="button" aria-label="Search">' + SEND + '</button></div>';
+    }
+    function examples() {
+      return '<div class="ph-ex">' + SHORT.map(function (s, i) { return '<button class="ex' + (st !== 'ask' && i === pcur ? ' on' : '') + '" data-pex="' + i + '" type="button">' + s + '</button>'; }).join('') + '</div>';
+    }
+    function results(summary) {
+      var e = EX[pcur], h = '';
+      h += '<div class="seg" role="group" aria-label="Mode"><button data-pmode="res" aria-pressed="' + !summary + '">Find reports</button><button data-pmode="sum" aria-pressed="' + summary + '">Summarize</button></div>';
+      h += '<div class="ph-chips"><span class="lbl">Understood as</span>' + e.chips.map(function (c) { return '<span class="fchip"><span class="k">' + c[0] + ':</span><b>' + c[1] + '</b><button aria-label="Remove ' + c[0] + '" type="button">' + X + '</button></span>'; }).join('') + '</div>';
+      if (summary) {
+        var max = Math.max.apply(null, e.bars.map(function (b) { return b[1]; }));
+        h += '<div class="card sum"><div><h4>Summary</h4><ul>' + e.sum.map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ul><p style="color:var(--text-muted);font-size:13px;margin-top:10px">Based on the ' + e.rows.length + ' reports below.</p></div><div><div class="lbl" style="margin-bottom:10px">' + e.unit + '</div><div class="bars">' + e.bars.map(function (b) { return '<div><span>' + b[0] + '</span><span><i style="width:' + Math.round(b[1] / max * 100) + '%"></i></span><em>' + b[1] + '</em></div>'; }).join('') + '</div></div></div>';
+      }
+      h += e.rows.map(function (r) {
+        return '<div class="card ph-res"><div><h4>' + r[0] + '</h4><div class="meta">' + r[1] + '</div></div><div class="why">' + r[2] + '</div><div class="foot"><span class="pill ' + r[4] + '">' + r[3] + '</span><button class="btn sm quiet" type="button">Open</button></div></div>';
+      }).join('');
+      return h;
+    }
+    function sheetHtml(busy) {
+      var w = ''; for (var i = 0; i < 30; i++) w += '<i style="animation-delay:' + (-((i * 137) % 100) / 100).toFixed(2) + 's;animation-duration:' + (0.7 + ((i * 53) % 60) / 100).toFixed(2) + 's"></i>';
+      return '<div class="ph-scrim"></div><div class="ph-sheet' + (busy ? ' busy' : '') + '" role="dialog" aria-label="Listening">' +
+        '<span class="grab"></span><h4>' + (busy ? 'Turning speech into text…' : 'Listening…') + '</h4><div class="clock" id="phclock">' + fmt(secs) + '</div>' +
+        '<div class="wave" aria-hidden="true">' + w + '</div>' +
+        '<p class="say">' + (busy ? 'One moment.' : 'Say the question, for example “which instruments are overdue for PM?”') + '</p>' +
+        '<div class="ctl"><button class="btn quiet" id="phcancel" type="button"' + (busy ? ' disabled' : '') + '>Cancel</button><button class="ph-stop" id="phstop" type="button" aria-label="Stop and send"' + (busy ? ' disabled' : '') + '>' + STOP + '</button><span></span></div></div>';
+    }
+
+    function render(busy) {
+      var h = '<h3>Reports' + (st === 'res' || st === 'sum' ? '<span>' + EX[pcur].rows.length + ' reports match</span>' : '') + '</h3>' + field(st === 'res' || st === 'sum') + examples();
+      if (st === 'ask') {
+        h += '<div class="card ph-hint"><b>Ask in your own words</b><span>Type or tap the microphone. For example: “which instruments are overdue for PM?”</span></div>';
+        h += '<div class="card ph-recent"><span class="lbl">Recent questions</span>' + EX.map(function (e, i) { return '<button type="button" data-pex="' + i + '">' + ic('reports').replace('<svg', '<svg aria-hidden="true"') + '<span>' + e.q + '</span></button>'; }).join('') + '</div>';
+      }
+      else h += results(st === 'sum');
+      body.innerHTML = h;
+      var pq = document.getElementById('phq'); if (pq) { pq.style.height = '42px'; var ph = pq.scrollHeight; if (ph > 42) pq.style.height = Math.min(ph, 126) + 'px'; }
+      sheet.innerHTML = (st === 'rec') ? sheetHtml(busy) : '';
+      document.querySelectorAll('[data-ph]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-ph') === st); });
+      bind();
+    }
+    function startRec() {
+      stopTimer(); secs = 0; st = 'rec'; render(false);
+      timer = setInterval(function () { secs++; var c = document.getElementById('phclock'); if (c) c.textContent = fmt(secs); }, 1000);
+    }
+    function sendRec() {
+      stopTimer(); render(true);
+      pend = setTimeout(function () { pend = null; pcur = (pcur + 1) % EX.length; st = 'res'; render(false); body.scrollTop = 0; }, 900);
+    }
+    function go(next) { stopTimer(); st = next; render(false); }
+    function bind() {
+      var mic = document.getElementById('phmic'), goBtn = document.getElementById('phgo'), stop = document.getElementById('phstop'), cancel = document.getElementById('phcancel');
+      if (mic) mic.addEventListener('click', startRec);
+      if (goBtn) goBtn.addEventListener('click', function () { go('res'); });
+      if (stop) stop.addEventListener('click', sendRec);
+      if (cancel) cancel.addEventListener('click', function () { go('ask'); });
+      body.querySelectorAll('[data-pex]').forEach(function (b) { b.addEventListener('click', function () { pcur = +b.getAttribute('data-pex'); go('res'); }); });
+      body.querySelectorAll('[data-pmode]').forEach(function (b) { b.addEventListener('click', function () { go(b.getAttribute('data-pmode')); }); });
+    }
+    document.querySelectorAll('[data-ph]').forEach(function (b) {
+      b.addEventListener('click', function () { var s = b.getAttribute('data-ph'); if (s === 'rec') startRec(); else go(s); });
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && st === 'rec' && !pend) go('ask'); });
+    render(false);
   })();
 
   /* ---------- 2. Template editor ---------- */

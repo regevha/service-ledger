@@ -1,6 +1,6 @@
 # Nir proposals: mockups
 
-`index.html` is a single self-contained page (open it in a browser) with seven clickable mockups in the app's
+`index.html` is a single self-contained page (open it in a browser) with eight clickable mockups in the app's
 Slate and indigo look. They show layout and flow only; nothing saves or calls the backend, and the example
 data is made up.
 
@@ -11,6 +11,7 @@ data is made up.
 5. Several PDFs in one batch, with a confirmation step per file
 6. Filters that start small and grow
 7. More ideas
+8. The AI search on a phone (a phone-sized frame with the voice sheet, result cards and summary; recording is simulated)
 
 ## What is built from these
 
