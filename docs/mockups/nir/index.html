@@ -245,7 +245,10 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 .ph-drops { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ph-drops button { min-height: 76px; border: 1.5px dashed var(--border-strong); border-radius: 14px; background: var(--surface); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 500; padding: 8px; }
 .ph-drops svg { width: 24px; height: 24px; stroke: var(--accent); }
-.ph-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ph-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ph-tiles .ph-tile { padding: 10px 8px; min-width: 0; }
+.ph-tiles .ph-tile .v { font-size: 22px; }
+.ph-tiles .ph-tile .l { font-size: 11.5px; }
 .ph-tile { padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; border-left: 3px solid transparent; }
 .ph-tile.hot { border-left-color: var(--flag); }
 .ph-tile .v { font-size: 28px; font-weight: 600; line-height: 1.1; }
@@ -265,8 +268,11 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 .ph-steps { display: flex; gap: 6px; font-size: 12.5px; color: var(--text-muted); flex-wrap: wrap; }
 .ph-steps span { padding: 3px 10px; border-radius: 999px; background: var(--surface-2); }
 .ph-steps .done { color: var(--good); } .ph-steps .on { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
-.ph-file { width: 100%; display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 12px 14px; border: 0; background: none; text-align: left; color: var(--text); min-height: 64px; }
-.ph-file .nm { display: block; font-size: 14.5px; font-weight: 500; overflow-wrap: anywhere; }
+.ph-file { width: 100%; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: center; padding: 12px 14px; border: 0; background: none; text-align: left; color: var(--text); min-height: 64px; }
+.ph-file .nm { display: block; font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-file > span:last-child { min-width: 0; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.ph-file > span:last-child > span:first-child { width: 100%; min-width: 0; }
+.ph-file .ds { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ph-file .ds { display: block; font-size: 12.5px; color: var(--text-muted); }
 .ph-pg { width: 30px; height: 38px; border-radius: 4px; background: var(--paper); display: flex; flex-direction: column; gap: 3px; padding: 6px 5px; }
 .ph-pg i { display: block; height: 2px; background: #9aa3b5; border-radius: 1px; }
@@ -281,7 +287,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 .ph-search { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 52px; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface); }
 .ph-search svg { width: 20px; height: 20px; stroke: var(--text-muted); flex: none; }
 .ph-search input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 15px; height: 48px; outline: none; }
-.ph-chiprow { display: flex; gap: 8px; overflow-x: auto; margin: 0 -14px; padding: 0 14px 4px; scrollbar-width: none; align-items: center; }
+.ph-chiprow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ph-chiprow .fchip { flex: none; height: 40px; padding: 0 6px 0 12px; font-size: 13.5px; cursor: pointer; }
 .ph-chiprow .fchip button { width: 28px; height: 28px; }
 .ph-chiprow .fchip.addf { border-style: dashed; color: var(--accent-strong); padding: 0 14px; }
@@ -1355,7 +1361,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
       return '<h3>Today<span>Friday 6 November</span></h3>' +
         '<button class="ph-field ph-fake" data-a="go" data-v="ai" type="button" aria-label="Ask about your reports">' + I.spark + '<span>Ask about your reports…</span><span class="ph-round" style="pointer-events:none">' + I.mic + '</span></button>' +
         '<div class="ph-drops"><button data-a="go" data-v="batch" type="button">' + I.cam + 'Scan with camera</button><button data-a="go" data-v="batch" type="button">' + I.files + 'Choose files</button></div>' +
-        '<div class="ph-tiles"><div class="card ph-tile hot"><span class="v">7</span><span class="l">Reports to review</span></div><div class="card ph-tile hot"><span class="v">2</span><span class="l">Overdue for PM</span></div><div class="card ph-tile"><span class="v">34</span><span class="l">Finalized this month</span></div><div class="card ph-tile"><span class="v">91%</span><span class="l">Read without edits</span></div></div>' +
+        '<div class="ph-tiles"><div class="card ph-tile hot"><span class="v">7</span><span class="l">To review</span></div><div class="card ph-tile hot"><span class="v">2</span><span class="l">PM overdue</span></div><div class="card ph-tile"><span class="v">34</span><span class="l">Finalized</span></div><div class="card ph-tile"><span class="v">91%</span><span class="l">No edits</span></div></div>' +
         '<div class="card"><div class="ph-card-h"><h4>Needs your attention</h4><button class="btn sm quiet" data-a="go" data-v="filters" type="button">All ›</button></div>' +
         q('warn', 'FACSAria III · P69200123', 'PM report, 14 Sep · 3 of 12 fields flagged', 'warn', 'In review', 'Review') +
         q('warn', 'Cytek Aurora · R1-0412', 'PM report, 9 Sep · 1 of 14 fields flagged', 'warn', 'In review', 'Review') +
@@ -1381,7 +1387,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
           '<button class="btn primary" data-a="ball" type="button" style="justify-content:center"' + (c.ready ? '' : ' disabled') + '>' + (c.ready ? 'Confirm ' + c.ready + ' confident ' + (c.ready === 1 ? 'file' : 'files') : 'Nothing confident left to confirm') + '</button>' +
           '<div class="card" style="overflow:hidden">' + pf.map(function (x, i) {
             var s = STL[x.st];
-            return '<button class="ph-file" data-a="bopen" data-v="' + i + '" type="button"><span class="ph-pg" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span><span class="nm">' + x.f + '</span><span class="ds">' + (x.st === 'reading' ? 'Finding the instrument…' : x.inst + (x.c ? ' · ' + x.c + '%' : '')) + '</span></span><span class="pill ' + s[1] + '">' + s[0] + '</span></button>';
+            return '<button class="ph-file" data-a="bopen" data-v="' + i + '" type="button"><span class="ph-pg" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span><span><span class="nm">' + x.f + '</span><span class="ds">' + (x.st === 'reading' ? 'Finding the instrument…' : x.inst + (x.c ? ' · ' + x.c + '%' : '')) + '</span></span><span class="pill ' + s[1] + '">' + s[0] + '</span></span></button>';
           }).join('') + '</div>';
       }
       var x = pf[bsel], h = '<button class="ph-back" data-a="bback" type="button">' + I.back + pf.length + ' files</button>';
@@ -1450,7 +1456,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
       }).join('');
       return '<div><h3 style="font-size:19px">Preventive maintenance</h3><div class="m" style="color:var(--text-muted);font-size:13px">BD FACSAria III · ' + tf.length + ' fields · used by 38 reports</div></div>' +
         '<div class="ph-hintline">' + I.info + '<span>Tap a piece of text on the page to make it a field. Fields already added are marked with numbers.</span></div>' +
-        '<div class="paper"><div class="p-title"><span>SERVICE REPORT</span><span>Preventive maintenance</span></div>' + rows + '</div>' +
+        '<div class="paper"><div class="p-title"><span>SERVICE REPORT</span><span>PM</span></div>' + rows + '</div>' +
         '<div class="lbl">Fields in this template</div><div class="ph-flist">' + tf.map(function (f, i) {
           return '<div class="fld"><span class="n">' + (i + 1) + '</span><span class="nm">' + f.key + '</span><span class="pill mute">' + f.type + '</span><button data-a="trm" data-v="' + i + '" aria-label="Remove field ' + f.key + '" type="button">' + X + '</button></div>';
         }).join('') + '</div>' +
@@ -1486,7 +1492,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
       renderBody(); sheet.innerHTML = sheetHtml(); nav.innerHTML = navHtml();
       document.querySelectorAll('[data-phs]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-phs') === screen); });
       document.querySelectorAll('[data-ph]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-ph') === st); });
-      statesRow.hidden = screen !== 'ai';
+      statesRow.hidden = screen !== 'ai'; if (!(screen === 'tpl' && tpick)) body.style.paddingBottom = '';
     }
     function goScreen(s) {
       stopTimer(); busy = false; if (st === 'rec') st = 'ask'; fOpen = null; tpick = null; if (s !== 'batch') bsel = null;
@@ -1528,7 +1534,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
         case 'fclr': fAct = []; Object.keys(fSel).forEach(function (k) { fSel[k] = []; }); fOpen = null; render(); break;
         case 'fnone': fSel[fOpen] = []; render(); break;
         case 'sclose': fOpen = null; tpick = null; render(); break;
-        case 'tpick': tpick = v; render(); break;
+        case 'tpick': tpick = v; render(); body.style.paddingBottom = '300px'; var sel = body.querySelector('.tx.sel'); if (sel) body.scrollTop = Math.max(0, sel.offsetTop - 120); break;
         case 'trm': tf.splice(+v, 1); tpick = null; render(); break;
         case 'tadd': {
           var nm = (document.getElementById('phtn').value || PIECE[tpick].key).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || PIECE[tpick].key;
