@@ -7,7 +7,8 @@ never overruled: the model only fills filters the rules did not set, and replace
 What the model may do is narrow on purpose:
   * It returns names and ISO dates in a forced tool call; the server maps a model name to its id, checks every
     value (enums, dates), and drops anything it cannot confirm.
-  * It sees the question and the instrument model names. No serial numbers, no place names, no report content.
+  * It sees the question, what the rules already read, and the names of the instrument models and places (both
+    allowed by the project owner, 2026-11-09). No serial numbers, no report content.
   * Anything it cannot express as a filter comes back as a note ("not supported yet") instead of a guess.
   * Any failure (switch off, no key, daily cap, timeout, API error, bad output) returns the rules' answer, so
     the feature never blocks on the model.
@@ -100,6 +101,7 @@ def _tool() -> dict[str, Any]:
                 "date_from": {"type": "string", "description": "First day, YYYY-MM-DD, or empty."},
                 "date_to": {"type": "string", "description": "Last day, YYYY-MM-DD, or empty."},
                 "instrument_model": {"type": "string", "description": "One name copied from the list of instrument models, or empty."},
+                "place": {"type": "string", "description": "One name copied from the list of places, or empty."},
                 "technician": {"type": "string", "description": "A person's name the question asks about, or empty."},
                 "text": {"type": "string", "description": "Words to look for inside the reports (a part, a symptom, a field), lower case, or empty."},
                 "not_supported": {
@@ -113,8 +115,9 @@ def _tool() -> dict[str, Any]:
     }
 
 
-def _system_prompt(model_names: list[str]) -> str:
+def _system_prompt(model_names: list[str], place_names: list[str]) -> str:
     names = "\n".join(f"- {n}" for n in model_names) or "- (none)"
+    places = "\n".join(f"- {n}" for n in place_names) or "- (none)"
     return (
         "You turn one question about service reports of lab instruments into search filters. "
         "Call the tool once. Fill only what the question asks for, and never invent a value.\n\n"
@@ -125,6 +128,8 @@ def _system_prompt(model_names: list[str]) -> str:
         "into date_from and date_to (inclusive, YYYY-MM-DD). Use only one of the two for 'since' or 'before'.\n"
         "Instrument models (copy one name exactly, or leave empty):\n"
         f"{names}\n"
+        "Places (copy one name exactly, or leave empty; a short form such as 'Bar-Ilan' means the full name in the list):\n"
+        f"{places}\n"
         "text: the specific thing to look for inside the reports (a part name, a symptom, a measurement), without filler words. "
         "Empty if the question has no such thing; never repeat what the other fields already say.\n"
         "not_supported: only requests that these filters cannot carry out: 'overdue', counting ('more than 2 repairs'), "
@@ -157,6 +162,21 @@ def _model_id(name: str, known: Known) -> tuple[str, str] | None:
     for model_id, model_name in known.models:
         if re.sub(r"[^a-z0-9]+", "", model_name.lower()) == wanted_key:
             return model_id, model_name
+    return None
+
+
+def _place_id(name: str, known: Known) -> tuple[str, str] | None:
+    """A place by its full name, or by a short form that fits exactly one place ("Bar-Ilan" for "Bar-Ilan University")."""
+    key = re.sub(r"[^a-z0-9]+", "", name.lower())
+    if not key:
+        return None
+    for place_id, place_name in known.places:
+        if re.sub(r"[^a-z0-9]+", "", place_name.lower()) == key:
+            return place_id, place_name
+    if len(key) >= 4:
+        hits = [(i, n) for i, n in known.places if key in re.sub(r"[^a-z0-9]+", "", n.lower())]
+        if len(hits) == 1:
+            return hits[0]
     return None
 
 
@@ -211,6 +231,12 @@ def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
         found = _model_id(name, known) if name else None
         if found:
             out.add("model_id", found[0], f"Model: {found[1]}")
+
+    if "place_id" not in out.filters:
+        place = _clean_text(data.get("place"), 80)
+        found_place = _place_id(place, known) if place else None
+        if found_place:
+            out.add("place_id", found_place[0], f"Place: {found_place[1]}")
 
     technician = _clean_text(data.get("technician"), 60)
     if (
@@ -268,10 +294,11 @@ def _call_model(text: str, known: Known, today: date, understood: list[str] | No
     if callable(with_options):
         client = with_options(timeout=settings.search_model_timeout_seconds, max_retries=0)
     names = sorted({name for _, name in known.models})
+    place_names = sorted({name for _, name in known.places})
     request_kwargs = {
         "model": settings.anthropic_search_model,
         "max_tokens": settings.search_model_max_tokens,
-        "system": [{"type": "text", "text": _system_prompt(names), "cache_control": {"type": "ephemeral"}}],
+        "system": [{"type": "text", "text": _system_prompt(names, place_names), "cache_control": {"type": "ephemeral"}}],
         "tools": [_tool()],
         "tool_choice": {"type": "tool", "name": _TOOL_NAME},
         "messages": [{"role": "user", "content": _user_message(text, today, understood)}],
