@@ -11,7 +11,7 @@
 //   E2E_SHUFFLE_SEED=<seed> npm run test:e2e:shuffled
 // Extra arguments go to `playwright test`, e.g. a spec name or --grep.
 import { spawn } from 'node:child_process';
-import { appendFileSync, cpSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,7 +47,12 @@ for (let i = specs.length - 1; i > 0; i--) {
 }
 const width = String(specs.length).length;
 specs.forEach((name, i) => {
-  renameSync(join(shuffled, name), join(shuffled, `${String(i).padStart(width, '0')}-${name}`));
+  const renamed = `${String(i).padStart(width, '0')}-${name}`;
+  renameSync(join(shuffled, name), join(shuffled, renamed));
+  // Playwright looks for a spec's screenshot baselines in "<spec file>-snapshots" next to
+  // it, so that folder has to take the new name too.
+  const baselines = join(shuffled, `${name}-snapshots`);
+  if (existsSync(baselines)) renameSync(baselines, join(shuffled, `${renamed}-snapshots`));
 });
 
 console.log(`e2e shuffle seed: ${seed}   (replay: E2E_SHUFFLE_SEED=${seed} npm run test:e2e:shuffled)`);
