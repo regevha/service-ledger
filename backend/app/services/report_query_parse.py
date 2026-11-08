@@ -24,7 +24,7 @@ REPORT_TYPES: list[tuple[str, str]] = [
 ]
 STATUSES: list[tuple[str, str]] = [
     (r"in\s+review", "in_review"),
-    (r"waiting(?:\s+for\s+review)?|needs?\s+review|to\s+review|awaiting\s+review|unreviewed", "extracted"),
+    (r"waiting(?:\s+for\s+review)?|needs?\s+review|to\s+review|awaiting\s+review|unreviewed|(?:not|never)\s+(?:yet\s+)?reviewed|nobody\s+(?:has\s+)?reviewed", "extracted"),
     (r"finali[sz]ed|approved|signed\s+off|done", "finalized"),
     (r"drafts?", "draft"),
 ]

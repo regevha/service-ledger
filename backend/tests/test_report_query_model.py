@@ -111,6 +111,22 @@ def test_request_sends_only_the_question_and_model_names(monkeypatch):
     assert call["max_tokens"] == m.settings.search_model_max_tokens
 
 
+def test_request_tells_the_model_what_the_rules_already_understood(monkeypatch):
+    fake = use(monkeypatch, FakeClient({"text": "", "not_supported": []}))
+    ask("repairs at Bar-Ilan University involving the laser")
+    content = fake.calls[0]["messages"][0]["content"]
+    assert "Already understood" in content and "Repair" in content and "Place: Bar-Ilan University" in content
+
+
+def test_a_place_or_model_name_is_not_taken_as_a_technician(monkeypatch):
+    use(monkeypatch, FakeClient({"technician": "Hadassah", "text": ""}))
+    assert "technician" not in ask("something about hadassah, more words").filters
+    use(monkeypatch, FakeClient({"technician": "Aurora", "text": ""}))
+    assert "technician" not in ask("hello there general").filters
+    use(monkeypatch, FakeClient({"technician": "Dana Levi", "text": ""}))
+    assert ask("hello there general").filters["technician"] == "dana levi"
+
+
 def test_short_timeout_and_no_retry(monkeypatch):
     fake = use(monkeypatch, FakeClient({"text": "pmt"}))
     ask("reports mentioning a PMT")
@@ -172,6 +188,14 @@ def test_every_value_is_checked(monkeypatch, tool_input, expected):
     use(monkeypatch, FakeClient(tool_input))
     out = ask("hello there general")
     assert {k: v for k, v in out.filters.items() if k != "q"} == expected
+
+
+def test_text_that_repeats_a_type_already_set_is_dropped(monkeypatch):
+    use(monkeypatch, FakeClient({"text": "broken", "not_supported": []}))
+    out = ask("broken instruments nobody reviewed")
+    assert out.filters["report_type"] == "repair" and "q" not in out.filters
+    use(monkeypatch, FakeClient({"text": "broken laser", "not_supported": []}))
+    assert ask("broken instruments nobody reviewed").filters["q"] == "laser"
 
 
 def test_text_and_notes_are_cleaned_and_limited(monkeypatch):
