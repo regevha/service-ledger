@@ -33,6 +33,7 @@ from typing import NamedTuple
 
 from app.config import get_settings
 from app.models import Attachment
+from app.services.attachment_names import source_name
 from app.services.claude_client import call_claude_tool, extract_tool_use, get_client as _get_client
 from app.services.documents import UnsupportedDocumentError, claude_content_block
 from app.services.errors import TranslationError
@@ -201,7 +202,7 @@ def identifier_check(listed: list[str], translated_text: str, original_text: str
 
 
 def _stub_translate(attachment: Attachment, include_pages: list[int]) -> TranslationResult | None:
-    name = attachment.file_path.replace("\\", "/").rsplit("/", 1)[-1].lower()
+    name = source_name(attachment).lower()
     if STUB_HEBREW_MARKER not in name:
         return None
     ignored = [
