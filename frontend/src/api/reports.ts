@@ -100,6 +100,15 @@ export interface ReportSearchPart {
 }
 
 /** A request in plain words turned into the Reports filters it names, plus what was understood from it. */
-export function parseReportSearch(text: string): Promise<{ filters: ReportFilters; understood: ReportSearchPart[] }> {
+export interface ReportSearchResult {
+  filters: ReportFilters;
+  understood: ReportSearchPart[];
+  /** "rules" (built-in rules), "ai" (a small model filled what the rules could not), "rules_fallback" (the model was wanted but unavailable). */
+  source: 'rules' | 'ai' | 'rules_fallback';
+  /** Parts of the question that no filter can express yet, for example "overdue". */
+  notes: string[];
+}
+
+export function parseReportSearch(text: string): Promise<ReportSearchResult> {
   return apiFetch('/reports/parse-search', { method: 'POST', body: JSON.stringify({ text }) });
 }

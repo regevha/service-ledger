@@ -31,3 +31,7 @@ class ExtractionError(LiveClaudeError):
 
 class TranslationError(LiveClaudeError):
     """Raised by the translate step (services/translation.py)."""
+
+
+class SearchError(LiveClaudeError):
+    """The model-backed search call failed; the caller falls back to the rule-based answer."""

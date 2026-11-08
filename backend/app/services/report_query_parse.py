@@ -52,6 +52,8 @@ class Parsed:
     filters: dict[str, str] = field(default_factory=dict)
     understood: list[dict[str, str]] = field(default_factory=list)
     leftover: str = ""
+    source: str = "rules"  # "rules", "ai" (the model filled gaps) or "rules_fallback" (the model was wanted but failed)
+    notes: list[str] = field(default_factory=list)  # parts of the question that no filter can express
 
     def add(self, key: str, value: str, label: str) -> None:
         self.filters[key] = value
