@@ -7,7 +7,7 @@ from app.services.report_query_parse import Known, parse_search
 
 TODAY = date(2026, 11, 7)
 KNOWN = Known(
-    models=[("m-aria", "FACSAria III"), ("m-fort", "LSRFortessa")],
+    models=[("m-aria", "FACSAria III"), ("m-fort", "LSRFortessa"), ("m-aur", "Cytek Aurora")],
     places=[("p-bar", "Bar-Ilan University")],
     instruments=[("i-1", "FACSAria III", "P69200123")],
 )
@@ -62,13 +62,46 @@ def test_months_years_and_iso_dates():
 def test_lab_manager_and_leftover_text():
     p = run("reports by Dana Levi mentioning laser delay")
     assert p.filters["technician"] == "dana levi"
-    assert p.filters["q"] == "mentioning laser delay"
+    assert p.filters["q"] == "laser delay"
 
 
 def test_unmatched_words_stay_as_text_and_nothing_is_invented():
     p = run("sheath pressure")
     assert p.filters == {"q": "sheath pressure"}
     assert run("show me all reports").filters == {}
+
+
+def test_report_type_synonyms():
+    assert run("malfunction reports").filters == {"report_type": "repair"}
+    assert run("broken instruments").filters["report_type"] == "repair"
+
+
+def test_before_and_after_dates():
+    assert run("PM before Jan 2026").filters["date_to"] == "2025-12-31"
+    assert "date_from" not in run("PM before Jan 2026").filters
+    assert run("repairs after March 2026").filters["date_from"] == "2026-04-01"
+    assert run("repairs before 2025").filters["date_to"] == "2024-12-31"
+    assert run("repairs since 2025").filters["date_from"] == "2025-01-01"
+    assert "date_to" not in run("repairs since 2025").filters
+
+
+def test_short_and_loose_model_names():
+    assert run("what is on the Fortessa").filters["model_id"] == "m-fort"
+    assert run("facs aria 3 pm").filters["model_id"] == "m-aria"
+    assert run("FACSAria 3").filters["model_id"] == "m-aria"
+    assert run("Aurora reports").filters["model_id"] == "m-aur"
+
+
+def test_short_model_name_shared_by_two_models_is_not_guessed():
+    known = Known(models=[("a", "BD Aria Sorter"), ("b", "Cytek Aria Sorter")])
+    assert "model_id" not in parse_search("aria sorter reports", known, TODAY).filters
+
+
+def test_filler_words_and_initials():
+    p = run("serial P69200123 mentioning a PMT")
+    assert p.filters["instrument_id"] == "i-1"
+    assert p.filters["q"] == "pmt"
+    assert run("reports by D. Levi").filters["technician"] == "d. levi"
 
 
 def test_endpoint(client):
