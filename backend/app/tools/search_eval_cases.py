@@ -130,6 +130,21 @@ CASES: list[dict[str, Any]] = [
         {"report_type": PM, "technician": "dana levi", "date_from": "2025-01-01", "date_to": "2025-12-31", "q": "calibration"},
         {"text": "calibration"},
     ),
+    case(
+        "repairs at Bar-Ilan last year",
+        {"report_type": REPAIR, "date_from": "2025-01-01", "date_to": "2025-12-31", "place_id": "p-bar"},
+        {"place": "Bar-Ilan University", "text": ""},
+    ),
+    case(
+        "what happened at the Bar-Ilan lab",
+        {"place_id": "p-bar"},
+        {"place": "Bar-Ilan University", "text": ""},
+    ),
+    case(
+        "Hadassah sorter maintenance since March",
+        {"report_type": PM, "place_id": "p-had", "date_from": "2026-03-01", "q": "sorter"},
+        {"text": "sorter"},
+    ),
     # --- asked for what no filter can express: say so instead of guessing ---
     case("which instruments are overdue for PM?", {"report_type": PM}, {"not_supported": ["overdue"], "text": ""}, ["overdue"]),
     case(

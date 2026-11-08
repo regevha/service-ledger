@@ -7,6 +7,7 @@ import pytest
 
 from app.services import report_query_model as m
 from app.services.errors import SearchError
+from app.services.report_query_parse import Known
 from app.tools.search_eval_cases import KNOWN, TODAY
 
 
@@ -97,14 +98,15 @@ def test_model_never_overrules_what_the_rules_found(monkeypatch):
     assert out.filters["status"] == "finalized"  # the rules set no status, so this gap is filled
 
 
-def test_request_sends_only_the_question_and_model_names(monkeypatch):
+def test_request_sends_the_question_and_model_and_place_names_but_no_serials(monkeypatch):
     fake = use(monkeypatch, FakeClient({"text": "pmt"}))
     ask("reports mentioning a PMT at Hadassah serial P69200123")
     (call,) = fake.calls
     sent = repr(call)
     assert "FACSAria III" in sent and "LSRFortessa" in sent
-    assert "Hadassah" not in call["system"][0]["text"] and "P69200123" not in call["system"][0]["text"]
-    assert "Bar-Ilan" not in sent and "R1-0412" not in sent
+    assert "Hadassah" in call["system"][0]["text"] and "Bar-Ilan University" in call["system"][0]["text"]
+    # Serial numbers from the database are never listed; one the person typed is only in their own question.
+    assert "R1-0412" not in sent and "P69200123" not in call["system"][0]["text"]
     assert call["model"] == m.settings.anthropic_search_model
     assert call["tool_choice"] == {"type": "tool", "name": "set_report_filters"}
     assert call["system"][0]["cache_control"] == {"type": "ephemeral"}
@@ -125,6 +127,25 @@ def test_a_place_or_model_name_is_not_taken_as_a_technician(monkeypatch):
     assert "technician" not in ask("hello there general").filters
     use(monkeypatch, FakeClient({"technician": "Dana Levi", "text": ""}))
     assert ask("hello there general").filters["technician"] == "dana levi"
+
+
+def test_a_short_place_name_is_mapped_to_the_full_one(monkeypatch):
+    use(monkeypatch, FakeClient({"place": "Bar-Ilan", "text": ""}))
+    out = ask("what happened at the Bar-Ilan lab")
+    assert out.filters["place_id"] == "p-bar" and {"key": "place_id", "label": "Place: Bar-Ilan University"} in out.understood
+    use(monkeypatch, FakeClient({"place": "Hadassah", "text": ""}))
+    assert ask("hello there general").filters["place_id"] == "p-had"
+
+
+def test_unknown_or_ambiguous_places_are_dropped_and_rules_win(monkeypatch):
+    use(monkeypatch, FakeClient({"place": "Hogwarts", "text": ""}))
+    assert "place_id" not in ask("hello there general").filters
+    use(monkeypatch, FakeClient({"place": "Hospital", "text": ""}))
+    two = Known(models=[], places=[("a", "Hadassah Hospital"), ("b", "Sheba Hospital")])
+    out = m.parse("hello there general", two, TODAY)
+    assert "place_id" not in out.filters  # "hospital" fits two places: not guessed
+    use(monkeypatch, FakeClient({"place": "Hadassah", "text": ""}))
+    assert ask("repairs at Bar-Ilan University hello").filters["place_id"] == "p-bar"  # the rules' place stays
 
 
 def test_short_timeout_and_no_retry(monkeypatch):
