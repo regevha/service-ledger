@@ -11,7 +11,7 @@ data is made up.
 5. Several PDFs in one batch, with a confirmation step per file
 6. Filters that start small and grow
 7. More ideas
-8. The AI search on a phone (a phone-sized frame with the voice sheet, result cards and summary; recording is simulated)
+8. The app on a phone (a phone-sized frame with five screens: AI search with the voice sheet, Home, batch upload, filters with bottom sheets, and the template editor; recording is simulated)
 
 ## What is built from these
 
