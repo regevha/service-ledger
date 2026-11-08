@@ -65,7 +65,7 @@ def test_source_name_prefers_the_column_and_falls_back_to_the_path():
 
 
 def test_the_migrations_backfill_gives_the_same_name_as_the_helper():
-    path = Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0010_attachment_filename.py"
+    path = Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0012_attachment_filename.py"
     spec = importlib.util.spec_from_file_location("migration_0010", path)
     migration = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(migration)

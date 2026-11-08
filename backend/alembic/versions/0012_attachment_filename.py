@@ -10,7 +10,7 @@ paths. Existing files are not renamed or moved: each row keeps its own file_path
 so old and new files work side by side. Nothing is deleted or rewritten except
 the new column, and downgrade drops it again (the old paths still hold the names).
 
-Revision ID: 0010_attachment_filename
+Revision ID: 0012_attachment_filename
 Revises: 0009_flow_cytometer_type_key
 Create Date: 2026-11-03 21:00:00.000000
 
@@ -22,8 +22,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = '0010_attachment_filename'
-down_revision: Union[str, None] = '0009_flow_cytometer_type_key'
+revision: str = '0012_attachment_filename'
+down_revision: Union[str, None] = '0011_report_field_boxes'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
