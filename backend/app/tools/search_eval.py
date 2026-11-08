@@ -7,7 +7,8 @@ case that came out different from the expected filters, the pass rate, and the t
 per million tokens (from the Anthropic pricing page) to also get the cost; none are built in, because a
 stale figure is worse than none. One run is about 25 small calls.
 
-The expected answers are in app/tools/search_eval_cases.py. A difference is not always a mistake of the model:
+The expected answers are in app/tools/search_eval_cases.py. Notes are only checked for being present or not,
+because the model words them its own way, and a plural 's' in the search text is ignored. A difference is not always a mistake of the model:
 look at it, and change the case if the model's answer is the better one.
 """
 from __future__ import annotations
@@ -42,6 +43,17 @@ class _Recorder:
         return response
 
 
+def _plain(text: str) -> str:
+    """Words in the same order with a plural 's' removed, so 'o-ring' and 'o-rings' count as the same search."""
+    return " ".join(w[:-1] if len(w) > 3 and w.endswith("s") else w for w in text.lower().split())
+
+
+def _same_filters(got: dict[str, str], expected: dict[str, str]) -> bool:
+    if set(got) != set(expected):
+        return False
+    return all(_plain(got[k]) == _plain(expected[k]) if k == "q" else got[k] == expected[k] for k in got)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--model", help="model to test (default: the ANTHROPIC_SEARCH_MODEL setting)")
@@ -67,7 +79,11 @@ def main() -> int:
     passed = 0
     for c in needs_model:
         out = m.parse(c["question"], KNOWN, TODAY)
-        ok = out.source == "ai" and out.filters == c["filters"] and out.notes == c["notes"]
+        ok = (
+            out.source == "ai"
+            and _same_filters(out.filters, c["filters"])
+            and (c.get("any_notes") or bool(out.notes) == bool(c["notes"]))
+        )
         passed += ok
         if not ok:
             print(f"DIFFERENT  {c['question']!r}  (source: {out.source})")
