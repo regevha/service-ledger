@@ -140,7 +140,8 @@ def parse_report_search(payload: schemas.ReportSearchParseIn, db: Session = Depe
     """A request in plain words ("repairs of the FACSAria III last month") turned into the Reports
     filters. Nothing is searched here: the screen applies the filters, shows what was understood,
     and the person can change any of it."""
-    from app.services.report_query_parse import Known, parse_search  # noqa: PLC0415
+    from app.services.report_query_model import parse as parse_search  # noqa: PLC0415
+    from app.services.report_query_parse import Known  # noqa: PLC0415
 
     known = Known(
         models=[(str(m.id), m.name) for m in db.query(models.InstrumentModel).all()],
@@ -148,7 +149,7 @@ def parse_report_search(payload: schemas.ReportSearchParseIn, db: Session = Depe
         instruments=[(str(i.id), i.model, i.serial_number) for i in db.query(models.Instrument).all()],
     )
     parsed = parse_search(payload.text, known, date.today())
-    return {"filters": parsed.filters, "understood": parsed.understood}
+    return {"filters": parsed.filters, "understood": parsed.understood, "source": parsed.source, "notes": parsed.notes}
 
 
 @router.get("/reports/export")

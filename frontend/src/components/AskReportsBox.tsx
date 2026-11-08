@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ApiError, parseReportSearch, type ReportFilters, type ReportSearchPart } from '../api';
+import { ApiError, parseReportSearch, type ReportFilters, type ReportSearchPart, type ReportSearchResult } from '../api';
 
 const EXAMPLES = ['repairs of the FACSAria III last month', 'waiting for review', 'maintenance in 2025 at Bar-Ilan University'];
 
@@ -25,6 +25,7 @@ export function AskReportsBox({
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [understood, setUnderstood] = useState<ReportSearchPart[] | null>(null);
+  const [details, setDetails] = useState<Pick<ReportSearchResult, 'source' | 'notes'>>({ source: 'rules', notes: [] });
   const [error, setError] = useState<string | null>(null);
 
   async function ask(request: string) {
@@ -35,6 +36,7 @@ export function AskReportsBox({
     try {
       const result = await parseReportSearch(trimmed);
       setUnderstood(result.understood);
+      setDetails({ source: result.source, notes: result.notes ?? [] });
       onApply(result.filters);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not read that. Try the filters below.');
@@ -105,8 +107,18 @@ export function AskReportsBox({
                   {part.label}
                 </span>
               ))}
+              {details.source === 'ai' && (
+                <span className="ask-badge" data-testid="ask-ai-badge" title="The built-in rules could not read all of it, so a small AI model helped.">
+                  Read with AI
+                </span>
+              )}
               <span className="ask-hint">Change any of it in the filters below.</span>
             </>
+          )}
+          {details.notes.length > 0 && (
+            <div className="ask-notes" data-testid="ask-notes">
+              Not supported yet, so not applied: {details.notes.join(', ')}.
+            </div>
           )}
         </div>
       )}
