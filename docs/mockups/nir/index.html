@@ -114,10 +114,37 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 .row-list > * + * { border-top: 1px solid var(--border); }
 
 /* 1. AI search */
-.aibox { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px; padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; }
-.aibox-top { display: flex; align-items: flex-start; gap: 10px; }
-.aibox-top > svg { width: 22px; height: 22px; margin-top: 10px; stroke: var(--accent); flex: none; }
-.aibox textarea { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 17px; line-height: 1.45; resize: none; padding: 8px 0; outline: none; height: 58px; }
+.aibox { display: flex; flex-direction: column; gap: 12px; }
+.aibox-field { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; min-height: 62px; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
+.aibox-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.aibox-field > svg { width: 20px; height: 20px; stroke: var(--accent); flex: none; }
+.aibox textarea { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 16px; line-height: 24px; resize: none; padding: 0; outline: none; height: 24px; max-height: 96px; overflow: hidden; }
+.aibox textarea::placeholder { color: var(--text-muted); opacity: 1; }
+.aibox .kbd { margin-left: 0; flex: none; }
+.mic { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-muted); display: grid; place-items: center; padding: 0; cursor: pointer; }
+.mic:hover { background: var(--surface-2); color: var(--accent-strong); }
+.mic svg { width: 20px; height: 20px; }
+.mic .ic-stop { display: none; }
+.aibox-field.rec .mic { background: var(--crit); border-color: var(--crit); color: #fff; }
+.aibox-field.rec .mic .ic-mic { display: none; } .aibox-field.rec .mic .ic-stop { display: block; }
+.aibox-field.busy .mic { opacity: .5; pointer-events: none; }
+.aibox-rec { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.aibox-rec[hidden], .aibox-cancel[hidden] { display: none; }
+.recdot { width: 10px; height: 10px; border-radius: 50%; background: var(--crit); flex: none; animation: recpulse 1.2s ease-in-out infinite; }
+.aibox-field.busy .recdot { background: var(--text-faint); animation: none; }
+.wave { display: flex; align-items: center; gap: 3px; height: 28px; flex: 1; min-width: 40px; overflow: hidden; }
+.wave i { display: block; width: 3px; flex: none; border-radius: 2px; background: var(--accent); height: 8px; animation: wavebar 1s ease-in-out infinite; }
+.aibox-field.busy .wave i { animation: none; height: 6px; background: var(--text-faint); }
+.recmsg { color: var(--text-muted); font-size: 13.5px; white-space: nowrap; }
+.rect { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+.aibox-cancel { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: none; color: var(--text-muted); display: grid; place-items: center; padding: 0; cursor: pointer; }
+.aibox-cancel:hover { background: var(--surface-2); }
+.aibox-cancel svg { width: 16px; height: 16px; }
+.aibox-note { font-size: 12.5px; color: var(--text-muted); }
+@keyframes recpulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes wavebar { 0%, 100% { height: 6px; } 50% { height: 24px; } }
+@media (max-width: 640px) { .aibox .kbd { display: none; } .recmsg { display: none; } }
+@media (prefers-reduced-motion: reduce) { .recdot, .wave i { animation: none; } .wave i { height: 14px; } }
 .aibox-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .ex { border: 1px dashed var(--border-strong); background: none; border-radius: 999px; padding: 3px 11px; font-size: 12.5px; color: var(--text-muted); }
 .ex:hover, .ex.on { border-style: solid; color: var(--accent-strong); background: var(--accent-soft); border-color: transparent; }
@@ -370,6 +397,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
       <li><b>Understood as</b> turns the sentence into the same filters as the Reports screen. No hidden logic.</li>
       <li><b>Why it matched</b> quotes the value or text that made each report a hit.</li>
       <li><b>Summarize</b> answers across the matches and lists the reports it used.</li>
+      <li><b>Ask by voice</b>: tap the microphone, say the question, tap stop. It is turned into text in the same box, so the chips show what was heard and understood. Recording is simulated in this mockup.</li>
     </ul>
   </div>
   <div class="scroller"><div class="frame">
@@ -377,11 +405,24 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
     <div class="page">
       <div class="page-title"><h3>Reports</h3><span id="s1count"></span></div>
       <div class="aibox">
-        <div class="aibox-top">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
-          <textarea id="q" aria-label="Ask about your reports" spellcheck="false"></textarea>
-          <button class="btn primary" id="s1go">Search</button>
+        <div class="aibox-field" id="aifield">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>
+          <textarea id="q" rows="1" aria-label="Ask about your reports" placeholder="Ask about your reports, for example “which instruments are overdue for PM?”" spellcheck="false"></textarea>
+          <div class="aibox-rec" id="airec" hidden>
+            <span class="recdot" aria-hidden="true"></span>
+            <span class="wave" id="aiwave" aria-hidden="true"></span>
+            <span class="rect" id="rect">0:00</span>
+            <span class="recmsg" id="recmsg">Listening…</span>
+          </div>
+          <span class="kbd" id="aikbd">Ctrl K</span>
+          <button class="aibox-cancel" id="s1cancel" type="button" aria-label="Cancel recording" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          <button class="mic" id="s1mic" type="button" aria-label="Ask by voice" aria-pressed="false" title="Ask by voice">
+            <svg class="ic-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            <svg class="ic-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+          </button>
+          <button class="btn primary" id="s1go" type="button">Search</button>
         </div>
+        <span class="aibox-note" id="airecnote" role="status" aria-live="polite"></span>
         <div class="aibox-row">
           <div class="seg" role="group" aria-label="Mode"><button id="m-find" aria-pressed="true">Find reports</button><button id="m-sum" aria-pressed="false">Summarize</button></div>
           <span class="lbl" style="margin-left:6px">Try</span>
@@ -715,6 +756,8 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
   ];
   var cur = 0, mode = 'find';
   var X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  /* one line tall, growing with the text; a hidden tab measures 0, so it keeps one line until it is shown */
+  function fitQ() { var q = document.getElementById('q'); q.style.height = '24px'; var h = q.scrollHeight; q.style.height = (h ? Math.min(h, 96) : 24) + 'px'; }
   function renderS1() {
     var e = EX[cur];
     document.getElementById('q').value = e.q;
@@ -735,12 +778,58 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
     document.querySelectorAll('.ex').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-ex') === cur); });
     document.getElementById('m-find').setAttribute('aria-pressed', mode === 'find');
     document.getElementById('m-sum').setAttribute('aria-pressed', mode === 'sum');
+    fitQ();
   }
   document.querySelectorAll('.ex').forEach(function (b) { b.addEventListener('click', function () { cur = +b.getAttribute('data-ex'); renderS1(); }); });
   document.getElementById('m-find').addEventListener('click', function () { mode = 'find'; renderS1(); });
   document.getElementById('m-sum').addEventListener('click', function () { mode = 'sum'; renderS1(); });
-  document.getElementById('s1go').addEventListener('click', renderS1);
+  document.getElementById('s1go').addEventListener('click', function () { renderS1(); });
   renderS1();
+
+  /* voice (simulated): record, stop, "transcribe" into the box, then search */
+  (function () {
+    var field = document.getElementById('aifield'), mic = document.getElementById('s1mic');
+    var q = document.getElementById('q'), rec = document.getElementById('airec'), kbd = document.getElementById('aikbd');
+    var cancel = document.getElementById('s1cancel'), go = document.getElementById('s1go');
+    var note = document.getElementById('airecnote'), msg = document.getElementById('recmsg'), clock = document.getElementById('rect');
+    var wave = document.getElementById('aiwave'), timer = null, secs = 0, state = 'idle', pend = null;
+    for (var i = 0; i < 40; i++) { var b = document.createElement('i'); b.style.animationDelay = (-((i * 137) % 100) / 100).toFixed(2) + 's'; b.style.animationDuration = (0.7 + ((i * 53) % 60) / 100).toFixed(2) + 's'; wave.appendChild(b); }
+    var fit = fitQ;
+    function setState(s) {
+      state = s;
+      field.classList.toggle('rec', s === 'rec'); field.classList.toggle('busy', s === 'busy');
+      var live = s !== 'idle';
+      rec.hidden = !live; q.hidden = live; kbd.hidden = live; cancel.hidden = s !== 'rec'; go.disabled = live;
+      mic.setAttribute('aria-pressed', s === 'rec');
+      mic.setAttribute('aria-label', s === 'rec' ? 'Stop and send' : 'Ask by voice');
+      mic.title = s === 'rec' ? 'Stop and send' : 'Ask by voice';
+      msg.textContent = s === 'busy' ? 'Turning speech into text…' : 'Listening…';
+      note.textContent = s === 'rec' ? 'Recording. Tap stop to send, or the cross to discard.' : s === 'busy' ? 'Sending the recording…' : '';
+    }
+    function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+    function fmt(n) { return Math.floor(n / 60) + ':' + ('0' + (n % 60)).slice(-2); }
+    mic.addEventListener('click', function () {
+      if (state === 'idle') {
+        secs = 0; clock.textContent = '0:00'; setState('rec');
+        timer = setInterval(function () { secs++; clock.textContent = fmt(secs); }, 1000);
+      } else if (state === 'rec') {
+        stopTimer(); setState('busy');
+        pend = setTimeout(function () {
+          cur = (cur + 1) % EX.length; setState('idle'); renderS1();
+          note.textContent = 'Heard this question. Mockup only: nothing was recorded.';
+          setTimeout(function () { if (state === 'idle') note.textContent = ''; }, 4000);
+        }, 900);
+      }
+    });
+    cancel.addEventListener('click', function () { stopTimer(); setState('idle'); note.textContent = 'Recording discarded.'; setTimeout(function () { if (state === 'idle') note.textContent = ''; }, 2500); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && state === 'rec') cancel.click();
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && q.offsetParent !== null && state === 'idle') { e.preventDefault(); q.focus(); q.select(); }
+    });
+    q.addEventListener('input', fit);
+    if (window.ResizeObserver) new ResizeObserver(fit).observe(field); else window.addEventListener('resize', fit);
+    fit();
+  })();
 
   /* ---------- 2. Template editor ---------- */
   var fields = [];

@@ -4,7 +4,7 @@
 Slate and indigo look. They show layout and flow only; nothing saves or calls the backend, and the example
 data is made up.
 
-1. AI search and summary box
+1. AI search and summary box (one rounded field like the Home page, with an ask-by-voice microphone; recording is simulated)
 2. Template editor that picks fields straight from the PDF
 3. Home page (built: the Home tab, the screen the app opens on)
 4. Small-laptop layouts (1024, 1280, 1366 wide)
