@@ -667,7 +667,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
           <div class="row-list">
             <div class="q-row"><span class="dot warn"></span><div><div class="t">FACSAria III · P69200123</div><div class="m">PM report, 14 Sep · 3 of 12 fields flagged</div></div><span class="pill warn">In review</span><button class="btn sm">Review</button></div>
             <div class="q-row"><span class="dot warn"></span><div><div class="t">Cytek Aurora · R1-0412</div><div class="m">PM report, 9 Sep · 1 of 14 fields flagged</div></div><span class="pill warn">In review</span><button class="btn sm">Review</button></div>
-            <div class="q-row"><span class="dot crit"></span><div><div class="t">scan0042.pdf</div><div class="m">Serial number unreadable · choose the instrument</div></div><span class="pill crit">Needs a choice</span><button class="btn sm">Choose</button></div>
+            <div class="q-row"><span class="dot crit"></span><div><div class="t">scan0042.pdf</div><div class="m">Serial number unreadable · choose the instrument</div></div><span class="pill crit">Instrument not found</span><button class="btn sm">Choose</button></div>
             <div class="q-row"><span class="dot"></span><div><div class="t">FACSDiscover S8 · S8-2210</div><div class="m">Installation report · extracted, not yet opened</div></div><span class="pill">Extracted</span><button class="btn sm">Review</button></div>
             <div class="q-row"><span class="dot crit"></span><div><div class="t">CytoFLEX_repair.pdf</div><div class="m">Reading failed after 2 tries</div></div><span class="pill crit">Failed</span><button class="btn sm">Retry</button></div>
           </div>
@@ -1145,7 +1145,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
     { f: 'FACSAria_PM_Sep (1).pdf', inst: 'BD FACSAria III · P69200123', type: 'Preventive maintenance', c: 97, st: 'dup', why: 'Same content as FACSAria_PM_Sep.pdf, already in this batch.' }
   ];
   var sel = 0;
-  var STL = { ready: ['Ready to confirm', 'good'], choose: ['Needs your choice', 'crit'], reading: ['Reading…', 'mute'], dup: ['Duplicate', 'warn'], done: ['Confirmed', 'good'] };
+  var STL = { ready: ['Ready to confirm', 'good'], choose: ['Instrument not found', 'crit'], reading: ['Reading…', 'mute'], dup: ['Duplicate', 'warn'], done: ['Confirmed', 'good'] };
   function renderS5() {
     var cnt = { ready: 0, choose: 0, reading: 0, dup: 0, done: 0 };
     FILES.forEach(function (x) { cnt[x.st]++; });
@@ -1365,7 +1365,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
         '<div class="card"><div class="ph-card-h"><h4>Needs your attention</h4><button class="btn sm quiet" data-a="go" data-v="filters" type="button">All ›</button></div>' +
         q('warn', 'FACSAria III · P69200123', 'PM report, 14 Sep · 3 of 12 fields flagged', 'warn', 'In review', 'Review') +
         q('warn', 'Cytek Aurora · R1-0412', 'PM report, 9 Sep · 1 of 14 fields flagged', 'warn', 'In review', 'Review') +
-        q('crit', 'scan0042.pdf', 'Serial number unreadable · choose the instrument', 'crit', 'Needs a choice', 'Choose') +
+        q('crit', 'scan0042.pdf', 'Serial number unreadable · choose the instrument', 'crit', 'Instrument not found', 'Choose') +
         q('', 'FACSDiscover S8 · S8-2210', 'Installation report · extracted, not yet opened', '', 'Extracted', 'Review') +
         q('crit', 'CytoFLEX_repair.pdf', 'Reading failed after 2 tries', 'crit', 'Failed', 'Retry') + '</div>' +
         '<div class="card"><div class="ph-card-h"><h4>Maintenance due</h4><button class="btn sm quiet" type="button">All ›</button></div>' +
