@@ -757,3 +757,15 @@
     min-height: 44px;
   }
 }
+
+/* iPhone Safari zooms the whole page when a typing control with a font under 16px gets focus, and keeps it zoomed.
+   On a phone every text box, number box, date box, menu and text area is therefore 16px (the last stylesheet, so it
+   wins over the smaller sizes set for single screens). tests/e2e/phone-input-size.spec.ts guards it. */
+@media (max-width: 620px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='range']):not([type='button']):not([type='submit']),
+  textarea,
+  select,
+  .text-input {
+    font-size: 16px;
+  }
+}
