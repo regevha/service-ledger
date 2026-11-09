@@ -241,7 +241,7 @@ jobs:
         run: npm ci
 
       - name: Collect both shards' coverage files
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: nyc-output-*
           merge-multiple: true
