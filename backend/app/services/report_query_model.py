@@ -38,6 +38,7 @@ from app.services.report_query_parse import (
 )
 from app.services.report_query_parse import (
     Known,
+    STOPWORDS,
     Parsed,
     _label_dates,
     _take,
@@ -200,6 +201,15 @@ def _without_covered_words(text: str, filters: dict[str, str]) -> str:
     return text
 
 
+def _note_is_covered(note: str, filters: dict[str, str]) -> bool:
+    """True when a "not supported" note only repeats words that a report type or status filter already carries."""
+    rest = _without_covered_words(note.lower(), filters)
+    if rest == note.lower():
+        return False
+    words = re.findall(r"[a-z0-9]+", rest)
+    return all(w in STOPWORDS for w in words)
+
+
 def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
     """The rules' answer plus what the model's tool input adds that the rules did not already set. Every value is checked."""
     out = Parsed(filters=dict(rules.filters), understood=[dict(p) for p in rules.understood], source="ai")
@@ -255,7 +265,8 @@ def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
 
     notes = data.get("not_supported")
     if isinstance(notes, list):
-        out.notes = [n for n in (_clean_text(x, _MAX_NOTE) for x in notes[:5]) if n]
+        cleaned = (_clean_text(x, _MAX_NOTE) for x in notes[:5])
+        out.notes = [n for n in cleaned if n and not _note_is_covered(n, out.filters)]
     return out
 
 
