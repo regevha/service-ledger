@@ -30,6 +30,13 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     }
     // It stays put while the page scrolls.
     await page.getByTestId('tab-instruments').click();
+    // Whether the page is long enough to scroll depends on how many instruments exist, so a tall block is added:
+    // the test is about the bar staying put, not about the data (an empty database used to fail it).
+    await page.evaluate(() => {
+      const spacer = document.createElement('div');
+      spacer.style.height = '3000px';
+      document.body.appendChild(spacer);
+    });
     // (window.scrollBy, not the mouse wheel: mobile WebKit has no mouse wheel.)
     await page.evaluate(() => window.scrollBy(0, 600));
     expect(await page.evaluate(() => window.scrollY), 'the page scrolled').toBeGreaterThan(0);
@@ -41,10 +48,19 @@ test.describe('on a phone', { tag: '@phone' }, () => {
   test('content is never hidden behind the bar: the last thing on a page can be scrolled clear of it', async ({ page }) => {
     await page.goto('/#/templates');
     await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    const lastBottom = await page.evaluate(() => document.querySelector('.app-shell')!.getBoundingClientRect().bottom);
-    const barTop = (await page.getByRole('navigation', { name: 'Main' }).boundingBox())!.y;
-    expect(lastBottom).toBeLessThanOrEqual(barTop);
+    // The list fills in after the page opens and makes it taller, so scroll to the bottom again on each check
+    // until it settles (scrolling once, too early, left the last row below the bar and made this test flaky).
+    await expect
+      .poll(
+        async () => {
+          await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+          const lastBottom = await page.evaluate(() => document.querySelector('.app-shell')!.getBoundingClientRect().bottom);
+          const barTop = (await page.getByRole('navigation', { name: 'Main' }).boundingBox())!.y;
+          return lastBottom <= barTop;
+        },
+        { message: 'the last thing on the page stays behind the tab bar' }
+      )
+      .toBe(true);
   });
 
   test('saving corrections shows "Saved" for a moment, then it goes', async ({ page }) => {
