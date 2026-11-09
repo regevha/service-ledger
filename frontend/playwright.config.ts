@@ -79,11 +79,19 @@ export default defineConfig({
   // change the viewport itself (to compare phone and wide layouts) still calls
   // page.setViewportSize.
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'], ...chromiumLaunch }, grepInvert: /@phone|@visual/ },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], ...chromiumLaunch }, grepInvert: /@phone|@small|@visual/ },
     {
       name: 'phone',
       use: { ...devices['Desktop Chrome'], ...chromiumLaunch, viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true },
       grep: /@phone/,
+    },
+    // The smallest phone still in use, an iPhone SE (375x667): a short screen is where a sticky save bar, the tab
+    // bar and a question box fight for room. Tests tagged @small run only here, a short list of the screens
+    // where that matters (phone-small-screen.spec.ts).
+    {
+      name: 'phone-small',
+      use: { ...devices['Desktop Chrome'], ...chromiumLaunch, viewport: { width: 375, height: 667 }, hasTouch: true, isMobile: true },
+      grep: /@small/,
     },
     // Screenshot comparisons (visual.spec.ts), Chromium only. Their baseline images are made on the CI
     // runner by the "Update visual baselines" workflow (which sets E2E_VISUAL=1). Until those images are
