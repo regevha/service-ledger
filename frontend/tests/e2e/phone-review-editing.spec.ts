@@ -128,10 +128,8 @@ test.describe('editing a report on a phone', { tag: '@phone' }, () => {
     await expect(field).toHaveValue('12');
   });
 
-  // KNOWN GAP (found 2026-11-09): the error banner sits above the fields and the screen does not scroll to it, so a
-  // person who saved from the bar at the bottom of a long form sees nothing happen. Un-fixme this when the banner
-  // is scrolled into view (as the finalize question already is).
-  test.fixme('a failed save is in view without scrolling back up', async ({ page }) => {
+  // The error banner sits above the fields; the screen scrolls to it, so a failed save from the bar at the bottom is seen.
+  test('a failed save is in view without scrolling back up', async ({ page }) => {
     await page.route('**/reports/*/fields', (route) =>
       route.request().method() === 'PATCH'
         ? route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ detail: 'Simulated save failure' }) })
