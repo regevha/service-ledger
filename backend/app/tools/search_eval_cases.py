@@ -158,6 +158,18 @@ CASES: list[dict[str, Any]] = [
     case("failed extractions", {}, {"not_supported": ["failed extractions"], "text": ""}, ["failed extractions"]),
     case("everything for the FACSAria III that failed", {"model_id": "m-aria"}, {"not_supported": ["failed"], "text": ""}, ["failed"]),
     case("summarize the repairs of the Aurora", {"model_id": "m-aur", "report_type": REPAIR}, {"not_supported": ["summarize"], "text": ""}, ["summarize"]),
+    case("S8 service visits at Hadassah", {"model_id": "m-s8", "place_id": "p-had", "report_type": PM}, {"instrument_model": "FACSDiscover S8", "text": ""}),
+    case("how many repairs did the Aurora have", {"model_id": "m-aur", "report_type": REPAIR}),
+    # --- added 2026-11-09: more wordings, short or odd names, typos, conflicts ---
+    case("any broken instruments at Bar-Ilan University that nobody has reviewed", {"report_type": REPAIR, "status": "extracted", "place_id": "p-bar"}, {"report_type": "repair", "status": "extracted", "place": "Bar-Ilan University", "text": ""}),
+    case("what was fixed on the fortessa this spring", {"model_id": "m-fort", "report_type": REPAIR, "date_from": "2026-03-01", "date_to": "2026-05-31"}, {"report_type": REPAIR, "instrument_model": "LSRFortessa", "date_from": "2026-03-01", "date_to": "2026-05-31", "text": ""}),
+    case("the cytoflex at Bar Ilan", {"model_id": "m-cyto", "place_id": "p-bar"}, {"instrument_model": "CytoFLEX LX", "place": "Bar-Ilan University", "text": ""}),
+    case("repiar reports last month", {"report_type": REPAIR, "date_from": "2026-10-01", "date_to": "2026-10-31"}, {"report_type": REPAIR, "text": ""}),
+    case("laser replacement on the Aria", {"model_id": "m-aria", "q": "laser replacement"}, {"instrument_model": "FACSAria III", "text": "laser replacement"}),
+    case("reports where the PMT voltage was changed", {"q": "pmt voltage changed"}, {"text": "pmt voltage changed"}),
+    case("reports that need my attention", {}, {"not_supported": ["need my attention"], "text": ""}, ["need my attention"], any_notes=True),
+    case("laser power below 100 mW", {"q": "laser power"}, {"text": "laser power", "not_supported": ["below 100 mW"]}, ["below 100 mW"]),
+    case("show me the reports of the machine in room 12", {}, {"not_supported": ["room 12"], "text": ""}, ["room 12"], any_notes=True),
     # --- nothing to understand, or an attempt to give the model orders ---
     case("hello", {}, {"text": ""}, any_notes=True),
     case("asdf qwer", {}, {"text": ""}, any_notes=True),

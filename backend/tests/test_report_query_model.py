@@ -257,3 +257,14 @@ def test_endpoint_survives_a_failing_model(client, monkeypatch):
     use(monkeypatch, FakeClient(raises=RuntimeError("down")))
     r = client.post("/reports/parse-search", json={"text": "reports mentioning a PMT"})
     assert r.status_code == 200 and r.json()["source"] == "rules_fallback" and r.json()["filters"] == {"q": "pmt"}
+
+
+def test_a_note_that_only_repeats_a_filter_is_dropped():
+    from app.services.report_query_model import merge
+    from app.tools.search_eval_cases import KNOWN, TODAY
+    from app.services.report_query_parse import parse_search
+
+    rules = parse_search("broken instruments that nobody has reviewed", KNOWN, TODAY)
+    out = merge(rules, {"text": "", "not_supported": ["reports nobody has reviewed", "overdue"]}, KNOWN)
+    assert out.filters["status"] == "extracted"
+    assert out.notes == ["overdue"]
