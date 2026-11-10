@@ -4,6 +4,7 @@ import { createNumericTemplate } from './numeric-fixture';
 import { TIMEOUT } from './timeouts';
 import { startEditing } from './edit-helper';
 import { seedReport, API_BASE } from './helpers/api';
+import { showTrendChart } from './helpers/ui';
 
 // Phone review of 2026-10-25 (Galaxy A55, 412 x 915): bugs and filter defaults.
 
@@ -133,6 +134,7 @@ for (const [name, first, second, below] of [
     await seedFinalized(request, { instrumentId, model: marker, fields: { fluidics_pressure_psi: second }, reportDate: '2026-06-01' });
     await openInstrument(page, instrumentId);
     await page.locator('[aria-label="Field to chart"]').selectOption('fluidics_pressure_psi');
+    await showTrendChart(page);
     const label = page.locator('.trend-end-label');
     await expect(label).toBeVisible();
     const lastDot = page.locator('.trend-chart-wrap svg circle').last();
@@ -150,7 +152,7 @@ test('a table that scrolls sideways shows soft edges (a hint that there is more)
   await seedFinalized(request, { instrumentId, model: marker, fields: { fluidics_pressure_psi: 5 }, reportDate: '2026-05-01' });
   await seedFinalized(request, { instrumentId, model: marker, fields: { fluidics_pressure_psi: 6 }, reportDate: '2026-06-01' });
   await openInstrument(page, instrumentId);
-  await page.click('button:has-text("View as table")');
+  // The trend opens as a table.
   const wrap = page.locator('.trend-table-wrap').first();
   await expect(wrap).toBeVisible();
   expect(await wrap.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain('gradient');

@@ -106,7 +106,8 @@ const PLOT_H = CHART_H - MARGIN.top - MARGIN.bottom;
 
 function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoint[] }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [showTable, setShowTable] = useState(false);
+  // The table is the default; the chart is one click away ("Hide table").
+  const [showTable, setShowTable] = useState(true);
   const svgRef = useRef<SVGSVGElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const measured = useElementWidth(cardRef, CHART_W);
