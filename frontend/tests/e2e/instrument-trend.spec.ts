@@ -2,6 +2,7 @@ import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
 import { createNumericTemplate } from './numeric-fixture';
 import { seedReport, API_BASE } from './helpers/api';
+import { showTrendChart } from './helpers/ui';
 
 // The instrument detail page's trend chart (InstrumentTrendChart.tsx) — the
 // real, generalized version of docs/instrument-timeline-demo.html's
@@ -95,6 +96,8 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   await expect(legend.locator('.legend-item', { hasText: 'detector 2' })).toBeVisible();
   await expect(legend.locator('.legend-item', { hasText: 'detector 3' })).toBeVisible();
 
+  // The trend opens as a table; switch to the chart for the chart checks.
+  await showTrendChart(page);
   const svg = page.locator('.trend-chart-wrap svg');
   await expect(svg).toHaveAttribute('aria-label', 'Baseline CV across 4 reports');
 
