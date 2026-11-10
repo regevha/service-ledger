@@ -411,3 +411,22 @@
   border-color: var(--accent-fill);
   color: var(--on-fill);
 }
+
+/* The work dates table holds words, not numbers: left-aligned, in the page font, and free to wrap on a phone. */
+.work-dates-table th,
+.work-dates-table td {
+  text-align: left;
+  font-family: var(--font-ui);
+  white-space: normal;
+}
+.timeline-chip {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: baseline;
+}
+.work-dates-table td:first-child {
+  white-space: nowrap;
+}

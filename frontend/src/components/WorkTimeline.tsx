@@ -68,15 +68,18 @@ export function WorkTimeline({ reports }: { reports: ReportListItem[] }) {
   const plotW = width - MARGIN.left - MARGIN.right;
   const xAt = (day: number) => MARGIN.left + ((day - from) / (to - from)) * plotW;
 
-  // Several reports on one day stack upwards instead of covering each other.
+  // Markers that would touch (the same day, or days close together at this width) stack upwards
+  // instead of covering each other: each goes in the lowest row whose last marker is far enough left.
   const rowOf = new Map<string, number>();
-  const perDay = new Map<string, number>();
+  const lastXInRow: number[] = [];
   for (const r of dated) {
-    const row = perDay.get(r.report_date) ?? 0;
-    perDay.set(r.report_date, row + 1);
+    const x = xAt(dayNumber(r.report_date));
+    let row = lastXInRow.findIndex((lastX) => x - lastX >= DOT_R * 2 + 3);
+    if (row < 0) row = lastXInRow.length;
+    lastXInRow[row] = x;
     rowOf.set(r.id, row);
   }
-  const rows = Math.max(...perDay.values());
+  const rows = Math.max(1, lastXInRow.length);
   const axisY = MARGIN.top + (rows - 1) * ROW_H + AXIS_GAP;
   const height = axisY + 30;
 
@@ -140,7 +143,7 @@ export function WorkTimeline({ reports }: { reports: ReportListItem[] }) {
 
       {showTable && (
         <div className="trend-table-wrap" tabIndex={0} role="region" aria-label="Work dates, as a table">
-          <table className="trend-table">
+          <table className="trend-table work-dates-table">
             <thead>
               <tr>
                 <th>Date</th>
@@ -154,7 +157,7 @@ export function WorkTimeline({ reports }: { reports: ReportListItem[] }) {
                 <tr key={r.id}>
                   <td>{formatDate(r.report_date)}</td>
                   <td>
-                    <span className="legend-key" style={{ background: colorOf(r.report_type) }} />{' '}
+                    <span className="timeline-chip" style={{ background: colorOf(r.report_type) }} />
                     {r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}
                   </td>
                   <td>{r.technician_name ?? '—'}</td>
