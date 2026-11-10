@@ -5,7 +5,7 @@ import { API_BASE, seedReport } from './helpers/api';
 // a "need review" chip and a link to the instrument page. "Group: Model" puts every unit of a model in one card.
 // "Group: None" is the flat sortable table.
 
-test('reports are grouped by instrument, and Group: None shows the flat table', async ({ page, request }) => {
+test('reports open as the flat table; Group: Instrument groups them by instrument, and the choice is remembered', async ({ page, request }) => {
   const stamp = Date.now();
   const a = `E2E-GroupA-${stamp}`;
   const b = `E2E-GroupB-${stamp}`;
@@ -14,8 +14,13 @@ test('reports are grouped by instrument, and Group: None shows the flat table', 
 
   await page.setViewportSize({ width: 1300, height: 900 });
   await page.goto('/#/reports');
+  // The default is the flat table with sortable headers.
+  await expect(page.getByTestId('group-select')).toHaveValue('none');
+  await expect(page.getByTestId('report-groups')).toHaveCount(0);
+  await expect(page.getByTestId('sort-date')).toBeVisible();
+
+  await page.getByTestId('group-select').selectOption('instrument');
   await expect(page.getByTestId('report-groups')).toBeVisible();
-  await expect(page.getByTestId('group-select')).toHaveValue('instrument');
   // The grouped view has no column headers; sorting is the Sort by menu (see the sort-in-groups spec).
   await expect(page.locator('.report-row-head')).toHaveCount(0);
 
@@ -30,7 +35,9 @@ test('reports are grouped by instrument, and Group: None shows the flat table', 
   await expect(page.locator('[data-testid="field-list"], .back-link').first()).toBeVisible();
   await page.goBack();
 
-  // None: one flat table with sortable headers; the choice is remembered.
+  // The choice is remembered across a reload; None goes back to the flat table.
+  await page.reload();
+  await expect(page.getByTestId('group-select')).toHaveValue('instrument');
   await page.getByTestId('group-select').selectOption('none');
   await expect(page.getByTestId('report-groups')).toHaveCount(0);
   await expect(page.getByTestId('sort-date')).toBeVisible();
@@ -58,7 +65,8 @@ test('Group: Model puts the reports of every unit of one model in one card, and 
 
   await page.setViewportSize({ width: 1300, height: 900 });
   await page.goto('/#/reports');
-  await expect(page.getByTestId('group-select')).toHaveValue('instrument');
+  await expect(page.getByTestId('group-select')).toHaveValue('none');
+  await page.getByTestId('group-select').selectOption('instrument');
 
   // By instrument the two units are two cards.
   const byUnit = page.getByTestId('report-group').filter({ has: page.getByTestId('report-row').filter({ hasText: tags[0] }) });

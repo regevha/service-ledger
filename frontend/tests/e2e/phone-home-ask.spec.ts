@@ -57,7 +57,7 @@ test.describe('Home and the ask box on a phone', { tag: '@phone' }, () => {
     // The filter line says what the question became; the repair-only filter leaves reports of that one manager.
     await expect(page.getByText('Lab manager: phone askerson')).toBeVisible();
     await expect(page.getByText('Malfunction / repair').first()).toBeVisible();
-    await expect(page.getByTestId('report-group').first()).toBeVisible();
+    await expect(page.getByTestId('report-row').first()).toBeVisible();
     await noSideScroll(page);
   });
 

@@ -169,6 +169,8 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/#/new');
     await page.click('.view-tab:has-text("Reports")');
     await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
+    // The list opens as a flat table now; this baseline is of the grouped view, so ask for it.
+    await page.getByTestId('group-select').selectOption('instrument');
     await expect(page.locator('.report-row-body')).toHaveCount(rows.length);
     await page.mouse.move(0, 0);
     await expect(page.locator('.report-table, .report-groups').first()).toHaveScreenshot(`reports-list-${theme}.png`, SHOT);

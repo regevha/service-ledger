@@ -7,9 +7,9 @@ export const GROUP_KEY = 'sl.reports.group';
 export function readGroupMode(): GroupMode {
   try {
     const saved = localStorage.getItem(GROUP_KEY);
-    return saved === 'none' || saved === 'model' ? saved : 'instrument';
+    return saved === 'instrument' || saved === 'model' ? saved : 'none';
   } catch {
-    return 'instrument';
+    return 'none';
   }
 }
 export function writeGroupMode(mode: GroupMode) {
