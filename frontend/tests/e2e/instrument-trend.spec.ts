@@ -174,5 +174,35 @@ test('trend chart: an instrument with no finalized reports shows the empty state
 
   await openInstrumentDetail(page, instrument.id);
 
-  await expect(page.locator('.trend-section')).toContainText('No numeric fields have recorded data yet');
+  // With no numeric field the picker still offers the work dates, and with no report there is nothing to show.
+  await expect(page.locator('[aria-label="Field to chart"]')).toHaveValue('__work_dates__');
+  await expect(page.locator('.trend-section')).toContainText('No report with a work date yet');
+});
+
+test('trend: "Work dates (timeline)" lists the dates of work as a table and draws them on a timeline', async ({ page, request }) => {
+  const marker = `E2E-Trend-Dates-${Date.now()}`;
+  const instrument = await createInstrument(request, marker);
+  for (const [reportDate, reportType] of [
+    ['2026-01-10', 'installation_upgrade'],
+    ['2026-03-05', 'preventive_maintenance'],
+    ['2026-03-05', 'repair'],
+    ['2026-06-20', 'repair'],
+  ] as const) {
+    await seedReport(request, { instrumentId: instrument.id, model: marker, reportType, reportDate, fields: {}, finalize: true });
+  }
+
+  await openInstrumentDetail(page, instrument.id);
+  await page.locator('[aria-label="Field to chart"]').selectOption('__work_dates__');
+
+  // It opens as a table, oldest first.
+  const rows = page.locator('.trend-table tbody tr');
+  await expect(rows).toHaveCount(4);
+  await expect(rows.first()).toContainText('Jan 10, 2026');
+  await expect(rows.first()).toContainText('Installation / upgrade');
+  await expect(rows.last()).toContainText('Jun 20, 2026');
+
+  // One marker per report, two of them on the same day, and a legend entry per report type.
+  await page.click('button:has-text("Hide table")');
+  await expect(page.getByTestId('timeline-dot')).toHaveCount(4);
+  await expect(page.locator('.legend-row .legend-item')).toHaveCount(3);
 });

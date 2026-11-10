@@ -3,6 +3,8 @@ import { useElementWidth } from '../hooks/useElementWidth';
 import { useMemo, useRef, useState } from 'react';
 import { getInstrumentTrend, getInstrumentTrendFields, type InstrumentTrend, type TrendField, type TrendPoint } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import type { ReportListItem } from '../api';
+import { WorkTimeline } from './WorkTimeline';
 
 /**
  * The instrument detail page's trend chart — the real version of
@@ -330,7 +332,10 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
   );
 }
 
-export function InstrumentTrendSection({ instrumentId }: { instrumentId: string }) {
+/** The picker's extra choice: a timeline of the dates the instrument was worked on (WorkTimeline.tsx). */
+export const WORK_DATES = '__work_dates__';
+
+export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId: string; reports: ReportListItem[] }) {
   const [fields, setFields] = useState<TrendField[] | null>(null);
   const [selectedField, setSelectedField] = useState<string>('');
   const [trend, setTrend] = useState<InstrumentTrend | null>(null);
@@ -345,7 +350,8 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
       const list = await getInstrumentTrendFields(instrumentId);
       if (isCancelled()) return;
       setFields(list);
-      if (list.length) setSelectedField(list[0].name);
+      // No numeric field yet: the work-dates timeline is still something to show.
+      setSelectedField(list.length ? list[0].name : WORK_DATES);
     },
     [instrumentId],
     'Could not load chartable fields.'
@@ -353,7 +359,7 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
 
   const { loading, error } = useAsyncEffect(
     async (isCancelled) => {
-      if (!selectedField) return;
+      if (!selectedField || selectedField === WORK_DATES) return;
       const t = await getInstrumentTrend(instrumentId, selectedField);
       if (!isCancelled()) setTrend(t);
     },
@@ -365,15 +371,7 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
     return null; // still loading the field list — the page's own history table below carries the loading state
   }
 
-  if (fields.length === 0) {
-    return (
-      <div className="trend-section">
-        <div className="section-title">Trend</div>
-        <div className="empty-hint">No numeric fields have recorded data yet for this instrument.</div>
-      </div>
-    );
-  }
-
+  const timeline = selectedField === WORK_DATES;
   const fieldMeta = fields.find((f) => f.name === selectedField) ?? fields[0];
 
   return (
@@ -387,12 +385,15 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
               {f.unit ? ` (${f.unit})` : ''}
             </option>
           ))}
+          <option value={WORK_DATES}>Work dates (timeline)</option>
         </select>
       </div>
 
-      {error && <div className="banner banner-warn">{error}</div>}
+      {error && !timeline && <div className="banner banner-warn">{error}</div>}
 
-      {loading || !trend ? (
+      {timeline ? (
+        <WorkTimeline reports={reports} />
+      ) : loading || !trend ? (
         <div className="working-panel">
           <div className="spinner" />
           <div>Loading history…</div>
