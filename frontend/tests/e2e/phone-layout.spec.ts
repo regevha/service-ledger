@@ -160,25 +160,30 @@ test('a table that scrolls sideways shows soft edges (a hint that there is more)
   expect(await wrap.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain('gradient');
 });
 
-test('the Trend section is folded and closed on a phone, and its table is capped to a few rows', async ({ page, request }) => {
-  const marker = `E2E-Phone-Fold-${Date.now()}`;
-  const instrumentId = await newInstrument(request, marker);
-  for (let m = 1; m <= 9; m++) {
-    await seedFinalized(request, { instrumentId, model: marker, fields: { fluidics_pressure_psi: 5 + m }, reportDate: `2026-0${m}-01` });
-  }
-  await openInstrument(page, instrumentId);
+// This file's other specs run at desktop width in the chromium project, so this one asks for a phone.
+test.describe('on a phone', () => {
+  test.use({ viewport: PHONE });
 
-  const toggle = page.locator('.trend-section .trend-toggle');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('.trend-table-wrap')).toHaveCount(0);
-  await expect(page.locator('[aria-label="Field to chart"]')).toHaveCount(0);
+  test('the Trend section is folded and closed on a phone, and its table is capped to a few rows', async ({ page, request }) => {
+    const marker = `E2E-Phone-Fold-${Date.now()}`;
+    const instrumentId = await newInstrument(request, marker);
+    for (let m = 1; m <= 9; m++) {
+      await seedFinalized(request, { instrumentId, model: marker, fields: { fluidics_pressure_psi: 5 + m }, reportDate: `2026-0${m}-01` });
+    }
+    await openInstrument(page, instrumentId);
 
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  const wrap = page.locator('.trend-table-wrap').first();
-  await expect(wrap).toBeVisible();
-  // Nine rows, but the table only takes about four rows of the page and scrolls inside itself.
-  const [box, scrollH] = await Promise.all([wrap.boundingBox(), wrap.evaluate((el) => el.scrollHeight)]);
-  expect(box!.height).toBeLessThan(220);
-  expect(scrollH).toBeGreaterThan(box!.height);
+    const toggle = page.locator('.trend-section .trend-toggle');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('.trend-table-wrap')).toHaveCount(0);
+    await expect(page.locator('[aria-label="Field to chart"]')).toHaveCount(0);
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const wrap = page.locator('.trend-table-wrap').first();
+    await expect(wrap).toBeVisible();
+    // Nine rows, but the table only takes about four rows of the page and scrolls inside itself.
+    const [box, scrollH] = await Promise.all([wrap.boundingBox(), wrap.evaluate((el) => el.scrollHeight)]);
+    expect(box!.height).toBeLessThan(220);
+    expect(scrollH).toBeGreaterThan(box!.height);
+  });
 });
