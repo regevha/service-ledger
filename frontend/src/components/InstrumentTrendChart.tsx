@@ -3,6 +3,8 @@ import { useElementWidth } from '../hooks/useElementWidth';
 import { useMemo, useRef, useState } from 'react';
 import { getInstrumentTrend, getInstrumentTrendFields, type InstrumentTrend, type TrendField, type TrendPoint } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import type { ReportListItem } from '../api';
+import { WorkTimeline } from './WorkTimeline';
 
 /**
  * The instrument detail page's trend chart — the real version of
@@ -20,6 +22,28 @@ import { useAsyncEffect } from '../hooks/useAsyncEffect';
  * rather than a charting library, matching AnalyticsScreen's bars — this
  * app has no charting dependency and one more chart type doesn't earn one.
  */
+
+/** Table first, the picture second ("Chart", or "Timeline" for the work dates). */
+export function TrendViewSwitch({
+  showTable,
+  onChange,
+  pictureLabel,
+}: {
+  showTable: boolean;
+  onChange: (table: boolean) => void;
+  pictureLabel: string;
+}) {
+  return (
+    <div className="view-switch" role="group" aria-label="Show the trend as">
+      <button type="button" className={`btn small${showTable ? ' active' : ''}`} aria-pressed={showTable} onClick={() => onChange(true)}>
+        Table
+      </button>
+      <button type="button" className={`btn small${showTable ? '' : ' active'}`} aria-pressed={!showTable} onClick={() => onChange(false)}>
+        {pictureLabel}
+      </button>
+    </div>
+  );
+}
 
 export const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)'];
 
@@ -104,9 +128,18 @@ const CHART_H = 260;
 const DATE_LABEL_W = 84;
 const PLOT_H = CHART_H - MARGIN.top - MARGIN.bottom;
 
-function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoint[] }) {
+function TrendLineChart({
+  field,
+  points,
+  showTable,
+  onShowTable,
+}: {
+  field: TrendField;
+  points: TrendPoint[];
+  showTable: boolean;
+  onShowTable: (table: boolean) => void;
+}) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [showTable, setShowTable] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const measured = useElementWidth(cardRef, CHART_W);
@@ -183,9 +216,7 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
             ))}
           </div>
         )}
-        <button type="button" className="btn small" onClick={() => setShowTable((v) => !v)}>
-          {showTable ? 'Hide table' : 'View as table'}
-        </button>
+        <TrendViewSwitch showTable={showTable} onChange={onShowTable} pictureLabel="Chart" />
       </div>
 
       {!showTable && (
@@ -329,10 +360,15 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
   );
 }
 
-export function InstrumentTrendSection({ instrumentId }: { instrumentId: string }) {
+/** The picker's extra choice: a timeline of the dates the instrument was worked on (WorkTimeline.tsx). */
+export const WORK_DATES = '__work_dates__';
+
+export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId: string; reports: ReportListItem[] }) {
   const [fields, setFields] = useState<TrendField[] | null>(null);
   const [selectedField, setSelectedField] = useState<string>('');
   const [trend, setTrend] = useState<InstrumentTrend | null>(null);
+  // Table or picture: the table is the default, and the choice stays when another field or the work dates are picked.
+  const [showTable, setShowTable] = useState(true);
 
   // A failure here leaves `fields` at null, which the `fields === null`
   // check below already renders as "still loading" — so, as before this was
@@ -344,7 +380,8 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
       const list = await getInstrumentTrendFields(instrumentId);
       if (isCancelled()) return;
       setFields(list);
-      if (list.length) setSelectedField(list[0].name);
+      // No numeric field yet: the work-dates timeline is still something to show.
+      setSelectedField(list.length ? list[0].name : WORK_DATES);
     },
     [instrumentId],
     'Could not load chartable fields.'
@@ -352,7 +389,7 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
 
   const { loading, error } = useAsyncEffect(
     async (isCancelled) => {
-      if (!selectedField) return;
+      if (!selectedField || selectedField === WORK_DATES) return;
       const t = await getInstrumentTrend(instrumentId, selectedField);
       if (!isCancelled()) setTrend(t);
     },
@@ -364,15 +401,7 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
     return null; // still loading the field list — the page's own history table below carries the loading state
   }
 
-  if (fields.length === 0) {
-    return (
-      <div className="trend-section">
-        <div className="section-title">Trend</div>
-        <div className="empty-hint">No numeric fields have recorded data yet for this instrument.</div>
-      </div>
-    );
-  }
-
+  const timeline = selectedField === WORK_DATES;
   const fieldMeta = fields.find((f) => f.name === selectedField) ?? fields[0];
 
   return (
@@ -386,12 +415,15 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
               {f.unit ? ` (${f.unit})` : ''}
             </option>
           ))}
+          <option value={WORK_DATES}>Work dates (timeline)</option>
         </select>
       </div>
 
-      {error && <div className="banner banner-warn">{error}</div>}
+      {error && !timeline && <div className="banner banner-warn">{error}</div>}
 
-      {loading || !trend ? (
+      {timeline ? (
+        <WorkTimeline reports={reports} showTable={showTable} onShowTable={setShowTable} />
+      ) : loading || !trend ? (
         <div className="working-panel">
           <div className="spinner" />
           <div>Loading history…</div>
@@ -413,7 +445,7 @@ export function InstrumentTrendSection({ instrumentId }: { instrumentId: string 
           </span>
         </div>
       ) : (
-        <TrendLineChart field={fieldMeta} points={trend.points} />
+        <TrendLineChart field={fieldMeta} points={trend.points} showTable={showTable} onShowTable={setShowTable} />
       )}
     </div>
   );
