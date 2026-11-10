@@ -155,7 +155,10 @@ export function WorkTimeline({ reports }: { reports: ReportListItem[] }) {
               {dated.map((r) => (
                 <tr key={r.id}>
                   <td>{formatDate(r.report_date)}</td>
-                  <td>{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</td>
+                  <td>
+                    <span className="legend-key" style={{ background: colorOf(r.report_type) }} />{' '}
+                    {r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}
+                  </td>
                   <td>{r.technician_name ?? '—'}</td>
                   <td>{STATUS_LABEL[r.status]}</td>
                 </tr>
