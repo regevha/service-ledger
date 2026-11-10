@@ -23,6 +23,28 @@ import { WorkTimeline } from './WorkTimeline';
  * app has no charting dependency and one more chart type doesn't earn one.
  */
 
+/** Table first, the picture second ("Chart", or "Timeline" for the work dates). */
+export function TrendViewSwitch({
+  showTable,
+  onChange,
+  pictureLabel,
+}: {
+  showTable: boolean;
+  onChange: (table: boolean) => void;
+  pictureLabel: string;
+}) {
+  return (
+    <div className="view-switch" role="group" aria-label="Show the trend as">
+      <button type="button" className={`btn small${showTable ? ' active' : ''}`} aria-pressed={showTable} onClick={() => onChange(true)}>
+        Table
+      </button>
+      <button type="button" className={`btn small${showTable ? '' : ' active'}`} aria-pressed={!showTable} onClick={() => onChange(false)}>
+        {pictureLabel}
+      </button>
+    </div>
+  );
+}
+
 export const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)'];
 
 interface Series {
@@ -108,7 +130,7 @@ const PLOT_H = CHART_H - MARGIN.top - MARGIN.bottom;
 
 function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoint[] }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  // The table is the default; the chart is one click away ("Hide table").
+  // The table is the default; the chart is one click away (the Chart button).
   const [showTable, setShowTable] = useState(true);
   const svgRef = useRef<SVGSVGElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -186,9 +208,7 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
             ))}
           </div>
         )}
-        <button type="button" className="btn small" onClick={() => setShowTable((v) => !v)}>
-          {showTable ? 'Hide table' : 'View as table'}
-        </button>
+        <TrendViewSwitch showTable={showTable} onChange={setShowTable} pictureLabel="Chart" />
       </div>
 
       {!showTable && (

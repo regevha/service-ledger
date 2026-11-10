@@ -26,8 +26,8 @@ export async function showFlatList(page: Page): Promise<void> {
 
 /** The instrument trend opens as a table; this switches it to the chart (and waits for it). */
 export async function showTrendChart(page: Page): Promise<void> {
-  const hide = page.getByRole('button', { name: 'Hide table' });
-  if (await hide.count()) await hide.first().click();
+  const chart = page.locator('.trend-section').getByRole('button', { name: 'Chart', exact: true });
+  if (await chart.count()) await chart.first().click();
   await page.waitForSelector('.trend-chart-wrap svg');
 }
 

@@ -391,3 +391,23 @@
   stroke: var(--surface);
   stroke-width: 2;
 }
+
+/* Table | Chart switch of the Trend section: two buttons side by side, the shown one filled. */
+.view-switch {
+  display: inline-flex;
+}
+.view-switch .btn {
+  border-radius: 0;
+}
+.view-switch .btn:first-child {
+  border-radius: 8px 0 0 8px;
+}
+.view-switch .btn:last-child {
+  border-radius: 0 8px 8px 0;
+  margin-left: -1px;
+}
+.view-switch .btn.active {
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: var(--on-fill);
+}
