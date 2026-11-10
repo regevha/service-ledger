@@ -385,3 +385,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Work dates timeline (WorkTimeline.tsx): a ring in the card color keeps neighbouring markers apart. */
+.timeline-dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
