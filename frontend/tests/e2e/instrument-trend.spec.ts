@@ -115,7 +115,7 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   await expect(tooltip.locator('.trend-tooltip-row', { hasText: 'detector 3' })).toContainText('1.7%');
 
   // ---- Table view: same data, every row reachable without hovering ----
-  await page.click('button:has-text("View as table")');
+  await page.getByRole('button', { name: 'Table', exact: true }).click();
   const table = page.locator('.trend-table');
   await expect(table.locator('th', { hasText: 'detector 1' })).toBeVisible();
   const julRow = table.locator('tr', { hasText: 'Jul 10' });
@@ -126,7 +126,7 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
   const scroller = page.getByRole('region', { name: 'Trend values, as a table' });
   await scroller.focus();
   await expect(scroller).toBeFocused();
-  await page.click('button:has-text("Hide table")');
+  await page.getByRole('button', { name: 'Chart', exact: true }).click();
 
   // ---- Switching to a flat "number" field: single series, no legend, a direct end-value label ----
   await picker.selectOption('fluidics_pressure_psi');
@@ -136,7 +136,7 @@ test('trend chart: multi-series detector map, hover tooltip, table view, and swi
 
   // Regression check: a whole-number reading (5.0) must not lose its
   // trailing zero next to 5.1/5.2 in the same column.
-  await page.click('button:has-text("View as table")');
+  await page.getByRole('button', { name: 'Table', exact: true }).click();
   const marRow = page.locator('.trend-table tr', { hasText: 'Mar 10' });
   await expect(marRow).toContainText('5.0 psi');
   await expect(marRow).not.toContainText('5 psi');
@@ -202,7 +202,7 @@ test('trend: "Work dates (timeline)" lists the dates of work as a table and draw
   await expect(rows.last()).toContainText('Jun 20, 2026');
 
   // One marker per report, two of them on the same day, and a legend entry per report type.
-  await page.click('button:has-text("Hide table")');
+  await page.getByRole('button', { name: 'Timeline', exact: true }).click();
   await expect(page.getByTestId('timeline-dot')).toHaveCount(4);
   await expect(page.locator('.legend-row .legend-item')).toHaveCount(3);
 });

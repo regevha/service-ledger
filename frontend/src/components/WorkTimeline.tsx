@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useElementWidth } from '../hooks/useElementWidth';
 import type { ReportListItem } from '../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
-import { SERIES_COLORS, formatDate } from './InstrumentTrendChart';
+import { SERIES_COLORS, TrendViewSwitch, formatDate } from './InstrumentTrendChart';
 
 /**
  * The "Work dates" choice of the instrument page's Trend section: every report that has a date, as a
@@ -94,9 +94,7 @@ export function WorkTimeline({ reports }: { reports: ReportListItem[] }) {
             </span>
           ))}
         </div>
-        <button type="button" className="btn small" onClick={() => setShowTable((v) => !v)}>
-          {showTable ? 'Hide table' : 'View as table'}
-        </button>
+        <TrendViewSwitch showTable={showTable} onChange={setShowTable} pictureLabel="Timeline" />
       </div>
 
       {!showTable && (
