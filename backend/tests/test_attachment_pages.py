@@ -69,3 +69,26 @@ def test_unknown_attachment_is_404(client):
     missing = "00000000-0000-0000-0000-000000000000"
     assert client.get(f"/attachments/{missing}/pages").status_code == 404
     assert client.get(f"/attachments/{missing}/pages/1").status_code == 404
+
+
+def _filled_form_pdf() -> bytes:
+    """A fillable PDF whose typed value lives in a form field, not in the page content."""
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    c.acroForm.textfield(
+        name="serial", value="WWWWWWWWWWWW", x=100, y=700, width=300, height=40,
+        borderWidth=0, fillColor=None, fontSize=24, forceBorder=False,
+    )
+    c.showPage()
+    c.save()
+    return buf.getvalue()
+
+
+def test_a_fillable_forms_typed_values_are_drawn_on_the_page_image(client):
+    att = _upload(client, "form.pdf", _filled_form_pdf(), "application/pdf")
+    res = client.get(f"/attachments/{att}/pages/1", params={"width": 595})
+    assert res.status_code == 200
+    img = Image.open(io.BytesIO(res.content)).convert("L")
+    # The field sits at y 700..740 of an 842-high page (scale 1 at width 595).
+    box = img.crop((100, 842 - 740, 400, 842 - 700))
+    assert min(box.getdata()) < 100, "the typed value is missing from the page image"
