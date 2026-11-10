@@ -3,6 +3,7 @@ import { useElementWidth } from '../hooks/useElementWidth';
 import { useMemo, useRef, useState } from 'react';
 import { getInstrumentTrend, getInstrumentTrendFields, type InstrumentTrend, type TrendField, type TrendPoint } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { ReportListItem } from '../api';
 import { WorkTimeline } from './WorkTimeline';
 
@@ -369,6 +370,9 @@ export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId
   const [trend, setTrend] = useState<InstrumentTrend | null>(null);
   // Table or picture: the table is the default, and the choice stays when another field or the work dates are picked.
   const [showTable, setShowTable] = useState(true);
+  // On a phone the whole section is folded, closed at first, so it costs one line of the page.
+  const phone = useMediaQuery('(max-width: 620px)');
+  const [open, setOpen] = useState(false);
 
   // A failure here leaves `fields` at null, which the `fields === null`
   // check below already renders as "still loading" — so, as before this was
@@ -404,10 +408,20 @@ export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId
   const timeline = selectedField === WORK_DATES;
   const fieldMeta = fields.find((f) => f.name === selectedField) ?? fields[0];
 
+  const folded = phone && !open;
+
   return (
-    <div className="trend-section">
+    <div className={`trend-section${phone ? ' trend-section-fold' : ''}`}>
+      {phone && (
+        <button type="button" className="trend-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span className="section-title">Trend</span>
+          <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+        </button>
+      )}
+      {!folded && (
+        <>
       <div className="section-title-row">
-        <div className="section-title">Trend</div>
+        {!phone && <div className="section-title">Trend</div>}
         <select value={selectedField} onChange={(e) => setSelectedField(e.target.value)} aria-label="Field to chart">
           {fields.map((f) => (
             <option key={f.name} value={f.name}>
@@ -446,6 +460,8 @@ export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId
         </div>
       ) : (
         <TrendLineChart field={fieldMeta} points={trend.points} showTable={showTable} onShowTable={setShowTable} />
+      )}
+        </>
       )}
     </div>
   );
