@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { useElementWidth } from '../hooks/useElementWidth';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { ReportListItem } from '../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { SERIES_COLORS, TrendViewSwitch, formatDate } from './InstrumentTrendChart';
@@ -15,6 +16,8 @@ const MARGIN = { left: 24, right: 24, top: 18 };
 const AXIS_GAP = 30; // from the lowest marker row to the axis
 const ROW_H = 16; // reports on the same day stack upwards
 const DOT_R = 6;
+const PHONE_ROW_H = 12;
+const PHONE_DOT_R = 4.5;
 const MIN_W = 320;
 const TICK_LABEL_W = 96;
 const DAY_MS = 86_400_000;
@@ -43,6 +46,10 @@ export function WorkTimeline({
   const cardRef = useRef<HTMLDivElement>(null);
   const measured = useElementWidth(cardRef, 640);
   const width = Math.max(MIN_W, measured);
+  // Smaller markers and rows on a phone, so the timeline stays a thin strip.
+  const phone = useMediaQuery('(max-width: 620px)');
+  const dotR = phone ? PHONE_DOT_R : DOT_R;
+  const rowH = phone ? PHONE_ROW_H : ROW_H;
 
   const dated = useMemo(
     () => reports.filter(hasDate).sort((a, b) => a.report_date.localeCompare(b.report_date)),
@@ -81,13 +88,13 @@ export function WorkTimeline({
   const lastXInRow: number[] = [];
   for (const r of dated) {
     const x = xAt(dayNumber(r.report_date));
-    let row = lastXInRow.findIndex((lastX) => x - lastX >= DOT_R * 2 + 3);
+    let row = lastXInRow.findIndex((lastX) => x - lastX >= dotR * 2 + 3);
     if (row < 0) row = lastXInRow.length;
     lastXInRow[row] = x;
     rowOf.set(r.id, row);
   }
   const rows = Math.max(1, lastXInRow.length);
-  const axisY = MARGIN.top + (rows - 1) * ROW_H + AXIS_GAP;
+  const axisY = MARGIN.top + (rows - 1) * rowH + AXIS_GAP;
   const height = axisY + 30;
 
   const tickCount = Math.max(2, Math.min(6, Math.floor(plotW / TICK_LABEL_W)));
@@ -96,8 +103,9 @@ export function WorkTimeline({
   return (
     <div className="trend-chart-card" ref={cardRef}>
       <div className="trend-chart-head">
+        {/* The table carries each type's color beside its name, so the legend is only for the timeline. */}
         <div className="legend-row">
-          {typesPresent.map((k) => (
+          {!showTable && typesPresent.map((k) => (
             <span className="legend-item" key={k}>
               <span className="legend-key" style={{ background: colorOf(k) }} />
               {REPORT_TYPE_LABEL[k as keyof typeof REPORT_TYPE_LABEL]}
@@ -129,8 +137,8 @@ export function WorkTimeline({
                 className="timeline-dot"
                 data-testid="timeline-dot"
                 cx={xAt(dayNumber(r.report_date))}
-                cy={axisY - 14 - (rowOf.get(r.id) ?? 0) * ROW_H}
-                r={DOT_R}
+                cy={axisY - 14 - (rowOf.get(r.id) ?? 0) * rowH}
+                r={dotR}
                 fill={colorOf(r.report_type)}
               >
                 <title>
@@ -164,8 +172,10 @@ export function WorkTimeline({
                 <tr key={r.id}>
                   <td>{formatDate(r.report_date)}</td>
                   <td>
-                    <span className="timeline-chip" style={{ background: colorOf(r.report_type) }} />
-                    {r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}
+                    <span className="type-cell">
+                      <span className="timeline-chip" style={{ background: colorOf(r.report_type) }} />
+                      {r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}
+                    </span>
                   </td>
                   <td>{r.technician_name ?? '—'}</td>
                   <td>{STATUS_LABEL[r.status]}</td>
