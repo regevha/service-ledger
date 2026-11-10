@@ -2,7 +2,7 @@ import type { APIRequestContext, Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { createNumericModel } from './numeric-fixture';
 import { API_BASE, okJson, seedReport } from './helpers/api';
-import { openReviewFromList } from './helpers/ui';
+import { openReviewFromList, showTrendChart } from './helpers/ui';
 
 // Screenshot comparisons of two places where a wrong pixel is a wrong answer: the trend chart and
 // the review screen's field list. Chromium only, tagged @visual, run by the "visual" project and
@@ -44,6 +44,7 @@ async function openTrend(page: Page, instrumentId: string) {
   await page.click('.view-tab:has-text("Reports")');
   await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
+  await showTrendChart(page);
   await expect(page.locator('.trend-chart-wrap svg')).toBeVisible();
   await page.mouse.move(0, 0); // no hover tooltip in the picture
 }
@@ -102,6 +103,7 @@ test('the trend chart draws the same', { tag: '@visual' }, async ({ page, reques
   await page.getByTestId('tab-reports').click();
   await page.getByLabel('Instrument', { exact: true }).selectOption(instrumentId);
   await page.click('button:has-text("View instrument details")');
+  await showTrendChart(page);
   await expect(page.locator('.trend-chart-wrap svg')).toBeVisible();
   await page.mouse.move(0, 0); // no hover tooltip in the picture
 
