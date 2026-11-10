@@ -68,6 +68,7 @@ backend/
                               SELECT ... FOR UPDATE SKIP LOCKED, recovers jobs orphaned by a worker crash
     seed_instruments.py      The fixed fleet (§1): three BD instruments, a Cytek Aurora and a CytoFLEX S
     seed_templates.py        The report_templates rows (§5), plus three model-specific rows for the Cytek Aurora and CytoFLEX S
+    seed_field_aliases.py    A few field alias groups (labor hours, root cause, ...) for the Admin Field aliases screen; also run by `python -m app.seed_templates`
     seed_demo_reports.py     3 real finalized demo reports for the Reports screen — optional, manual only
     seed_trend_demo.py       5 synthetic PM reports for the FACSAria III, for the trend chart — optional, manual only
     routers/
