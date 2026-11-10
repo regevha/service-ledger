@@ -4,7 +4,7 @@ import { createNumericTemplate } from './numeric-fixture';
 import { TIMEOUT } from './timeouts';
 import { startEditing } from './edit-helper';
 import { seedReport, API_BASE } from './helpers/api';
-import { showTrendChart } from './helpers/ui';
+import { openTrendFold, showTrendChart } from './helpers/ui';
 
 // Phone review of 2026-10-25 (Galaxy A55, 412 x 915): bugs and filter defaults.
 
@@ -133,6 +133,7 @@ for (const [name, first, second, below] of [
     await seedFinalized(request, { instrumentId, model: marker, fields: { fluidics_pressure_psi: first }, reportDate: '2026-05-01' });
     await seedFinalized(request, { instrumentId, model: marker, fields: { fluidics_pressure_psi: second }, reportDate: '2026-06-01' });
     await openInstrument(page, instrumentId);
+    await openTrendFold(page);
     await page.locator('[aria-label="Field to chart"]').selectOption('fluidics_pressure_psi');
     await showTrendChart(page);
     const label = page.locator('.trend-end-label');
@@ -152,8 +153,37 @@ test('a table that scrolls sideways shows soft edges (a hint that there is more)
   await seedFinalized(request, { instrumentId, model: marker, fields: { fluidics_pressure_psi: 5 }, reportDate: '2026-05-01' });
   await seedFinalized(request, { instrumentId, model: marker, fields: { fluidics_pressure_psi: 6 }, reportDate: '2026-06-01' });
   await openInstrument(page, instrumentId);
+  await openTrendFold(page);
   // The trend opens as a table.
   const wrap = page.locator('.trend-table-wrap').first();
   await expect(wrap).toBeVisible();
   expect(await wrap.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain('gradient');
+});
+
+// This file's other specs run at desktop width in the chromium project, so this one asks for a phone.
+test.describe('on a phone', () => {
+  test.use({ viewport: PHONE });
+
+  test('the Trend section is folded and closed on a phone, and its table is capped to a few rows', async ({ page, request }) => {
+    const marker = `E2E-Phone-Fold-${Date.now()}`;
+    const instrumentId = await newInstrument(request, marker);
+    for (let m = 1; m <= 9; m++) {
+      await seedFinalized(request, { instrumentId, model: marker, fields: { fluidics_pressure_psi: 5 + m }, reportDate: `2026-0${m}-01` });
+    }
+    await openInstrument(page, instrumentId);
+
+    const toggle = page.locator('.trend-section .trend-toggle');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('.trend-table-wrap')).toHaveCount(0);
+    await expect(page.locator('[aria-label="Field to chart"]')).toHaveCount(0);
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const wrap = page.locator('.trend-table-wrap').first();
+    await expect(wrap).toBeVisible();
+    // Nine rows, but the table only takes about four rows of the page and scrolls inside itself.
+    const [box, scrollH] = await Promise.all([wrap.boundingBox(), wrap.evaluate((el) => el.scrollHeight)]);
+    expect(box!.height).toBeLessThan(220);
+    expect(scrollH).toBeGreaterThan(box!.height);
+  });
 });
