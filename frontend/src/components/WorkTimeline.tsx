@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import { useElementWidth } from '../hooks/useElementWidth';
 import type { ReportListItem } from '../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
@@ -31,8 +31,15 @@ function isoOf(day: number): string {
   return new Date(day * DAY_MS).toISOString().slice(0, 10);
 }
 
-export function WorkTimeline({ reports }: { reports: ReportListItem[] }) {
-  const [showTable, setShowTable] = useState(true);
+export function WorkTimeline({
+  reports,
+  showTable,
+  onShowTable,
+}: {
+  reports: ReportListItem[];
+  showTable: boolean;
+  onShowTable: (table: boolean) => void;
+}) {
   const cardRef = useRef<HTMLDivElement>(null);
   const measured = useElementWidth(cardRef, 640);
   const width = Math.max(MIN_W, measured);
@@ -97,7 +104,7 @@ export function WorkTimeline({ reports }: { reports: ReportListItem[] }) {
             </span>
           ))}
         </div>
-        <TrendViewSwitch showTable={showTable} onChange={setShowTable} pictureLabel="Timeline" />
+        <TrendViewSwitch showTable={showTable} onChange={onShowTable} pictureLabel="Timeline" />
       </div>
 
       {!showTable && (
