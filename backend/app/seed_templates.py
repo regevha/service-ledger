@@ -327,3 +327,8 @@ if __name__ == "__main__":
         print(f"Seeded/updated {len(rows)} report_templates rows:")
         for row in rows:
             print(f"  - {row.report_type.value:26s} model={row.model or '(any)'}")
+        # Field aliases are part of the same first-run setup (idempotent).
+        from app import seed_field_aliases
+
+        groups = seed_field_aliases.seed(session)
+        print(f"Created {len(groups)} field alias groups.")
