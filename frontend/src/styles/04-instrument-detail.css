@@ -430,3 +430,40 @@
 .work-dates-table td:first-child {
   white-space: nowrap;
 }
+
+/* Phone: the Trend section is a folded header, and once open its table is capped at about four rows. */
+.trend-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+@media (max-width: 620px) {
+  .trend-section-fold .trend-table-wrap {
+    max-height: 11.5rem;
+    overflow-y: auto;
+  }
+  .trend-section-fold .trend-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+  }
+}
+
+.type-cell {
+  display: inline-flex;
+  align-items: center;
+}
+@media (max-width: 620px) {
+  .work-dates-table th,
+  .work-dates-table td {
+    padding: 6px 8px;
+    font-size: 0.85rem;
+  }
+}
