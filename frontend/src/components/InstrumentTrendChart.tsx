@@ -128,10 +128,18 @@ const CHART_H = 260;
 const DATE_LABEL_W = 84;
 const PLOT_H = CHART_H - MARGIN.top - MARGIN.bottom;
 
-function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoint[] }) {
+function TrendLineChart({
+  field,
+  points,
+  showTable,
+  onShowTable,
+}: {
+  field: TrendField;
+  points: TrendPoint[];
+  showTable: boolean;
+  onShowTable: (table: boolean) => void;
+}) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  // The table is the default; the chart is one click away (the Chart button).
-  const [showTable, setShowTable] = useState(true);
   const svgRef = useRef<SVGSVGElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const measured = useElementWidth(cardRef, CHART_W);
@@ -208,7 +216,7 @@ function TrendLineChart({ field, points }: { field: TrendField; points: TrendPoi
             ))}
           </div>
         )}
-        <TrendViewSwitch showTable={showTable} onChange={setShowTable} pictureLabel="Chart" />
+        <TrendViewSwitch showTable={showTable} onChange={onShowTable} pictureLabel="Chart" />
       </div>
 
       {!showTable && (
@@ -359,6 +367,8 @@ export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId
   const [fields, setFields] = useState<TrendField[] | null>(null);
   const [selectedField, setSelectedField] = useState<string>('');
   const [trend, setTrend] = useState<InstrumentTrend | null>(null);
+  // Table or picture: the table is the default, and the choice stays when another field or the work dates are picked.
+  const [showTable, setShowTable] = useState(true);
 
   // A failure here leaves `fields` at null, which the `fields === null`
   // check below already renders as "still loading" — so, as before this was
@@ -412,7 +422,7 @@ export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId
       {error && !timeline && <div className="banner banner-warn">{error}</div>}
 
       {timeline ? (
-        <WorkTimeline reports={reports} />
+        <WorkTimeline reports={reports} showTable={showTable} onShowTable={setShowTable} />
       ) : loading || !trend ? (
         <div className="working-panel">
           <div className="spinner" />
@@ -435,7 +445,7 @@ export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId
           </span>
         </div>
       ) : (
-        <TrendLineChart field={fieldMeta} points={trend.points} />
+        <TrendLineChart field={fieldMeta} points={trend.points} showTable={showTable} onShowTable={setShowTable} />
       )}
     </div>
   );
