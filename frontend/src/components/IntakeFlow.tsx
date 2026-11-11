@@ -21,7 +21,7 @@ import { useTemplateRequest } from './intake/useTemplateRequest';
 import { useIntakeJobs } from './intake/useIntakeJobs';
 import { usePromptReview } from './intake/usePromptReview';
 import { WorkingPanel } from './intake/WorkingPanel';
-import { STEP_FAILED, phaseReducer, templateApplies, type Phase } from './intake/phases';
+import { STEP_FAILED, phaseReducer, stepOf, templateApplies, type Phase } from './intake/phases';
 
 /**
  * The "New report" tab's full upload → classify → review → finalize wizard
@@ -214,6 +214,7 @@ export function IntakeFlow({
           label={phase.label}
           fileName={file?.name}
           slow={liveClaude}
+          uploading={stepOf(phase) === 0}
           onCancel={() => void handleCancel()}
         />
       )}

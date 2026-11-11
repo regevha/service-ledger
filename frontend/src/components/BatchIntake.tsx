@@ -4,6 +4,7 @@ import { ACCEPTED_TYPES } from '../uploadFiles';
 import { runItem } from '../batchRun';
 import { STATE_LABEL, WORKING_STATES, runPool, stateForReportStatus, summarize, type BatchItem } from '../batchState';
 import { REPORT_TYPE_LABEL } from '../labels';
+import { useOnline } from '../hooks/useOnline';
 
 // How many files are read at once. The reading itself is queued on the server's worker; a few in flight keeps
 // the list moving without piling a whole folder of jobs onto it.
@@ -28,6 +29,7 @@ export function BatchIntake({
   onOpenReport: (reportId: string) => void;
   onBack: () => void;
 }) {
+  const online = useOnline();
   const [items, setItems] = useState<BatchItem[]>([]);
   const [technician, setTechnician] = useState('');
   const [running, setRunning] = useState(false);
@@ -154,6 +156,13 @@ export function BatchIntake({
       {problem && (
         <div className="banner banner-warn" role="status">
           {problem}
+        </div>
+      )}
+      {running && (
+        <div className="banner banner-info" role="status" data-testid="batch-keep-open">
+          {online
+            ? 'Keep this tab open until every file is done. You can move around the app meanwhile; closing or reloading the tab stops the files that have not finished.'
+            : 'You are offline, so files cannot be sent or read until the connection is back. Keep this tab open.'}
         </div>
       )}
 
