@@ -192,7 +192,7 @@ CASES: list[dict[str, Any]] = [
     case("repairs the year before last", {"report_type": REPAIR, "date_from": "2024-01-01", "date_to": "2024-12-31"}, {"date_from": "2024-01-01", "date_to": "2024-12-31", "text": ""}),
     case("PM last December", {"report_type": PM, "date_from": "2025-12-01", "date_to": "2025-12-31"}),
     case("Aurora repairs two months ago", {"model_id": "m-aur", "report_type": REPAIR, "date_from": "2026-09-01", "date_to": "2026-09-30"}, {"date_from": "2026-09-01", "date_to": "2026-09-30", "text": ""}),
-    case("repairs this quarter", {"report_type": REPAIR, "date_from": "2026-10-01", "date_to": "2026-11-08"}, {"date_from": "2026-10-01", "date_to": "2026-11-08", "text": ""}),
+    case("repairs this quarter", {"report_type": REPAIR, "date_from": "2026-10-01", "date_to": "2026-12-31"}, {"date_from": "2026-10-01", "date_to": "2026-12-31", "text": ""}),
     case("show me recent reports", {}),
     # Spoken or sloppy phrasing, the way a transcript of a voice question reads.
     case("uh show me the repairs for the fortessa um last month", {"model_id": "m-fort", "report_type": REPAIR, "date_from": "2026-10-01", "date_to": "2026-10-31"}, {"text": ""}),
