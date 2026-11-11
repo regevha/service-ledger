@@ -22,7 +22,7 @@ from app.schemas.instrument_models import InstrumentModelDetailOut, ModelReliabi
 # that after finding that "Save this filter" did nothing with only a search word).
 # The instrument model (`model_id`) joined on 2026-10-27 with the model filter.
 # The place (`place_id`) joined with the places plan, step 3.
-SAVED_FILTER_KEYS = ("instrument_id", "model_id", "place_id", "report_type", "status", "date_from", "date_to", "technician", "q", "field", "op", "value")
+SAVED_FILTER_KEYS = ("instrument_id", "model_id", "place_id", "report_type", "status", "date_from", "date_to", "technician", "q", "number_field", "number_op", "number_value")
 
 
 class SavedFilterCriteria(BaseModel):
@@ -43,9 +43,9 @@ class SavedFilterCriteria(BaseModel):
     # Free-text search, kept as typed (trimmed). Same rules as GET /reports?q=.
     q: str | None = None
     # A condition on a number in the report's fields ("laser delay above 29"): all three or none.
-    field: str | None = None
-    op: str | None = None
-    value: float | None = None
+    number_field: str | None = None
+    number_op: str | None = None
+    number_value: float | None = None
 
     @field_validator("technician")
     @classmethod
@@ -64,7 +64,7 @@ class SavedFilterCriteria(BaseModel):
     def _at_least_one_and_ordered(self):
         from app.services.report_filters import field_condition_error  # noqa: PLC0415
 
-        problem = field_condition_error(self.field, self.op, self.value)
+        problem = field_condition_error(self.number_field, self.number_op, self.number_value)
         if problem:
             raise ValueError(problem)
         if all(getattr(self, k) is None for k in SAVED_FILTER_KEYS):

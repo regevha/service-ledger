@@ -39,39 +39,39 @@ def data(db_session):
 
 
 def test_above(client, data):
-    found = _ids(client, field="laser_delay", op="gt", value=29)
+    found = _ids(client, number_field="laser_delay", number_op="gt", number_value=29)
     assert found == {data["high"], data["per_laser"]}
 
 
 def test_at_least_below_at_most_equal(client, data):
-    assert _ids(client, field="laser_delay", op="gte", value=29) == {data["high"], data["edge"], data["per_laser"]}
-    assert _ids(client, field="laser_delay", op="lt", value=12) == {data["per_laser"], data["per_laser_low"]}
-    assert _ids(client, field="laser_delay", op="lte", value=12) == {data["low"], data["per_laser"], data["per_laser_low"]}
-    assert _ids(client, field="laser_delay", op="eq", value=29) == {data["edge"]}
+    assert _ids(client, number_field="laser_delay", number_op="gte", number_value=29) == {data["high"], data["edge"], data["per_laser"]}
+    assert _ids(client, number_field="laser_delay", number_op="lt", number_value=12) == {data["per_laser"], data["per_laser_low"]}
+    assert _ids(client, number_field="laser_delay", number_op="lte", number_value=12) == {data["low"], data["per_laser"], data["per_laser_low"]}
+    assert _ids(client, number_field="laser_delay", number_op="eq", number_value=29) == {data["edge"]}
 
 
 def test_text_empty_and_other_fields_never_pass(client, data):
-    found = _ids(client, field="laser_delay", op="gt", value=0)
+    found = _ids(client, number_field="laser_delay", number_op="gt", number_value=0)
     assert data["text"] not in found and data["empty"] not in found and data["other"] not in found
 
 
 def test_only_finalized_reports(client, data):
-    assert data["draft"] not in _ids(client, field="laser_delay", op="gt", value=0)
+    assert data["draft"] not in _ids(client, number_field="laser_delay", number_op="gt", number_value=0)
 
 
 def test_combines_with_other_filters(client, data):
-    assert _ids(client, field="laser_delay", op="gt", value=29, status="finalized", report_type="repair") == {data["high"], data["per_laser"]}
-    assert _ids(client, field="laser_delay", op="gt", value=29, report_type="installation_upgrade") == set()
+    assert _ids(client, number_field="laser_delay", number_op="gt", number_value=29, status="finalized", report_type="repair") == {data["high"], data["per_laser"]}
+    assert _ids(client, number_field="laser_delay", number_op="gt", number_value=29, report_type="installation_upgrade") == set()
 
 
 def test_a_field_name_is_never_read_as_a_path(client, data):
-    assert _ids(client, field='laser_delay") || true //', op="gt", value=0) == set()
-    assert _ids(client, field="$.laser_delay", op="gt", value=0) == set()
+    assert _ids(client, number_field='laser_delay") || true //', number_op="gt", number_value=0) == set()
+    assert _ids(client, number_field="$.laser_delay", number_op="gt", number_value=0) == set()
 
 
 @pytest.mark.parametrize(
     "params",
-    [{"field": "laser_delay"}, {"op": "gt", "value": 3}, {"field": "laser_delay", "op": "gt"}, {"field": "laser_delay", "op": "near", "value": 3}, {"field": " ", "op": "gt", "value": 3}],
+    [{"number_field": "laser_delay"}, {"number_op": "gt", "number_value": 3}, {"number_field": "laser_delay", "number_op": "gt"}, {"number_field": "laser_delay", "number_op": "near", "number_value": 3}, {"number_field": " ", "number_op": "gt", "number_value": 3}],
 )
 def test_a_partial_or_unknown_condition_is_refused(client, params):
     resp = client.get("/reports", params=params)
@@ -80,21 +80,21 @@ def test_a_partial_or_unknown_condition_is_refused(client, params):
 
 
 def test_export_matches_the_list(client, data):
-    resp = client.get("/reports/export", params={"field": "laser_delay", "op": "gt", "value": 29})
+    resp = client.get("/reports/export", params={"number_field": "laser_delay", "number_op": "gt", "number_value": 29})
     assert resp.status_code == 200
     rows = resp.text.strip().splitlines()[1:]
     assert {r.split(",")[0] for r in rows} == {data["high"], data["per_laser"]}
 
 
 def test_analytics_uses_the_same_condition(client, data):
-    resp = client.get("/analytics/fleet", params={"field": "laser_delay", "op": "gt", "value": 29})
+    resp = client.get("/analytics/fleet", params={"number_field": "laser_delay", "number_op": "gt", "number_value": 29})
     assert resp.status_code == 200, resp.text
-    assert client.get("/analytics/fleet", params={"field": "laser_delay"}).status_code == 422
+    assert client.get("/analytics/fleet", params={"number_field": "laser_delay"}).status_code == 422
 
 
 def test_saved_filter_keeps_the_condition(client):
-    body = {"name": "Slow lasers", "filters": {"field": "laser_delay", "op": "gt", "value": 29}}
+    body = {"name": "Slow lasers", "filters": {"number_field": "laser_delay", "number_op": "gt", "number_value": 29}}
     resp = client.post("/saved-report-filters", json=body)
     assert resp.status_code in (200, 201), resp.text
-    assert resp.json()["filters"] == {"field": "laser_delay", "op": "gt", "value": 29}
-    assert client.post("/saved-report-filters", json={"name": "Bad", "filters": {"field": "laser_delay"}}).status_code == 422
+    assert resp.json()["filters"] == {"number_field": "laser_delay", "number_op": "gt", "number_value": 29}
+    assert client.post("/saved-report-filters", json={"name": "Bad", "filters": {"number_field": "laser_delay"}}).status_code == 422

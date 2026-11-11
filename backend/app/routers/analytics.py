@@ -32,9 +32,9 @@ def analytics_filters(
     ),
     technician: str | None = Query(None, description="Lab manager contains this text (case-insensitive)"),
     q: str | None = Query(None, description="Free-text search (finalized reports only), as on the Reports list"),
-    field: str | None = Query(None, description="With op and value: a number in this field must pass (finalized reports only), as on the Reports list"),
-    op: str | None = Query(None, description="gt, gte, lt, lte or eq"),
-    value: float | None = Query(None, description="The number to compare with"),
+    number_field: str | None = Query(None, description="With number_op and number_value: a number in this field must pass (finalized reports only), as on the Reports list"),
+    number_op: str | None = Query(None, description="gt, gte, lt, lte or eq"),
+    number_value: float | None = Query(None, description="The number to compare with"),
 ) -> AnalyticsFilters:
     """The optional filters every analytics endpoint takes, same meaning as on
     the Reports list. A report with no report date is left out once a date
@@ -50,7 +50,7 @@ def analytics_filters(
         search = report_filters.normalized_search_text(q)
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
-    problem = report_filters.field_condition_error(field, op, value)
+    problem = report_filters.field_condition_error(number_field, number_op, number_value)
     if problem:
         raise HTTPException(422, problem)
     return AnalyticsFilters(
@@ -64,9 +64,9 @@ def analytics_filters(
         status=status or None,
         technician=(technician or "").strip() or None,
         q=search,
-        field=(field or "").strip() or None,
-        op=op,
-        value=value,
+        number_field=(number_field or "").strip() or None,
+        number_op=number_op,
+        number_value=number_value,
     )
 
 

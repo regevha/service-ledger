@@ -208,7 +208,7 @@ def _without_named_words(text: str, filters: dict[str, str], known: Known) -> st
 
 def _without_field_words(text: str, filters: dict[str, str]) -> str:
     """Drops the words that name the field of a field condition ('laser', 'delay') from the text."""
-    name = filters.get("field")
+    name = filters.get("number_field")
     if not name:
         return text
     named = set(re.findall(r"[a-z0-9]+", name.lower()))
@@ -245,7 +245,7 @@ def _number_text(value: float) -> str:
 def _merge_field_condition(out: Parsed, data: dict[str, Any], known: Known) -> None:
     """"Laser delay above 29": kept only when the field is one that exists, the comparison is a known one and the value
     is a finite number. Anything else is dropped (the question then still reads as the filters that did check out)."""
-    if "field" in out.filters:
+    if "number_field" in out.filters:
         return
     name = _clean_text(data.get("field"), 80)
     op = data.get("op")
@@ -257,7 +257,7 @@ def _merge_field_condition(out: Parsed, data: dict[str, Any], known: Known) -> N
     exact = next((f for f in known.fields if f == name), None) or next((f for f in known.fields if f.lower() == name.lower()), None)
     if exact is None:
         return
-    out.filters.update({"field": exact, "op": op, "value": _number_text(float(value))})
+    out.filters.update({"number_field": exact, "number_op": op, "number_value": _number_text(float(value))})
     label = exact.replace("_", " ").capitalize()
     out.understood.append({"key": "field", "label": f"{label} {_OP_WORD[op]} {_number_text(float(value))}"})
 
