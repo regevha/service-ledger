@@ -55,3 +55,14 @@ def test_a_repair_count_question_targets_the_instruments_list(client, monkeypatc
 
 def test_an_ordinary_question_targets_the_reports_list(client):
     assert client.post("/reports/parse-search", json={"text": "repairs last month"}).json()["target"] == "reports"
+
+
+def test_the_rules_alone_read_a_repair_count_without_the_model(client, monkeypatch):
+    from app.services import report_query_model
+
+    monkeypatch.setattr(report_query_model.settings, "use_live_claude", False)
+    body = client.post("/reports/parse-search", json={"text": "instruments with more than 2 repairs"}).json()
+    assert body["source"] == "rules"
+    assert body["target"] == "instruments"
+    assert body["filters"] == {"repairs_op": "gt", "repairs_count": "2"}
+    assert body["understood"] == [{"key": "repairs", "label": "Above 2 repairs"}]

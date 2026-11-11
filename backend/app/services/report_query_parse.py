@@ -37,6 +37,108 @@ STOPWORDS = {
 }
 ROMAN = {"i": "1", "ii": "2", "iii": "3", "iv": "4", "v": "5", "vi": "6"}
 
+# Comparisons in plain words, tried in this order ("no more than" before "more than", "at least" before "least").
+OP_WORD = {"gt": "above", "gte": "at least", "lt": "below", "lte": "at most", "eq": "equal to"}
+_COMPARATORS: list[tuple[str, str]] = [
+    ("gte", r"at\s+least|no\s+fewer\s+than|no\s+less\s+than|not\s+less\s+than|>=|\u2265"),
+    ("lte", r"at\s+most|no\s+more\s+than|not\s+more\s+than|up\s+to|<=|\u2264"),
+    ("gt", r"more\s+than|greater\s+than|higher\s+than|bigger\s+than|larger\s+than|exceeding|exceeds|over|above|>"),
+    ("lt", r"fewer\s+than|less\s+than|lower\s+than|smaller\s+than|under|below|<"),
+    ("eq", r"exactly|equal\s+to|equals?|="),
+]
+_OPS = "|".join(f"(?P<{op}>{pattern})" for op, pattern in _COMPARATORS)
+_NUMBER = r"\d{1,6}(?:\.\d+)?"
+# A unit written after the number ("100 mW", "50 psi") is part of the condition, not text to search for.
+_UNIT_TOKENS = {"percent", "pct", "psi", "mw", "us", "ms", "hours", "hrs", "hr", "volts", "v", "c", "nm", "mv"}
+_UNIT_AFTER = r"(?:\s*(?:" + "|".join(sorted(_UNIT_TOKENS, key=len, reverse=True)) + r"|%))?"
+_INSTRUMENT_WORDS = r"(?<![a-z0-9])(?:instruments?|units?|machines?|devices?|equipment)(?![a-z0-9])"
+
+
+def number_text(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else f"{value:g}"
+
+
+def _op_of(m: re.Match[str]) -> str:
+    return next(op for op, _ in _COMPARATORS if m.group(op))
+
+
+def apply_repair_count(out: "Parsed", op: str, count: int) -> None:
+    """"Instruments with more than 2 repairs": a question about instruments, not reports. The condition counts finalized
+    repairs, so a report type, status, text, lab manager or number condition in the same question cannot apply to it; those
+    are left out and said so. Safe to call twice (the rules, then the model's answer)."""
+    dropped = []
+    for key in ("report_type", "status", "technician", "q", "number_field", "number_op", "number_value"):
+        if key in out.filters:
+            if key not in ("report_type", "number_op", "number_value"):
+                dropped.append({"q": "text", "number_field": "number condition"}.get(key, key))
+            del out.filters[key]
+    out.understood[:] = [p for p in out.understood if p["key"] not in ("report_type", "status", "technician", "q", "field", "repairs")]
+    if dropped:
+        note = "Only the model, place and dates apply to a count of repairs per instrument (left out: " + ", ".join(dropped) + ")"
+        if note not in out.notes:
+            out.notes.append(note)
+    out.filters.update({"repairs_op": op, "repairs_count": str(count)})
+    words = "no repairs" if (op == "eq" and count == 0) else f"{OP_WORD[op].capitalize()} {count} repair{'' if count == 1 else 's'}"
+    out.understood.append({"key": "repairs", "label": words})
+
+
+_NO_REPAIRS = re.compile(
+    r"(?<![a-z0-9])(?:(?:no|zero)\s+repairs?|without\s+(?:any\s+|a\s+)?repairs?"
+    r"|never\s+(?:had\s+(?:a\s+|any\s+)?repairs?|been\s+repaired|repaired|needed\s+(?:a\s+|any\s+)?repairs?))(?![a-z0-9])(?!\s+(?:reports?|visits?|forms?))"
+)
+_REPAIR_COUNT = re.compile(
+    rf"(?<![a-z0-9])(?:(?:{_OPS})\s*)?(?P<n>\d{{1,5}})(?:\s+or\s+(?P<tail>more|fewer|less))?\s+repairs?(?![a-z0-9])(?!\s+(?:reports?|visits?|forms?))"
+)
+
+
+def _take_repair_count(rest: str) -> tuple[str, tuple[str, int] | None]:
+    """"more than 2 repairs", "3 or more repairs", "no repairs", "never had a repair": the comparison and the number,
+    and the text with those words (and the word "instruments") removed. A bare "3 repairs" counts only when the
+    question is about instruments."""
+    m = _NO_REPAIRS.search(rest)
+    if m:
+        rest = rest[: m.start()] + " " + rest[m.end() :]
+        return re.sub(_INSTRUMENT_WORDS, " ", rest), ("eq", 0)
+    m = _REPAIR_COUNT.search(rest)
+    if not m:
+        return rest, None
+    op = _op_of(m) if any(m.group(o) for o, _ in _COMPARATORS) else None
+    if op is None and m.group("tail"):
+        op = "gte" if m.group("tail") == "more" else "lte"
+    if op is None:
+        if not re.search(_INSTRUMENT_WORDS, rest):
+            return rest, None
+        op = "eq"
+    rest = rest[: m.start()] + " " + rest[m.end() :]
+    return re.sub(_INSTRUMENT_WORDS, " ", rest), (op, int(m.group("n")))
+
+
+def _field_words(name: str) -> list[str]:
+    """The ways a field may be written: laser_delay as "laser delay", and without a unit at its end (baseline_cv_percent)."""
+    words = [w for w in re.split(r"[_\s\-]+", name.lower()) if w]
+    variants = [words]
+    if len(words) > 1 and words[-1] in _UNIT_TOKENS:
+        variants.append(words[:-1])
+    return [r"[\s\-_]*".join(re.escape(w) for w in v) for v in variants]
+
+
+def _take_field_condition(out: "Parsed", known: "Known", rest: str) -> str:
+    """"Laser delay above 29", "labor hours more than 4", "laser power below 100 mW": a field the app knows, a comparison
+    and a number. Only fields that exist are read; anything else stays text."""
+    for name in sorted(known.fields, key=len, reverse=True):
+        for pattern in _field_words(name):
+            m = re.search(
+                rf"(?<![a-z0-9])(?:{pattern})(?:\s+(?:is|was|were|are|of))?\s*(?:{_OPS})\s*(?P<num>{_NUMBER}){_UNIT_AFTER}(?![a-z0-9%])",
+                rest,
+            )
+            if not m:
+                continue
+            op, value = _op_of(m), float(m.group("num"))
+            out.filters.update({"number_field": name, "number_op": op, "number_value": number_text(value)})
+            out.understood.append({"key": "field", "label": f"{name.replace('_', ' ').capitalize()} {OP_WORD[op]} {number_text(value)}"})
+            return rest[: m.start()] + " " + rest[m.end() :]
+    return rest
+
 
 @dataclass
 class Known:
@@ -240,6 +342,9 @@ def parse_search(text: str, known: Known, today: date) -> Parsed:
             rest = rest[: m.start()] + " " + rest[m.end() :]
             break
 
+    rest = _take_field_condition(out, known, rest)
+    rest, repairs = _take_repair_count(rest)
+
     for pattern, value in REPORT_TYPES:
         m, rest2 = _take(pattern, rest)
         if m:
@@ -274,4 +379,6 @@ def parse_search(text: str, known: Known, today: date) -> Parsed:
     if len(leftover) >= 2:
         out.leftover = leftover
         out.add("q", leftover, f"Text: {leftover}")
+    if repairs:
+        apply_repair_count(out, *repairs)
     return out
