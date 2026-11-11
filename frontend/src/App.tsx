@@ -13,6 +13,8 @@ import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { ActiveSearchLine } from './components/ActiveSearch';
 import { AskSheet, AskSheetButton } from './components/AskSheet';
 import { PHONE_QUERY, useMediaQuery } from './hooks/useMediaQuery';
+import { InstrumentAskContext } from './instrumentAskContext';
+import type { InstrumentAsk } from './instrumentAsk';
 import { KeptSearchGate, KeptSearchProvider } from './components/KeptSearchProvider';
 import { NavigationGuardContext, type LeaveGuard } from './navigationGuard';
 import type { ReportFilters } from './api';
@@ -143,6 +145,20 @@ export default function App() {
   );
   const selectView = (next: View) => navigate(next);
 
+  // A question about instruments ("more than 2 repairs this year") is answered on the Instruments tab, not by a report search.
+  const [instrumentAsk, setInstrumentAsk] = useState<InstrumentAsk | null>(null);
+  const instrumentAskApi = useMemo(
+    () => ({
+      ask: instrumentAsk,
+      open: (next: InstrumentAsk) => {
+        setInstrumentAsk(next);
+        navigate('instruments');
+      },
+      clear: () => setInstrumentAsk(null),
+    }),
+    [instrumentAsk, navigate]
+  );
+
   // On a phone the Ask box is a sheet opened from the top bar, on the screens that had the box (Home, Reports) and on Analytics, which shows the search.
   const phone = useMediaQuery(PHONE_QUERY);
   const [askOpen, setAskOpen] = useState(false);
@@ -239,6 +255,7 @@ export default function App() {
 
   return (
     <KeptSearchProvider>
+    <InstrumentAskContext.Provider value={instrumentAskApi}>
     <NavigationGuardContext.Provider value={guardApi}>
     <div className="wrap">
       <header className="topbar">
@@ -428,6 +445,7 @@ export default function App() {
       )}
     </div>
     </NavigationGuardContext.Provider>
+    </InstrumentAskContext.Provider>
     </KeptSearchProvider>
   );
 }

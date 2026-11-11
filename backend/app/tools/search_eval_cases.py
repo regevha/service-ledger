@@ -148,11 +148,28 @@ CASES: list[dict[str, Any]] = [
     ),
     # --- asked for what no filter can express: say so instead of guessing ---
     case("which instruments are overdue for PM?", {"report_type": PM}, {"not_supported": ["overdue"], "text": ""}, ["overdue"]),
+    # --- instruments by how many repairs they had (repairs_op, repairs_count: opens the Instruments list) ---
     case(
         "instruments with more than 2 repairs this year",
-        {"report_type": REPAIR, "date_from": "2026-01-01", "date_to": "2026-11-08"},
-        {"not_supported": ["more than 2 repairs"], "text": ""},
-        ["more than 2 repairs"],
+        {"repairs_op": "gt", "repairs_count": "2", "date_from": "2026-01-01", "date_to": "2026-11-08"},
+        {"repairs_op": "gt", "repairs_count": 2, "text": ""},
+    ),
+    case(
+        "Aria instruments with at least 3 repairs in 2025",
+        {"model_id": "m-aria", "repairs_op": "gte", "repairs_count": "3", "date_from": "2025-01-01", "date_to": "2025-12-31"},
+        {"instrument_model": "FACSAria III", "repairs_op": "gte", "repairs_count": 3, "text": ""},
+    ),
+    case("instruments that never had a repair", {"repairs_op": "eq", "repairs_count": "0"}, {"repairs_op": "eq", "repairs_count": 0, "text": ""}),
+    case(
+        "which instruments at Bar-Ilan had fewer than 2 repairs last month",
+        {"place_id": "p-bar", "repairs_op": "lt", "repairs_count": "2", "date_from": "2026-10-01", "date_to": "2026-10-31"},
+        {"place": "Bar-Ilan University", "repairs_op": "lt", "repairs_count": 2, "text": ""},
+    ),
+    case(
+        "instruments with more than 2 repairs signed by Dana",
+        {"repairs_op": "gt", "repairs_count": "2"},
+        {"repairs_op": "gt", "repairs_count": 2, "technician": "Dana", "text": ""},
+        ["Only the model, place and dates apply to a count of repairs per instrument (left out: technician)"],
     ),
     # --- a condition on a number in the report (field, op, value) ---
     case("laser delay above 29", {"number_field": "laser_delay", "number_op": "gt", "number_value": "29"}, {"field": "laser_delay", "op": "gt", "value": 29, "text": ""}),

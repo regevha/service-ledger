@@ -10,12 +10,15 @@ export function InstrumentTable({
   phone,
   onEdit,
   onDelete,
+  repairCounts,
 }: {
   instruments: Instrument[];
   typeNames: Record<string, string>;
   phone: boolean;
   onEdit: (instrument: Instrument) => void;
   onDelete: (instrument: Instrument) => void;
+  /** Finalized repairs per instrument id, shown under the name when a question about repairs is being answered. */
+  repairCounts?: ReadonlyMap<string, number>;
 }) {
   return (
     <div className="template-table">
@@ -34,6 +37,11 @@ export function InstrumentTable({
           <span data-label="Name">
             {inst.name}
             {inst.institution && <small className="muted instrument-institution">{inst.institution}</small>}
+            {repairCounts && (
+              <small className="muted instrument-repairs" data-testid="instrument-repairs">
+                {repairCounts.get(inst.id) ?? 0} {(repairCounts.get(inst.id) ?? 0) === 1 ? 'repair' : 'repairs'}
+              </small>
+            )}
           </span>
           <span data-label="Manufacturer">{inst.manufacturer ?? '—'}</span>
           <span data-label="Distributor">{inst.distributor ?? '—'}</span>
