@@ -1,6 +1,7 @@
 import { test, expect } from './coverage';
 import type { Page } from '@playwright/test';
 import { seedReport } from './helpers/api';
+import { askInSheet } from './helpers/askSheet';
 
 // The pinned search line on a phone: in view, inside the screen, thumb-sized, and working by tap.
 
@@ -10,9 +11,7 @@ async function noSideScroll(page: Page) {
 }
 
 async function askByTap(page: Page, text: string) {
-  const box = page.getByTestId('ask-box').first();
-  await box.getByTestId('ask-input').fill(text);
-  await box.getByTestId('ask-submit').tap();
+  await askInSheet(page, text);
   await expect(page.getByTestId('active-search')).toBeVisible();
 }
 
