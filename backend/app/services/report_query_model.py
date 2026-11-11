@@ -38,10 +38,13 @@ from app.services.report_query_parse import (
 )
 from app.services.report_query_parse import (
     Known,
+    OP_WORD,
     STOPWORDS,
     Parsed,
     _label_dates,
     _take,
+    apply_repair_count,
+    number_text,
     parse_search,
 )
 
@@ -237,11 +240,8 @@ def _note_is_covered(note: str, filters: dict[str, str]) -> bool:
     return all(w in STOPWORDS for w in words)
 
 
-_OP_WORD = {"gt": "above", "gte": "at least", "lt": "below", "lte": "at most", "eq": "equal to"}
-
-
-def _number_text(value: float) -> str:
-    return str(int(value)) if float(value).is_integer() else f"{value:g}"
+_OP_WORD = OP_WORD
+_number_text = number_text
 
 
 def _merge_field_condition(out: Parsed, data: dict[str, Any], known: Known) -> None:
@@ -265,25 +265,13 @@ def _merge_field_condition(out: Parsed, data: dict[str, Any], known: Known) -> N
 
 
 def _merge_repair_count(out: Parsed, data: dict[str, Any]) -> None:
-    """"Instruments with more than 2 repairs this year": a question about instruments, not reports. Kept only when the
-    comparison is a known one and the count is a whole number from 0 up. The condition counts finalized repairs, so a
-    report type, status, text or lab manager in the same question cannot apply to it; those are left out and said so."""
+    """"Instruments with more than 2 repairs this year": kept only when the comparison is a known one and the count is a
+    whole number from 0 up. What it leaves out of the question is worked out in apply_repair_count."""
     op = data.get("repairs_op")
     count = data.get("repairs_count")
     if op not in _OP_WORD or isinstance(count, bool) or not isinstance(count, int) or not 0 <= count <= 100000:
         return
-    dropped = []
-    for key in ("report_type", "status", "technician", "q", "number_field", "number_op", "number_value"):
-        if key in out.filters:
-            if key not in ("report_type", "number_op", "number_value"):
-                dropped.append(key)
-            del out.filters[key]
-    out.understood[:] = [part for part in out.understood if part["key"] not in ("report_type", "status", "technician", "q", "field")]
-    if dropped:
-        out.notes.append("Only the model, place and dates apply to a count of repairs per instrument (left out: " + ", ".join(dropped) + ")")
-    out.filters.update({"repairs_op": op, "repairs_count": str(count)})
-    words = "no repairs" if (op == "eq" and count == 0) else f"{_OP_WORD[op].capitalize()} {count} repair{'' if count == 1 else 's'}"
-    out.understood.append({"key": "repairs", "label": words})
+    apply_repair_count(out, op, count)
 
 
 def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
@@ -293,6 +281,8 @@ def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
     # leaves out is not searched for.
     out.filters.pop("q", None)
     out.understood = [p for p in out.understood if p["key"] != "q"]
+    # The rules' note about what a repair count leaves out is worked out again below, from the words the model kept.
+    out.notes = [n for n in out.notes if not n.startswith("Only the model, place and dates apply")]
 
     report_type = data.get("report_type")
     if "report_type" not in out.filters and report_type in REPORT_TYPES:
@@ -349,6 +339,8 @@ def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
         out.notes = [n for n in cleaned if n and not _note_is_covered(n, out.filters)]
     # Last, so what the question also said (a lab manager, some text) is there to be left out and reported.
     _merge_repair_count(out, data)
+    if "repairs_op" in out.filters:  # read by the rules: the model's words (text, lab manager) are left out here too
+        apply_repair_count(out, out.filters["repairs_op"], int(out.filters["repairs_count"]))
     return out
 
 
