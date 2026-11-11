@@ -105,6 +105,9 @@ def _tool() -> dict[str, Any]:
                 "place": {"type": "string", "description": "One name copied from the list of places, or empty."},
                 "technician": {"type": "string", "description": "A person's name the question asks about, or empty."},
                 "text": {"type": "string", "description": "Words to look for inside the reports (a part, a symptom, a field), lower case, or empty."},
+                "field": {"type": "string", "description": "For a condition on a number ('laser delay above 29'): one name copied from the list of number fields, or empty."},
+                "op": {"type": "string", "enum": ["gt", "gte", "lt", "lte", "eq"], "description": "With field: above (gt), at least (gte), below (lt), at most (lte), equal to (eq)."},
+                "value": {"type": "number", "description": "With field: the number to compare with."},
                 "not_supported": {
                     "type": "array",
                     "items": {"type": "string"},
@@ -116,9 +119,10 @@ def _tool() -> dict[str, Any]:
     }
 
 
-def _system_prompt(model_names: list[str], place_names: list[str]) -> str:
+def _system_prompt(model_names: list[str], place_names: list[str], field_names: list[str] | None = None) -> str:
     names = "\n".join(f"- {n}" for n in model_names) or "- (none)"
     places = "\n".join(f"- {n}" for n in place_names) or "- (none)"
+    numbers = "\n".join(f"- {n}" for n in field_names or []) or "- (none)"
     return (
         "You turn one question about service reports of lab instruments into search filters. "
         "Call the tool once. Fill only what the question asks for, and never invent a value.\n\n"
@@ -127,14 +131,17 @@ def _system_prompt(model_names: list[str], place_names: list[str]) -> str:
         "Statuses: extracted (read by the system, waiting for a person to review), in_review, finalized (approved), draft.\n"
         "Dates: the user message gives today's date. Turn phrases such as 'last month', 'this year', 'before March 2026' "
         "into date_from and date_to (inclusive, YYYY-MM-DD). Use only one of the two for 'since' or 'before'.\n"
-        "Instrument models (copy one name exactly, or leave empty):\n"
+        "Instrument models (copy one name exactly, or leave empty; choose the one whose name contains the word the question uses, such as 'Aria' for FACSAria III):\n"
         f"{names}\n"
         "Places (copy one name exactly, or leave empty; a short form such as 'Bar-Ilan' means the full name in the list):\n"
         f"{places}\n"
+        "Number fields (a condition on one of these is field, op and value; copy one name exactly, or leave empty; the words that name the field never go in text; "
+        "if no name in the list fits, the whole request goes in not_supported, for example 'tubing length above 3', and text stays empty):\n"
+        f"{numbers}\n"
         "text: the specific thing to look for inside the reports (a part name, a symptom, a measurement), without filler words. "
         "Empty if the question has no such thing; never repeat what the other fields already say.\n"
         "not_supported: only requests that these filters cannot carry out: 'overdue', counting ('more than 2 repairs'), "
-        "comparing numbers ('above 29'), averages, durations ('average repair time'), reports missing or having a field or attachment ('without a serial number', 'with attachments': the field name never goes in text), failed readings, or a "
+        "comparing numbers when no field in the list fits, averages, durations ('average repair time'), reports missing or having a field or attachment ('without a serial number', 'with attachments': the field name never goes in text), failed readings, or a "
         "written summary. Put such a request there and never in text, and never put analysis words (average, time, count, total) in text. "
         "A date phrase you turned into date_from/date_to ('spring', 'this quarter') is covered: it is not a note. Vague or filler words ('problems', 'visits', 'needed', 'everything') are not requests: ignore them, "
         "and do not guess a report type or status from them. Leave not_supported empty when the whole question is covered.\n"
@@ -199,6 +206,15 @@ def _without_named_words(text: str, filters: dict[str, str], known: Known) -> st
     return " ".join(kept)
 
 
+def _without_field_words(text: str, filters: dict[str, str]) -> str:
+    """Drops the words that name the field of a field condition ('laser', 'delay') from the text."""
+    name = filters.get("number_field")
+    if not name:
+        return text
+    named = set(re.findall(r"[a-z0-9]+", name.lower()))
+    return " ".join(w for w in text.split() if re.sub(r"[^a-z0-9]+", "", w) not in named)
+
+
 def _without_covered_words(text: str, filters: dict[str, str]) -> str:
     """Drops words from the model's text that only repeat a report type or status already set as a filter."""
     for key, table in (("report_type", REPORT_TYPE_PATTERNS), ("status", STATUS_PATTERNS)):
@@ -217,6 +233,33 @@ def _note_is_covered(note: str, filters: dict[str, str]) -> bool:
         return False
     words = re.findall(r"[a-z0-9]+", rest)
     return all(w in STOPWORDS for w in words)
+
+
+_OP_WORD = {"gt": "above", "gte": "at least", "lt": "below", "lte": "at most", "eq": "equal to"}
+
+
+def _number_text(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else f"{value:g}"
+
+
+def _merge_field_condition(out: Parsed, data: dict[str, Any], known: Known) -> None:
+    """"Laser delay above 29": kept only when the field is one that exists, the comparison is a known one and the value
+    is a finite number. Anything else is dropped (the question then still reads as the filters that did check out)."""
+    if "number_field" in out.filters:
+        return
+    name = _clean_text(data.get("field"), 80)
+    op = data.get("op")
+    value = data.get("value")
+    if not name or op not in _OP_WORD or isinstance(value, bool) or not isinstance(value, (int, float)):
+        return
+    if value != value or value in (float("inf"), float("-inf")):
+        return
+    exact = next((f for f in known.fields if f == name), None) or next((f for f in known.fields if f.lower() == name.lower()), None)
+    if exact is None:
+        return
+    out.filters.update({"number_field": exact, "number_op": op, "number_value": _number_text(float(value))})
+    label = exact.replace("_", " ").capitalize()
+    out.understood.append({"key": "field", "label": f"{label} {_OP_WORD[op]} {_number_text(float(value))}"})
 
 
 def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
@@ -257,6 +300,8 @@ def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
         if found_place:
             out.add("place_id", found_place[0], f"Place: {found_place[1]}")
 
+    _merge_field_condition(out, data, known)
+
     technician = _clean_text(data.get("technician"), 60)
     if (
         "technician" not in out.filters
@@ -269,6 +314,7 @@ def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
     text = _clean_text(data.get("text"), _MAX_TEXT).lower()
     text = _without_covered_words(text, out.filters)
     text = _without_named_words(text, out.filters, known)
+    text = _without_field_words(text, out.filters)
     if text:
         out.leftover = text
         out.add("q", text, f"Text: {text}")
@@ -315,11 +361,12 @@ def _call_model(text: str, known: Known, today: date, understood: list[str] | No
     if callable(with_options):
         client = with_options(timeout=settings.search_model_timeout_seconds, max_retries=0)
     names = sorted({name for _, name in known.models})
+    field_names = sorted(known.fields)
     place_names = sorted({name for _, name in known.places})
     request_kwargs = {
         "model": settings.anthropic_search_model,
         "max_tokens": settings.search_model_max_tokens,
-        "system": [{"type": "text", "text": _system_prompt(names, place_names), "cache_control": {"type": "ephemeral"}}],
+        "system": [{"type": "text", "text": _system_prompt(names, place_names, field_names), "cache_control": {"type": "ephemeral"}}],
         "tools": [_tool()],
         "tool_choice": {"type": "tool", "name": _TOOL_NAME},
         "messages": [{"role": "user", "content": _user_message(text, today, understood)}],

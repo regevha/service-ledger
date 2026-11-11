@@ -944,3 +944,15 @@ button.ask-chip {
   min-height: 44px;
   min-width: 44px;
 }
+
+/* A condition on a number ("Laser delay above 29") in the filter bar, with its own remove button. */
+.number-condition {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.number-condition .link-button {
+  padding: 0 2px;
+  font-size: 1rem;
+  line-height: 1;
+}

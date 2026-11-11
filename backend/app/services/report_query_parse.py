@@ -45,6 +45,8 @@ class Known:
     models: list[tuple[str, str]] = field(default_factory=list)  # (id, name)
     places: list[tuple[str, str]] = field(default_factory=list)  # (id, name)
     instruments: list[tuple[str, str, str | None]] = field(default_factory=list)  # (id, model, serial)
+    # Names of the fields that hold numbers (see report_filters.numeric_field_names), for a condition like "laser delay above 29".
+    fields: list[str] = field(default_factory=list)
 
 
 @dataclass

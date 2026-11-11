@@ -29,6 +29,7 @@ KNOWN = Known(
     ],
     places=[("p-bar", "Bar-Ilan University"), ("p-had", "Hadassah")],
     instruments=[("i-1", "FACSAria III", "P69200123"), ("i-2", "Cytek Aurora", "R1-0412")],
+    fields=["detector_voltage", "labor_hours", "laser_delay", "laser_power"],
 )
 
 PM, REPAIR, INSTALL = "preventive_maintenance", "repair", "installation_upgrade"
@@ -153,7 +154,14 @@ CASES: list[dict[str, Any]] = [
         {"not_supported": ["more than 2 repairs"], "text": ""},
         ["more than 2 repairs"],
     ),
-    case("laser delay above 29", {"q": "laser delay"}, {"text": "laser delay", "not_supported": ["above 29"]}, ["above 29"]),
+    # --- a condition on a number in the report (field, op, value) ---
+    case("laser delay above 29", {"number_field": "laser_delay", "number_op": "gt", "number_value": "29"}, {"field": "laser_delay", "op": "gt", "value": 29, "text": ""}),
+    case("repairs where the laser delay is at least 30", {"report_type": REPAIR, "number_field": "laser_delay", "number_op": "gte", "number_value": "30"}, {"field": "laser_delay", "op": "gte", "value": 30, "text": ""}),
+    case("Aria reports with laser delay under 15.5", {"model_id": "m-aria", "number_field": "laser_delay", "number_op": "lt", "number_value": "15.5"}, {"instrument_model": "FACSAria III", "field": "laser_delay", "op": "lt", "value": 15.5, "text": ""}),
+    case("labor hours more than 4", {"number_field": "labor_hours", "number_op": "gt", "number_value": "4"}, {"field": "labor_hours", "op": "gt", "value": 4, "text": ""}),
+    case("detector voltage equal to 650", {"number_field": "detector_voltage", "number_op": "eq", "number_value": "650"}, {"field": "detector_voltage", "op": "eq", "value": 650, "text": ""}),
+    case("laser delay above 29 in 2025", {"date_from": "2025-01-01", "date_to": "2025-12-31", "number_field": "laser_delay", "number_op": "gt", "number_value": "29"}, {"date_from": "2025-01-01", "date_to": "2025-12-31", "field": "laser_delay", "op": "gt", "value": 29, "text": ""}),
+    case("tubing length above 3", {}, {"text": "", "not_supported": ["tubing length above 3"]}, ["tubing length above 3"]),
     case("reports without a serial number", {}, {"not_supported": ["without a serial number"], "text": ""}, ["without a serial number"]),
     case("failed extractions", {}, {"not_supported": ["failed extractions"], "text": ""}, ["failed extractions"]),
     case("everything for the FACSAria III that failed", {"model_id": "m-aria"}, {"not_supported": ["failed"], "text": ""}, ["failed"]),
@@ -168,7 +176,7 @@ CASES: list[dict[str, Any]] = [
     case("laser replacement on the Aria", {"model_id": "m-aria", "q": "laser replacement"}, {"instrument_model": "FACSAria III", "text": "laser replacement"}),
     case("reports where the PMT voltage was changed", {"q": "pmt voltage changed"}, {"text": "pmt voltage changed"}),
     case("reports that need my attention", {}, {"not_supported": ["need my attention"], "text": ""}, ["need my attention"], any_notes=True),
-    case("laser power below 100 mW", {"q": "laser power"}, {"text": "laser power", "not_supported": ["below 100 mW"]}, ["below 100 mW"]),
+    case("laser power below 100 mW", {"number_field": "laser_power", "number_op": "lt", "number_value": "100"}, {"field": "laser_power", "op": "lt", "value": 100, "text": ""}),
     case("show me the reports of the machine in room 12", {}, {"not_supported": ["room 12"], "text": ""}, ["room 12"], any_notes=True),
     # --- nothing to understand, or an attempt to give the model orders ---
     case("hello", {}, {"text": ""}, any_notes=True),

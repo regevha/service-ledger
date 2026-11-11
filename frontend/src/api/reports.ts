@@ -41,6 +41,10 @@ export interface ReportFilters {
   technician?: string;
   /** Free-text search over finalized reports (two or more characters). */
   q?: string;
+  /** A condition on a number in the report (finalized only): the field, gt/gte/lt/lte/eq, and the number. All three or none. */
+  number_field?: string;
+  number_op?: string;
+  number_value?: string;
 }
 
 export function listReports(filters: ReportFilters = {}): Promise<ReportListItem[]> {
