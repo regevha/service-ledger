@@ -46,3 +46,30 @@ def test_the_set_covers_each_kind_of_case():
     needs_model = [c for c in CASES if c["model"] is not None]
     assert len(CASES) >= 100 and len(rules_only) >= 40 and len(needs_model) >= 50
     assert any(c["notes"] for c in CASES)
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        {"field": "humidity", "op": "gt", "value": 40},  # not a field that exists
+        {"field": "laser_delay", "op": "above", "value": 40},  # not a comparison we know
+        {"field": "laser_delay", "op": "gt", "value": "forty"},  # not a number
+        {"field": "laser_delay", "op": "gt", "value": True},  # a boolean is not a number
+        {"field": "laser_delay", "op": "gt", "value": float("inf")},
+        {"field": "laser_delay", "op": "gt"},  # no value
+        {"op": "gt", "value": 3},  # no field
+    ],
+)
+def test_a_bad_field_condition_is_dropped(answer, monkeypatch):
+    fake = FakeClient({**answer, "text": ""})
+    monkeypatch.setattr(m, "_get_client", lambda: fake)
+    out = m.parse("laser delay above 29", KNOWN, TODAY)
+    assert not {"number_field", "number_op", "number_value"} & set(out.filters)
+
+
+def test_a_field_name_is_matched_ignoring_case(monkeypatch):
+    fake = FakeClient({"field": "Laser_Delay", "op": "gt", "value": 29, "text": ""})
+    monkeypatch.setattr(m, "_get_client", lambda: fake)
+    out = m.parse("laser delay above 29", KNOWN, TODAY)
+    assert out.filters == {"number_field": "laser_delay", "number_op": "gt", "number_value": "29"}
+    assert out.understood == [{"key": "field", "label": "Laser delay above 29"}]

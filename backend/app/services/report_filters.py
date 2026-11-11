@@ -9,11 +9,52 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import cast, func, literal, select
+from sqlalchemy.dialects.postgresql import JSONB, JSONPATH
 from sqlalchemy.orm import Query
 
 from app import models
 from app.services import report_search
+
+
+# The comparisons a field condition can make, as jsonpath operators (never built from user input).
+FIELD_OPS = {"gt": ">", "gte": ">=", "lt": "<", "lte": "<=", "eq": "=="}
+
+
+def field_condition_error(number_field: str | None, number_op: str | None, number_value: float | None) -> str | None:
+    """None when the three parts of a field condition are all set or all empty and make sense; else a message."""
+    if number_field is None and number_op is None and number_value is None:
+        return None
+    if not number_field or not number_field.strip() or number_op is None or number_value is None:
+        return "A field condition needs the field, the comparison and the value together."
+    if number_op not in FIELD_OPS:
+        return f"The comparison must be one of: {', '.join(FIELD_OPS)}."
+    if number_value != number_value or number_value in (float("inf"), float("-inf")):
+        return "The value of a field condition must be a finite number."
+    return None
+
+
+def field_condition(field: str, op: str, value: float):
+    """True for a report whose number in `field` passes. A number[laser] or number[detector] field holds one number
+    per laser or detector, and passes when any of them does. Text, empty and other non-number values never pass."""
+    path = f"$.keyvalue() ? (@.key == $field && (@.value {FIELD_OPS[op]} $value || exists(@.value.* ? (@ {FIELD_OPS[op]} $value))))"
+    variables = {"field": field.strip(), "value": value}
+    return func.jsonb_path_exists(models.Report.extracted_fields, cast(literal(path), JSONPATH), cast(literal(variables, type_=JSONB), JSONB))
+
+
+NUMERIC_FIELD_TYPES = ("number", "number[laser]", "number[detector]")
+
+
+def numeric_field_names(session) -> list[str]:
+    """The names of the fields that hold numbers in any template (plain, per laser or per detector), sorted,
+    so a plain-words search can be told which fields a condition may name. Table columns inside a list are not included."""
+    names: set[str] = set()
+    for (schema,) in session.query(models.ReportTemplate.field_schema).all():
+        fields = schema.get("fields") if isinstance(schema, dict) else schema
+        for item in fields or []:
+            if isinstance(item, dict) and item.get("type") in NUMERIC_FIELD_TYPES and isinstance(item.get("name"), str):
+                names.add(item["name"])
+    return sorted(names)
 
 
 def normalized_search_text(q: str | None) -> str | None:
@@ -43,12 +84,16 @@ def apply_report_filters(
     status: models.ReportStatus | None = None,
     technician: str | None = None,
     q: str | None = None,
+    number_field: str | None = None,
+    number_op: str | None = None,
+    number_value: float | None = None,
 ) -> Query:
     """Narrow a query on Report. `model_id` keeps the reports of every instrument of that model
     record (instrument_models.id); with `instrument_id` too, both must hold. `technician` is a
     case-insensitive partial match (ILIKE); `q` is the word-based free-text search, which covers
     finalized reports only (services/report_search.py), so combined with another status it is
-    simply empty."""
+    simply empty. `number_field`, `number_op` and `number_value` together are a condition on a number in the report's fields
+    ("laser delay above 29"); like `q` it covers finalized reports only (values still being checked can change)."""
     if instrument_id:
         query = query.filter(models.Report.instrument_id == instrument_id)
     if model_id:
@@ -70,4 +115,6 @@ def apply_report_filters(
     if q:
         match, _rank = report_search.match_expressions(q)
         query = query.filter(report_search.finalized_only(), match)
+    if number_field and number_op in FIELD_OPS and number_value is not None:
+        query = query.filter(report_search.finalized_only(), field_condition(number_field, number_op, number_value))
     return query

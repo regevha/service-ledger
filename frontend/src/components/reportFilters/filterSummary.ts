@@ -1,6 +1,7 @@
 import type { Instrument, Place, ReportFilters, ReportStatus } from '../../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../../labels';
 import { placeLabel } from '../../placeUtils';
+import { numberConditionText } from '../../numberCondition';
 
 /** A model as this bar knows it: one per model record that has instruments in the list it is given. */
 export type ModelOption = { id: string; name: string; manufacturer: string | null };
@@ -49,6 +50,7 @@ export function summarizeFilters({
     statusText,
     dates,
     filters.technician ? `Lab manager: ${filters.technician}` : '',
+    numberConditionText(filters),
   ].filter(Boolean);
   return summary;
 }
