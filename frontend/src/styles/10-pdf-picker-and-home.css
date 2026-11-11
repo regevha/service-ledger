@@ -553,6 +553,84 @@
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
 }
+/* A condition of the search is a button: tapping it takes that one condition out. */
+button.ask-chip {
+  font: inherit;
+  cursor: pointer;
+}
+.ask-chip.removable::after {
+  content: ' \00d7';
+  opacity: 0.6;
+}
+.ask-chip.removable:hover::after,
+.ask-chip.removable:focus-visible::after {
+  opacity: 1;
+}
+.ask-chip.removable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The chips sit in the same wrapping row as before. */
+.ask-conditions {
+  display: contents;
+}
+.active-search-clear {
+  padding: 0;
+  white-space: nowrap;
+}
+
+/* The search in force, under the top bar on every screen: one slim row that stays in view while the page scrolls. */
+.active-search {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+.active-search-label {
+  flex: none;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.active-search-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+}
+.active-search .ask-chip,
+.active-search .active-search-clear {
+  flex: none;
+}
+/* Where the Ask box is wide enough to show the same chips under its field, this row would say it twice. */
+@media (min-width: 621px) {
+  .active-search--box-below {
+    display: none;
+  }
+}
+@media (max-width: 620px) {
+  /* The line at the top is the one place on a phone. */
+  .ask-conditions {
+    display: none;
+  }
+  .active-search .ask-chip,
+  .active-search .active-search-clear {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
 .ask-examples .link-button {
   padding: 0;
   text-align: start;

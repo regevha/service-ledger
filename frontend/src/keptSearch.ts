@@ -74,6 +74,56 @@ export function goneNotice(keys: readonly GoneKey[]): string {
   return `Your last search was cleared: the ${named} it named no longer exists.`;
 }
 
+type FilterKey = (typeof FILTER_KEYS)[number];
+
+/** The filters one condition (one chip) stands for. "date" is the one condition that sets two. */
+function filtersOfCondition(key: string): FilterKey[] {
+  if (key === 'date') return ['date_from', 'date_to'];
+  return (FILTER_KEYS as readonly string[]).includes(key) ? [key as FilterKey] : [];
+}
+
+const FALLBACK_LABEL: Record<FilterKey, string> = {
+  instrument_id: 'Instrument',
+  model_id: 'Model',
+  place_id: 'Place',
+  report_type: 'Type',
+  status: 'Status',
+  date_from: 'From',
+  date_to: 'To',
+  technician: 'Lab manager',
+  q: 'Text',
+};
+
+/**
+ * The conditions to show as chips: what was understood from the question, limited to what still filters, and, for
+ * anything that filters without having been named, a plain chip of its own, so no filter in force is ever hidden
+ * (and every one can be removed).
+ */
+export function conditionsOf(search: KeptSearch): ReportSearchPart[] {
+  const criteria = criteriaOf(search.filters);
+  const covered = new Set<FilterKey>();
+  const parts: ReportSearchPart[] = [];
+  for (const part of search.understood) {
+    const keys = filtersOfCondition(part.key).filter((key) => criteria[key]);
+    if (keys.length === 0 || keys.every((key) => covered.has(key))) continue;
+    keys.forEach((key) => covered.add(key));
+    parts.push(part);
+  }
+  for (const key of FILTER_KEYS) {
+    if (!criteria[key] || covered.has(key)) continue;
+    parts.push({ key, label: key.endsWith('_id') ? FALLBACK_LABEL[key] : `${FALLBACK_LABEL[key]}: ${criteria[key]}` });
+  }
+  return parts;
+}
+
+/** This search without one condition, or null when that was the last one (then nothing is left to keep). */
+export function withoutCondition(search: KeptSearch, key: string): KeptSearch | null {
+  const filters: Record<string, string> = { ...criteriaOf(search.filters) };
+  for (const filter of filtersOfCondition(key)) delete filters[filter];
+  if (!hasCriteria(filters as ReportFilters)) return null;
+  return { text: search.text, filters: filters as ReportFilters, understood: search.understood.filter((part) => part.key !== key) };
+}
+
 function isParts(value: unknown): value is ReportSearchPart[] {
   return (
     Array.isArray(value) &&

@@ -62,14 +62,18 @@ test.describe('Home and the ask box on a phone', { tag: '@phone' }, () => {
     await noSideScroll(page);
   });
 
-  test('Reports: the understood chips wrap inside the screen, and a tapped example fills them', async ({ page }) => {
+  test('Reports: on a phone the conditions are on the line at the top, inside the screen, and a tapped example fills them', async ({ page }) => {
     await page.goto('/#/reports');
     await page.getByRole('button', { name: 'maintenance in 2025 at Bar-Ilan University' }).tap();
-    const chips = page.getByTestId('ask-chip');
+    // The Ask box does not repeat the chips on a phone; the one line at the top is where they are.
+    const line = page.getByTestId('active-search');
+    await expect(line).toBeVisible();
+    await expect(page.getByTestId('ask-chip').first()).toBeHidden();
+    const chips = page.getByTestId('active-search-chip');
     await expect(chips.first()).toBeVisible();
     expect(await chips.count()).toBeGreaterThanOrEqual(2);
-    for (let i = 0; i < (await chips.count()); i++) await insideScreen(page, chips.nth(i), `chip ${i + 1}`);
-    await insideScreen(page, page.getByTestId('ask-understood'), 'the understood line');
+    await insideScreen(page, line, 'the search line');
+    await insideScreen(page, page.getByTestId('active-search-clear'), 'Clear search');
     await noSideScroll(page);
   });
 
