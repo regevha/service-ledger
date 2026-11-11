@@ -12,3 +12,6 @@ export function useMediaQuery(query: string): boolean {
   }, [query]);
   return matches;
 }
+
+/** The width at and below which the app uses its phone layout (the same breakpoint the stylesheets use). */
+export const PHONE_QUERY = '(max-width: 620px)';

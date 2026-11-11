@@ -24,6 +24,20 @@ export async function showFlatList(page: Page): Promise<void> {
   }
 }
 
+/** On a phone the Trend section is folded and closed; this opens it (a no-op on a wide screen). */
+export async function openTrendFold(page: Page): Promise<void> {
+  const toggle = page.locator('.trend-section .trend-toggle');
+  if ((await toggle.count()) && (await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
+}
+
+/** The instrument trend opens as a table; this switches it to the chart (and waits for it). */
+export async function showTrendChart(page: Page): Promise<void> {
+  await openTrendFold(page);
+  // The switch only exists once the trend has loaded, so wait for it.
+  await page.locator('.trend-section').getByRole('button', { name: 'Chart', exact: true }).click();
+  await page.waitForSelector('.trend-chart-wrap svg');
+}
+
 /** A report from the Reports list, found by text in its row (a technician name used as a marker). */
 export async function openReportFromList(page: Page, marker: string): Promise<void> {
   await openReports(page);

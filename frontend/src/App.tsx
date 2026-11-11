@@ -10,6 +10,10 @@ import { HomeScreen } from './components/HomeScreen';
 import { BatchIntake } from './components/BatchIntake';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
+import { ActiveSearchLine } from './components/ActiveSearch';
+import { AskSheet, AskSheetButton } from './components/AskSheet';
+import { PHONE_QUERY, useMediaQuery } from './hooks/useMediaQuery';
+import { KeptSearchGate, KeptSearchProvider } from './components/KeptSearchProvider';
 import { NavigationGuardContext, type LeaveGuard } from './navigationGuard';
 import type { ReportFilters } from './api';
 import type { TemplateRequest } from './templateRequest';
@@ -139,6 +143,12 @@ export default function App() {
   );
   const selectView = (next: View) => navigate(next);
 
+  // On a phone the Ask box is a sheet opened from the top bar, on the screens that had the box (Home, Reports) and on Analytics, which shows the search.
+  const phone = useMediaQuery(PHONE_QUERY);
+  const [askOpen, setAskOpen] = useState(false);
+  const askAvailable = phone && (view === 'home' || view === 'reports' || view === 'analytics');
+
+
   // Back, Forward, or an edited address.
   useEffect(() => {
     const onHash = () => {
@@ -228,6 +238,7 @@ export default function App() {
   }, []);
 
   return (
+    <KeptSearchProvider>
     <NavigationGuardContext.Provider value={guardApi}>
     <div className="wrap">
       <header className="topbar">
@@ -273,8 +284,23 @@ export default function App() {
             + New report
           </button>
         )}
+        {askAvailable && <AskSheetButton onOpen={() => setAskOpen(true)} />}
         <ThemeToggle />
       </header>
+
+      <ActiveSearchLine view={view} />
+      {askAvailable && askOpen && (
+        <AskSheet
+          onClose={() => setAskOpen(false)}
+          onApply={(filters) => {
+            // Reports and Analytics follow the kept search by themselves; Home opens Reports with it.
+            if (view === 'home') {
+              setHomeFilters(filters);
+              navigate('reports');
+            }
+          }}
+        />
+      )}
 
       <ToastHost />
 
@@ -329,7 +355,11 @@ export default function App() {
             }}
           />
         )}
-        {view === 'analytics' && <AnalyticsScreen />}
+        {view === 'analytics' && (
+          <KeptSearchGate>
+            <AnalyticsScreen />
+          </KeptSearchGate>
+        )}
         {view === 'admin' && <AdminScreen instruments={instruments} section={route.sub} onSection={(sub) => navigate('admin', sub)} />}
         {view === 'more' && (
           <nav className="more-screen" aria-label="More" data-testid="more-screen">
@@ -367,14 +397,16 @@ export default function App() {
           />
         )}
         {view === 'reports' && (
-          <ReportsListScreen
-            instruments={instruments}
-            fieldConfidenceThreshold={config.field_confidence_threshold}
-            path={route.sub}
-            onPath={(sub) => navigate('reports', sub)}
-            initialFilters={homeFilters ?? undefined}
-            onInitialFiltersUsed={() => setHomeFilters(null)}
-          />
+          <KeptSearchGate>
+            <ReportsListScreen
+              instruments={instruments}
+              fieldConfidenceThreshold={config.field_confidence_threshold}
+              path={route.sub}
+              onPath={(sub) => navigate('reports', sub)}
+              initialFilters={homeFilters ?? undefined}
+              onInitialFiltersUsed={() => setHomeFilters(null)}
+            />
+          </KeptSearchGate>
         )}
       </div>
 
@@ -396,5 +428,6 @@ export default function App() {
       )}
     </div>
     </NavigationGuardContext.Provider>
+    </KeptSearchProvider>
   );
 }
