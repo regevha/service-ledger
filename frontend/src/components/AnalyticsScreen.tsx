@@ -8,8 +8,10 @@ import {
   type Instrument,
   type InstrumentRollup,
   type PartUsage,
+  type ReportFilters,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import { useDropKeptSearchWhenFiltersChange, useKeptSearch } from '../keptSearchContext';
 import { BarRow } from './BarRow';
 import { ChartSection } from './ChartSection';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -212,7 +214,10 @@ export function AnalyticsScreen() {
   // `detail` is the same request narrowed to the chosen row (it feeds the charts while a row is chosen).
   const [fleet, setFleet] = useState<FleetAnalytics | null>(null);
   const [detail, setDetail] = useState<FleetAnalytics | null>(null);
-  const [filters, setFilters] = useState<AnalyticsFilters>({});
+  // Starts from the search kept since the last visit (the same one Reports uses), if any; the maker is Analytics' own.
+  const { kept } = useKeptSearch();
+  const [filters, setFilters] = useState<AnalyticsFilters>(kept?.filters ?? {});
+  useDropKeptSearchWhenFiltersChange(filters as ReportFilters);
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [groupBy, setGroupBy] = useState<GroupBy>('model');
   const [chosen, setChosen] = useState<FleetSelection>(null);

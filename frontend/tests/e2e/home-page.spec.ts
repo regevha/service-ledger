@@ -52,10 +52,11 @@ test('a plain-words request on Home opens Reports with those filters', async ({ 
   await expect(page.getByTestId('report-row')).toHaveCount(1);
   await expect(page.locator('input[value="Home Askerson" i]').first()).toBeVisible();
 
-  // The request is used once: opening Reports again later starts without it.
+  // The request is kept until it is changed (keptSearch.ts): opening Reports again later still has it.
   await page.getByTestId('tab-home').click();
   await page.getByTestId('tab-reports').click();
-  await expect(page.locator('input[value="Home Askerson" i]')).toHaveCount(0);
+  await expect(page.locator('input[value="Home Askerson" i]').first()).toBeVisible();
+  await expect(page.getByTestId('report-row')).toHaveCount(1);
 });
 
 test('files dropped anywhere on Home open the several-files screen with them', async ({ page }) => {

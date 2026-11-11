@@ -10,6 +10,7 @@ import { HomeScreen } from './components/HomeScreen';
 import { BatchIntake } from './components/BatchIntake';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
+import { KeptSearchGate, KeptSearchProvider } from './components/KeptSearchProvider';
 import { NavigationGuardContext, type LeaveGuard } from './navigationGuard';
 import type { ReportFilters } from './api';
 import type { TemplateRequest } from './templateRequest';
@@ -228,6 +229,7 @@ export default function App() {
   }, []);
 
   return (
+    <KeptSearchProvider>
     <NavigationGuardContext.Provider value={guardApi}>
     <div className="wrap">
       <header className="topbar">
@@ -329,7 +331,11 @@ export default function App() {
             }}
           />
         )}
-        {view === 'analytics' && <AnalyticsScreen />}
+        {view === 'analytics' && (
+          <KeptSearchGate>
+            <AnalyticsScreen />
+          </KeptSearchGate>
+        )}
         {view === 'admin' && <AdminScreen instruments={instruments} section={route.sub} onSection={(sub) => navigate('admin', sub)} />}
         {view === 'more' && (
           <nav className="more-screen" aria-label="More" data-testid="more-screen">
@@ -367,14 +373,16 @@ export default function App() {
           />
         )}
         {view === 'reports' && (
-          <ReportsListScreen
-            instruments={instruments}
-            fieldConfidenceThreshold={config.field_confidence_threshold}
-            path={route.sub}
-            onPath={(sub) => navigate('reports', sub)}
-            initialFilters={homeFilters ?? undefined}
-            onInitialFiltersUsed={() => setHomeFilters(null)}
-          />
+          <KeptSearchGate>
+            <ReportsListScreen
+              instruments={instruments}
+              fieldConfidenceThreshold={config.field_confidence_threshold}
+              path={route.sub}
+              onPath={(sub) => navigate('reports', sub)}
+              initialFilters={homeFilters ?? undefined}
+              onInitialFiltersUsed={() => setHomeFilters(null)}
+            />
+          </KeptSearchGate>
         )}
       </div>
 
@@ -396,5 +404,6 @@ export default function App() {
       )}
     </div>
     </NavigationGuardContext.Provider>
+    </KeptSearchProvider>
   );
 }
