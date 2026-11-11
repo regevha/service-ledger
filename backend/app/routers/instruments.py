@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app import schemas
+from app import models, schemas
 from app.db import get_db
 from app.services import instruments as svc
 from app.services.analytics import trend_points, trendable_fields
@@ -21,6 +22,29 @@ def create_instrument(payload: schemas.InstrumentCreate, db: Session = Depends(g
 @router.get("/instruments", response_model=list[schemas.InstrumentOut])
 def list_instruments(db: Session = Depends(get_db)):
     return svc.list_instruments(db)
+
+
+@router.get("/instruments/repair-counts", response_model=list[schemas.RepairCountOut])
+def instrument_repair_counts(
+    date_from: date | None = Query(None, description="Count repairs dated on or after this day"),
+    date_to: date | None = Query(None, description="Count repairs dated on or before this day"),
+    db: Session = Depends(get_db),
+):
+    """How many finalized repair reports each instrument has in the date range (every instrument is listed, with 0
+    when it has none). Drafts and reports still being checked are left out, because their values can still change."""
+    from sqlalchemy import func  # noqa: PLC0415
+
+    from app.services.report_filters import apply_report_filters  # noqa: PLC0415
+
+    counted = apply_report_filters(
+        db.query(models.Report.instrument_id, func.count(models.Report.id)),
+        report_type=models.ReportType.repair,
+        status=models.ReportStatus.finalized,
+        date_from=date_from,
+        date_to=date_to,
+    ).group_by(models.Report.instrument_id)
+    counts = {instrument_id: n for instrument_id, n in counted}
+    return [{"instrument_id": i.id, "repairs": counts.get(i.id, 0)} for i in db.query(models.Instrument).all()]
 
 
 @router.get("/instruments/{instrument_id}", response_model=schemas.InstrumentOut)
