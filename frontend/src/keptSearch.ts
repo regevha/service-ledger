@@ -1,4 +1,5 @@
 import type { ReportFilters, ReportSearchPart } from './api';
+import { numberConditionText } from './numberCondition';
 
 /**
  * The last search the person asked for in plain words ("repairs of the FACSAria III last month"), kept in the
@@ -22,7 +23,7 @@ export interface KeptSearch {
 const STORAGE_KEY = 'sl.ask.kept';
 
 /** Every criterion a search can set. Anything else in a stored record is ignored. */
-const FILTER_KEYS = ['instrument_id', 'model_id', 'place_id', 'report_type', 'status', 'date_from', 'date_to', 'technician', 'q'] as const;
+const FILTER_KEYS = ['instrument_id', 'model_id', 'place_id', 'report_type', 'status', 'date_from', 'date_to', 'technician', 'q', 'number_field', 'number_op', 'number_value'] as const;
 
 /** The criteria that point at a record that can be deleted later. */
 export const GONE_KEYS = ['instrument_id', 'model_id', 'place_id'] as const;
@@ -79,6 +80,8 @@ type FilterKey = (typeof FILTER_KEYS)[number];
 /** The filters one condition (one chip) stands for. "date" is the one condition that sets two. */
 function filtersOfCondition(key: string): FilterKey[] {
   if (key === 'date') return ['date_from', 'date_to'];
+  // The three parts of a condition on a number are one chip. The search answer calls it 'field'.
+  if (key === 'field' || key === 'number_field') return ['number_field', 'number_op', 'number_value'];
   return (FILTER_KEYS as readonly string[]).includes(key) ? [key as FilterKey] : [];
 }
 
@@ -92,6 +95,9 @@ const FALLBACK_LABEL: Record<FilterKey, string> = {
   date_to: 'To',
   technician: 'Lab manager',
   q: 'Text',
+  number_field: 'Number',
+  number_op: 'Comparison',
+  number_value: 'Value',
 };
 
 /**
@@ -111,6 +117,12 @@ export function conditionsOf(search: KeptSearch): ReportSearchPart[] {
   }
   for (const key of FILTER_KEYS) {
     if (!criteria[key] || covered.has(key)) continue;
+    // The field, comparison and number are one chip, shown as one sentence.
+    if (key === 'number_op' || key === 'number_value') continue;
+    if (key === 'number_field') {
+      parts.push({ key, label: numberConditionText(criteria) || FALLBACK_LABEL[key] });
+      continue;
+    }
     parts.push({ key, label: key.endsWith('_id') ? FALLBACK_LABEL[key] : `${FALLBACK_LABEL[key]}: ${criteria[key]}` });
   }
   return parts;

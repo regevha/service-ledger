@@ -1,3 +1,4 @@
+import { numberConditionText } from '../numberCondition';
 import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { type Instrument, type ReportFilters, type ReportStatus } from '../api';
 import { idsInside } from '../placeUtils';
@@ -170,6 +171,21 @@ export function ReportFilterBar<F extends BarFilters>({
           value={technicianInput}
           onChange={(e) => setTechnicianInput(e.target.value)}
         />
+
+        {numberConditionText(filters) && (
+          <span className="ask-chip number-condition" data-testid="number-condition">
+            {numberConditionText(filters)}
+            <button
+              type="button"
+              className="link-button"
+              data-testid="number-condition-remove"
+              aria-label="Remove the number condition"
+              onClick={() => setFilters((f) => ({ ...f, number_field: undefined, number_op: undefined, number_value: undefined }))}
+            >
+              ×
+            </button>
+          </span>
+        )}
 
         {extra}
 
