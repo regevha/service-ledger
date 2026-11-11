@@ -201,6 +201,12 @@ export function ReviewScreen({
     confirmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     confirmRef.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
   }, [showFinalizeConfirm]);
+  // A failed save is reported above the fields; the person pressed Save from the bar at the bottom of the screen,
+  // so bring the message into view or it looks as if nothing happened.
+  const saveErrorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (saveError) saveErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [saveError]);
   function requestFinalize() {
     if (flaggedCount > 0) setConfirmingFinalize(true);
     else onFinalize?.();
@@ -260,7 +266,7 @@ export function ReviewScreen({
       )}
 
       {saveError && (
-        <div role="alert">
+        <div role="alert" ref={saveErrorRef}>
           <Notice
             tone="crit"
             id="save-error"

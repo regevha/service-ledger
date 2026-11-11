@@ -385,3 +385,85 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Work dates timeline (WorkTimeline.tsx): a ring in the card color keeps neighbouring markers apart. */
+.timeline-dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+/* Table | Chart switch of the Trend section: two buttons side by side, the shown one filled. */
+.view-switch {
+  display: inline-flex;
+}
+.view-switch .btn {
+  border-radius: 0;
+}
+.view-switch .btn:first-child {
+  border-radius: 8px 0 0 8px;
+}
+.view-switch .btn:last-child {
+  border-radius: 0 8px 8px 0;
+  margin-left: -1px;
+}
+.view-switch .btn.active {
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: var(--on-fill);
+}
+
+/* The work dates table holds words, not numbers: left-aligned, in the page font, and free to wrap on a phone. */
+.work-dates-table th,
+.work-dates-table td {
+  text-align: left;
+  font-family: var(--font-ui);
+  white-space: normal;
+}
+.timeline-chip {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: baseline;
+}
+.work-dates-table td:first-child {
+  white-space: nowrap;
+}
+
+/* Phone: the Trend section is a folded header, and once open its table is capped at about four rows. */
+.trend-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+@media (max-width: 620px) {
+  .trend-section-fold .trend-table-wrap {
+    max-height: 11.5rem;
+    overflow-y: auto;
+  }
+  .trend-section-fold .trend-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+  }
+}
+
+.type-cell {
+  display: inline-flex;
+  align-items: center;
+}
+@media (max-width: 620px) {
+  .work-dates-table th,
+  .work-dates-table td {
+    padding: 6px 8px;
+    font-size: 0.85rem;
+  }
+}
