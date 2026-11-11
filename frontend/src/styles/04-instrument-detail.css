@@ -467,3 +467,59 @@
     font-size: 0.85rem;
   }
 }
+
+/* Work dates timeline: clickable markers, the card they open, and the zoom row. */
+.timeline-dot {
+  cursor: pointer;
+}
+.timeline-dot:focus-visible {
+  outline: 2px solid var(--accent, currentColor);
+  outline-offset: 2px;
+}
+.timeline-dot-selected {
+  stroke: var(--text, currentColor);
+}
+.timeline-hit {
+  cursor: pointer;
+}
+.timeline-svg {
+  touch-action: pan-y; /* a horizontal drag moves the timeline, a vertical one still scrolls the page */
+}
+.timeline-pannable {
+  cursor: grab;
+}
+.timeline-wrap {
+  position: relative;
+}
+.timeline-zoom {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 6px;
+}
+.timeline-card {
+  position: absolute;
+  top: 100%;
+  transform: translateX(-50%);
+  z-index: 2;
+  min-width: 170px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+.timeline-card-date {
+  font-weight: 600;
+}
+.timeline-card-type {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.timeline-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}

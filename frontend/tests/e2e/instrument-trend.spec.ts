@@ -206,3 +206,79 @@ test('trend: "Work dates (timeline)" lists the dates of work as a table and draw
   await expect(page.getByTestId('timeline-dot')).toHaveCount(4);
   await expect(page.locator('.legend-row .legend-item')).toHaveCount(3);
 });
+
+test('timeline: ticks sit on round dates, and a dot opens a card with an Open link', async ({ page, request }) => {
+  const marker = `E2E-Timeline-Card-${Date.now()}`;
+  const instrument = await createInstrument(request, marker);
+  for (const [reportDate, reportType] of [
+    ['2024-02-27', 'repair'],
+    ['2025-09-02', 'preventive_maintenance'],
+    ['2025-09-08', 'installation_upgrade'],
+  ] as const) {
+    await seedReport(request, { instrumentId: instrument.id, model: marker, reportType, reportDate, fields: {}, finalize: true });
+  }
+
+  await openInstrumentDetail(page, instrument.id);
+  await page.locator('[aria-label="Field to chart"]').selectOption('__work_dates__');
+  await page.getByRole('button', { name: 'Timeline', exact: true }).click();
+
+  // Regular, round labels (years here), never the padded edge dates of the data.
+  const ticks = page.getByTestId('timeline-tick');
+  await expect(ticks.first()).toHaveText(/^\d{4}$/);
+
+  // A tap on a dot shows a card first; its Open link goes to that report.
+  const dots = page.getByTestId('timeline-dot');
+  await expect(dots).toHaveCount(3);
+  await dots.last().click();
+  const card = page.getByTestId('timeline-card');
+  await expect(card).toContainText('Sep 8, 2025');
+  await expect(card).toContainText('Installation / upgrade');
+  await expect(card.getByTestId('timeline-open')).toHaveAttribute('href', /#\/reports\/.+/);
+
+  // Escape closes it; the keyboard opens it again.
+  await page.keyboard.press('Escape');
+  await expect(card).toHaveCount(0);
+  await dots.first().focus();
+  await page.keyboard.press('Enter');
+  await expect(card).toContainText('Feb 27, 2024');
+});
+
+test('timeline: zoom in separates close dots, and Reset brings every report back', async ({ page, request }) => {
+  const marker = `E2E-Timeline-Zoom-${Date.now()}`;
+  const instrument = await createInstrument(request, marker);
+  for (const reportDate of ['2023-01-10', '2025-09-02', '2025-09-08']) {
+    await seedReport(request, { instrumentId: instrument.id, model: marker, reportType: 'repair', reportDate, fields: {}, finalize: true });
+  }
+
+  await openInstrumentDetail(page, instrument.id);
+  await page.locator('[aria-label="Field to chart"]').selectOption('__work_dates__');
+  await page.getByRole('button', { name: 'Timeline', exact: true }).click();
+
+  const dots = page.getByTestId('timeline-dot');
+  await expect(dots).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Zoom out' })).toBeDisabled();
+
+  // Zoomed in on the middle of the range, the 2023 report falls outside the window.
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(dots).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Reset' }).click();
+  await expect(dots).toHaveCount(3);
+});
+
+test('reports list: a Trend link opens the instrument page with the Trend section', async ({ page, request }) => {
+  const marker = `E2E-Trend-Link-${Date.now()}`;
+  const instrument = await createInstrument(request, marker);
+  await seedReport(request, { instrumentId: instrument.id, model: marker, reportType: 'repair', reportDate: '2026-02-01', fields: {}, finalize: true });
+
+  await page.goto('/#/reports');
+  const group = page.getByTestId('report-group').filter({ hasText: marker });
+  await group.getByTestId('group-trend-link').click();
+  await expect(page).toHaveURL(new RegExp(`#/reports/instrument/${instrument.id}/trend$`));
+  await expect(page.getByTestId('trend-section')).toBeVisible();
+
+  // The instruments tab has the same shortcut.
+  await page.getByTestId('tab-instruments').click();
+  await page.getByTestId('instrument-row').filter({ hasText: marker }).getByTestId('instrument-trend-link').click();
+  await expect(page.getByTestId('trend-section')).toBeVisible();
+});
