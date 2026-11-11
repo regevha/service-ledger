@@ -1,6 +1,6 @@
 import { test, expect } from './coverage';
 import type { APIRequestContext, Page } from '@playwright/test';
-import { API_BASE, seedReport } from './helpers/api';
+import { API_BASE, clearSavedFilters, seedReport } from './helpers/api';
 
 // The search asked for in plain words is kept in the browser until the person changes it (src/keptSearch.ts),
 // and Home, Reports and Analytics all start from it.
@@ -131,6 +131,7 @@ test('Clear filters also ends it', async ({ page, request }) => {
 test('applying a saved filter replaces it', async ({ page, request }) => {
   const stamp = Date.now();
   const tech = 'Kept Savedson';
+  await clearSavedFilters(request); // saved filters have a cap that other specs share
   await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: tech });
   const saved = await (
     await request.post(`${API_BASE}/saved-report-filters`, { data: { name: `Kept ${stamp}`, filters: { technician: `Saved Marker ${stamp}` } } })

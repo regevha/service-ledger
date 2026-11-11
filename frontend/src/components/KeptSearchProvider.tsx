@@ -8,6 +8,7 @@ import {
   hasCriteria,
   readKeptSearch,
   recordKeysOf,
+  withoutCondition,
   writeKeptSearch,
   type GoneKey,
   type KeptSearch,
@@ -74,9 +75,21 @@ export function KeptSearchProvider({ children }: { children: ReactNode }) {
     clearKeptSearch();
     setKept(null);
   }, []);
+  const removeCondition = useCallback(
+    (key: string) => {
+      if (!kept) return;
+      const next = withoutCondition(kept, key);
+      if (next) save(next);
+      else clear();
+    },
+    [kept, save, clear]
+  );
   const dismissNotice = useCallback(() => setNotice(null), []);
 
-  const value = useMemo(() => ({ kept, checking, notice, save, clear, dismissNotice }), [kept, checking, notice, save, clear, dismissNotice]);
+  const value = useMemo(
+    () => ({ kept, checking, notice, save, removeCondition, clear, dismissNotice }),
+    [kept, checking, notice, save, removeCondition, clear, dismissNotice]
+  );
   return <KeptSearchContext.Provider value={value}>{children}</KeptSearchContext.Provider>;
 }
 
