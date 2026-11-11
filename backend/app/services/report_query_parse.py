@@ -20,7 +20,7 @@ MONTHS["sept"] = 9
 REPORT_TYPES: list[tuple[str, str]] = [
     (r"preventive\s+maintenance|preventative\s+maintenance|\bpm\b|maintenance|service\s+visits?", "preventive_maintenance"),
     (r"installations?|installed|upgrades?|upgraded", "installation_upgrade"),
-    (r"repairs?|repaired|breakdowns?|fix(?:es|ed)?", "repair"),
+    (r"repairs?|repaired|breakdowns?|broke(?:n)?|malfunction(?:s|ed|ing)?|faults?|fix(?:es|ed)?", "repair"),
 ]
 STATUSES: list[tuple[str, str]] = [
     (r"in\s+review", "in_review"),
@@ -32,7 +32,10 @@ STOPWORDS = {
     "show", "me", "all", "the", "of", "for", "reports", "report", "from", "in", "at", "with", "a", "an", "and", "on",
     "that", "were", "was", "are", "is", "find", "list", "get", "give", "my", "our", "to", "any", "by", "during", "since",
     "service", "services", "visit", "visits", "please", "which", "have", "has", "been", "last", "this", "past", "recent",
+    "serial", "number", "mentioning", "mentioned", "mentions", "mention", "containing", "about", "what", "did", "we", "do",
+    "does", "how", "many", "had", "ones", "those", "these", "there", "where",
 }
+ROMAN = {"i": "1", "ii": "2", "iii": "3", "iv": "4", "v": "5", "vi": "6"}
 
 
 @dataclass
@@ -126,19 +129,33 @@ def _dates(text: str, today: date) -> tuple[date | None, date | None, str]:
         return (None, day, rest) if word in ("before", "until") or word.startswith("up") else (day, None, rest)
 
     # "March 2026", "in March", "since March"
-    m, rest = _take(r"(since\s+|in\s+|during\s+|from\s+)?(" + "|".join(sorted(MONTHS, key=len, reverse=True)) + r")(?:\s+(\d{4}))?", text)
+    m, rest = _take(r"(since\s+|in\s+|during\s+|from\s+|before\s+|until\s+|after\s+)?(" + "|".join(sorted(MONTHS, key=len, reverse=True)) + r")(?:\s+(\d{4}))?", text)
     if m:
         month = MONTHS[m.group(2)]
         year = int(m.group(3)) if m.group(3) else (today.year if month <= today.month else today.year - 1)
         start, end = _month_bounds(year, month)
-        if m.group(1) and m.group(1).strip() == "since":
+        word = (m.group(1) or "").strip()
+        if word == "since":
             return start, None, rest
+        if word in ("before", "until"):
+            return None, (start - timedelta(days=1) if word == "before" else end), rest
+        if word == "after":
+            return end + timedelta(days=1), None, rest
         return start, end, rest
 
     # "in 2025", "2025"
-    m, rest = _take(r"(?:in\s+|during\s+|from\s+)?(20\d{2})", text)
+    m, rest = _take(r"(in\s+|during\s+|from\s+|since\s+|before\s+|until\s+|after\s+)?(20\d{2})", text)
     if m:
-        year = int(m.group(1))
+        word = (m.group(1) or "").strip()
+        year = int(m.group(2))
+        if word == "since":
+            return date(year, 1, 1), None, rest
+        if word == "before":
+            return None, date(year - 1, 12, 31), rest
+        if word == "until":
+            return None, date(year, 12, 31), rest
+        if word == "after":
+            return date(year + 1, 1, 1), None, rest
         return date(year, 1, 1), date(year, 12, 31), rest
     return None, None, text
 
@@ -149,14 +166,55 @@ def _months_back(today: date, months: int) -> date:
     return date(year, month + 1, min(today.day, calendar.monthrange(year, month + 1)[1]))
 
 
+def _model_names(name: str) -> list[str]:
+    """The ways a person might shorten a model name: "LSRFortessa" -> "Fortessa", "BD FACSAria III" -> "FACSAria III"."""
+    names = [name]
+    camel = re.match(r"^([A-Z]{2,})([A-Z][a-z].*)$", name)
+    if camel:
+        names.append(camel.group(2))
+    words = name.split()
+    if len(words) > 1 and len(" ".join(words[1:])) >= 5:
+        names.append(" ".join(words[1:]))
+    return names
+
+
+def _loose(name: str) -> str:
+    """A pattern that ignores case, spaces and dashes, and lets a trailing roman numeral be written as a digit."""
+    words = re.sub(r"[\-_]+", " ", name.lower()).split()
+    tail = ""
+    if len(words) > 1 and words[-1] in ROMAN:
+        tail = ROMAN[words.pop()]
+        last = re.escape(tail)
+    squashed = "".join(words)
+    body = r"[\s\-_]*".join(re.escape(ch) for ch in squashed)
+    if tail:
+        roman = next(r for r, d in ROMAN.items() if d == tail)
+        return rf"{body}[\s\-_]*(?:{roman}|{last})"
+    return body
+
+
+def _model_patterns(models: list[tuple[str, str]]) -> list[tuple[str, str, str]]:
+    """(id, name, pattern) for each model, longest wording first; a short form is used only if no other model shares it."""
+    forms: list[tuple[str, str, str]] = []
+    for model_id, name in models:
+        for alias in _model_names(name):
+            forms.append((model_id, name, alias))
+    count: dict[str, int] = {}
+    for _, _, alias in forms:
+        key = re.sub(r"[^a-z0-9]+", "", alias.lower())
+        count[key] = count.get(key, 0) + 1
+    keep = [f for f in forms if count[re.sub(r"[^a-z0-9]+", "", f[2].lower())] == 1 or f[2] == f[1]]
+    keep.sort(key=lambda f: -len(f[2]))
+    return [(mid, name, _loose(alias)) for mid, name, alias in keep]
+
+
 def parse_search(text: str, known: Known, today: date) -> Parsed:
     """The filters a request asks for, what was understood, and the words left over as free text."""
     out = Parsed()
     rest = " " + re.sub(r"\s+", " ", text.lower()).strip() + " "
 
     # Instrument model, place and serial first: they are the longest, most specific phrases.
-    for model_id, name in sorted(known.models, key=lambda m: -len(m[1])):
-        pattern = r"[\s\-_]*".join(re.escape(ch) for ch in re.sub(r"[\s\-_]+", "", name.lower()))
+    for model_id, name, pattern in _model_patterns(known.models):
         m = re.search(rf"(?<![a-z0-9]){pattern}(?![a-z0-9])", rest)
         if m:
             out.add("model_id", model_id, f"Model: {name}")
@@ -199,7 +257,7 @@ def parse_search(text: str, known: Known, today: date) -> Parsed:
             out.filters["date_to"] = end.isoformat()
         out.understood.append({"key": "date", "label": _label_dates(start, end)})
 
-    m = re.search(r"(?:\bby\b|technician|lab\s+manager|engineer)\s+([a-z][a-z'\-]+(?:\s+[a-z][a-z'\-]+)?)", rest)
+    m = re.search(r"(?:\bby\b|technician|lab\s+manager|engineer)\s+([a-z][a-z'\-]*\.?(?:\s+[a-z][a-z'\-]+)?)", rest)
     if m:
         name = m.group(1)
         words = [w for w in name.split() if w not in STOPWORDS]
