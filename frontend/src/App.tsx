@@ -411,6 +411,7 @@ export default function App() {
             loading={instrumentsLoading}
             error={instrumentsError}
             onRefresh={refreshInstruments}
+            onOpenTrend={(instrumentId) => navigate('reports', `instrument/${instrumentId}/trend`)}
           />
         )}
         {view === 'reports' && (
