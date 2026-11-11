@@ -28,7 +28,7 @@ import { defaultOrder, sortReports, type SortState } from '../reportSort';
 // page returns to that instrument page, not all the way out to the list.
 type ReportsScreen =
   | { kind: 'list' }
-  | { kind: 'instrument'; instrumentId: string }
+  | { kind: 'instrument'; instrumentId: string; /** Opened from a "Trend" link: show the Trend section first. */ trend?: boolean }
   | {
       kind: 'report';
       item: ReportListItem;
@@ -38,7 +38,11 @@ type ReportsScreen =
     };
 
 function screenPath(screen: ReportsScreen): string {
-  return screen.kind === 'list' ? '' : screen.kind === 'instrument' ? `instrument/${screen.instrumentId}` : screen.item.id;
+  return screen.kind === 'list'
+    ? ''
+    : screen.kind === 'instrument'
+      ? `instrument/${screen.instrumentId}${screen.trend ? '/trend' : ''}`
+      : screen.item.id;
 }
 
 // Free-text search needs at least this many characters (the backend refuses less).
@@ -116,7 +120,9 @@ export function ReportsListScreen({
       return;
     }
     if (path.startsWith('instrument/')) {
-      setScreen({ kind: 'instrument', instrumentId: path.slice('instrument/'.length) });
+      const rest = path.slice('instrument/'.length);
+      const trend = rest.endsWith('/trend');
+      setScreen({ kind: 'instrument', instrumentId: trend ? rest.slice(0, -'/trend'.length) : rest, trend });
       return;
     }
     // The list endpoint gives the full list item the detail screen takes; unfiltered,
@@ -172,6 +178,7 @@ export function ReportsListScreen({
       <InstrumentDetailScreen
         instrumentId={instrumentId}
         instruments={instruments}
+        focusTrend={screen.trend}
         onBack={() => setScreen({ kind: 'list' })}
         onOpenReport={(item) => setScreen({ kind: 'report', item, returnTo: { kind: 'instrument', instrumentId } })}
       />
@@ -263,6 +270,7 @@ export function ReportsListScreen({
               groups={groups}
               renderRow={renderRow}
               onOpenInstrument={(instrumentId) => setScreen({ kind: 'instrument', instrumentId })}
+              onOpenTrend={(instrumentId) => setScreen({ kind: 'instrument', instrumentId, trend: true })}
             />
           ) : (
           <>

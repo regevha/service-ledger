@@ -16,11 +16,14 @@ import { InstrumentTrendSection } from './InstrumentTrendChart';
 export function InstrumentDetailScreen({
   instrumentId,
   instruments,
+  focusTrend = false,
   onBack,
   onOpenReport,
 }: {
   instrumentId: string;
   instruments: Instrument[];
+  /** Opened from a "Trend" link: the Trend section is open and scrolled into view. */
+  focusTrend?: boolean;
   onBack: () => void;
   onOpenReport: (item: ReportListItem) => void;
 }) {
@@ -84,6 +87,8 @@ export function InstrumentDetailScreen({
             </span>
           </div>
 
+          <InstrumentTrendSection instrumentId={instrumentId} reports={items} focus={focusTrend} />
+
           <div className="stat-row">
             <div className="stat-tile">
               <span className="stat-value">{items.length}</span>
@@ -100,8 +105,6 @@ export function InstrumentDetailScreen({
               </span>
             </div>
           </div>
-
-          <InstrumentTrendSection instrumentId={instrumentId} reports={items} />
 
           <div className="section-title" style={{ marginTop: 18 }}>
             Report history

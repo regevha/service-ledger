@@ -31,6 +31,8 @@ export interface ReportGroup {
   /** Model groups only: the manufacturer, and how many different units the reports are about. */
   maker?: string | null;
   units?: number;
+  /** Model groups only: the known instruments behind those units, by serial number, for a Trend link each. */
+  unitInstruments?: Instrument[];
 }
 
 export const NOT_READ_KEY = 'unread';
@@ -69,6 +71,7 @@ export function groupByInstrument(items: ReportListItem[], instruments: Instrume
 export function groupByModel(items: ReportListItem[], instruments: Instrument[]): ReportGroup[] {
   const byKey = new Map<string, ReportGroup>();
   const serials = new Map<string, Set<string>>();
+  const unitsByKey = new Map<string, Map<string, Instrument>>();
   for (const r of items) {
     const key = r.instrument_model ? `model|${r.instrument_model}` : r.instrument_serial_number ? 'model|' : NOT_READ_KEY;
     let g = byKey.get(key);
@@ -86,12 +89,20 @@ export function groupByModel(items: ReportListItem[], instruments: Instrument[])
       };
       byKey.set(key, g);
       serials.set(key, new Set());
+      unitsByKey.set(key, new Map());
     }
     g.items.push(r);
-    if (r.instrument_serial_number) serials.get(key)!.add(r.instrument_serial_number);
+    if (r.instrument_serial_number) {
+      serials.get(key)!.add(r.instrument_serial_number);
+      const unit = instruments.find((i) => i.model === r.instrument_model && i.serial_number === r.instrument_serial_number);
+      if (unit) unitsByKey.get(key)!.set(unit.serial_number, unit);
+    }
     if (r.status === 'in_review' || r.status === 'extracted') g.needsReview += 1;
   }
-  for (const [key, g] of byKey) g.units = serials.get(key)!.size;
+  for (const [key, g] of byKey) {
+    g.units = serials.get(key)!.size;
+    g.unitInstruments = [...unitsByKey.get(key)!.values()].sort((a, b) => a.serial_number.localeCompare(b.serial_number));
+  }
   return sortGroups([...byKey.values()]);
 }
 

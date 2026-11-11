@@ -57,11 +57,14 @@ export function InstrumentManagerScreen({
   loading,
   error,
   onRefresh,
+  onOpenTrend,
 }: {
   instruments: Instrument[];
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
+  /** Opens an instrument's page at its Trend section. */
+  onOpenTrend: (instrumentId: string) => void;
 }) {
   const [mode, setMode] = useState<ManagerMode>({ kind: 'list' });
   // The instrument awaiting a delete confirmation, with how many reports go
@@ -286,6 +289,7 @@ export function InstrumentManagerScreen({
           typeNames={typeNames}
           phone={phone}
           onEdit={(instrument) => setMode({ kind: 'edit', instrument })}
+          onOpenTrend={(instrument) => onOpenTrend(instrument.id)}
           onDelete={(instrument) => void askToDelete(instrument)}
         />
       )}
