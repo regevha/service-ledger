@@ -21,15 +21,15 @@ from app.services import report_search
 FIELD_OPS = {"gt": ">", "gte": ">=", "lt": "<", "lte": "<=", "eq": "=="}
 
 
-def field_condition_error(field: str | None, op: str | None, value: float | None) -> str | None:
+def field_condition_error(number_field: str | None, number_op: str | None, number_value: float | None) -> str | None:
     """None when the three parts of a field condition are all set or all empty and make sense; else a message."""
-    if field is None and op is None and value is None:
+    if number_field is None and number_op is None and number_value is None:
         return None
-    if not field or not field.strip() or op is None or value is None:
+    if not number_field or not number_field.strip() or number_op is None or number_value is None:
         return "A field condition needs the field, the comparison and the value together."
-    if op not in FIELD_OPS:
+    if number_op not in FIELD_OPS:
         return f"The comparison must be one of: {', '.join(FIELD_OPS)}."
-    if value != value or value in (float("inf"), float("-inf")):
+    if number_value != number_value or number_value in (float("inf"), float("-inf")):
         return "The value of a field condition must be a finite number."
     return None
 
@@ -84,15 +84,15 @@ def apply_report_filters(
     status: models.ReportStatus | None = None,
     technician: str | None = None,
     q: str | None = None,
-    field: str | None = None,
-    op: str | None = None,
-    value: float | None = None,
+    number_field: str | None = None,
+    number_op: str | None = None,
+    number_value: float | None = None,
 ) -> Query:
     """Narrow a query on Report. `model_id` keeps the reports of every instrument of that model
     record (instrument_models.id); with `instrument_id` too, both must hold. `technician` is a
     case-insensitive partial match (ILIKE); `q` is the word-based free-text search, which covers
     finalized reports only (services/report_search.py), so combined with another status it is
-    simply empty. `field`, `op` and `value` together are a condition on a number in the report's fields
+    simply empty. `number_field`, `number_op` and `number_value` together are a condition on a number in the report's fields
     ("laser delay above 29"); like `q` it covers finalized reports only (values still being checked can change)."""
     if instrument_id:
         query = query.filter(models.Report.instrument_id == instrument_id)
@@ -115,6 +115,6 @@ def apply_report_filters(
     if q:
         match, _rank = report_search.match_expressions(q)
         query = query.filter(report_search.finalized_only(), match)
-    if field and op in FIELD_OPS and value is not None:
-        query = query.filter(report_search.finalized_only(), field_condition(field, op, value))
+    if number_field and number_op in FIELD_OPS and number_value is not None:
+        query = query.filter(report_search.finalized_only(), field_condition(number_field, number_op, number_value))
     return query

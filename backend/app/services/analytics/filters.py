@@ -42,9 +42,9 @@ class AnalyticsFilters:
     technician: str | None = None
     q: str | None = None
     # A number in this field must pass (op: gt, gte, lt, lte, eq; value: the number), as on the Reports list.
-    field: str | None = None
-    op: str | None = None
-    value: float | None = None
+    number_field: str | None = None
+    number_op: str | None = None
+    number_value: float | None = None
 
 
 def _apply_unit_filters(query: Query, filters: AnalyticsFilters) -> Query:
@@ -96,7 +96,7 @@ def _apply_filters(query: Query, filters: AnalyticsFilters) -> Query:
         status=status,
         technician=filters.technician,
         q=filters.q,
-        field=filters.field,
-        op=filters.op,
-        value=filters.value,
+        number_field=filters.number_field,
+        number_op=filters.number_op,
+        number_value=filters.number_value,
     )

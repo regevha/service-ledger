@@ -31,9 +31,9 @@ def _search_text_param(q: str | None) -> str | None:
         raise HTTPException(422, str(e)) from None
 
 
-def _check_field_condition(field: str | None, op: str | None, value: float | None) -> None:
+def _check_field_condition(number_field: str | None, number_op: str | None, number_value: float | None) -> None:
     """A field condition is all three parts or none; anything else is a 422 with a message the screen can show."""
-    problem = report_filters.field_condition_error(field, op, value)
+    problem = report_filters.field_condition_error(number_field, number_op, number_value)
     if problem:
         raise HTTPException(422, problem)
 
@@ -50,9 +50,9 @@ def _filtered_reports_query(
     status: models.ReportStatus | None,
     technician: str | None,
     q: str | None = None,
-    field: str | None = None,
-    op: str | None = None,
-    value: float | None = None,
+    number_field: str | None = None,
+    number_op: str | None = None,
+    number_value: float | None = None,
 ):
     """The filter chain search_reports and export_reports both apply —
     pulled out so export_reports' own docstring promise ("exporting always
@@ -71,9 +71,9 @@ def _filtered_reports_query(
         status=status,
         technician=technician,
         q=q,
-        field=field,
-        op=op,
-        value=value,
+        number_field=number_field,
+        number_op=number_op,
+        number_value=number_value,
     )
 
 
@@ -99,9 +99,9 @@ def search_reports(
     status: models.ReportStatus | None = None,
     technician: str | None = None,
     q: str | None = None,
-    field: str | None = Query(None, description="With op and value: only reports whose number in this field passes (finalized only)"),
-    op: str | None = Query(None, description="gt, gte, lt, lte or eq"),
-    value: float | None = Query(None, description="The number to compare with"),
+    number_field: str | None = Query(None, description="With number_op and number_value: only reports whose number in this field passes (finalized only)"),
+    number_op: str | None = Query(None, description="gt, gte, lt, lte or eq"),
+    number_value: float | None = Query(None, description="The number to compare with"),
     db: Session = Depends(get_db),
 ):
     """§7/§9: filtered search — the browse/list view, not a single report's
@@ -123,7 +123,7 @@ def search_reports(
     answer is empty. Results are ranked best match first, and each row carries
     a short excerpt around the match."""
     q = _search_text_param(q)
-    _check_field_condition(field, op, value)
+    _check_field_condition(number_field, number_op, number_value)
     query = _filtered_reports_query(
         db,
         instrument_id=instrument_id,
@@ -135,9 +135,9 @@ def search_reports(
         status=status,
         technician=technician,
         q=q,
-        field=field,
-        op=op,
-        value=value,
+        number_field=number_field,
+        number_op=number_op,
+        number_value=number_value,
     )
     if q:
         _match, rank = report_search.match_expressions(q)
@@ -184,9 +184,9 @@ def export_reports(
     status: models.ReportStatus | None = None,
     technician: str | None = None,
     q: str | None = None,
-    field: str | None = Query(None, description="As on GET /reports"),
-    op: str | None = Query(None, description="As on GET /reports"),
-    value: float | None = Query(None, description="As on GET /reports"),
+    number_field: str | None = Query(None, description="As on GET /reports"),
+    number_op: str | None = Query(None, description="As on GET /reports"),
+    number_value: float | None = Query(None, description="As on GET /reports"),
     db: Session = Depends(get_db),
 ):
     """§7/§9: bulk CSV export of a filtered view — the same filter set as
@@ -196,7 +196,7 @@ def export_reports(
     string column rather than one column per possible field — the whole
     point of JSONB (§5) is that the field set varies by template, so a fixed
     CSV schema would defeat it."""
-    _check_field_condition(field, op, value)
+    _check_field_condition(number_field, number_op, number_value)
     query = _filtered_reports_query(
         db,
         instrument_id=instrument_id,
@@ -208,9 +208,9 @@ def export_reports(
         status=status,
         technician=technician,
         q=_search_text_param(q),
-        field=field,
-        op=op,
-        value=value,
+        number_field=number_field,
+        number_op=number_op,
+        number_value=number_value,
     )
     reports = query.order_by(*models.report_chronological_order()).all()
 

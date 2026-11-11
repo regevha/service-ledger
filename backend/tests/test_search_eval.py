@@ -64,12 +64,12 @@ def test_a_bad_field_condition_is_dropped(answer, monkeypatch):
     fake = FakeClient({**answer, "text": ""})
     monkeypatch.setattr(m, "_get_client", lambda: fake)
     out = m.parse("laser delay above 29", KNOWN, TODAY)
-    assert not {"field", "op", "value"} & set(out.filters)
+    assert not {"number_field", "number_op", "number_value"} & set(out.filters)
 
 
 def test_a_field_name_is_matched_ignoring_case(monkeypatch):
     fake = FakeClient({"field": "Laser_Delay", "op": "gt", "value": 29, "text": ""})
     monkeypatch.setattr(m, "_get_client", lambda: fake)
     out = m.parse("laser delay above 29", KNOWN, TODAY)
-    assert out.filters == {"field": "laser_delay", "op": "gt", "value": "29"}
+    assert out.filters == {"number_field": "laser_delay", "number_op": "gt", "number_value": "29"}
     assert out.understood == [{"key": "field", "label": "Laser delay above 29"}]
