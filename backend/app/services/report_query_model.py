@@ -108,6 +108,8 @@ def _tool() -> dict[str, Any]:
                 "field": {"type": "string", "description": "For a condition on a number ('laser delay above 29'): one name copied from the list of number fields, or empty."},
                 "op": {"type": "string", "enum": ["gt", "gte", "lt", "lte", "eq"], "description": "With field: above (gt), at least (gte), below (lt), at most (lte), equal to (eq)."},
                 "value": {"type": "number", "description": "With field: the number to compare with."},
+                "repairs_op": {"type": "string", "enum": ["gt", "gte", "lt", "lte", "eq"], "description": "For a question about INSTRUMENTS by how many repairs they had ('instruments with more than 2 repairs this year'): above (gt), at least (gte), below (lt), at most (lte), exactly (eq). Leave empty for questions about reports."},
+                "repairs_count": {"type": "integer", "minimum": 0, "description": "With repairs_op: the number of repairs to compare with (2 for 'more than 2'; 0 for 'no repairs')."},
                 "not_supported": {
                     "type": "array",
                     "items": {"type": "string"},
@@ -140,7 +142,7 @@ def _system_prompt(model_names: list[str], place_names: list[str], field_names: 
         f"{numbers}\n"
         "text: the specific thing to look for inside the reports (a part name, a symptom, a measurement), without filler words. "
         "Empty if the question has no such thing; never repeat what the other fields already say.\n"
-        "not_supported: only requests that these filters cannot carry out: 'overdue', counting ('more than 2 repairs'), "
+        "Questions about instruments by their number of repairs fill repairs_op and repairs_count (the report type, status and text are then left empty). not_supported: only requests that these filters cannot carry out: 'overdue', counting reports ('how many repairs did we do'), "
         "comparing numbers when no field in the list fits, averages, durations ('average repair time'), reports missing or having a field or attachment ('without a serial number', 'with attachments': the field name never goes in text), failed readings, or a "
         "written summary. Put such a request there and never in text, and never put analysis words (average, time, count, total) in text. "
         "A date phrase you turned into date_from/date_to ('spring', 'this quarter') is covered: it is not a note. Vague or filler words ('problems', 'visits', 'needed', 'everything') are not requests: ignore them, "
@@ -262,6 +264,28 @@ def _merge_field_condition(out: Parsed, data: dict[str, Any], known: Known) -> N
     out.understood.append({"key": "field", "label": f"{label} {_OP_WORD[op]} {_number_text(float(value))}"})
 
 
+def _merge_repair_count(out: Parsed, data: dict[str, Any]) -> None:
+    """"Instruments with more than 2 repairs this year": a question about instruments, not reports. Kept only when the
+    comparison is a known one and the count is a whole number from 0 up. The condition counts finalized repairs, so a
+    report type, status, text or lab manager in the same question cannot apply to it; those are left out and said so."""
+    op = data.get("repairs_op")
+    count = data.get("repairs_count")
+    if op not in _OP_WORD or isinstance(count, bool) or not isinstance(count, int) or not 0 <= count <= 100000:
+        return
+    dropped = []
+    for key in ("report_type", "status", "technician", "q", "number_field", "number_op", "number_value"):
+        if key in out.filters:
+            if key not in ("report_type", "number_op", "number_value"):
+                dropped.append(key)
+            del out.filters[key]
+    out.understood[:] = [part for part in out.understood if part["key"] not in ("report_type", "status", "technician", "q", "field")]
+    if dropped:
+        out.notes.append("Only the model, place and dates apply to a count of repairs per instrument (left out: " + ", ".join(dropped) + ")")
+    out.filters.update({"repairs_op": op, "repairs_count": str(count)})
+    words = "no repairs" if (op == "eq" and count == 0) else f"{_OP_WORD[op].capitalize()} {count} repair{'' if count == 1 else 's'}"
+    out.understood.append({"key": "repairs", "label": words})
+
+
 def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
     """The rules' answer plus what the model's tool input adds that the rules did not already set. Every value is checked."""
     out = Parsed(filters=dict(rules.filters), understood=[dict(p) for p in rules.understood], source="ai")
@@ -323,6 +347,8 @@ def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
     if isinstance(notes, list):
         cleaned = (_clean_text(x, _MAX_NOTE) for x in notes[:5])
         out.notes = [n for n in cleaned if n and not _note_is_covered(n, out.filters)]
+    # Last, so what the question also said (a lab manager, some text) is there to be left out and reported.
+    _merge_repair_count(out, data)
     return out
 
 

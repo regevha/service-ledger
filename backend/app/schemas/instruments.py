@@ -123,6 +123,13 @@ class InstrumentCreate(BaseModel):
         return (value.strip() or None) if isinstance(value, str) else value
 
 
+class RepairCountOut(BaseModel):
+    """How many finalized repair reports one instrument has in a date range."""
+
+    instrument_id: uuid.UUID
+    repairs: int
+
+
 class InstrumentUpdate(BaseModel):
     """PATCH /instruments/{id} — every field optional so a caller only sends
     what's changing; `instrument_type` is deliberately not editable here (it is
