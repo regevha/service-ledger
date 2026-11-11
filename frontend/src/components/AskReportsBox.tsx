@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ApiError, parseReportSearch, type ReportFilters } from '../api';
+import { ApiError, parseReportSearch, type ReportFilters, type ReportSearchResult } from '../api';
 import { ActiveSearchChips } from './ActiveSearch';
 import { useKeptSearch } from '../keptSearchContext';
 import { PHONE_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
@@ -45,6 +45,8 @@ export function AskReportsBox({
   const [busy, setBusy] = useState(false);
   // True when the last question set nothing, so it is not kept and there are no chips to show for it.
   const [nothingMatched, setNothingMatched] = useState(false);
+  // How the last question was read: by the built-in rules or with a small AI model, and what could not be applied.
+  const [details, setDetails] = useState<Pick<ReportSearchResult, 'source' | 'notes'>>({ source: 'rules', notes: [] });
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState(readRecent);
   // Speaking the question: whether the microphone is on, and why the last try gave nothing.
@@ -71,6 +73,7 @@ export function AskReportsBox({
     try {
       const result = await parseReportSearch(trimmed);
       setNothingMatched(result.understood.length === 0);
+      setDetails({ source: result.source, notes: result.notes ?? [] });
       // Kept before it is applied, so the screen that receives the filters already finds them in the kept search.
       save({ text: trimmed, filters: result.filters, understood: result.understood });
       onApply(result.filters);
@@ -237,10 +240,20 @@ export function AskReportsBox({
             <div className="ask-conditions">
               <span>Showing</span>
               <ActiveSearchChips chipTestId="ask-chip" clearTestId="ask-clear" />
+              {details.source === 'ai' && (
+                <span className="ask-badge" data-testid="ask-ai-badge" title="The built-in rules could not read all of it, so a small AI model helped.">
+                  Read with AI
+                </span>
+              )}
               <span className="ask-hint">Tap a condition to remove it, or change it in the filters below.</span>
             </div>
           ) : (
             <span>Nothing in that matched a filter, so all reports are shown.</span>
+          )}
+          {details.notes.length > 0 && (
+            <div className="ask-notes" data-testid="ask-notes">
+              Not supported yet, so not applied: {details.notes.join(', ')}.
+            </div>
           )}
         </div>
       )}

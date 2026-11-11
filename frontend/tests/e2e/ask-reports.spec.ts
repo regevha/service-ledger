@@ -34,3 +34,31 @@ test('an example fills the box and applies', async ({ page }) => {
   await page.getByRole('button', { name: 'waiting for review' }).click();
   await expect(page.getByTestId('ask-chip').filter({ hasText: 'waiting for review' })).toHaveCount(1);
 });
+
+test('an answer read with AI says so, and a part no filter can express is listed, not applied', async ({ page }) => {
+  await page.route('**/reports/parse-search', (route) =>
+    route.fulfill({
+      json: {
+        filters: { report_type: 'preventive_maintenance' },
+        understood: [{ key: 'report_type', label: 'Preventive maintenance' }],
+        source: 'ai',
+        notes: ['overdue'],
+      },
+    }),
+  );
+  await page.goto('/#/reports');
+  await page.getByTestId('ask-input').fill('which instruments are overdue for PM?');
+  await page.getByTestId('ask-submit').click();
+  await expect(page.getByTestId('ask-ai-badge')).toBeVisible();
+  await expect(page.getByTestId('ask-notes')).toContainText('Not supported yet, so not applied: overdue');
+  await expect(page.getByTestId('ask-chip').filter({ hasText: 'Preventive maintenance' })).toHaveCount(1);
+});
+
+test('a rules-only answer shows no AI badge', async ({ page }) => {
+  await page.goto('/#/reports');
+  await page.getByTestId('ask-input').fill('repairs last month');
+  await page.getByTestId('ask-submit').click();
+  await expect(page.getByTestId('ask-chip').first()).toBeVisible();
+  await expect(page.getByTestId('ask-ai-badge')).toHaveCount(0);
+  await expect(page.getByTestId('ask-notes')).toHaveCount(0);
+});

@@ -97,6 +97,11 @@ def test_short_model_name_shared_by_two_models_is_not_guessed():
     assert "model_id" not in parse_search("aria sorter reports", known, TODAY).filters
 
 
+def test_not_yet_reviewed_means_waiting_for_review():
+    for words in ("not reviewed", "not yet reviewed", "never reviewed", "nobody has reviewed", "unreviewed"):
+        assert run(f"repairs {words}").filters == {"report_type": "repair", "status": "extracted"}, words
+
+
 def test_filler_words_and_initials():
     p = run("serial P69200123 mentioning a PMT")
     assert p.filters["instrument_id"] == "i-1"
