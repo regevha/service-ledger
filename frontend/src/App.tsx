@@ -10,6 +10,7 @@ import { HomeScreen } from './components/HomeScreen';
 import { BatchIntake } from './components/BatchIntake';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
+import { ActiveSearchLine } from './components/ActiveSearch';
 import { KeptSearchGate, KeptSearchProvider } from './components/KeptSearchProvider';
 import { NavigationGuardContext, type LeaveGuard } from './navigationGuard';
 import type { ReportFilters } from './api';
@@ -277,6 +278,8 @@ export default function App() {
         )}
         <ThemeToggle />
       </header>
+
+      <ActiveSearchLine view={view} />
 
       <ToastHost />
 

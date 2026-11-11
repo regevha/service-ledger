@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { LoadError } from './LoadError';
 import {
   getFleetAnalytics,
@@ -11,7 +11,7 @@ import {
   type ReportFilters,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
-import { useDropKeptSearchWhenFiltersChange, useKeptSearch } from '../keptSearchContext';
+import { useKeptSearch, useKeptSearchSync } from '../keptSearchContext';
 import { BarRow } from './BarRow';
 import { ChartSection } from './ChartSection';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -217,7 +217,14 @@ export function AnalyticsScreen() {
   // Starts from the search kept since the last visit (the same one Reports uses), if any; the maker is Analytics' own.
   const { kept } = useKeptSearch();
   const [filters, setFilters] = useState<AnalyticsFilters>(kept?.filters ?? {});
-  useDropKeptSearchWhenFiltersChange(filters as ReportFilters);
+  const [barKey, setBarKey] = useState(0);
+  // The search at the top of the page can change while this screen is open (a chip removed, Clear): follow it,
+  // keeping the maker, which is Analytics' own.
+  const adoptKept = useCallback((next: ReportFilters) => {
+    setFilters((f) => ({ ...next, manufacturer: f.manufacturer }));
+    setBarKey((k) => k + 1);
+  }, []);
+  useKeptSearchSync(filters as ReportFilters, adoptKept);
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [groupBy, setGroupBy] = useState<GroupBy>('model');
   const [chosen, setChosen] = useState<FleetSelection>(null);
@@ -265,7 +272,7 @@ export function AnalyticsScreen() {
     'Could not load fleet analytics.'
   );
 
-  const filterBar = <FilterBar filters={filters} setFilters={setFilters} instruments={instruments} />;
+  const filterBar = <FilterBar key={barKey} filters={filters} setFilters={setFilters} instruments={instruments} />;
 
   if (backwards) {
     return (

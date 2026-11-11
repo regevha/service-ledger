@@ -1,6 +1,7 @@
 import { test, expect } from './coverage';
 import {
   clearKeptSearch,
+  conditionsOf,
   criteriaOf,
   goneKeys,
   goneNotice,
@@ -8,6 +9,7 @@ import {
   readKeptSearch,
   recordKeysOf,
   sameFilters,
+  withoutCondition,
   writeKeptSearch,
 } from '../../src/keptSearch';
 
@@ -163,4 +165,87 @@ test('storage that is missing or throws never breaks anything', () => {
   expect(readKeptSearch()).toBeNull();
   expect(() => writeKeptSearch({ text: 'x', filters: { report_type: 'repair' }, understood })).not.toThrow();
   expect(() => clearKeptSearch()).not.toThrow();
+});
+
+// ---- The conditions shown as chips, and taking one out (part 2)
+
+const kept = (filters: Record<string, string>, parts: { key: string; label: string }[]) => ({ text: 'a question', filters, understood: parts });
+
+test('conditions: one chip per thing understood, in the order it was understood', () => {
+  const search = kept({ report_type: 'repair', technician: 'Zed' }, understood);
+  expect(conditionsOf(search)).toEqual(understood);
+});
+
+test('conditions: a date is one chip even though it sets two filters', () => {
+  const search = kept({ date_from: '2025-01-01', date_to: '2025-12-31' }, [{ key: 'date', label: 'In 2025' }]);
+  expect(conditionsOf(search)).toEqual([{ key: 'date', label: 'In 2025' }]);
+});
+
+test('conditions: a chip whose filter is gone is not shown, and a filter nobody named gets a plain chip', () => {
+  // The question named a status, but only the type is left; and a lab manager filter has no chip of its own.
+  const search = kept({ report_type: 'repair', technician: 'Zed Z' }, [
+    { key: 'report_type', label: 'Repair' },
+    { key: 'status', label: 'Status: Finalized' },
+  ]);
+  expect(conditionsOf(search)).toEqual([
+    { key: 'report_type', label: 'Repair' },
+    { key: 'technician', label: 'Lab manager: Zed Z' },
+  ]);
+  // An id that no chip names is shown by kind only, never as the raw id.
+  const withId = kept({ instrument_id: '0f3a-secret-id', model_id: 'm1' }, []);
+  expect(conditionsOf(withId).map((p) => p.label)).toEqual(['Instrument', 'Model']);
+  expect(JSON.stringify(conditionsOf(withId))).not.toContain('0f3a');
+  // A part that stands for no filter at all (a note) is never a chip.
+  expect(conditionsOf(kept({ report_type: 'repair' }, [{ key: 'summary', label: 'A note' }, { key: 'report_type', label: 'Repair' }]))).toEqual([
+    { key: 'report_type', label: 'Repair' },
+  ]);
+});
+
+test('conditions: the same filter is never shown twice', () => {
+  const search = kept({ report_type: 'repair' }, [
+    { key: 'report_type', label: 'Repair' },
+    { key: 'report_type', label: 'Repair (again)' },
+  ]);
+  expect(conditionsOf(search)).toEqual([{ key: 'report_type', label: 'Repair' }]);
+});
+
+test('removing one condition takes out its filter and nothing else', () => {
+  const search = kept({ report_type: 'repair', technician: 'Zed' }, understood);
+  expect(withoutCondition(search, 'report_type')).toEqual({
+    text: 'a question',
+    filters: { technician: 'Zed' },
+    understood: [{ key: 'technician', label: 'Lab manager: Zed' }],
+  });
+  expect(withoutCondition(search, 'technician')?.filters).toEqual({ report_type: 'repair' });
+  // The question stays as typed, and the search it came from is not changed.
+  expect(withoutCondition(search, 'technician')?.text).toBe('a question');
+  expect(search.filters).toEqual({ report_type: 'repair', technician: 'Zed' });
+});
+
+test('removing a date takes out both ends of it', () => {
+  const search = kept({ report_type: 'repair', date_from: '2025-01-01', date_to: '2025-12-31' }, [
+    { key: 'report_type', label: 'Repair' },
+    { key: 'date', label: 'In 2025' },
+  ]);
+  expect(withoutCondition(search, 'date')?.filters).toEqual({ report_type: 'repair' });
+});
+
+test('a plain chip for an unnamed filter can be removed too', () => {
+  const search = kept({ report_type: 'repair', status: 'draft' }, [{ key: 'report_type', label: 'Repair' }]);
+  expect(withoutCondition(search, 'status')?.filters).toEqual({ report_type: 'repair' });
+  // The two ends of a date nobody named are two chips, each removable on its own.
+  const dates = kept({ date_from: '2025-01-01', date_to: '2025-02-01', status: 'draft' }, []);
+  expect(conditionsOf(dates).map((p) => p.key)).toEqual(['status', 'date_from', 'date_to']);
+  expect(withoutCondition(dates, 'date_from')?.filters).toEqual({ status: 'draft', date_to: '2025-02-01' });
+});
+
+test('removing the last condition leaves no search', () => {
+  expect(withoutCondition(kept({ status: 'draft' }, [{ key: 'status', label: 'Status: Draft' }]), 'status')).toBeNull();
+  expect(withoutCondition(kept({ date_from: '2025-01-01', date_to: '2025-12-31' }, [{ key: 'date', label: 'In 2025' }]), 'date')).toBeNull();
+});
+
+test('removing something that is not there changes nothing', () => {
+  const search = kept({ report_type: 'repair' }, [{ key: 'report_type', label: 'Repair' }]);
+  expect(withoutCondition(search, 'technician')).toEqual(search);
+  expect(withoutCondition(search, 'not-a-filter')).toEqual(search);
 });

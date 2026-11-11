@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ApiError, parseReportSearch, type ReportFilters, type ReportSearchPart } from '../api';
+import { ApiError, parseReportSearch, type ReportFilters } from '../api';
+import { ActiveSearchChips } from './ActiveSearch';
 import { useKeptSearch } from '../keptSearchContext';
 
 const EXAMPLES = ['repairs of the FACSAria III last month', 'waiting for review', 'maintenance in 2025 at Bar-Ilan University'];
@@ -29,7 +30,8 @@ export function AskReportsBox({
   const { kept, notice, save, dismissNotice } = useKeptSearch();
   const [text, setText] = useState(kept?.text ?? '');
   const [busy, setBusy] = useState(false);
-  const [understood, setUnderstood] = useState<ReportSearchPart[] | null>(kept?.understood ?? null);
+  // True when the last question set nothing, so it is not kept and there are no chips to show for it.
+  const [nothingMatched, setNothingMatched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // The kept search can change after this box opened (the check at startup drops one whose instrument is gone).
@@ -38,7 +40,6 @@ export function AskReportsBox({
   useEffect(() => {
     if (touched.current) return;
     setText(kept?.text ?? '');
-    setUnderstood(kept?.understood ?? null);
   }, [kept]);
 
   async function ask(request: string) {
@@ -49,7 +50,7 @@ export function AskReportsBox({
     setError(null);
     try {
       const result = await parseReportSearch(trimmed);
-      setUnderstood(result.understood);
+      setNothingMatched(result.understood.length === 0);
       // Kept before it is applied, so the screen that receives the filters already finds them in the kept search.
       save({ text: trimmed, filters: result.filters, understood: result.understood });
       onApply(result.filters);
@@ -103,7 +104,7 @@ export function AskReportsBox({
           {error}
         </div>
       )}
-      {(understood === null || !showUnderstood) && !error && (
+      {!(showUnderstood && (kept || nothingMatched)) && !error && (
         <div className="ask-examples">
           Try:{' '}
           {EXAMPLES.map((example) => (
@@ -121,20 +122,16 @@ export function AskReportsBox({
           ))}
         </div>
       )}
-      {understood !== null && showUnderstood && (
+      {showUnderstood && (kept || nothingMatched) && (
         <div className="ask-understood" data-testid="ask-understood" aria-live="polite">
-          {understood.length === 0 ? (
-            <span>Nothing in that matched a filter, so all reports are shown.</span>
-          ) : (
-            <>
+          {kept ? (
+            <div className="ask-conditions">
               <span>Showing</span>
-              {understood.map((part) => (
-                <span key={part.key} className="ask-chip" data-testid="ask-chip">
-                  {part.label}
-                </span>
-              ))}
-              <span className="ask-hint">Change any of it in the filters below.</span>
-            </>
+              <ActiveSearchChips chipTestId="ask-chip" clearTestId="ask-clear" />
+              <span className="ask-hint">Tap a condition to remove it, or change it in the filters below.</span>
+            </div>
+          ) : (
+            <span>Nothing in that matched a filter, so all reports are shown.</span>
           )}
         </div>
       )}
