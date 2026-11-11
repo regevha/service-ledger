@@ -58,6 +58,10 @@ export interface AnalyticsFilters {
   technician?: string;
   /** Free-text search over finalized reports (two or more characters). */
   q?: string;
+  /** A condition on a number in the report, as on the Reports list: all three or none. */
+  number_field?: string;
+  number_op?: string;
+  number_value?: string;
 }
 
 function analyticsParams(filters: AnalyticsFilters, extra: Record<string, string> = {}): string {

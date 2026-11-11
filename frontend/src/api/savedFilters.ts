@@ -21,12 +21,19 @@ export interface SavedFilterList {
   cap: number;
 }
 
+/** The server keeps the number of a condition as a number; the filters here hold it as text, like every other value. */
+function fromServer(saved: SavedFilter): SavedFilter {
+  const value = (saved.filters as { number_value?: unknown }).number_value;
+  return value === undefined || value === null ? saved : { ...saved, filters: { ...saved.filters, number_value: String(value) } };
+}
+
 export function listSavedFilters(): Promise<SavedFilterList> {
-  return apiFetch('/saved-report-filters');
+  return apiFetch<SavedFilterList>('/saved-report-filters').then((list) => ({ ...list, items: list.items.map(fromServer) }));
 }
 
 export function createSavedFilter(name: string, filters: ReportFilters): Promise<SavedFilter> {
-  return apiFetch('/saved-report-filters', { method: 'POST', body: JSON.stringify({ name, filters }) });
+  const body = { name, filters: filters.number_value ? { ...filters, number_value: Number(filters.number_value) } : filters };
+  return apiFetch<SavedFilter>('/saved-report-filters', { method: 'POST', body: JSON.stringify(body) }).then(fromServer);
 }
 
 export function deleteSavedFilter(id: string): Promise<void> {

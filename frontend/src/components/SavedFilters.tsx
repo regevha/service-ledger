@@ -8,7 +8,7 @@ import {
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 
-const KEYS = ['instrument_id', 'model_id', 'place_id', 'report_type', 'status', 'date_from', 'date_to', 'technician', 'q'] as const;
+const KEYS = ['instrument_id', 'model_id', 'place_id', 'report_type', 'status', 'date_from', 'date_to', 'technician', 'q', 'number_field', 'number_op', 'number_value'] as const;
 
 /** Only the saved-filter criteria (the filters and the search text), with empty values dropped, so two filter objects compare by content. */
 function criteria(f: ReportFilters): ReportFilters {
