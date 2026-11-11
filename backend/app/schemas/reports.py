@@ -183,6 +183,9 @@ class ReportSearchParseOut(BaseModel):
     source: str = "rules"
     # Parts of the question that no filter can express yet (for example "overdue"); shown to the person.
     notes: list[str] = []
+    # "instruments" when the question is about instruments ("more than 2 repairs this year"): the filters then hold
+    # repairs_op and repairs_count, and the screen opens the Instruments list instead of the Reports list.
+    target: str = "reports"
 
 
 class RectOut(BaseModel):

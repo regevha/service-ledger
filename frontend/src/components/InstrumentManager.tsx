@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LoadError } from './LoadError';
 import {
   ApiError,
   deleteInstrument,
+  listInstrumentRepairCounts,
   listInstrumentTypes,
   listPlaces,
   listReports,
@@ -11,6 +12,8 @@ import {
 } from '../api';
 import { useInstrumentFilters } from '../hooks/useInstrumentFilters';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { passesRepairCount } from '../instrumentAsk';
+import { useInstrumentAsk } from '../instrumentAskContext';
 import { DeleteInstrumentBanner, type PendingInstrumentDelete } from './DeleteInstrumentBanner';
 import { InstrumentFilters } from './InstrumentFilters';
 import { InstrumentFormScreen } from './InstrumentForm';
@@ -71,6 +74,39 @@ export function InstrumentManagerScreen({
   const [section, setSection] = useState<Section>('instruments');
   const [allPlaces, setAllPlaces] = useState<Place[]>([]);
   const filters = useInstrumentFilters(instruments, allPlaces);
+  // A question about instruments from the Ask box: how many repairs, in which dates, for which model or place.
+  const asked = useInstrumentAsk();
+  const ask = asked?.ask ?? null;
+  const [repairCounts, setRepairCounts] = useState<Map<string, number> | null>(null);
+  const [countError, setCountError] = useState<string | null>(null);
+  const { setModelFilter, setPlaceFilter } = filters;
+  useEffect(() => {
+    if (!ask) {
+      setRepairCounts(null);
+      setCountError(null);
+      return;
+    }
+    // The question's own model and place replace the pickers' choice for as long as it lasts.
+    setModelFilter(ask.model_id ?? 'all');
+    setPlaceFilter(ask.place_id ?? '');
+    let cancelled = false;
+    setRepairCounts(null);
+    setCountError(null);
+    listInstrumentRepairCounts({ date_from: ask.date_from, date_to: ask.date_to })
+      .then((rows) => {
+        if (!cancelled) setRepairCounts(new Map(rows.map((r) => [r.instrument_id, r.repairs])));
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setCountError(e instanceof ApiError ? e.message : 'Could not count the repairs.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ask, setModelFilter, setPlaceFilter]);
+  const shownInstruments = useMemo(
+    () => (!ask ? filters.shownInstruments : repairCounts ? filters.shownInstruments.filter((i) => passesRepairCount(ask, repairCounts.get(i.id) ?? 0)) : []),
+    [ask, repairCounts, filters.shownInstruments]
+  );
   useEffect(() => {
     listPlaces()
       .then(setAllPlaces)
@@ -197,6 +233,21 @@ export function InstrumentManagerScreen({
         />
       )}
 
+      {ask && (
+        <div className="banner banner-info instrument-ask" role="status" data-testid="instrument-ask">
+          <strong>Showing instruments:</strong> {ask.labels.join(' · ')}{' '}
+          <button type="button" className="link-button" data-testid="instrument-ask-clear" onClick={() => asked?.clear()}>
+            Clear
+          </button>
+          {ask.notes.map((note) => (
+            <div key={note} className="ask-notes" data-testid="instrument-ask-note">
+              {note}.
+            </div>
+          ))}
+          {countError && <div className="banner banner-warn">{countError}</div>}
+        </div>
+      )}
+
       {!loading && instruments.length > 0 && (
         <InstrumentFilters
           showPlace={allPlaces.length > 0}
@@ -219,9 +270,9 @@ export function InstrumentManagerScreen({
       ) : instruments.length === 0 ? (
         // A failed load says so above; it is not an empty fleet.
         error ? null : <div className="empty-hint">No instruments yet.</div>
-      ) : filters.shownInstruments.length === 0 ? (
-        <div className="empty-hint">
-          No instruments match these filters.{' '}
+      ) : shownInstruments.length === 0 ? (
+        <div className="empty-hint" data-testid="instruments-empty">
+          {ask && !repairCounts && !countError ? 'Counting repairs…' : 'No instruments match these filters.'}{' '}
           {filters.filtersActive && (
             <button type="button" className="btn small" onClick={filters.clearFilters}>
               Clear filters
@@ -230,7 +281,8 @@ export function InstrumentManagerScreen({
         </div>
       ) : (
         <InstrumentTable
-          instruments={filters.shownInstruments}
+          instruments={shownInstruments}
+          repairCounts={ask && repairCounts ? repairCounts : undefined}
           typeNames={typeNames}
           phone={phone}
           onEdit={(instrument) => setMode({ kind: 'edit', instrument })}

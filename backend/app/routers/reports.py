@@ -170,7 +170,8 @@ def parse_report_search(payload: schemas.ReportSearchParseIn, db: Session = Depe
         fields=report_filters.numeric_field_names(db),
     )
     parsed = parse_search(payload.text, known, date.today())
-    return {"filters": parsed.filters, "understood": parsed.understood, "source": parsed.source, "notes": parsed.notes}
+    target = "instruments" if "repairs_op" in parsed.filters else "reports"
+    return {"filters": parsed.filters, "understood": parsed.understood, "source": parsed.source, "notes": parsed.notes, "target": target}
 
 
 @router.get("/reports/export")

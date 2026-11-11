@@ -45,6 +45,9 @@ export interface ReportFilters {
   number_field?: string;
   number_op?: string;
   number_value?: string;
+  /** Set only on the answer to a question about instruments; never sent to the Reports list. */
+  repairs_op?: string;
+  repairs_count?: string;
 }
 
 export function listReports(filters: ReportFilters = {}): Promise<ReportListItem[]> {
@@ -111,6 +114,8 @@ export interface ReportSearchResult {
   source: 'rules' | 'ai' | 'rules_fallback';
   /** Parts of the question that no filter can express yet, for example "overdue". */
   notes: string[];
+  /** "instruments" for a question about instruments ("more than 2 repairs this year"); the filters then hold repairs_op and repairs_count. */
+  target?: 'reports' | 'instruments';
 }
 
 export function parseReportSearch(text: string): Promise<ReportSearchResult> {
