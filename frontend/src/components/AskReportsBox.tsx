@@ -4,6 +4,8 @@ import { ActiveSearchChips } from './ActiveSearch';
 import { useKeptSearch } from '../keptSearchContext';
 import { PHONE_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
 import { addRecent, readRecent, writeRecent } from '../recentSearches';
+import { instrumentAskOf } from '../instrumentAsk';
+import { useInstrumentAsk } from '../instrumentAskContext';
 import { listen, PROBLEM_TEXT, speechSupported, type VoiceProblem } from '../speech';
 
 const EXAMPLES = ['repairs of the FACSAria III last month', 'waiting for review', 'maintenance in 2025 at Bar-Ilan University'];
@@ -40,6 +42,7 @@ export function AskReportsBox({
   onDone?: () => void;
 }) {
   const phone = useMediaQuery(PHONE_QUERY);
+  const instrumentAsk = useInstrumentAsk();
   const { kept, notice, save, dismissNotice } = useKeptSearch();
   const [text, setText] = useState(kept?.text ?? '');
   const [busy, setBusy] = useState(false);
@@ -72,6 +75,17 @@ export function AskReportsBox({
     setError(null);
     try {
       const result = await parseReportSearch(trimmed);
+      // A question about instruments is answered on the Instruments tab, so it is neither kept nor applied here.
+      const forInstruments = instrumentAskOf(result);
+      if (forInstruments && instrumentAsk) {
+        setNothingMatched(false);
+        const next = addRecent(readRecent(), trimmed);
+        writeRecent(next);
+        setRecent(next);
+        instrumentAsk.open(forInstruments);
+        onDone?.();
+        return;
+      }
       setNothingMatched(result.understood.length === 0);
       setDetails({ source: result.source, notes: result.notes ?? [] });
       // Kept before it is applied, so the screen that receives the filters already finds them in the kept search.

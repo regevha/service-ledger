@@ -3,6 +3,15 @@ import type { FieldType, Instrument, InstrumentCreatePayload, InstrumentType, In
 
 // ---------- Instruments ----------
 
+/** How many finalized repair reports each instrument has in the range (every instrument is listed, 0 when none). */
+export function listInstrumentRepairCounts(range: { date_from?: string; date_to?: string } = {}): Promise<{ instrument_id: string; repairs: number }[]> {
+  const params = new URLSearchParams();
+  if (range.date_from) params.set('date_from', range.date_from);
+  if (range.date_to) params.set('date_to', range.date_to);
+  const query = params.toString();
+  return apiFetch(`/instruments/repair-counts${query ? `?${query}` : ''}`);
+}
+
 export function listInstruments(): Promise<Instrument[]> {
   return apiFetch('/instruments');
 }
