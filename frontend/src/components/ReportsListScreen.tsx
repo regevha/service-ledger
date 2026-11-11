@@ -11,6 +11,7 @@ import { InstrumentDetailScreen } from './InstrumentDetailScreen';
 import { ReportDetailScreen } from './ReportDetailScreen';
 import { ReportFilterBar } from './ReportFilterBar';
 import { AskReportsBox } from './AskReportsBox';
+import { useDropKeptSearchWhenFiltersChange, useKeptSearch } from '../keptSearchContext';
 import { ReportGroups } from './reports/ReportGroups';
 import { ReportRow } from './reports/ReportRow';
 import { ReportTableHead } from './reports/ReportTableHead';
@@ -60,7 +61,10 @@ export function ReportsListScreen({
   initialFilters?: ReportFilters;
   onInitialFiltersUsed?: () => void;
 }) {
-  const [filters, setFilters] = useState<ReportFilters>(initialFilters ?? {});
+  // Starts from what was just asked on Home, else from the search kept since the last visit (see keptSearch.ts).
+  const { kept } = useKeptSearch();
+  const [filters, setFilters] = useState<ReportFilters>(initialFilters ?? kept?.filters ?? {});
+  useDropKeptSearchWhenFiltersChange(filters);
   useEffect(() => {
     if (initialFilters) onInitialFiltersUsed?.();
     // Once, on opening: the filters are already in state, this only tells the app they were taken.

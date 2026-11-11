@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiError, parseReportSearch, type ReportFilters, type ReportSearchPart } from '../api';
+import { useKeptSearch } from '../keptSearchContext';
 
 const EXAMPLES = ['repairs of the FACSAria III last month', 'waiting for review', 'maintenance in 2025 at Bar-Ilan University'];
 
@@ -7,6 +8,9 @@ const EXAMPLES = ['repairs of the FACSAria III last month', 'waiting for review'
  * One text box above the filters: "repairs of the FACSAria III last month". The server turns the sentence into the
  * same filters the bar below holds, so the person sees what was understood and can change any of it there. It
  * never searches by itself: it only fills the filters.
+ *
+ * The last search that set anything is kept (see keptSearch.ts) until the person asks again or changes the
+ * filters, so the box shows it again when the screen is opened later, here or on another screen.
  */
 export function AskReportsBox({
   onApply,
@@ -22,19 +26,32 @@ export function AskReportsBox({
   placeholder?: string;
   submitLabel?: string;
 }) {
-  const [text, setText] = useState('');
+  const { kept, notice, save, dismissNotice } = useKeptSearch();
+  const [text, setText] = useState(kept?.text ?? '');
   const [busy, setBusy] = useState(false);
-  const [understood, setUnderstood] = useState<ReportSearchPart[] | null>(null);
+  const [understood, setUnderstood] = useState<ReportSearchPart[] | null>(kept?.understood ?? null);
   const [error, setError] = useState<string | null>(null);
+
+  // The kept search can change after this box opened (the check at startup drops one whose instrument is gone).
+  // Until the person types or asks, the box follows it.
+  const touched = useRef(false);
+  useEffect(() => {
+    if (touched.current) return;
+    setText(kept?.text ?? '');
+    setUnderstood(kept?.understood ?? null);
+  }, [kept]);
 
   async function ask(request: string) {
     const trimmed = request.trim();
     if (!trimmed) return;
+    touched.current = true;
     setBusy(true);
     setError(null);
     try {
       const result = await parseReportSearch(trimmed);
       setUnderstood(result.understood);
+      // Kept before it is applied, so the screen that receives the filters already finds them in the kept search.
+      save({ text: trimmed, filters: result.filters, understood: result.understood });
       onApply(result.filters);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not read that. Try the filters below.');
@@ -64,12 +81,23 @@ export function AskReportsBox({
           value={text}
           maxLength={300}
           placeholder={placeholder}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            touched.current = true;
+            setText(e.target.value);
+          }}
         />
         <button type="submit" className="btn primary" data-testid="ask-submit" disabled={busy || !text.trim()}>
           {busy ? 'Reading…' : submitLabel}
         </button>
       </div>
+      {notice && (
+        <div className="banner banner-info" role="status" data-testid="kept-search-notice">
+          {notice}{' '}
+          <button type="button" className="link-button" onClick={dismissNotice}>
+            Dismiss
+          </button>
+        </div>
+      )}
       {error && (
         <div className="banner banner-warn" role="alert">
           {error}
