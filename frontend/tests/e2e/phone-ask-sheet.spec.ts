@@ -77,7 +77,12 @@ test.describe('The Ask sheet on a phone', { tag: '@phone' }, () => {
   test('the last five questions are listed as recent, newest first, once each, and survive a reload; a tap asks one again', async ({ page }) => {
     await page.goto('/#/reports');
     const questions = ['maintenance in 2025', 'waiting for review', 'repairs last month', 'repairs in 2024', 'maintenance in 2023', 'waiting for review'];
-    for (const q of questions) await askInSheet(page, q);
+    for (const q of questions) {
+      await askInSheet(page, q);
+      // Wait until this one is in force before the next, so nothing is cut short by the reload below.
+      await expect.poll(async () => JSON.parse((await page.evaluate(() => localStorage.getItem('sl.ask.kept'))) ?? 'null')?.text).toBe(q);
+      await expect(page.getByTestId('ask-sheet')).toHaveCount(0);
+    }
 
     await page.reload();
     const sheet = await openAskSheet(page);
