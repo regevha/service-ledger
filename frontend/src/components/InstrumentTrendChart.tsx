@@ -1,6 +1,6 @@
 import { fieldLabel } from '../fieldLabels';
 import { useElementWidth } from '../hooks/useElementWidth';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getInstrumentTrend, getInstrumentTrendFields, type InstrumentTrend, type TrendField, type TrendPoint } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -364,7 +364,16 @@ function TrendLineChart({
 /** The picker's extra choice: a timeline of the dates the instrument was worked on (WorkTimeline.tsx). */
 export const WORK_DATES = '__work_dates__';
 
-export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId: string; reports: ReportListItem[] }) {
+export function InstrumentTrendSection({
+  instrumentId,
+  reports,
+  focus = false,
+}: {
+  instrumentId: string;
+  reports: ReportListItem[];
+  /** Open the (phone-folded) section and bring it into view, for a "Trend" link. */
+  focus?: boolean;
+}) {
   const [fields, setFields] = useState<TrendField[] | null>(null);
   const [selectedField, setSelectedField] = useState<string>('');
   const [trend, setTrend] = useState<InstrumentTrend | null>(null);
@@ -372,7 +381,15 @@ export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId
   const [showTable, setShowTable] = useState(true);
   // On a phone the whole section is folded, closed at first, so it costs one line of the page.
   const phone = useMediaQuery('(max-width: 620px)');
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(focus);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const scrolled = useRef(false);
+  const ready = fields !== null;
+  useEffect(() => {
+    if (!focus || !ready || scrolled.current) return;
+    scrolled.current = true;
+    sectionRef.current?.scrollIntoView?.({ block: 'start' });
+  }, [focus, ready]);
 
   // A failure here leaves `fields` at null, which the `fields === null`
   // check below already renders as "still loading" — so, as before this was
@@ -411,7 +428,7 @@ export function InstrumentTrendSection({ instrumentId, reports }: { instrumentId
   const folded = phone && !open;
 
   return (
-    <div className={`trend-section${phone ? ' trend-section-fold' : ''}`}>
+    <div ref={sectionRef} className={`trend-section${phone ? ' trend-section-fold' : ''}`} data-testid="trend-section">
       {phone && (
         <button type="button" className="trend-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
           <span className="section-title">Trend</span>

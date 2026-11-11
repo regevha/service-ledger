@@ -9,6 +9,7 @@ export function InstrumentTable({
   typeNames,
   phone,
   onEdit,
+  onOpenTrend,
   onDelete,
   repairCounts,
 }: {
@@ -16,6 +17,7 @@ export function InstrumentTable({
   typeNames: Record<string, string>;
   phone: boolean;
   onEdit: (instrument: Instrument) => void;
+  onOpenTrend: (instrument: Instrument) => void;
   onDelete: (instrument: Instrument) => void;
   /** Finalized repairs per instrument id, shown under the name when a question about repairs is being answered. */
   repairCounts?: ReadonlyMap<string, number>;
@@ -58,6 +60,9 @@ export function InstrumentTable({
             <MaintenanceBadge state={inst.maintenance_state} dueDate={inst.maintenance_due_date} />
           </span>
           <span className="template-row-actions">
+            <button type="button" className="btn small" data-testid="instrument-trend-link" aria-label={`Trend of ${inst.name}`} onClick={() => onOpenTrend(inst)}>
+              Trend
+            </button>
             <button type="button" className="btn small" onClick={() => onEdit(inst)}>
               Edit
             </button>
