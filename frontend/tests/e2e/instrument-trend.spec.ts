@@ -222,9 +222,10 @@ test('timeline: ticks sit on round dates, and a dot opens a card with an Open li
   await page.locator('[aria-label="Field to chart"]').selectOption('__work_dates__');
   await page.getByRole('button', { name: 'Timeline', exact: true }).click();
 
-  // Regular, round labels (years here), never the padded edge dates of the data.
+  // Regular, round labels (a year, or a month on a wide screen), never a day: the padded edge dates are gone.
   const ticks = page.getByTestId('timeline-tick');
-  await expect(ticks.first()).toHaveText(/^\d{4}$/);
+  expect(await ticks.count()).toBeGreaterThanOrEqual(2);
+  for (const text of await ticks.allTextContents()) expect(text).toMatch(/^(\d{4}|[A-Z][a-z]{2} \d{4})$/);
 
   // A tap on a dot shows a card first; its Open link goes to that report.
   const dots = page.getByTestId('timeline-dot');
@@ -246,7 +247,8 @@ test('timeline: ticks sit on round dates, and a dot opens a card with an Open li
 test('timeline: zoom in separates close dots, and Reset brings every report back', async ({ page, request }) => {
   const marker = `E2E-Timeline-Zoom-${Date.now()}`;
   const instrument = await createInstrument(request, marker);
-  for (const reportDate of ['2023-01-10', '2025-09-02', '2025-09-08']) {
+  // Two reports six days apart in the middle of the range, one report well before and one well after.
+  for (const reportDate of ['2025-01-10', '2025-05-02', '2025-05-08', '2025-09-20']) {
     await seedReport(request, { instrumentId: instrument.id, model: marker, reportType: 'repair', reportDate, fields: {}, finalize: true });
   }
 
@@ -255,15 +257,15 @@ test('timeline: zoom in separates close dots, and Reset brings every report back
   await page.getByRole('button', { name: 'Timeline', exact: true }).click();
 
   const dots = page.getByTestId('timeline-dot');
-  await expect(dots).toHaveCount(3);
+  await expect(dots).toHaveCount(4);
   await expect(page.getByRole('button', { name: 'Zoom out' })).toBeDisabled();
 
-  // Zoomed in on the middle of the range, the 2023 report falls outside the window.
-  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Zoom in' }).click();
+  // Zoomed in on the middle of the range (about a month across), only the two close reports are left.
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in' }).click();
   await expect(dots).toHaveCount(2);
 
   await page.getByRole('button', { name: 'Reset' }).click();
-  await expect(dots).toHaveCount(3);
+  await expect(dots).toHaveCount(4);
 });
 
 test('reports list: a Trend link opens the instrument page with the Trend section', async ({ page, request }) => {
