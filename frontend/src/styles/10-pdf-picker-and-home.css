@@ -553,6 +553,17 @@
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
 }
+.ask-badge {
+  padding: 1px 8px;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent);
+}
+.ask-notes {
+  flex-basis: 100%;
+  font-size: 0.85rem;
+}
 /* A condition of the search is a button: tapping it takes that one condition out. */
 button.ask-chip {
   font: inherit;

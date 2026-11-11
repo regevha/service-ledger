@@ -105,6 +105,16 @@ class Settings(BaseSettings):
     # detector values) needs room: a cut-off answer is refused, not half-used.
     extract_max_tokens: int = 8192
 
+    # Model-backed search (docs: claude/proposal-model-backed-search.md). When a plain-words question leaves
+    # words the rules could not place, one small call to a cheap model turns it into filters. Off by default,
+    # and only ever used when use_live_claude is also on. Failure, timeout or the daily cap fall back to the rules.
+    search_model_enabled: bool = False
+    anthropic_search_model: str = "claude-haiku-5-5"
+    search_model_timeout_seconds: float = 15.0
+    search_model_max_tokens: int = 400
+    # Questions sent to the model per UTC day, all users together. 0 = no limit.
+    search_model_daily_cap: int = 500
+
     # Hebrew translation (docs: claude/proposal-hebrew-translation.md). A
     # document counts as Hebrew when more than this share of its letters are
     # Hebrew. A full three-page form needs a lot of output, and a vision call

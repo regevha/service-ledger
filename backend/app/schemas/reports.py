@@ -178,6 +178,11 @@ class ReportSearchParseOut(BaseModel):
 
     filters: dict[str, str]
     understood: list[ReportSearchPart]
+    # "rules" (the built-in rules read it), "ai" (a small model filled what the rules could not),
+    # "rules_fallback" (the model was wanted but unavailable, so only the rules were used).
+    source: str = "rules"
+    # Parts of the question that no filter can express yet (for example "overdue"); shown to the person.
+    notes: list[str] = []
 
 
 class RectOut(BaseModel):

@@ -24,7 +24,7 @@ REPORT_TYPES: list[tuple[str, str]] = [
 ]
 STATUSES: list[tuple[str, str]] = [
     (r"in\s+review", "in_review"),
-    (r"waiting(?:\s+for\s+review)?|needs?\s+review|to\s+review|awaiting\s+review|unreviewed", "extracted"),
+    (r"waiting(?:\s+for\s+review)?|needs?\s+review|to\s+review|awaiting\s+review|unreviewed|(?:not|never)\s+(?:yet\s+)?reviewed|nobody\s+(?:has\s+)?reviewed", "extracted"),
     (r"finali[sz]ed|approved|signed\s+off|done", "finalized"),
     (r"drafts?", "draft"),
 ]
@@ -52,6 +52,8 @@ class Parsed:
     filters: dict[str, str] = field(default_factory=dict)
     understood: list[dict[str, str]] = field(default_factory=list)
     leftover: str = ""
+    source: str = "rules"  # "rules", "ai" (the model filled gaps) or "rules_fallback" (the model was wanted but failed)
+    notes: list[str] = field(default_factory=list)  # parts of the question that no filter can express
 
     def add(self, key: str, value: str, label: str) -> None:
         self.filters[key] = value
