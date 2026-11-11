@@ -11,6 +11,8 @@ import { BatchIntake } from './components/BatchIntake';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { ActiveSearchLine } from './components/ActiveSearch';
+import { AskSheet, AskSheetButton } from './components/AskSheet';
+import { PHONE_QUERY, useMediaQuery } from './hooks/useMediaQuery';
 import { KeptSearchGate, KeptSearchProvider } from './components/KeptSearchProvider';
 import { NavigationGuardContext, type LeaveGuard } from './navigationGuard';
 import type { ReportFilters } from './api';
@@ -140,6 +142,12 @@ export default function App() {
     [requestLeave]
   );
   const selectView = (next: View) => navigate(next);
+
+  // On a phone the Ask box is a sheet opened from the top bar, on the screens that had the box (Home, Reports) and on Analytics, which shows the search.
+  const phone = useMediaQuery(PHONE_QUERY);
+  const [askOpen, setAskOpen] = useState(false);
+  const askAvailable = phone && (view === 'home' || view === 'reports' || view === 'analytics');
+
 
   // Back, Forward, or an edited address.
   useEffect(() => {
@@ -276,10 +284,23 @@ export default function App() {
             + New report
           </button>
         )}
+        {askAvailable && <AskSheetButton onOpen={() => setAskOpen(true)} />}
         <ThemeToggle />
       </header>
 
       <ActiveSearchLine view={view} />
+      {askAvailable && askOpen && (
+        <AskSheet
+          onClose={() => setAskOpen(false)}
+          onApply={(filters) => {
+            // Reports and Analytics follow the kept search by themselves; Home opens Reports with it.
+            if (view === 'home') {
+              setHomeFilters(filters);
+              navigate('reports');
+            }
+          }}
+        />
+      )}
 
       <ToastHost />
 

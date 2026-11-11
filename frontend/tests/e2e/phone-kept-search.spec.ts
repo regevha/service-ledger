@@ -1,5 +1,6 @@
 import { test, expect } from './coverage';
 import { seedReport } from './helpers/api';
+import { askInSheet, openAskSheet } from './helpers/askSheet';
 
 // The kept search on a phone (src/keptSearch.ts): asked with a tap, it survives a reload and a trip through the tabs.
 
@@ -10,9 +11,7 @@ test.describe('The kept search on a phone', { tag: '@phone' }, () => {
     await seedReport(request, { model: 'LSRFortessa', reportType: 'preventive_maintenance', technician: tech });
 
     await page.goto('/#/home');
-    const ask = page.getByTestId('home-ask');
-    await ask.getByTestId('ask-input').fill(`repairs by ${tech.toLowerCase()}`);
-    await ask.getByTestId('ask-submit').tap();
+    await askInSheet(page, `repairs by ${tech.toLowerCase()}`);
     await expect(page).toHaveURL(/#\/reports/);
     await expect(page.locator('.filters-summary-text')).toContainText('Lab manager: phone keptson');
 
@@ -26,7 +25,7 @@ test.describe('The kept search on a phone', { tag: '@phone' }, () => {
     await page.reload();
     await expect(page.locator('.filters-summary-text')).toContainText('Lab manager: phone keptson');
     await page.goto('/#/home');
-    await expect(page.getByTestId('home-ask').getByTestId('ask-input')).toHaveValue(`repairs by ${tech.toLowerCase()}`);
+    await expect((await openAskSheet(page)).getByTestId('ask-input')).toHaveValue(`repairs by ${tech.toLowerCase()}`);
 
     // Nothing sideways on the small screen.
     const [scroll, client] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);

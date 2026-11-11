@@ -1,5 +1,6 @@
 import { test, expect } from './coverage';
 import { seedReport } from './helpers/api';
+import { askInSheet, openAskSheet } from './helpers/askSheet';
 
 // Phone coverage for Home and the plain-words ask box (docs: claude/plan-phone-e2e-tests.md, items 1 to 3).
 // Every action here is a tap, not a click, so a control that only works with a mouse fails these tests.
@@ -26,7 +27,9 @@ test.describe('Home and the ask box on a phone', { tag: '@phone' }, () => {
       await insideScreen(page, page.getByTestId(id), id);
     }
     await noSideScroll(page);
-    for (const control of [page.getByTestId('ask-input'), page.getByTestId('ask-submit'), page.getByTestId('home-choose-files'), page.getByTestId('home-new-report')]) {
+    // The Ask box is not on the page on a phone: the magnifier in the top bar opens it.
+    await expect(page.getByTestId('ask-input')).toHaveCount(0);
+    for (const control of [page.getByTestId('ask-open'), page.getByTestId('home-choose-files'), page.getByTestId('home-new-report')]) {
       const box = (await control.boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(43.5);
     }
@@ -49,10 +52,7 @@ test.describe('Home and the ask box on a phone', { tag: '@phone' }, () => {
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: tech });
     await seedReport(request, { model: 'LSRFortessa', reportType: 'preventive_maintenance', technician: tech });
     await page.goto('/#/home');
-    const ask = page.getByTestId('home-ask');
-    await ask.getByTestId('ask-input').tap();
-    await ask.getByTestId('ask-input').fill(`repairs by ${tech.toLowerCase()}`);
-    await ask.getByTestId('ask-submit').tap();
+    await askInSheet(page, `repairs by ${tech.toLowerCase()}`);
     await expect(page).toHaveURL(/#\/reports/);
     // The filter line says what the question became; the repair-only filter leaves reports of that one manager.
     // (The Ask box shows the kept question's chips too, so the line is picked out by its own class.)
@@ -64,7 +64,9 @@ test.describe('Home and the ask box on a phone', { tag: '@phone' }, () => {
 
   test('Reports: on a phone the conditions are on the line at the top, inside the screen, and a tapped example fills them', async ({ page }) => {
     await page.goto('/#/reports');
-    await page.getByRole('button', { name: 'maintenance in 2025 at Bar-Ilan University' }).tap();
+    const sheet = await openAskSheet(page);
+    await sheet.getByRole('button', { name: 'maintenance in 2025 at Bar-Ilan University' }).tap();
+    await expect(page.getByTestId('ask-sheet')).toHaveCount(0); // a question that set something closes the sheet
     // The Ask box does not repeat the chips on a phone; the one line at the top is where they are.
     const line = page.getByTestId('active-search');
     await expect(line).toBeVisible();
@@ -80,9 +82,9 @@ test.describe('Home and the ask box on a phone', { tag: '@phone' }, () => {
   test('Reports: when the question cannot be read, a warning shows inside the screen and the box stays usable', async ({ page }) => {
     await page.route('**/reports/parse-search', (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"The helper is not available."}' }));
     await page.goto('/#/reports');
-    await page.getByTestId('ask-input').tap();
-    await page.getByTestId('ask-input').fill('anything at all');
-    await page.getByTestId('ask-submit').tap();
+    const sheet = await openAskSheet(page);
+    await sheet.getByTestId('ask-input').fill('anything at all');
+    await sheet.getByTestId('ask-submit').tap();
     const warning = page.getByRole('alert').filter({ hasText: 'not available' });
     await expect(warning).toBeVisible();
     await insideScreen(page, warning, 'the warning');
