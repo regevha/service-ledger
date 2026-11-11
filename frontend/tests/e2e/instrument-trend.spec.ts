@@ -282,3 +282,109 @@ test('reports list: a Trend link opens the instrument page with the Trend sectio
   await page.getByTestId('instrument-row').filter({ hasText: marker }).getByTestId('instrument-trend-link').click();
   await expect(page.getByTestId('trend-section')).toBeVisible();
 });
+
+async function openTimeline(page: import('@playwright/test').Page, instrumentId: string) {
+  await openInstrumentDetail(page, instrumentId);
+  await page.locator('[aria-label="Field to chart"]').selectOption('__work_dates__');
+  await page.getByRole('button', { name: 'Timeline', exact: true }).click();
+  await expect(page.getByTestId('timeline-dot').first()).toBeVisible();
+}
+
+test('timeline: the tick labels change scale with the window, from months to weeks', async ({ page, request }) => {
+  const marker = `E2E-Timeline-Scale-${Date.now()}`;
+  const instrument = await createInstrument(request, marker);
+  for (const reportDate of ['2026-01-10', '2026-09-20']) {
+    await seedReport(request, { instrumentId: instrument.id, model: marker, reportType: 'repair', reportDate, fields: {}, finalize: true });
+  }
+  await openTimeline(page, instrument.id);
+
+  // Eight months across: a label per month start ("Mar 2026"), all on the first of a month.
+  const ticks = page.getByTestId('timeline-tick');
+  const monthLabel = /^[A-Z][a-z]{2} 2026$/;
+  for (const text of await ticks.allTextContents()) expect(text).toMatch(monthLabel);
+  expect(await ticks.count()).toBeGreaterThanOrEqual(2);
+
+  // Zoomed in to about two weeks, the labels become dates.
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Zoom in' }).click();
+  const dayLabel = /^[A-Z][a-z]{2} \d{1,2}, 2026$/;
+  for (const text of await ticks.allTextContents()) expect(text).toMatch(dayLabel);
+  expect(await ticks.count()).toBeGreaterThanOrEqual(2);
+});
+
+test('timeline: dragging a zoomed timeline moves it, and does not open a card', async ({ page, request }) => {
+  const marker = `E2E-Timeline-Pan-${Date.now()}`;
+  const instrument = await createInstrument(request, marker);
+  for (const reportDate of ['2024-01-10', '2025-06-15', '2026-09-20']) {
+    await seedReport(request, { instrumentId: instrument.id, model: marker, reportType: 'repair', reportDate, fields: {}, finalize: true });
+  }
+  await openTimeline(page, instrument.id);
+
+  // Not zoomed: nothing to drag, and the hint is absent.
+  await expect(page.getByText('Drag the timeline to move')).toHaveCount(0);
+
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(page.getByText('Drag the timeline to move')).toBeVisible();
+
+  const ticks = page.getByTestId('timeline-tick');
+  const before = await ticks.allTextContents();
+
+  // Drag along the top of the drawing, clear of every dot, from right to left (later dates come into view).
+  const box = await page.locator('.timeline-svg').boundingBox();
+  if (!box) throw new Error('timeline has no box');
+  const y = box.y + 3;
+  await page.mouse.move(box.x + box.width * 0.8, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.5, y, { steps: 8 });
+  await page.mouse.move(box.x + box.width * 0.2, y, { steps: 8 });
+  await page.mouse.up();
+
+  expect(await ticks.allTextContents()).not.toEqual(before);
+  await expect(page.getByTestId('timeline-card')).toHaveCount(0);
+});
+
+test('reports list, Group by Model: each unit has its own Trend button', async ({ page, request }) => {
+  const marker = `E2E-Trend-Units-${Date.now()}`;
+  const first = await createInstrument(request, marker);
+  const second = await (
+    await request.post(`${API_BASE}/instruments`, {
+      data: { name: `${marker}-B`, model: marker, manufacturer: 'E2E Maker', serial_number: `SN-B-${marker}` },
+    })
+  ).json();
+  for (const id of [first.id, second.id as string]) {
+    await seedReport(request, { instrumentId: id, model: marker, reportType: 'repair', reportDate: '2026-02-01', fields: {}, finalize: true });
+  }
+
+  await page.goto('/#/reports');
+  await page.waitForSelector('[data-testid="group-select"]');
+  await page.getByTestId('group-select').selectOption('model');
+
+  // One card for the model, with no single Trend button of its own but one per unit.
+  const group = page.getByTestId('report-group').filter({ hasText: marker });
+  await expect(group).toHaveCount(1);
+  await expect(group.getByTestId('group-trend-link')).toHaveCount(0);
+  const units = group.getByTestId('unit-trend-link');
+  await expect(units).toHaveCount(2);
+
+  // The second unit's button opens that unit, not the first.
+  await units.filter({ hasText: `SN-B-${marker}` }).click();
+  await expect(page).toHaveURL(new RegExp(`#/reports/instrument/${second.id}/trend$`));
+  await expect(page.locator('.instrument-meta')).toContainText(`SN-B-${marker}`);
+});
+
+test('phone: the Trend link opens the folded Trend section and brings it into view', async ({ page, request }) => {
+  const marker = `E2E-Trend-Phone-${Date.now()}`;
+  const instrument = await createInstrument(request, marker);
+  await seedReport(request, { instrumentId: instrument.id, model: marker, reportType: 'repair', reportDate: '2026-02-01', fields: {}, finalize: true });
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto(`/#/reports/instrument/${instrument.id}/trend`);
+
+  const toggle = page.locator('.trend-section .trend-toggle');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByTestId('trend-section')).toBeInViewport();
+
+  // Without the link the section stays folded, as before (leave the Reports tab first, so the page opens afresh).
+  await page.goto('/#/new');
+  await page.goto(`/#/reports/instrument/${instrument.id}`);
+  await expect(page.locator('.trend-section .trend-toggle')).toHaveAttribute('aria-expanded', 'false');
+});
