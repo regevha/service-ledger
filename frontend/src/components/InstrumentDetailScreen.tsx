@@ -101,7 +101,7 @@ export function InstrumentDetailScreen({
             </div>
           </div>
 
-          <InstrumentTrendSection instrumentId={instrumentId} />
+          <InstrumentTrendSection instrumentId={instrumentId} reports={items} />
 
           <div className="section-title" style={{ marginTop: 18 }}>
             Report history

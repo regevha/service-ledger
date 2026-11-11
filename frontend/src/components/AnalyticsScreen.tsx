@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { LoadError } from './LoadError';
 import {
   getFleetAnalytics,
@@ -8,8 +8,10 @@ import {
   type Instrument,
   type InstrumentRollup,
   type PartUsage,
+  type ReportFilters,
 } from '../api';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import { useKeptSearch, useKeptSearchSync } from '../keptSearchContext';
 import { BarRow } from './BarRow';
 import { ChartSection } from './ChartSection';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -212,7 +214,17 @@ export function AnalyticsScreen() {
   // `detail` is the same request narrowed to the chosen row (it feeds the charts while a row is chosen).
   const [fleet, setFleet] = useState<FleetAnalytics | null>(null);
   const [detail, setDetail] = useState<FleetAnalytics | null>(null);
-  const [filters, setFilters] = useState<AnalyticsFilters>({});
+  // Starts from the search kept since the last visit (the same one Reports uses), if any; the maker is Analytics' own.
+  const { kept } = useKeptSearch();
+  const [filters, setFilters] = useState<AnalyticsFilters>(kept?.filters ?? {});
+  const [barKey, setBarKey] = useState(0);
+  // The search at the top of the page can change while this screen is open (a chip removed, Clear): follow it,
+  // keeping the maker, which is Analytics' own.
+  const adoptKept = useCallback((next: ReportFilters) => {
+    setFilters((f) => ({ ...next, manufacturer: f.manufacturer }));
+    setBarKey((k) => k + 1);
+  }, []);
+  useKeptSearchSync(filters as ReportFilters, adoptKept);
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [groupBy, setGroupBy] = useState<GroupBy>('model');
   const [chosen, setChosen] = useState<FleetSelection>(null);
@@ -260,7 +272,7 @@ export function AnalyticsScreen() {
     'Could not load fleet analytics.'
   );
 
-  const filterBar = <FilterBar filters={filters} setFilters={setFilters} instruments={instruments} />;
+  const filterBar = <FilterBar key={barKey} filters={filters} setFilters={setFilters} instruments={instruments} />;
 
   if (backwards) {
     return (

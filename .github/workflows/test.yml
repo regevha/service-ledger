@@ -92,14 +92,14 @@ jobs:
             pytest -q --cov -p no:randomly
           fi
 
-  # The e2e suite runs as two shards (`playwright test --shard=N/2`), each in its own job with its own
-  # Postgres service: the specs share one database with no reset between them, so two shards cannot
+  # The e2e suite runs as three shards (`playwright test --shard=N/3`), each in its own job with its own
+  # Postgres service: the specs share one database with no reset between them, so shards cannot
   # share one. Each shard writes its Istanbul coverage files and uploads them; the job after the shards
-  # (named "Frontend (Playwright e2e)" as before) merges both sets and applies the coverage thresholds
-  # once, on the whole suite, as the single run used to. Add a shard (matrix and `/2` below) when a
+  # (named "Frontend (Playwright e2e)" as before) merges all the sets and applies the coverage thresholds
+  # once, on the whole suite, as the single run used to. Add a shard (matrix, the name and `/3` below) when a
   # shard's run nears 15 minutes.
   frontend-shards:
-    name: Playwright e2e shard ${{ matrix.shard }} of 2
+    name: Playwright e2e shard ${{ matrix.shard }} of 3
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -107,7 +107,7 @@ jobs:
       # Let the other shard finish when one fails, so a run shows every failing spec at once.
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
 
     services:
       postgres:
@@ -166,15 +166,15 @@ jobs:
       - name: Run this shard's specs with coverage
         # COVERAGE=1 runs the suite against an Istanbul-instrumented build; the files land in
         # frontend/.nyc_output and the next step uploads them. The thresholds are checked after
-        # the shards, by the "Frontend (Playwright e2e)" job, on both shards together.
+        # the shards, by the "Frontend (Playwright e2e)" job, on all the shards together.
         working-directory: frontend
         env:
-          SHARD: ${{ matrix.shard }}/2
+          SHARD: ${{ matrix.shard }}/3
         #
         # Pushes and pull requests run the specs in the fixed order. The daily
         # scheduled run (and a manual "Run workflow") runs the spec files in a
         # random order (scripts/run-e2e-shuffled.mjs), to catch specs that only
-        # pass because of the order they ran in. Both shards must shuffle the
+        # pass because of the order they ran in. All shards must shuffle the
         # same way, or they would split two different orders between them and
         # skip or repeat specs, so the seed is the run's id, not a random number.
         # It is printed at the top of the step. To replay the whole order locally
@@ -212,8 +212,8 @@ jobs:
           retention-days: 7
 
   frontend:
-    # Keeps the name this check always had. It passes when both shards passed and the coverage of
-    # the two together meets the thresholds.
+    # Keeps the name this check always had. It passes when every shard passed and the coverage of
+    # all of them together meets the thresholds.
     name: Frontend (Playwright e2e)
     needs: frontend-shards
     # Runs even when a shard failed, so the check reports that instead of staying "skipped".
@@ -222,7 +222,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Both shards must have passed
+      - name: All shards must have passed
         if: needs.frontend-shards.result != 'success'
         run: |
           echo "The e2e shards finished as: ${{ needs.frontend-shards.result }}. See the shard jobs above."
@@ -240,8 +240,8 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Collect both shards' coverage files
-        uses: actions/download-artifact@v7
+      - name: Collect every shard's coverage files
+        uses: actions/download-artifact@v8
         with:
           pattern: nyc-output-*
           merge-multiple: true
@@ -250,7 +250,7 @@ jobs:
       - name: Check coverage of the whole suite
         # `nyc report --check-coverage` fails when line coverage is below 88% or branch coverage
         # below 75% (the thresholds live in frontend/package.json under coverage:report — raise
-        # them as coverage improves). It merges the files of both shards; the table is printed
+        # them as coverage improves). It merges the files of all the shards; the table is printed
         # in the log. The source paths in the files are the runner's own checkout path, the same
         # here as in the shard jobs.
         working-directory: frontend

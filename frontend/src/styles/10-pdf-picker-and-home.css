@@ -564,6 +564,84 @@
   flex-basis: 100%;
   font-size: 0.85rem;
 }
+/* A condition of the search is a button: tapping it takes that one condition out. */
+button.ask-chip {
+  font: inherit;
+  cursor: pointer;
+}
+.ask-chip.removable::after {
+  content: ' \00d7';
+  opacity: 0.6;
+}
+.ask-chip.removable:hover::after,
+.ask-chip.removable:focus-visible::after {
+  opacity: 1;
+}
+.ask-chip.removable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The chips sit in the same wrapping row as before. */
+.ask-conditions {
+  display: contents;
+}
+.active-search-clear {
+  padding: 0;
+  white-space: nowrap;
+}
+
+/* The search in force, under the top bar on every screen: one slim row that stays in view while the page scrolls. */
+.active-search {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+.active-search-label {
+  flex: none;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.active-search-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+}
+.active-search .ask-chip,
+.active-search .active-search-clear {
+  flex: none;
+}
+/* Where the Ask box is wide enough to show the same chips under its field, this row would say it twice. */
+@media (min-width: 621px) {
+  .active-search--box-below {
+    display: none;
+  }
+}
+@media (max-width: 620px) {
+  /* The line at the top is the one place on a phone. */
+  .ask-conditions {
+    display: none;
+  }
+  .active-search .ask-chip,
+  .active-search .active-search-clear {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
 .ask-examples .link-button {
   padding: 0;
   text-align: start;
@@ -767,4 +845,102 @@
   .masthead-link {
     min-height: 44px;
   }
+}
+
+/* Voice and recent searches in the Ask box. */
+.ask-voice {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 10px;
+}
+.ask-voice.listening {
+  background: var(--danger, #c0392b);
+  border-color: var(--danger, #c0392b);
+  color: #fff;
+}
+.ask-voice-status {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.ask-recent {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.ask-recent .link-button {
+  padding: 0;
+  text-align: start;
+}
+/* Where the Ask box is not on the page (phones), its wrapper takes no room. */
+.home-ask:empty {
+  display: none;
+}
+
+/* The top-bar magnifier and the sheet it opens (phones). */
+.ask-open {
+  flex: none;
+  margin-left: auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--input-border);
+  background: var(--surface);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ask-open + .theme-toggle {
+  margin-left: 8px;
+}
+.ask-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--scrim);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.ask-sheet {
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--surface);
+  color: inherit;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: var(--shadow-pop);
+  padding: 12px 16px 16px;
+}
+.ask-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.ask-sheet-close {
+  min-height: 44px;
+  padding: 0 4px;
+}
+.ask-sheet .ask-label {
+  display: none; /* the sheet's heading already says what this is */
+}
+.ask-sheet .ask-recent .link-button,
+.ask-sheet .ask-examples .link-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.ask-sheet .ask-voice {
+  min-height: 44px;
+  min-width: 44px;
 }

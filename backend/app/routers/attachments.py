@@ -231,9 +231,13 @@ def get_attachment_page_image(
         try:
             if page < 1 or page > len(pdf):
                 raise HTTPException(404, "Page not found")
+            # A fillable form keeps typed values in form fields, not in the page
+            # content; they are drawn only when the form environment exists
+            # before the page is loaded (found 2026-11-10: a PIR form looked blank).
+            pdf.init_forms()
             pdf_page = pdf[page - 1]
             scale = width / pdf_page.get_width()
-            image = pdf_page.render(scale=scale).to_pil().convert("RGB")
+            image = pdf_page.render(scale=scale, may_draw_forms=True).to_pil().convert("RGB")
         finally:
             pdf.close()
     buffer = io.BytesIO()
