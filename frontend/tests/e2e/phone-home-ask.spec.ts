@@ -55,7 +55,8 @@ test.describe('Home and the ask box on a phone', { tag: '@phone' }, () => {
     await ask.getByTestId('ask-submit').tap();
     await expect(page).toHaveURL(/#\/reports/);
     // The filter line says what the question became; the repair-only filter leaves reports of that one manager.
-    await expect(page.getByText('Lab manager: phone askerson')).toBeVisible();
+    // (The Ask box shows the kept question's chips too, so the line is picked out by its own class.)
+    await expect(page.locator('.filters-summary-text')).toContainText('Lab manager: phone askerson');
     await expect(page.getByText('Malfunction / repair').first()).toBeVisible();
     await expect(page.getByTestId('report-group').first()).toBeVisible();
     await noSideScroll(page);
