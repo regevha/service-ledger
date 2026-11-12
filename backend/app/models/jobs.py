@@ -2,7 +2,17 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text, func
+from sqlalchemy import (
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,10 +28,15 @@ class ExtractionJob(Base):
     rest of the job even runs against (§4, §5)."""
 
     __tablename__ = "extraction_jobs"
+    __table_args__ = (
+        # The worker's claim query: the oldest pending job. Only pending rows are in the
+        # index, so it stays tiny however many finished jobs the table holds.
+        Index("ix_extraction_jobs_pending", "started_at", postgresql_where=text("status = 'pending'")),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     attachment_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("attachments.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("attachments.id"), nullable=False, index=True
     )
     kind: Mapped[ExtractionJobKind] = mapped_column(
         Enum(ExtractionJobKind, name="extraction_job_kind"),
