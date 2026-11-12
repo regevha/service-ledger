@@ -84,6 +84,12 @@ class Settings(BaseSettings):
     # enough not to hammer Postgres with an empty SELECT in the common case
     # (nothing pending) at single-user scale.
     worker_poll_interval_seconds: float = 0.5
+    # A worker marks the job it is running as alive this often; a job in progress
+    # with no beat for worker_stale_after_seconds is treated as orphaned.
+    worker_heartbeat_interval_seconds: float = 15.0
+    worker_stale_after_seconds: float = 120.0
+    # How often a running worker looks for orphaned jobs (not just at startup).
+    worker_recovery_interval_seconds: float = 60.0
 
     # Debug aid: before each live Claude call the job stops and the intake screen
     # shows the exact prompt; the person presses Send or Cancel. Off by default.
