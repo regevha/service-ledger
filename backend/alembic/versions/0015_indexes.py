@@ -8,8 +8,8 @@ extraction_jobs that holds only pending jobs, which is what the worker's claim q
 (oldest pending job first) reads. Only indexes are created: no data changes, and
 downgrade drops them again.
 
-Revision ID: 0013_indexes
-Revises: 0012_attachment_filename
+Revision ID: 0015_indexes
+Revises: 0014_search_model_calls
 Create Date: 2026-11-12 17:00:00.000000
 
 """
@@ -19,8 +19,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = '0013_indexes'
-down_revision: Union[str, None] = '0012_attachment_filename'
+revision: str = '0015_indexes'
+down_revision: Union[str, None] = '0014_search_model_calls'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

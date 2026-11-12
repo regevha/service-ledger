@@ -1,4 +1,4 @@
-"""Migration 0013 adds the indexes and downgrade removes them again (phase 3.1).
+"""Migration 0015 adds the indexes and downgrade removes them again (phase 3.1).
 
 Runs alembic against a throwaway database so it never touches the test database's schema.
 """
@@ -48,7 +48,7 @@ def test_the_index_migration_upgrades_and_downgrades():
     try:
         _alembic(url, "upgrade", "head")
         assert _present(url) == INDEXES
-        _alembic(url, "downgrade", "0012_attachment_filename")
+        _alembic(url, "downgrade", "0014_search_model_calls")
         assert _present(url) == set()
         _alembic(url, "upgrade", "head")
         assert _present(url) == INDEXES
