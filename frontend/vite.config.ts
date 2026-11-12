@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import istanbul from 'vite-plugin-istanbul'
 
 // https://vite.dev/config/
@@ -15,7 +15,13 @@ export default defineConfig({
   plugins: [
     react(),
     ...(coverage
-      ? [istanbul({ include: 'src/*', exclude: ['node_modules', 'src/generated/*'], extension: ['.ts', '.tsx'], requireEnv: false, forceBuildInstrument: false })]
+      ? [istanbul({ include: 'src/*', exclude: ['node_modules', 'src/generated/*', 'src/**/*.test.ts'], extension: ['.ts', '.tsx'], requireEnv: false, forceBuildInstrument: false })]
       : []),
   ],
+  // Unit tests (npm test) for pure modules under src/. Playwright's testDirs all
+  // live under tests/, so the two runners never see each other's files.
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+  },
 })
