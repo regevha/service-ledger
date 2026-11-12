@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     # Folder with the built frontend (npm run build -> frontend/dist). Empty
     # means the API does not serve the page (development uses the Vite server).
     frontend_dist_dir: str = ""
+    # Extra browser origins allowed to call the API, comma separated. Only used when
+    # the API serves the built frontend itself (FRONTEND_DIST_DIR set): the page and
+    # the API then share one origin and no other site needs access, so the default
+    # is none. Without FRONTEND_DIST_DIR (development) every origin is allowed.
+    cors_allowed_origins: str = ""
 
     # Claude call debug log (docs: claude/proposal-debug-log.md). Off by default and
     # switched on only by the project owner, by this environment setting (never in the
@@ -122,6 +127,24 @@ class Settings(BaseSettings):
     hebrew_letter_threshold: float = 0.2
     translate_max_tokens: int = 16000
     translate_timeout_seconds: float = 240.0
+
+    @property
+    def cors_origins(self) -> list[str]:
+        if not self.frontend_dist_dir:
+            return ["*"]
+        return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip() and o.strip() != "*"]
+
+    @property
+    def stub_mode_warning(self) -> str | None:
+        """Said at startup by the API and the worker when no real model is used, so
+        invented demo values are not mistaken for a reading of the document."""
+        if self.use_live_claude:
+            return None
+        return (
+            "USE_LIVE_CLAUDE is off: documents are NOT read by the model. Classification and "
+            "extraction return invented demo values. Set USE_LIVE_CLAUDE=true (and ANTHROPIC_API_KEY) "
+            "for real use."
+        )
 
     @property
     def attachment_storage_path(self) -> Path:
