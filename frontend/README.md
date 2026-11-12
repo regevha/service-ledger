@@ -61,6 +61,14 @@ more readable authored directly than as a deep generated-schema lookup; only
 the enums, where backend/frontend drift is easy and silent, are sourced from
 the generated file.
 
+## Unit tests (Vitest)
+
+`npm test` runs Vitest once (`vitest run`, node environment) over `src/**/*.test.ts`,
+for pure modules such as `numberCondition` or `isoDay`. Put a test next to the module
+it covers (`src/isoDay.test.ts`) and import `describe`, `it`, `expect` from `vitest`.
+It needs no browser or backend. Playwright only looks in `tests/`, so the two runners
+never pick up each other's files.
+
 ## End-to-end tests (Playwright)
 
 `tests/e2e/` covers the flows a screen-by-screen manual pass would otherwise
