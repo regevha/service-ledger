@@ -41,4 +41,9 @@ RUN useradd --system --uid 10001 --home-dir /app app \
 USER app
 
 EXPOSE 8000
+
+# Probe /health with the standard library (the slim image has no curl). The worker runs from the
+# same image but serves nothing, so when PID 1 is `python -m app.worker` the probe passes at once.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD ["python", "-c", "import sys, urllib.request as u; sys.exit(0 if b'app.worker' in open('/proc/1/cmdline', 'rb').read() else u.urlopen('http://127.0.0.1:8000/health', timeout=3).status != 200)"]
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

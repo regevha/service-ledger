@@ -32,6 +32,8 @@ The app is deployed with **internal** ingress (the default), so it is reachable 
 
 `deploy.sh` still asks for confirmation when you pass `INGRESS=external`; that prompt is a reminder of this list, not a substitute for it.
 
+The image has a Docker `HEALTHCHECK` on `/health` (it passes at once for the worker command); Container Apps ignores it, so the apps' own probes are unchanged.
+
 Settings that matter for a deployment: `FRONTEND_DIST_DIR` (set by the image; it also closes cross-origin access, and `CORS_ALLOWED_ORIGINS` adds exceptions), `USE_LIVE_CLAUDE` (the API and worker log a warning at startup when it is off), `DAILY_JOB_CAP`, `MAX_FAILED_ATTEMPTS_PER_ATTACHMENT`.
 
 ## Use
