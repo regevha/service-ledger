@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app import models
 from app.services import report_query_model as m
 from app.services.errors import SearchError
 from app.services.report_query_parse import Known
@@ -268,3 +269,44 @@ def test_a_note_that_only_repeats_a_filter_is_dropped():
     out = merge(rules, {"text": "", "not_supported": ["reports nobody has reviewed", "overdue"]}, KNOWN)
     assert out.filters["status"] == "extracted"
     assert out.notes == ["overdue"]
+
+
+def test_cap_is_counted_in_the_database_and_survives_a_restart(seeded, monkeypatch):
+    """The counter used to live in memory: a restart or a second replica started it at zero."""
+    monkeypatch.setattr(m.settings, "search_model_daily_cap", 2)
+    assert m._under_daily_cap(seeded) and m._under_daily_cap(seeded)
+    m.reset_cap_for_tests()  # what a restart did to the old counter; the database does not forget
+    assert m._under_daily_cap(seeded) is False
+    assert seeded.query(models.SearchModelCall).count() == 2
+
+
+def test_calls_older_than_a_day_do_not_count_and_old_rows_are_pruned(seeded, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    monkeypatch.setattr(m.settings, "search_model_daily_cap", 1)
+    now = datetime.now(timezone.utc)
+    seeded.add_all([
+        models.SearchModelCall(called_at=now - timedelta(hours=25)),
+        models.SearchModelCall(called_at=now - timedelta(days=8)),
+    ])
+    seeded.commit()
+    assert m._under_daily_cap(seeded) is True  # the 25 hour old call is outside the window
+    assert m._under_daily_cap(seeded) is False
+    assert seeded.query(models.SearchModelCall).count() == 2  # the 8 day old row was pruned
+
+
+def test_a_zero_cap_means_no_limit_and_writes_nothing(seeded, monkeypatch):
+    monkeypatch.setattr(m.settings, "search_model_daily_cap", 0)
+    assert all(m._under_daily_cap(seeded) for _ in range(5))
+    assert seeded.query(models.SearchModelCall).count() == 0
+
+
+def test_parse_search_endpoint_stops_calling_the_model_at_the_cap(client, monkeypatch):
+    fake = use(monkeypatch, FakeClient(tool_input={}))
+    monkeypatch.setattr(m.settings, "search_model_daily_cap", 1)
+    asked = {"text": "which instruments are overdue for PM?"}
+    first = client.post("/reports/parse-search", json=asked).json()
+    second = client.post("/reports/parse-search", json=asked).json()
+    assert len(fake.calls) == 1
+    assert second["source"] == "rules_fallback"
+    assert first["source"] != "rules_fallback"
