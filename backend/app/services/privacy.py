@@ -28,11 +28,28 @@ _PHONE = re.compile(r"(?<![\w/])(?:\+\d[\d\s-]{7,}\d|0\d{1,3}[\s-]\d{3,4}[\s-]?\
 _SIGNED_BY = re.compile(r"\b(?i:signed|approved|checked|reviewed) by\s+(?:[A-Z]\.|[A-Z][\w'’-]+)(?:\s+(?:[A-Z]\.|[A-Z][\w'’-]+)){0,3}")
 _ROLES = {"engineer", "technician", "customer", "contact"}
 
+# Hebrew has no capitals, so a name is recognised only by a role label right before it:
+# "מהנדס: <name>", "לקוח - <name>", "נחתם על ידי <name>". A name is one or two Hebrew
+# words (first and last name; a third would swallow the verb that usually follows).
+# The label must start a word, so "המהנדס" or "הלקוח" never match, and a word that is
+# itself a role or generic noun is not taken for a name ("אושר על ידי הלקוח").
+_HE = "\u05d0-\u05ea"
+_HE_STOP = r"(?!ה?(?:מהנדס|טכנאי|לקוח|מערכת|צוות|חברה|מנהל|שירות|בודק|נציג)(?![" + _HE + "]))"
+_HE_NAME = _HE_STOP + "[" + _HE + "]{2,}(?:[ \t]+" + _HE_STOP + "[" + _HE + "]{2,})?(?![" + _HE + "])"
+_HE_ROLE_NAME = re.compile(
+    "(?<![" + _HE + "])(מהנדס|טכנאי|לקוח|איש[ \t]+קשר)[ \t]*(?::|[ \t][-–])[ \t]*" + _HE_NAME
+)
+_HE_SIGNED_BY = re.compile(
+    "(?<![" + _HE + "])(?:נחתם|נחתמה|אושר|אושרה|נבדק|נבדקה|בוצע|בוצעה)[ \t]+על[ \t]+ידי[ \t]+" + _HE_NAME
+)
+
 
 def scrub_text(text: str) -> str:
     """The text without sign-off attributions, role-and-name pairs, contract
     numbers, e-mail addresses and phone numbers."""
     out = _ROLE_NAME.sub(lambda m: m.group(1).lower() if m.group(1).lower() in _ROLES else "", text)
+    out = _HE_ROLE_NAME.sub(lambda m: re.sub(r"\s+", " ", m.group(1)), out)
+    out = _HE_SIGNED_BY.sub("", out)
     for rule in (_BY_ON, _SIGNED_BY, _CONTRACT_NUMBER, _SMX, _EMAIL):
         out = rule.sub("", out)
     # A phone number needs 8 or more digits in a row, so part numbers and dates stay.
