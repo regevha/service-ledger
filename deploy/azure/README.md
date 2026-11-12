@@ -22,6 +22,18 @@ and it needs a first real run with the project owner watching.
 2. **Accounts.** The app has one shared password (HTTP Basic, any user name): it keeps strangers out, it does not say who did what, and changing it locks everyone out at once. The script generates a password if you do not pass `SHARED_PASSWORD` (12 characters at least) and prints it once. Ingress stays **internal** unless you pass `INGRESS=external`, which asks for confirmation.
 3. **Rate limiting.** There is none; the password length is the protection against guessing. Wrong attempts are logged.
 
+## Decision: internal ingress now, external only after a rate limit
+
+The app is deployed with **internal** ingress (the default), so it is reachable only from inside the virtual network. That is deliberate and stays so until all of these are true:
+
+- Failed password attempts are rate limited (per client address, with a lockout that grows), in the app or at the edge. Today there is none (point 3 above).
+- Someone has checked that the daily job cap (`DAILY_JOB_CAP`, default 60) and the per-document failure limit are set to values you accept, because a leaked shared password would otherwise let a stranger spend the Claude budget up to that cap.
+- Per-user sign-in (the separate Phase 4 of the remediation plan) is either done, or you have accepted in writing that one shared password is the only gate.
+
+`deploy.sh` still asks for confirmation when you pass `INGRESS=external`; that prompt is a reminder of this list, not a substitute for it.
+
+Settings that matter for a deployment: `FRONTEND_DIST_DIR` (set by the image; it also closes cross-origin access, and `CORS_ALLOWED_ORIGINS` adds exceptions), `USE_LIVE_CLAUDE` (the API and worker log a warning at startup when it is off), `DAILY_JOB_CAP`, `MAX_FAILED_ATTEMPTS_PER_ATTACHMENT`.
+
 ## Use
 
 ```
