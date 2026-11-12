@@ -71,6 +71,19 @@ jobs:
         working-directory: backend
         run: ruff check .
 
+      - name: Mypy (error count must not go up)
+        # The backend is not mypy-clean yet. This fails only when the count rises above
+        # backend/mypy-baseline.txt; lower that number when you fix errors.
+        working-directory: backend
+        run: |
+          pip install mypy
+          mypy app > /tmp/mypy.txt || true
+          tail -3 /tmp/mypy.txt
+          found=$(grep -oE '^Found [0-9]+' /tmp/mypy.txt | grep -oE '[0-9]+' || echo 0)
+          allowed=$(cat mypy-baseline.txt)
+          echo "mypy errors: $found (allowed: $allowed)"
+          test "$found" -le "$allowed"
+
       - name: Models match the migrations
         # Fails when a model changed without a migration (alembic finds operations to generate).
         working-directory: backend
