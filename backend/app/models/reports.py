@@ -104,13 +104,13 @@ class Report(Base):
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     instrument_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("instruments.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("instruments.id"), nullable=True, index=True
     )
     template_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("report_templates.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("report_templates.id"), nullable=True, index=True
     )
     status: Mapped[ReportStatus] = mapped_column(
-        Enum(ReportStatus, name="report_status"), nullable=False, default=ReportStatus.draft
+        Enum(ReportStatus, name="report_status"), nullable=False, default=ReportStatus.draft, index=True
     )
     extracted_fields: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     # What the reading first produced, copied once when it finishes and never edited afterwards, so the
@@ -138,7 +138,7 @@ class Report(Base):
     parts_replaced: Mapped[str | None] = mapped_column(String, nullable=True)
     next_service_due: Mapped[date | None] = mapped_column(Date, nullable=True)
 
-    report_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    report_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -154,7 +154,7 @@ class Attachment(Base):
     __tablename__ = "attachments"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
-    report_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("reports.id"), nullable=False)
+    report_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("reports.id"), nullable=False, index=True)
     file_path: Mapped[str] = mapped_column(String, nullable=False)
     # What the uploader's file was called: plain text from the client, cleaned
     # (services/attachment_names.py), used for the download name and nothing
