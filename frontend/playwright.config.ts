@@ -46,7 +46,10 @@ const chromiumLaunch = {
 
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: false,
+  // Still one worker, so nothing runs at the same time inside a shard. With E2E_SPLIT_TESTS=1 (set by CI)
+  // `--shard` deals out single tests instead of whole spec files, which balances the shards much better
+  // (file sizes range from 1 to 24 tests). Off by default so a local run keeps each file's tests together.
+  fullyParallel: process.env.E2E_SPLIT_TESTS === '1',
   // One worker: every spec shares the one backend/database this config
   // boots, and there's no per-test truncation (unlike the pytest suite) —
   // specs are written to filter/assert on markers they created themselves

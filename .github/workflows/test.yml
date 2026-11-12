@@ -314,6 +314,8 @@ jobs:
         working-directory: frontend
         env:
           SHARD: ${{ matrix.shard }}/6
+          # Deal out single tests, not whole spec files, so the shards take about the same time.
+          E2E_SPLIT_TESTS: "1"
         #
         # Pushes and pull requests run the specs in the fixed order. The daily
         # scheduled run (and a manual "Run workflow") runs the spec files in a
