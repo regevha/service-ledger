@@ -8,9 +8,9 @@ import pytest
 
 from app.services import classification, extraction, translation
 from app.services.classification_prompt import build_classify_prompt
-from app.services.report_query_model import _system_prompt as _search_system_prompt
 from app.services.claude_client import raise_if_truncated
 from app.services.errors import ClassificationError, ExtractionError
+from app.services.report_query_model import _system_prompt as _search_system_prompt
 
 REAL_DETAILS = ("SMX0457374", "Shachar", "MP6651580000057", "R6651580000057", "BE50173", "QSC26R006240", "SC26R006240")
 
