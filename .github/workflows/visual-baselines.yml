@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read
 
+# A newer dispatch on the same branch cancels the older run; other branches are unaffected.
+concurrency:
+  group: visual-baselines-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PGHOST: localhost
   PGPORT: 5432
