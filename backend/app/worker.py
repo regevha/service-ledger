@@ -39,6 +39,7 @@ from app.job_queue import (
     _heartbeat,
     _recover_orphaned_jobs,
     _was_cancelled,
+    prune_finished_jobs,
 )
 from app.services import prompt_gate
 from app.services.classification import classify as run_classify
@@ -397,6 +398,17 @@ def _periodic_recovery() -> None:
         logger.exception("Periodic orphan recovery failed — will retry.")
 
 
+def _periodic_retention() -> None:
+    """Delete old finished jobs (job_queue.prune_finished_jobs). Never takes the loop down."""
+    try:
+        with SessionLocal() as db:
+            pruned = prune_finished_jobs(db)
+        if pruned:
+            logger.info("Pruned %d finished job(s) past the retention window.", pruned)
+    except Exception:  # noqa: BLE001
+        logger.exception("Job retention pass failed — will retry.")
+
+
 def run_forever() -> None:
     """The actual `python -m app.worker` entry point: one dedicated process,
     one dedicated session per iteration, polling forever (§3). A fresh
@@ -418,12 +430,16 @@ def run_forever() -> None:
         logger.warning("Recovered %d job(s) left in-progress by a previous worker run.", recovered)
 
     next_recovery = time.monotonic() + settings.worker_recovery_interval_seconds
+    next_retention = time.monotonic()  # one pass right after startup
     while True:
         if not _worker_tick():
             time.sleep(settings.worker_poll_interval_seconds)
         if time.monotonic() >= next_recovery:
             next_recovery = time.monotonic() + settings.worker_recovery_interval_seconds
             _periodic_recovery()
+        if time.monotonic() >= next_retention:
+            next_retention = time.monotonic() + settings.worker_retention_interval_seconds
+            _periodic_retention()
 
 
 if __name__ == "__main__":

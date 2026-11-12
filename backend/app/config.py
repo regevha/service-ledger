@@ -90,6 +90,11 @@ class Settings(BaseSettings):
     worker_stale_after_seconds: float = 120.0
     # How often a running worker looks for orphaned jobs (not just at startup).
     worker_recovery_interval_seconds: float = 60.0
+    # Finished jobs older than this many days are deleted, except the newest finished job of
+    # each kind per document (job_queue.prune_finished_jobs). 0 keeps everything. Kept above
+    # the 24 hour windows the job caps count over.
+    job_retention_days: int = 30
+    worker_retention_interval_seconds: float = 3600.0
 
     # Debug aid: before each live Claude call the job stops and the intake screen
     # shows the exact prompt; the person presses Send or Cancel. Off by default.

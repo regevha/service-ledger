@@ -398,3 +398,47 @@ def test_heartbeat_context_refreshes_the_beat_while_the_job_runs(seeded, monkeyp
         _time.sleep(0.4)
     seeded.refresh(job)
     assert (datetime.now(timezone.utc) - job.heartbeat_at).total_seconds() < 5
+
+
+def _finished_job(db, attachment, kind, status, *, age_days):
+    when = datetime.now(timezone.utc) - timedelta(days=age_days)
+    job = models.ExtractionJob(
+        attachment_id=attachment.id, kind=kind, status=status, started_at=when, completed_at=when
+    )
+    db.add(job)
+    db.commit()
+    return job
+
+
+def test_prune_keeps_the_newest_finished_job_per_kind_and_anything_recent_or_running(seeded):
+    from app.job_queue import prune_finished_jobs
+
+    K, S = models.ExtractionJobKind, models.ExtractionJobStatus
+    a = _make_attachment(seeded)
+    old_extract = _finished_job(seeded, a, K.extract, S.succeeded, age_days=90)
+    newer_old_extract = _finished_job(seeded, a, K.extract, S.failed, age_days=60)  # newest extract: kept
+    old_classify = _finished_job(seeded, a, K.classify, S.succeeded, age_days=80)  # only classify: kept
+    recent_extra = _finished_job(seeded, a, K.extract, S.failed, age_days=0)  # recent, makes the 60d one non-newest
+    running = _in_progress_job(seeded, heartbeat_age_seconds=5)
+    running.started_at = datetime.now(timezone.utc) - timedelta(days=90)
+    seeded.commit()
+
+    gone = {old_extract.id, newer_old_extract.id}
+    kept = {old_classify.id, recent_extra.id, running.id}
+    assert prune_finished_jobs(seeded, retention_days=30) == 2
+    remaining = {row[0] for row in seeded.query(models.ExtractionJob.id).all()}
+    assert not (gone & remaining)
+    assert kept <= remaining
+
+
+def test_prune_is_off_at_zero_days_and_never_prunes_inside_the_cap_window(seeded):
+    from app.job_queue import prune_finished_jobs
+
+    K, S = models.ExtractionJobKind, models.ExtractionJobStatus
+    a = _make_attachment(seeded)
+    _finished_job(seeded, a, K.extract, S.succeeded, age_days=90)
+    _finished_job(seeded, a, K.extract, S.succeeded, age_days=1)
+    _finished_job(seeded, a, K.extract, S.succeeded, age_days=0)
+    assert prune_finished_jobs(seeded, retention_days=0) == 0
+    assert prune_finished_jobs(seeded, retention_days=1) == 1  # clamped to 2 days: only the 90 day one goes
+    assert seeded.query(models.ExtractionJob).count() == 2
