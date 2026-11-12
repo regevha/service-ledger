@@ -35,6 +35,61 @@ def test_ordinary_text_is_left_alone(text):
     assert scrub_text(text) == text
 
 
+# Hebrew has no capitals, so a name is recognised by the role label before it.
+# The names below are invented.
+@pytest.mark.parametrize(
+    "text, name",
+    [
+        ("מהנדס: תמר אלנבוים החליפה את המסנן", "אלנבוים"),
+        ("טכנאי: אורן שלגון בדק את הלחץ", "שלגון"),
+        ("לקוח - נועה פרלמוטר אישרה את התיקון", "פרלמוטר"),
+        ("איש קשר: גיל הרשקוביץ", "הרשקוביץ"),
+        ("נחתם על ידי יובל מרגלית. המערכת מוכנה", "מרגלית"),
+        ("אושר על ידי ענת קורמן", "קורמן"),
+    ],
+)
+def test_hebrew_names_after_a_role_label_are_removed(text, name):
+    out = scrub_text(text)
+    assert name not in out
+    assert out != text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "החלפת מסנן וביצוע שטיפה לקו ההלבנה",
+        "לחץ הנוזלים 12.5 psi, זרימה 1.0 מ״ל לדקה",
+        "המהנדס בדק את המערכת לאחר התיקון",
+        "הלקוח ביקש לבדוק שוב את הצינורית",
+        "תקלה במשאבה, הוחלף אטם מספר 641922",
+    ],
+)
+def test_hebrew_text_without_a_role_label_is_left_alone(text):
+    assert scrub_text(text) == text
+
+
+def test_a_hebrew_field_the_check_changed_is_left_doubtful(monkeypatch):
+    template_fields = [{"name": "work_performed", "type": "text", "unit": None, "notes": None}]
+
+    class T:
+        field_schema = {"fields": template_fields}
+
+    monkeypatch.setattr(extraction.settings, "use_live_claude", False)
+    monkeypatch.setattr(extraction.settings, "stub_extract_from_text", False)
+    monkeypatch.setattr(
+        extraction,
+        "_stub_extract",
+        lambda a, t: extraction.ExtractionResult(
+            {"work_performed": "הוחלף אטם. מהנדס: תמר אלנבוים"}, {"work_performed": 0.95, "report_date": 0.9}, None
+        ),
+    )
+    result = extraction.extract(object(), T())
+    assert "אלנבוים" not in result.extracted_fields["work_performed"]
+    assert "הוחלף אטם" in result.extracted_fields["work_performed"]
+    assert result.field_confidences["work_performed"] == 0.5
+    assert result.field_confidences["report_date"] == 0.9
+
+
 def test_scrub_values_covers_text_fields_and_table_cells_and_reports_what_changed():
     fields = [
         {"name": "work_performed", "type": "text"},
