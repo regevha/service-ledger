@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
+from app.services.job_limits import CANCELLED_UNSENT, enforce_job_limits
 from app.services.duplicates import find_duplicate_report_ids, find_read_copy, normalize_work_order
 from app.services.field_locator import FieldToLocate, locate_fields
 from app.services.page_text import PDFIUM_LOCK, page_words
@@ -405,6 +406,7 @@ def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db))
     running = _unfinished_job(db, attachment_id, models.ExtractionJobKind.classify)
     if running is not None:
         return running
+    enforce_job_limits(db, attachment_id, models.ExtractionJobKind.classify)
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,
@@ -453,6 +455,7 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
     running = _unfinished_job(db, attachment_id, models.ExtractionJobKind.extract)
     if running is not None:
         return running
+    enforce_job_limits(db, attachment_id, models.ExtractionJobKind.extract)
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,
@@ -507,7 +510,7 @@ def cancel_extraction_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
     waiting = job.status == models.ExtractionJobStatus.awaiting_approval
     job.params = {**(job.params or {}), "cancelled": True}
     job.status = models.ExtractionJobStatus.failed
-    job.error_message = "Cancelled before the prompt was sent to Claude." if waiting else "Cancelled."
+    job.error_message = CANCELLED_UNSENT if waiting else "Cancelled."
     job.completed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(job)
