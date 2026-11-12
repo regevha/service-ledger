@@ -40,6 +40,8 @@ async def lifespan(app: FastAPI):
     # (§1) and the six report_templates rows (§5) if they're not there yet.
     # Idempotent — safe to run on every startup.
     announce_debug_log()
+    if (warning := get_settings().stub_mode_warning):
+        logger.warning(warning)
     with SessionLocal() as db:
         ensure_default_types(db)
         ensure_default_makers(db)
@@ -57,11 +59,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Single-user dev/eval scope (§1) — the frontend build is a standalone static
-# HTML file that may be opened from file:// or served from a different port,
-# so it needs a permissive dev CORS policy to reach this API at all. Tighten
-# this to a real allowlist before this system has more than one evaluator (§1).
-CORS_ORIGINS = ["*"]
+# Development: the Vite server (another port) and file:// pages call this API, so
+# every origin is allowed. Deployed (FRONTEND_DIST_DIR set): the API serves the page
+# itself, so the browser sees one origin and no cross-origin access is granted
+# unless CORS_ALLOWED_ORIGINS lists it (see Settings.cors_origins).
+CORS_ORIGINS = get_settings().cors_origins
 
 app.add_middleware(
     CORSMiddleware,
