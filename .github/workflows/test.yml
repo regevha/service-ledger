@@ -98,6 +98,10 @@ jobs:
         working-directory: frontend
         run: npx tsc -b
 
+      - name: Unit tests (Vitest)
+        working-directory: frontend
+        run: npm run test:unit
+
       - name: Frontend API types match the backend
         # frontend/src/generated/api-schema.ts is committed; this regenerates it from the
         # backend's OpenAPI schema and fails if the committed file is out of date.

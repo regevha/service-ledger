@@ -15,7 +15,8 @@
     "test:e2e:built": "playwright test --config=playwright.built.config.ts",
     "coverage:report": "nyc report --temp-dir .nyc_output --reporter=text --reporter=html --reporter=json-summary --check-coverage --lines 88 --branches 75 --report-dir coverage",
     "test:e2e:coverage": "rm -rf .nyc_output coverage && COVERAGE=1 playwright test && npm run coverage:report",
-    "test:e2e:coverage:shuffled": "rm -rf .nyc_output coverage && COVERAGE=1 node scripts/run-e2e-shuffled.mjs && npm run coverage:report"
+    "test:e2e:coverage:shuffled": "rm -rf .nyc_output coverage && COVERAGE=1 node scripts/run-e2e-shuffled.mjs && npm run coverage:report",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
@@ -30,10 +31,12 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.2.1",
+    "jsdom": "^31.0.0",
     "nyc": "^18.0.0",
     "oxlint": "^1.91.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
-    "vite-plugin-istanbul": "^9.0.1"
+    "vite-plugin-istanbul": "^9.0.1",
+    "vitest": "^5.1.0"
   }
 }

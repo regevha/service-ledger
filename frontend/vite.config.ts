@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import istanbul from 'vite-plugin-istanbul'
 
 // https://vite.dev/config/
@@ -12,6 +12,8 @@ import istanbul from 'vite-plugin-istanbul'
 const coverage = process.env.COVERAGE === '1'
 
 export default defineConfig({
+  // Unit tests (npm run test:unit) cover the pure modules in src/; the Playwright specs in tests/ are separate.
+  test: { include: ['src/**/*.test.ts'] },
   plugins: [
     react(),
     ...(coverage
