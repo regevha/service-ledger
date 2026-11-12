@@ -38,30 +38,36 @@ from app.models import Attachment, ReportTemplate
 from app.schemas import REPORT_DATE_KEY, TemplateFieldType
 from app.services.attachment_names import source_name
 from app.services.claude_client import (
-    is_sample_document as _is_sample_document,
     call_claude_tool,
     extract_tool_use,
     raise_if_truncated,
+)
+from app.services.claude_client import (
     get_client as _get_client,
+)
+from app.services.claude_client import (
+    is_sample_document as _is_sample_document,
+)
+from app.services.claude_client import (
     stable_unit as _stable_unit,
 )
 from app.services.documents import UnsupportedDocumentError
-from app.services.translation import source_block
 from app.services.errors import ExtractionError
+from app.services.extraction_prompt import (  # noqa: F401  (moved; re-exported here)
+    _BOX_PROMPT,
+    _EXTRACT_PROMPT_HEADER,
+    _EXTRACT_TOOL_NAME,
+    _box_key,
+    _build_extract_tool,
+    _confidence_key,
+    _field_list_for_prompt,
+    _field_value_schema,
+    _leaf_json_schema,
+)
 from app.services.field_values import normalize_values
 from app.services.privacy import scrub_values
 from app.services.text_extraction import text_extract
-from app.services.extraction_prompt import (  # noqa: F401  (moved; re-exported here)
-    _EXTRACT_TOOL_NAME,
-    _EXTRACT_PROMPT_HEADER,
-    _leaf_json_schema,
-    _field_value_schema,
-    _confidence_key,
-    _build_extract_tool,
-    _field_list_for_prompt,
-    _box_key,
-    _BOX_PROMPT,
-)
+from app.services.translation import source_block
 
 logger = logging.getLogger("app.services.extraction")
 settings = get_settings()

@@ -38,7 +38,7 @@ def create_instrument(db: Session, payload: schemas.InstrumentCreate) -> models.
         # is what actually stops the duplicate, this just turns the
         # resulting IntegrityError into the same clean refusal as the pre-check.
         db.rollback()
-        raise ConflictError(_SERIAL_CONFLICT)
+        raise ConflictError(_SERIAL_CONFLICT) from None
     db.refresh(instrument)
     annotate(db, [instrument])
     return instrument
@@ -99,7 +99,7 @@ def update_instrument(db: Session, instrument_id: uuid.UUID, payload: schemas.In
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise ConflictError(_SERIAL_CONFLICT)
+        raise ConflictError(_SERIAL_CONFLICT) from None
     db.refresh(instrument)
     annotate(db, [instrument])
     return instrument

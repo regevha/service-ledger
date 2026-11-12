@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Literal
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -12,7 +12,6 @@ from app.models import (
     ExtractionJobStatus,
     TranslationStatus,
 )
-
 
 # ---------- Extraction jobs / classification ----------
 

@@ -61,7 +61,7 @@ def create_filter(db: Session, name: str, criteria: schemas.SavedFilterCriteria)
         # The unique index on lower(btrim(name)) caught a duplicate name,
         # including one that slipped in between the lock and the insert.
         db.rollback()
-        raise ConflictError(_NAME_MESSAGE)
+        raise ConflictError(_NAME_MESSAGE) from None
     db.refresh(row)
     return row
 

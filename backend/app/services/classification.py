@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import re
 from collections import Counter
-from typing import Literal, NamedTuple
+from typing import Literal
 
 from sqlalchemy.orm import Session
 
@@ -27,39 +27,44 @@ from app.config import get_settings
 from app.models import Attachment, Instrument, ReportTemplate, ReportType
 from app.schemas import ClassificationGuess, ClassificationResult
 from app.services.attachment_names import source_name
-from app.services.claude_client import (
-    is_sample_document as _is_sample_document,
-    call_claude_tool,
-    extract_tool_use,
-    raise_if_truncated,
-    get_client as _get_client,
-    stable_unit as _stable_unit,
-)
-from app.services.duplicates import find_duplicate_report_ids, normalize_work_order
-from app.services.errors import ClassificationError
-from app.services.text_reader import extract_text, read_identifiers
-from app.services.documents import UnsupportedDocumentError
-from app.services.translation import accepted_text, is_hebrew_text_layer, source_block
-from app.services.manufacturers import is_maker
-from app.services.templates import resolve_template
 from app.services.classification_prompt import (  # noqa: F401  (moved; re-exported here)
-    _CLASSIFY_INTRO,
     _CLASSIFY_BODY,
     _CLASSIFY_BRAND_NOTE,
+    _CLASSIFY_INTRO,
     build_classify_prompt,
 )
 from app.services.classification_reading import (  # noqa: F401  (moved; re-exported here)
     _INVISIBLE,
-    _clean,
-    DocumentRead,
+    _NO_SERIAL_WORDS,
     _TASK_CODE_REPORT_TYPES_BY_MAKER,
     DEFAULT_TASK_CODE_SCHEME,
-    task_code_scheme,
-    report_type_from_task_code,
-    _NO_SERIAL_WORDS,
+    DocumentRead,
+    _clean,
     _normalize_serial,
     match_serial,
+    report_type_from_task_code,
+    task_code_scheme,
 )
+from app.services.claude_client import (
+    call_claude_tool,
+    extract_tool_use,
+    raise_if_truncated,
+)
+from app.services.claude_client import (
+    get_client as _get_client,
+)
+from app.services.claude_client import (
+    is_sample_document as _is_sample_document,
+)
+from app.services.claude_client import (
+    stable_unit as _stable_unit,
+)
+from app.services.documents import UnsupportedDocumentError
+from app.services.duplicates import find_duplicate_report_ids, normalize_work_order
+from app.services.errors import ClassificationError
+from app.services.templates import resolve_template
+from app.services.text_reader import extract_text, read_identifiers
+from app.services.translation import accepted_text, is_hebrew_text_layer, source_block
 
 logger = logging.getLogger("app.services.classification")
 settings = get_settings()

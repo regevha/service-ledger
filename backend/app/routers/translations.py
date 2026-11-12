@@ -10,7 +10,6 @@ there is deliberately no route that serves it as a file.
 from __future__ import annotations
 
 import logging
-
 import uuid
 from datetime import datetime, timezone
 

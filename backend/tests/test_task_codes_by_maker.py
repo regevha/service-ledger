@@ -10,7 +10,11 @@ import pytest
 from app.schemas import ClassificationGuess
 from app.seed_templates import TEMPLATE_ROWS
 from app.services import classification
-from app.services.classification import _apply_task_code, report_type_from_task_code, task_code_scheme
+from app.services.classification import (
+    _apply_task_code,
+    report_type_from_task_code,
+    task_code_scheme,
+)
 
 # ---------- the scheme follows the maker ----------
 

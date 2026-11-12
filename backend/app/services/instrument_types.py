@@ -75,6 +75,6 @@ def create_type(db: Session, display_name: str) -> InstrumentType:
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise ConflictError(_CONFLICT)
+        raise ConflictError(_CONFLICT) from None
     db.refresh(row)
     return row

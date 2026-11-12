@@ -1,0 +1,29 @@
+# Lint for the backend (the frontend's counterpart is oxlint, frontend/.oxlintrc.json).
+# Run from backend/:  ruff check .   (add --fix for the safe automatic fixes)
+target-version = "py311"  # the version CI runs (.github/workflows/test.yml)
+
+[lint]
+select = [
+    "E4", "E7", "E9",  # syntax errors, bare except, ambiguous names, import placement
+    "F",               # unused imports and variables, undefined names
+    "B",               # likely bugs: mutable defaults, raise without from, loop-variable capture
+    "I",               # import order
+]
+# zip() of lists that are meant to line up, and zip(days, days[1:]) that deliberately
+# do not: strict= would need a decision at each call, so it is not enforced.
+ignore = ["B905"]
+
+[lint.flake8-bugbear]
+# FastAPI's way of declaring a dependency or a parameter is a call in the default
+# value (db: Session = Depends(get_db)); that is not the mutable-default bug B008 looks for.
+extend-immutable-calls = [
+    "fastapi.Depends", "fastapi.Query", "fastapi.Body", "fastapi.Path",
+    "fastapi.File", "fastapi.Form", "fastapi.Header", "fastapi.Cookie",
+]
+
+[lint.per-file-ignores]
+# Migrations are a record of what already ran: never reformatted or reordered.
+"alembic/versions/*" = ["E741", "B007", "I001"]
+# The imports here are in a deliberate order (the search module must come last because
+# it imports this package); sorting them gives a circular-import error at startup.
+"app/models/__init__.py" = ["I001"]

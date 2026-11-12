@@ -261,8 +261,8 @@ def test_endpoint_survives_a_failing_model(client, monkeypatch):
 
 def test_a_note_that_only_repeats_a_filter_is_dropped():
     from app.services.report_query_model import merge
-    from app.tools.search_eval_cases import KNOWN, TODAY
     from app.services.report_query_parse import parse_search
+    from app.tools.search_eval_cases import KNOWN, TODAY
 
     rules = parse_search("broken instruments that nobody has reviewed", KNOWN, TODAY)
     out = merge(rules, {"text": "", "not_supported": ["reports nobody has reviewed", "overdue"]}, KNOWN)

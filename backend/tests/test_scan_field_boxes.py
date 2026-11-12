@@ -8,7 +8,7 @@ import pytest
 
 from app import models
 from app.services import extraction
-from app.services.extraction_prompt import _build_extract_tool, _box_key
+from app.services.extraction_prompt import _box_key, _build_extract_tool
 from tests.conftest import TestSessionLocal
 from tests.test_live_claude_parsing import _FakeClient, _template, _tool_use_response
 

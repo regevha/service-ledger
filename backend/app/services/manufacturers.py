@@ -179,7 +179,7 @@ def create_maker(db: Session, name: str, aliases: list[str]) -> models.Manufactu
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise ConflictError(_CONFLICT)
+        raise ConflictError(_CONFLICT) from None
     db.refresh(maker)
     return maker
 
@@ -205,7 +205,7 @@ def update_maker(db: Session, maker_id: uuid.UUID, name: str | None, aliases: li
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise ConflictError(_CONFLICT)
+        raise ConflictError(_CONFLICT) from None
     db.refresh(maker)
     return maker
 

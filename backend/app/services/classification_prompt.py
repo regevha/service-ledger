@@ -1,7 +1,7 @@
 """The classification prompt text and its builder (re-exported by classification.py)."""
 from __future__ import annotations
-from app.models import Instrument
 
+from app.models import Instrument
 
 _CLASSIFY_INTRO = """This is a scanned service report for one instrument in a fixed fleet. \
 Identify the following and report a confidence (0 to 1) for each \

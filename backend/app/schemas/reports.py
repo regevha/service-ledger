@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Literal
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -11,7 +11,6 @@ from app.models import (
     ReportStatus,
     ReportType,
 )
-
 
 # ---------- Attachments ----------
 

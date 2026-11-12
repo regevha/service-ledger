@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from app.services import claude_client, classification
+from app.services import classification, claude_client
 from app.services.prompt_gate import build_preview
 
 

@@ -31,21 +31,21 @@ from app.services.claude_client import (
 from app.services.claude_client import get_client as _get_client
 from app.services.errors import LiveClaudeError, SearchError
 from app.services.report_query_parse import (
-    REPORT_TYPES as REPORT_TYPE_PATTERNS,
-)
-from app.services.report_query_parse import (
-    STATUSES as STATUS_PATTERNS,
-)
-from app.services.report_query_parse import (
-    Known,
     OP_WORD,
     STOPWORDS,
+    Known,
     Parsed,
     _label_dates,
     _take,
     apply_repair_count,
     number_text,
     parse_search,
+)
+from app.services.report_query_parse import (
+    REPORT_TYPES as REPORT_TYPE_PATTERNS,
+)
+from app.services.report_query_parse import (
+    STATUSES as STATUS_PATTERNS,
 )
 
 logger = logging.getLogger(__name__)

@@ -16,7 +16,6 @@ from sqlalchemy.orm import Query
 from app import models
 from app.services import report_search
 
-
 # The comparisons a field condition can make, as jsonpath operators (never built from user input).
 FIELD_OPS = {"gt": ">", "gte": ">=", "lt": "<", "lte": "<=", "eq": "=="}
 

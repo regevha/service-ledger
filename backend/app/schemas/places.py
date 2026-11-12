@@ -8,7 +8,6 @@ from pydantic import BaseModel, field_validator
 
 from app.schemas.instruments import _required_text
 
-
 # ---------- Places ----------
 
 PlaceKind = Literal["institution", "faculty", "room"]

@@ -70,7 +70,7 @@ def create_group(db: Session, label: str | None, names: list[str]) -> FieldAlias
     except IntegrityError:
         # Two people adding the same name at once: the unique index decides.
         db.rollback()
-        raise ConflictError(_JUST_ADDED)
+        raise ConflictError(_JUST_ADDED) from None
     db.refresh(group)
     return group
 
@@ -93,7 +93,7 @@ def replace_group(db: Session, group_id: uuid.UUID, label: str | None, names: li
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise ConflictError(_JUST_ADDED)
+        raise ConflictError(_JUST_ADDED) from None
     db.refresh(group)
     return group
 

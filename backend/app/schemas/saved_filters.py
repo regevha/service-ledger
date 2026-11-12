@@ -10,9 +10,7 @@ from app.models import (
     ReportStatus,
     ReportType,
 )
-
 from app.schemas.instrument_models import InstrumentModelDetailOut, ModelReliabilityOut
-
 
 # ---------- Saved report filters ----------
 

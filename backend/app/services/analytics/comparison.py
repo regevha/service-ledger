@@ -45,7 +45,6 @@ def _unit_comparison(instrument: models.Instrument, reports: list[models.Report]
                     parts_qty += qty
         if report.template is None or report.template.report_type not in _LABOR_TRACKING_REPORT_TYPES:
             continue
-        report_type = report.template.report_type
         hours = _as_number(fields.get("labor_hours"))
         if hours is not None:
             labor_hours += hours

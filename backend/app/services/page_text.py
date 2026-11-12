@@ -86,9 +86,9 @@ def _page_words_locked(pdfium, path: str | Path, page: int) -> tuple[list[WordBo
 
         for i in range(count):
             ch = text_page.get_text_range(i, 1)
-            l, b, r, t = text_page.get_charbox(i)
+            cl, b, r, t = text_page.get_charbox(i)
             # Spaces, line breaks and characters with no box (generated breaks) end a word.
-            if not ch.strip() or r <= l or t <= b:
+            if not ch.strip() or r <= cl or t <= b:
                 flush()
                 continue
             char_h = t - b
@@ -98,7 +98,7 @@ def _page_words_locked(pdfium, path: str | Path, page: int) -> tuple[list[WordBo
             ref_h = max(char_h, (top - bottom) if buf else last_h)
             if buf:
                 new_line = last_centre is not None and abs(centre - last_centre) > _LINE_SHIFT_IN_HEIGHTS * ref_h
-                wide_gap = l - right > _GAP_IN_HEIGHTS * ref_h
+                wide_gap = cl - right > _GAP_IN_HEIGHTS * ref_h
                 if new_line or wide_gap:
                     flush()
                     if new_line:
@@ -106,9 +106,9 @@ def _page_words_locked(pdfium, path: str | Path, page: int) -> tuple[list[WordBo
             elif last_centre is not None and abs(centre - last_centre) > _LINE_SHIFT_IN_HEIGHTS * ref_h:
                 line += 1
             if not buf:
-                left, bottom, right, top = l, b, r, t
+                left, bottom, right, top = cl, b, r, t
             else:
-                left, bottom, right, top = min(left, l), min(bottom, b), max(right, r), max(top, t)
+                left, bottom, right, top = min(left, cl), min(bottom, b), max(right, r), max(top, t)
             buf += ch
             last_centre = centre
             last_h = char_h

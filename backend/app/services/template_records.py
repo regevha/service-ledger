@@ -17,7 +17,14 @@ from app.models import ReportType
 from app.services.domain_errors import ConflictError, InvalidError, NotFoundError
 from app.services.field_aliases import load_alias_index
 from app.services.instrument_types import type_exists
-from app.services.template_compare import DIFFERS, ONLY_LEFT, ONLY_RIGHT, POSSIBLE_MATCH, SAME, compare_templates
+from app.services.template_compare import (
+    DIFFERS,
+    ONLY_LEFT,
+    ONLY_RIGHT,
+    POSSIBLE_MATCH,
+    SAME,
+    compare_templates,
+)
 from app.services.templates import resolve_template, suggest_templates
 
 

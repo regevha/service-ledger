@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import event, func, inspect
+from sqlalchemy import event, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
