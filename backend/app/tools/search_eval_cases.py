@@ -148,18 +148,17 @@ CASES: list[dict[str, Any]] = [
     ),
     # --- asked for what no filter can express: say so instead of guessing ---
     case("which instruments are overdue for PM?", {"report_type": PM}, {"not_supported": ["overdue"], "text": ""}, ["overdue"]),
-    # --- instruments by how many repairs they had (repairs_op, repairs_count: opens the Instruments list) ---
+    # --- instruments by how many repairs they had (repairs_op, repairs_count: opens the Instruments list); the plainest wordings are read by the rules alone ---
     case(
         "instruments with more than 2 repairs this year",
         {"repairs_op": "gt", "repairs_count": "2", "date_from": "2026-01-01", "date_to": "2026-11-08"},
-        {"repairs_op": "gt", "repairs_count": 2, "text": ""},
     ),
     case(
         "Aria instruments with at least 3 repairs in 2025",
         {"model_id": "m-aria", "repairs_op": "gte", "repairs_count": "3", "date_from": "2025-01-01", "date_to": "2025-12-31"},
         {"instrument_model": "FACSAria III", "repairs_op": "gte", "repairs_count": 3, "text": ""},
     ),
-    case("instruments that never had a repair", {"repairs_op": "eq", "repairs_count": "0"}, {"repairs_op": "eq", "repairs_count": 0, "text": ""}),
+    case("instruments that never had a repair", {"repairs_op": "eq", "repairs_count": "0"}),
     case(
         "which instruments at Bar-Ilan had fewer than 2 repairs last month",
         {"place_id": "p-bar", "repairs_op": "lt", "repairs_count": "2", "date_from": "2026-10-01", "date_to": "2026-10-31"},
@@ -172,12 +171,12 @@ CASES: list[dict[str, Any]] = [
         ["Only the model, place and dates apply to a count of repairs per instrument (left out: technician)"],
     ),
     # --- a condition on a number in the report (field, op, value) ---
-    case("laser delay above 29", {"number_field": "laser_delay", "number_op": "gt", "number_value": "29"}, {"field": "laser_delay", "op": "gt", "value": 29, "text": ""}),
-    case("repairs where the laser delay is at least 30", {"report_type": REPAIR, "number_field": "laser_delay", "number_op": "gte", "number_value": "30"}, {"field": "laser_delay", "op": "gte", "value": 30, "text": ""}),
+    case("laser delay above 29", {"number_field": "laser_delay", "number_op": "gt", "number_value": "29"}),
+    case("repairs where the laser delay is at least 30", {"report_type": REPAIR, "number_field": "laser_delay", "number_op": "gte", "number_value": "30"}),
     case("Aria reports with laser delay under 15.5", {"model_id": "m-aria", "number_field": "laser_delay", "number_op": "lt", "number_value": "15.5"}, {"instrument_model": "FACSAria III", "field": "laser_delay", "op": "lt", "value": 15.5, "text": ""}),
-    case("labor hours more than 4", {"number_field": "labor_hours", "number_op": "gt", "number_value": "4"}, {"field": "labor_hours", "op": "gt", "value": 4, "text": ""}),
-    case("detector voltage equal to 650", {"number_field": "detector_voltage", "number_op": "eq", "number_value": "650"}, {"field": "detector_voltage", "op": "eq", "value": 650, "text": ""}),
-    case("laser delay above 29 in 2025", {"date_from": "2025-01-01", "date_to": "2025-12-31", "number_field": "laser_delay", "number_op": "gt", "number_value": "29"}, {"date_from": "2025-01-01", "date_to": "2025-12-31", "field": "laser_delay", "op": "gt", "value": 29, "text": ""}),
+    case("labor hours more than 4", {"number_field": "labor_hours", "number_op": "gt", "number_value": "4"}),
+    case("detector voltage equal to 650", {"number_field": "detector_voltage", "number_op": "eq", "number_value": "650"}),
+    case("laser delay above 29 in 2025", {"date_from": "2025-01-01", "date_to": "2025-12-31", "number_field": "laser_delay", "number_op": "gt", "number_value": "29"}),
     case("tubing length above 3", {}, {"text": "", "not_supported": ["tubing length above 3"]}, ["tubing length above 3"]),
     case("reports without a serial number", {}, {"not_supported": ["without a serial number"], "text": ""}, ["without a serial number"]),
     case("failed extractions", {}, {"not_supported": ["failed extractions"], "text": ""}, ["failed extractions"]),
@@ -193,7 +192,7 @@ CASES: list[dict[str, Any]] = [
     case("laser replacement on the Aria", {"model_id": "m-aria", "q": "laser replacement"}, {"instrument_model": "FACSAria III", "text": "laser replacement"}),
     case("reports where the PMT voltage was changed", {"q": "pmt voltage changed"}, {"text": "pmt voltage changed"}),
     case("reports that need my attention", {}, {"not_supported": ["need my attention"], "text": ""}, ["need my attention"], any_notes=True),
-    case("laser power below 100 mW", {"number_field": "laser_power", "number_op": "lt", "number_value": "100"}, {"field": "laser_power", "op": "lt", "value": 100, "text": ""}),
+    case("laser power below 100 mW", {"number_field": "laser_power", "number_op": "lt", "number_value": "100"}),
     case("show me the reports of the machine in room 12", {}, {"not_supported": ["room 12"], "text": ""}, ["room 12"], any_notes=True),
     # --- nothing to understand, or an attempt to give the model orders ---
     case("hello", {}, {"text": ""}, any_notes=True),
