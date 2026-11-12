@@ -130,6 +130,22 @@ frontend/
   tests/e2e/                   Playwright specs against a running backend
 ```
 
+## Type checking
+
+mypy is configured in `mypy.ini` (Python 3.11, not strict). It is not in `requirements.txt`; CI installs the
+version pinned in the "Mypy" step of `.github/workflows/test.yml`. From `backend/`:
+
+```
+pip install mypy==2.4.1      # the version CI pins
+mypy app
+grep -c ': error:' <(mypy app)   # the number CI compares with mypy-baseline.txt
+```
+
+The code has known errors, so CI does not demand zero. It counts the errors and compares the count with
+`mypy-baseline.txt`; the step fails only if the count is higher than the baseline. A PR that removes errors
+must also lower the number in `mypy-baseline.txt` to the new count (CI prints a notice until it does).
+When you bump the pinned mypy version, re-count and update the baseline in the same PR.
+
 ## Running it
 
 Requires Postgres reachable at the URL in `.env` (copy `.env.example` — the
