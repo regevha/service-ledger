@@ -71,6 +71,32 @@ jobs:
         working-directory: backend
         run: ruff check .
 
+      - name: Mypy (backend types, error count may not rise)
+        # mypy is pinned here, as ruff is, and is not in requirements.txt. The code has known
+        # errors, so this does not demand zero: it counts the "error:" lines of `mypy app`
+        # (config: backend/mypy.ini) and compares the count with backend/mypy-baseline.txt.
+        # It fails only when the count is higher than the baseline. A PR that lowers the count
+        # must also lower the baseline to the new count (the step prints a notice when the
+        # baseline is higher than the count), so the gain cannot be lost again later.
+        # Locally: see "Type checking" in backend/README.md.
+        working-directory: backend
+        run: |
+          pip install mypy==2.4.1
+          mypy app > /tmp/mypy.out 2>&1 || true
+          cat /tmp/mypy.out
+          # A crash or a bad config prints no summary line; do not read that as "0 errors".
+          grep -qE '^(Found [0-9]+ errors? in|Success: no issues found)' /tmp/mypy.out \
+            || { echo "::error::mypy did not finish with a summary line; see its output above."; exit 1; }
+          count=$(grep -c ': error:' /tmp/mypy.out || true)
+          baseline=$(tr -d '[:space:]' < mypy-baseline.txt)
+          echo "mypy errors: $count (baseline: $baseline)"
+          if [ "$count" -gt "$baseline" ]; then
+            echo "::error::mypy reports $count errors, more than the baseline of $baseline. Fix the new errors."
+            exit 1
+          elif [ "$count" -lt "$baseline" ]; then
+            echo "::notice::mypy reports $count errors, fewer than the baseline of $baseline. Put $count in backend/mypy-baseline.txt in this PR."
+          fi
+
       - name: Models match the migrations
         # Fails when a model changed without a migration (alembic finds operations to generate).
         working-directory: backend
