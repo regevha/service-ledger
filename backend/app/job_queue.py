@@ -167,6 +167,8 @@ def prune_finished_jobs(db: Session, retention_days: int | None = None) -> int:
         .subquery()
     )
     doomed = select(ranked.c.id).where(ranked.c.rank > 1, ranked.c.completed_at < cutoff)
-    result = db.execute(delete(models.ExtractionJob).where(models.ExtractionJob.id.in_(doomed)))
+    deleted = db.execute(
+        delete(models.ExtractionJob).where(models.ExtractionJob.id.in_(doomed)).returning(models.ExtractionJob.id)
+    ).all()
     db.commit()
-    return result.rowcount or 0
+    return len(deleted)
