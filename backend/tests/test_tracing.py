@@ -8,10 +8,16 @@ import logging
 import pytest
 from fastapi.testclient import TestClient
 
-from app import main
 from app.config import get_settings
 from app.main import app
-from app.trace import _ContextFilter, bound_job, configure_logging, job_id_var, request_id_var, utc_formatter
+from app.trace import (
+    _ContextFilter,
+    bound_job,
+    configure_logging,
+    job_id_var,
+    request_id_var,
+    utc_formatter,
+)
 
 
 @pytest.fixture
@@ -199,7 +205,6 @@ def test_configure_logging_adds_one_handler_and_updates_the_role():
 
 
 def test_console_times_are_utc_whatever_the_machine_zone(monkeypatch):
-    import os
     import time as _time
 
     monkeypatch.setenv("TZ", "Asia/Jerusalem")

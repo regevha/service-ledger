@@ -14,7 +14,11 @@ import pytest
 
 from app.config import get_settings
 from app.services import classification, extraction
-from app.services.documents import UnsupportedDocumentError, claude_content_block, detect_media_type
+from app.services.documents import (
+    UnsupportedDocumentError,
+    claude_content_block,
+    detect_media_type,
+)
 from app.services.errors import ClassificationError, ExtractionError
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 32

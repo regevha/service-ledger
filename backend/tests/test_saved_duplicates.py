@@ -9,7 +9,6 @@ import hashlib
 import uuid
 
 from app.models import Attachment, Instrument, Report, ReportStatus
-from tests.conftest import TestSessionLocal
 from tests.test_text_reader import make_pdf, service_report
 
 

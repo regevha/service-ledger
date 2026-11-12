@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.db import get_db
 from app.models import DEFAULT_INSTRUMENT_TYPE_KEY, ReportType
-from app.services.attachment_names import source_name
 from app.services import template_records as svc
+from app.services.attachment_names import source_name
 
 router = APIRouter(tags=["report-templates"])
 

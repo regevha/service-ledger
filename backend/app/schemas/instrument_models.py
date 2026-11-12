@@ -10,11 +10,9 @@ from app.models import (
     DEFAULT_INSTRUMENT_TYPE_KEY,
     InstrumentStatus,
 )
-
 from app.schemas.analytics import PartUsageOut
 from app.schemas.instruments import _required_text
 from app.schemas.reports import ReportListItemOut
-
 
 # ---------- Instrument models ----------
 

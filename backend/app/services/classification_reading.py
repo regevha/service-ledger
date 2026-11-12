@@ -1,5 +1,6 @@
 """A document read's result type and the pure helpers that interpret it (re-exported by classification.py)."""
 from __future__ import annotations
+
 import re
 from typing import Literal, NamedTuple
 
@@ -8,7 +9,6 @@ from sqlalchemy.orm import Session
 from app.models import Instrument, ReportType
 from app.schemas import ClassificationGuess
 from app.services.manufacturers import is_maker
-
 
 _INVISIBLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u200e\u200f\u2060\ufeff"))
 

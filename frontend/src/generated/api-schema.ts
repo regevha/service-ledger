@@ -236,6 +236,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments/repair-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Instrument Repair Counts
+         * @description How many finalized repair reports each instrument has in the date range (every instrument is listed, with 0
+         *     when it has none). Drafts and reports still being checked are left out, because their values can still change.
+         */
+        get: operations["instrument_repair_counts_instruments_repair_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/instruments/{instrument_id}": {
         parameters: {
             query?: never;
@@ -441,6 +462,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/report-templates/sample-scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Sample Scans
+         * @description Stored PDFs the template editor can show while a person picks fields from
+         *     one: the newest first, with scans of the same report type and model ahead of
+         *     the rest. Images are left out (nothing to pick text from), and so are files
+         *     whose report has been deleted. Registered before /report-templates/{template_id}
+         *     so "sample-scans" is never read as a template id.
+         */
+        get: operations["list_sample_scans_report_templates_sample_scans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/report-templates/{template_id}": {
         parameters: {
             query?: never;
@@ -496,6 +541,28 @@ export interface paths {
          *     intake (§4) resolves both after classification.
          */
         post: operations["create_report_reports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/parse-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse Report Search
+         * @description A request in plain words ("repairs of the FACSAria III last month") turned into the Reports
+         *     filters. Nothing is searched here: the screen applies the filters, shows what was understood,
+         *     and the person can change any of it.
+         */
+        post: operations["parse_report_search_reports_parse_search_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -843,6 +910,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/attachments/{attachment_id}/pages/{page}/words": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Attachment Page Words
+         * @description The words on one page of a stored PDF and where they sit (fractions of
+         *     the page, from the top left). The template editor draws these over the page
+         *     image so a person can click a word or drag a box to turn it into a field.
+         *     An image scan, or a PDF with no text layer, has no words (`has_text` false).
+         */
+        get: operations["get_attachment_page_words_attachments__attachment_id__pages__page__words_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachment_id}/field-locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Attachment Field Locations
+         * @description Where each field of this document's report was read from, so the review screen can draw the fields on
+         *     the PDF. A value is looked up among the page's words, using what the reading first produced (so a field
+         *     a person has since corrected still points at the spot it came from). A scan or photo has no text to search,
+         *     so `has_text` is false and the only positions are the boxes the model gave when it read the picture.
+         */
+        get: operations["get_attachment_field_locations_attachments__attachment_id__field_locations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/attachments/{attachment_id}/classify": {
         parameters: {
             query?: never;
@@ -1131,6 +1244,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/home/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Home Summary
+         * @description The figures the Home screen shows: reports waiting (and the oldest), finalized this month against last
+         *     month, and how much of the reading was kept without edits over the last 30 days.
+         */
+        get: operations["get_home_summary_home_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1369,6 +1503,59 @@ export interface components {
             created_at: string;
         };
         /**
+         * FieldLocationOut
+         * @description Where one field's value sits on the document. `source` is "text" when it was found among the page's
+         *     words and "template" when it is the position the template gives. `ambiguous` means the same text is on the
+         *     page several times and nothing told them apart, so the position is a guess.
+         */
+        FieldLocationOut: {
+            /** Page */
+            page: number;
+            /** Rects */
+            rects: components["schemas"]["RectOut"][];
+            /** Matches */
+            matches: number;
+            /** Ambiguous */
+            ambiguous: boolean;
+            /** Source */
+            source: string;
+        };
+        /**
+         * FieldLocationsOut
+         * @description GET /attachments/{id}/field-locations: for each field of the report this document produced, where its
+         *     value is on the page. Only fields that could be placed are listed. `has_text` is false for a scan or photo,
+         *     which has no text layer to search.
+         */
+        FieldLocationsOut: {
+            /** Has Text */
+            has_text: boolean;
+            /** Page Count */
+            page_count: number;
+            /** Fields */
+            fields: {
+                [key: string]: components["schemas"]["FieldLocationOut"];
+            };
+        };
+        /**
+         * FieldSource
+         * @description Where on a sample PDF a template field was picked: a 1-based page and a
+         *     box in fractions of the page (0 to 1 from the top left), the same units
+         *     GET /attachments/{id}/pages/{n}/words returns. The template editor draws it
+         *     back over the page so a person can see which text a field stands for.
+         */
+        FieldSource: {
+            /** Page */
+            page: number;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** W */
+            w: number;
+            /** H */
+            h: number;
+        };
+        /**
          * FleetAnalyticsOut
          * @description GET /analytics/fleet (new): fleet-wide roll-ups computed entirely from
          *     fields every finalized report already carries — no new columns, no new
@@ -1415,6 +1602,47 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HomeFinalizedOut
+         * @description Reports finalized (by the day of finalizing, not the visit date) this month and in the month before.
+         */
+        HomeFinalizedOut: {
+            /** This Month */
+            this_month: number;
+            /** Last Month */
+            last_month: number;
+        };
+        /**
+         * HomeReadAccuracyOut
+         * @description Over reports finalized in the last `days` days that were read after this was tracked: how many of the
+         *     fields the reading filled in were kept exactly as read.
+         */
+        HomeReadAccuracyOut: {
+            /** Days */
+            days: number;
+            /** Reports */
+            reports: number;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+        };
+        /** HomeSummaryOut */
+        HomeSummaryOut: {
+            waiting: components["schemas"]["HomeWaitingOut"];
+            finalized: components["schemas"]["HomeFinalizedOut"];
+            read_without_edits: components["schemas"]["HomeReadAccuracyOut"];
+        };
+        /**
+         * HomeWaitingOut
+         * @description Reports that are read but not finalized, and how long the oldest has been waiting.
+         */
+        HomeWaitingOut: {
+            /** Count */
+            count: number;
+            /** Oldest Created At */
+            oldest_created_at: string | null;
         };
         /** InstrumentCreate */
         InstrumentCreate: {
@@ -1854,6 +2082,19 @@ export interface components {
             mean_days_between_repairs: number | null;
         };
         /**
+         * PageWordsOut
+         * @description GET /attachments/{id}/pages/{n}/words: the words the template editor
+         *     lets a person pick. `has_text` is false for a scan with no text layer.
+         */
+        PageWordsOut: {
+            /** Page */
+            page: number;
+            /** Has Text */
+            has_text: boolean;
+            /** Words */
+            words: components["schemas"]["WordBoxOut"][];
+        };
+        /**
          * PartUsageOut
          * @description One row of GET /analytics/fleet's parts_replaced (fleet-wide, sorted by
          *     total_qty desc) — aggregated from every finalized report's
@@ -1974,6 +2215,33 @@ export interface components {
             name?: string | null;
             /** Parent Id */
             parent_id?: string | null;
+        };
+        /**
+         * RectOut
+         * @description A box on a page, as fractions of it (0 to 1, from the top left).
+         */
+        RectOut: {
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** W */
+            w: number;
+            /** H */
+            h: number;
+        };
+        /**
+         * RepairCountOut
+         * @description How many finalized repair reports one instrument has in a date range.
+         */
+        RepairCountOut: {
+            /**
+             * Instrument Id
+             * Format: uuid
+             */
+            instrument_id: string;
+            /** Repairs */
+            repairs: number;
         };
         /**
          * ReportCountByInstrumentOut
@@ -2133,6 +2401,49 @@ export interface components {
              */
             attachments: components["schemas"]["AttachmentOut"][];
         };
+        /** ReportSearchParseIn */
+        ReportSearchParseIn: {
+            /** Text */
+            text: string;
+        };
+        /**
+         * ReportSearchParseOut
+         * @description The Reports filters a plain-words request asked for (the same keys GET /reports takes), plus what
+         *     was understood from it.
+         */
+        ReportSearchParseOut: {
+            /** Filters */
+            filters: {
+                [key: string]: string;
+            };
+            /** Understood */
+            understood: components["schemas"]["ReportSearchPart"][];
+            /**
+             * Source
+             * @default rules
+             */
+            source: string;
+            /**
+             * Notes
+             * @default []
+             */
+            notes: string[];
+            /**
+             * Target
+             * @default reports
+             */
+            target: string;
+        };
+        /**
+         * ReportSearchPart
+         * @description One thing that was understood from the request, in the words to show next to the filters.
+         */
+        ReportSearchPart: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
         /**
          * ReportStatus
          * @description Exactly the five values named in §5: draft -> classified -> extracted ->
@@ -2162,6 +2473,34 @@ export interface components {
          * @enum {string}
          */
         ReportType: "repair" | "preventive_maintenance" | "installation_upgrade";
+        /**
+         * SampleScanOut
+         * @description GET /report-templates/sample-scans: a stored PDF the template editor can
+         *     show while a person picks fields from it. `reason` says why it was offered.
+         */
+        SampleScanOut: {
+            /**
+             * Attachment Id
+             * Format: uuid
+             */
+            attachment_id: string;
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /** File Name */
+            file_name: string;
+            report_type: components["schemas"]["ReportType"] | null;
+            /** Instrument Model */
+            instrument_model: string | null;
+            /** Instrument Serial Number */
+            instrument_serial_number: string | null;
+            /** Report Date */
+            report_date: string | null;
+            /** Reason */
+            reason: string;
+        };
         /** SavedFilterCreate */
         SavedFilterCreate: {
             /** Name */
@@ -2190,6 +2529,12 @@ export interface components {
             technician?: string | null;
             /** Q */
             q?: string | null;
+            /** Number Field */
+            number_field?: string | null;
+            /** Number Op */
+            number_op?: string | null;
+            /** Number Value */
+            number_value?: number | null;
         };
         /** SavedFilterListOut */
         SavedFilterListOut: {
@@ -2365,6 +2710,7 @@ export interface components {
              * @default false
              */
             optional: boolean;
+            source?: components["schemas"]["FieldSource"] | null;
         };
         /**
          * TemplateFieldType
@@ -2584,6 +2930,26 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WordBoxOut
+         * @description One word on a PDF page and where it sits, as fractions of the page
+         *     (0 to 1 from the top left), so the browser can draw it over the page image
+         *     at any size. `line` counts lines down the page from 0.
+         */
+        WordBoxOut: {
+            /** Text */
+            text: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** W */
+            w: number;
+            /** H */
+            h: number;
+            /** Line */
+            line: number;
         };
     };
     responses: never;
@@ -3183,6 +3549,40 @@ export interface operations {
             };
         };
     };
+    instrument_repair_counts_instruments_repair_counts_get: {
+        parameters: {
+            query?: {
+                /** @description Count repairs dated on or after this day */
+                date_from?: string | null;
+                /** @description Count repairs dated on or before this day */
+                date_to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepairCountOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_instrument_instruments__instrument_id__get: {
         parameters: {
             query?: never;
@@ -3519,6 +3919,41 @@ export interface operations {
             };
         };
     };
+    list_sample_scans_report_templates_sample_scans_get: {
+        parameters: {
+            query?: {
+                /** @description Offer scans of this report type first */
+                report_type?: components["schemas"]["ReportType"] | null;
+                /** @description Offer scans of this instrument model first */
+                model?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleScanOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_report_template_report_templates__template_id__get: {
         parameters: {
             query?: never;
@@ -3626,6 +4061,12 @@ export interface operations {
                 status?: components["schemas"]["ReportStatus"] | null;
                 technician?: string | null;
                 q?: string | null;
+                /** @description With number_op and number_value: only reports whose number in this field passes (finalized only) */
+                number_field?: string | null;
+                /** @description gt, gte, lt, lte or eq */
+                number_op?: string | null;
+                /** @description The number to compare with */
+                number_value?: number | null;
             };
             header?: never;
             path?: never;
@@ -3686,6 +4127,39 @@ export interface operations {
             };
         };
     };
+    parse_report_search_reports_parse_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportSearchParseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSearchParseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     export_reports_reports_export_get: {
         parameters: {
             query?: {
@@ -3698,6 +4172,12 @@ export interface operations {
                 status?: components["schemas"]["ReportStatus"] | null;
                 technician?: string | null;
                 q?: string | null;
+                /** @description As on GET /reports */
+                number_field?: string | null;
+                /** @description As on GET /reports */
+                number_op?: string | null;
+                /** @description As on GET /reports */
+                number_value?: number | null;
             };
             header?: never;
             path?: never;
@@ -4289,6 +4769,69 @@ export interface operations {
             };
         };
     };
+    get_attachment_page_words_attachments__attachment_id__pages__page__words_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+                page: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageWordsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_attachment_field_locations_attachments__attachment_id__field_locations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldLocationsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     classify_attachment_attachments__attachment_id__classify_post: {
         parameters: {
             query?: never;
@@ -4614,7 +5157,7 @@ export interface operations {
                 instrument_id?: string | null;
                 /** @description Only instruments of this model record (also limits the units listed) */
                 model_id?: string | null;
-                /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
+                /** @description Only instruments in this place (an institute, building or room, with everything inside it); also limits the units listed */
                 place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
@@ -4630,6 +5173,12 @@ export interface operations {
                 technician?: string | null;
                 /** @description Free-text search (finalized reports only), as on the Reports list */
                 q?: string | null;
+                /** @description With number_op and number_value: a number in this field must pass (finalized reports only), as on the Reports list */
+                number_field?: string | null;
+                /** @description gt, gte, lt, lte or eq */
+                number_op?: string | null;
+                /** @description The number to compare with */
+                number_value?: number | null;
             };
             header?: never;
             path?: never;
@@ -4664,7 +5213,7 @@ export interface operations {
                 instrument_id?: string | null;
                 /** @description Only instruments of this model record (also limits the units listed) */
                 model_id?: string | null;
-                /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
+                /** @description Only instruments in this place (an institute, building or room, with everything inside it); also limits the units listed */
                 place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
@@ -4680,6 +5229,12 @@ export interface operations {
                 technician?: string | null;
                 /** @description Free-text search (finalized reports only), as on the Reports list */
                 q?: string | null;
+                /** @description With number_op and number_value: a number in this field must pass (finalized reports only), as on the Reports list */
+                number_field?: string | null;
+                /** @description gt, gte, lt, lte or eq */
+                number_op?: string | null;
+                /** @description The number to compare with */
+                number_value?: number | null;
             };
             header?: never;
             path?: never;
@@ -4718,7 +5273,7 @@ export interface operations {
                 instrument_id?: string | null;
                 /** @description Only instruments of this model record (also limits the units listed) */
                 model_id?: string | null;
-                /** @description Only instruments in this place (an institution, faculty or room, with everything inside it); also limits the units listed */
+                /** @description Only instruments in this place (an institute, building or room, with everything inside it); also limits the units listed */
                 place_id?: string | null;
                 /** @description Only instruments from this manufacturer (also limits the units listed) */
                 manufacturer?: string | null;
@@ -4734,6 +5289,12 @@ export interface operations {
                 technician?: string | null;
                 /** @description Free-text search (finalized reports only), as on the Reports list */
                 q?: string | null;
+                /** @description With number_op and number_value: a number in this field must pass (finalized reports only), as on the Reports list */
+                number_field?: string | null;
+                /** @description gt, gte, lt, lte or eq */
+                number_op?: string | null;
+                /** @description The number to compare with */
+                number_value?: number | null;
             };
             header?: never;
             path?: never;
@@ -4757,6 +5318,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_home_summary_home_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeSummaryOut"];
                 };
             };
         };

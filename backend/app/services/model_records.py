@@ -21,7 +21,6 @@ from app.services.maintenance import annotate
 from app.services.model_reliability import compute_model_reliability
 from app.services.report_views import list_item
 
-
 _NAME_CONFLICT = "A model with this name already exists"
 
 

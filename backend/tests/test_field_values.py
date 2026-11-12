@@ -6,7 +6,11 @@ import pytest
 
 from app.models import ReportType
 from app.schemas import TemplateFieldIn
-from app.services.field_values import as_choice_list, normalize_values, round_to_quarter_hour
+from app.services.field_values import (
+    as_choice_list,
+    normalize_values,
+    round_to_quarter_hour,
+)
 from tests.test_analytics import _make_report  # noqa: F401  (shared helper)
 
 

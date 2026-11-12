@@ -70,7 +70,7 @@ def correct_serial_typos(extracted_fields: dict, serial: str) -> list[SerialFix]
         if not isinstance(value, str):
             continue
 
-        def _replace(match: re.Match) -> str:
+        def _replace(match: re.Match, name: str = name) -> str:
             word = match.group(0)
             normalized = _normalize(word)
             if (

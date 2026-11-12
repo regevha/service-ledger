@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import enum
 import uuid
-from typing import Literal
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -12,9 +12,6 @@ from app.models import (
     DEFAULT_INSTRUMENT_TYPE_KEY,
     ReportType,
 )
-
-from app.schemas.reports import ReportFieldsUpdate
-
 
 # ---------- Report templates ----------
 

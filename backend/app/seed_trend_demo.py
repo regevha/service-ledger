@@ -31,9 +31,9 @@ from app.db import SessionLocal
 from app.models import (
     DEFAULT_INSTRUMENT_TYPE_KEY,
     Attachment,
+    ExtractionJob,
     ExtractionJobKind,
     ExtractionJobStatus,
-    ExtractionJob,
     Instrument,
     Report,
     ReportStatus,

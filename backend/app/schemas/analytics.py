@@ -9,10 +9,8 @@ from pydantic import BaseModel
 from app.models import (
     InstrumentStatus,
 )
-
 from app.schemas.places import PlaceKind
 from app.schemas.templates import TemplateFieldType
-
 
 # ---------- Fleet analytics ----------
 

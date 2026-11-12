@@ -143,7 +143,7 @@ def test_maintenance_status_still_has_state(client):
 
 
 def test_model_page_units_carry_state(client, db_session):
-    u = _unit(client, "M9", model="Zeta Lens")
+    _unit(client, "M9", model="Zeta Lens")
     m = _set_interval(client, "Zeta Lens", 6)
     page = client.get(f"/instrument-models/{m['id']}").json()
     assert page["units"][0]["maintenance_state"] == "no_record" and page["units"][0]["maintenance_due_date"] is None

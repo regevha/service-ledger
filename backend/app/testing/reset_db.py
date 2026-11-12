@@ -26,6 +26,7 @@ from __future__ import annotations
 from sqlalchemy import create_engine
 
 from app import models  # noqa: F401 — import-for-side-effect: registers every
+
 # table on Base.metadata before create_all runs below. Base itself (app/db.py)
 # declares no tables on its own; without this import metadata.create_all is a
 # silent no-op against an empty registry, same trap tests/conftest.py avoids

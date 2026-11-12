@@ -1,9 +1,7 @@
 """The extraction prompt and the JSON-schema builders for the forced tool call (re-exported by extraction.py)."""
 from __future__ import annotations
-from datetime import date
 
 from app.schemas import REPORT_DATE_KEY, TemplateFieldType
-
 
 _EXTRACT_TOOL_NAME = "record_extraction"
 

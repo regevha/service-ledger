@@ -11,9 +11,6 @@ from app.models import (
     InstrumentStatus,
 )
 
-from app.schemas.templates import TemplateUpdate
-
-
 # ---------- Instruments ----------
 
 

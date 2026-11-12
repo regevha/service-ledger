@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import logging
-
 import hashlib
+import io
+import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-
-import io
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -16,12 +14,20 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
-from app.services.job_limits import CANCELLED_UNSENT, enforce_job_limits
-from app.services.duplicates import find_duplicate_report_ids, find_read_copy, normalize_work_order
-from app.services.field_locator import FieldToLocate, locate_fields
-from app.services.page_text import PDFIUM_LOCK, page_words
-from app.services.attachment_names import clean_original_filename, source_name, stored_filename
+from app.services.attachment_names import (
+    clean_original_filename,
+    source_name,
+    stored_filename,
+)
 from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
+from app.services.duplicates import (
+    find_duplicate_report_ids,
+    find_read_copy,
+    normalize_work_order,
+)
+from app.services.field_locator import FieldToLocate, locate_fields
+from app.services.job_limits import CANCELLED_UNSENT, enforce_job_limits
+from app.services.page_text import PDFIUM_LOCK, page_words
 from app.services.text_reader import extract_text, read_work_order
 from app.services.translation import translation_gate
 
@@ -202,7 +208,7 @@ def get_attachment_pages(attachment_id: uuid.UUID, db: Session = Depends(get_db)
                 finally:
                     pdf.close()
         except pdfium.PdfiumError:
-            raise HTTPException(422, "The stored PDF could not be opened")
+            raise HTTPException(422, "The stored PDF could not be opened") from None
     return {"page_count": 1}
 
 
@@ -228,7 +234,7 @@ def get_attachment_page_image(
         try:
             pdf = pdfium.PdfDocument(str(path))
         except pdfium.PdfiumError:
-            raise HTTPException(422, "The stored PDF could not be opened")
+            raise HTTPException(422, "The stored PDF could not be opened") from None
         try:
             if page < 1 or page > len(pdf):
                 raise HTTPException(404, "Page not found")
@@ -263,9 +269,9 @@ def get_attachment_page_words(attachment_id: uuid.UUID, page: int, db: Session =
     try:
         words, has_text = page_words(path, page)
     except IndexError:
-        raise HTTPException(404, "Page not found")
+        raise HTTPException(404, "Page not found") from None
     except pdfium.PdfiumError:
-        raise HTTPException(422, "The stored PDF could not be opened")
+        raise HTTPException(422, "The stored PDF could not be opened") from None
     return schemas.PageWordsOut(
         page=page,
         has_text=has_text,
@@ -307,7 +313,7 @@ def get_attachment_field_locations(attachment_id: uuid.UUID, db: Session = Depen
     try:
         located = locate_fields(path, wanted)
     except pdfium.PdfiumError:
-        raise HTTPException(422, "The stored PDF could not be opened")
+        raise HTTPException(422, "The stored PDF could not be opened") from None
     fields = {
         name: schemas.FieldLocationOut(
             page=loc.page,
