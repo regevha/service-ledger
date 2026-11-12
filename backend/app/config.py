@@ -52,6 +52,11 @@ class Settings(BaseSettings):
             raise ValueError("SHARED_PASSWORD must be at least 12 characters")
         return value
 
+    # Spending limits on model-backed jobs, counted from the extraction_jobs table
+    # (app/services/job_limits.py). A rolling 24 hours; 0 turns a limit off.
+    daily_job_cap: int = 60
+    max_failed_attempts_per_attachment: int = 3
+
     # Upload limits, checked before anything is written to disk. The Claude
     # API caps a whole request at about 32 MB and base64 adds a third on top
     # of the file, so a PDF over ~20 MB could never be sent; images have a

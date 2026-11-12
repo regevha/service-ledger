@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.db import get_db
+from app.services.job_limits import enforce_job_limits
 from app.services.translation import current_translation
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,7 @@ def translate_attachment(
     )
     if in_flight is not None:
         raise HTTPException(409, "A translation of this document is already in progress.")
+    enforce_job_limits(db, attachment_id, models.ExtractionJobKind.translate)
 
     job = models.ExtractionJob(
         attachment_id=attachment_id,
