@@ -2,12 +2,19 @@
 pending job, notice a cancelled one, fail a job, and recover jobs a dead worker
 left half done. Split out of app/worker.py (no code changed); worker.py imports
 these under the same names."""
-from datetime import datetime, timezone
+import logging
+import threading
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app import models
+from app.config import get_settings
+from app.db import SessionLocal
+
+logger = logging.getLogger("app.worker")
 
 
 def _claim_next_job(db: Session) -> models.ExtractionJob | None:
@@ -32,6 +39,7 @@ def _claim_next_job(db: Session) -> models.ExtractionJob | None:
         models.ExtractionJobKind.extract: models.ExtractionJobStatus.extracting,
         models.ExtractionJobKind.translate: models.ExtractionJobStatus.translating,
     }[job.kind]
+    job.heartbeat_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(job)
     return job
@@ -52,21 +60,60 @@ def _fail_job(db: Session, job: models.ExtractionJob, message: str) -> None:
     db.commit()
 
 
-def _recover_orphaned_jobs(db: Session) -> int:
-    """Run once at worker startup (§3's crash-recovery gap): within a single
-    run_forever process, process_one_job always drives a claimed job to
-    succeeded/failed before returning, so `classifying`/`extracting` are
-    otherwise a dead end — the only way a job is left sitting in one of
-    those statuses is that a previous worker process died (crashed, was
-    killed, the host restarted) after claiming it but before finishing it.
-    `_claim_next_job` only ever looks at `status == pending`, so such a job
-    would otherwise sit there silently forever, invisible to the queue and
-    to the frontend's poll (which is watching the job it already knows
-    about, not scanning for new ones). Marks them failed with a clear
-    message rather than silently resubmitting them — classify/extract cost
-    a real API call, so a crash-looping job should stop and wait for a
-    deliberate retry (the review screen's "Try again"), not retry itself
-    silently on every restart."""
+def _beat(job_id) -> None:
+    """Mark one job as alive, on its own short session so a long Claude call on the
+    worker's main session never blocks or is blocked by it."""
+    with SessionLocal() as db:
+        db.execute(
+            update(models.ExtractionJob)
+            .where(models.ExtractionJob.id == job_id)
+            .values(heartbeat_at=datetime.now(timezone.utc))
+        )
+        db.commit()
+
+
+@contextmanager
+def _heartbeat(job_id):
+    """Keep `heartbeat_at` fresh for as long as the worker is busy with this job, so
+    another worker's recovery can tell a slow job from an orphaned one. A failed
+    beat is logged and skipped: the job itself must not die because of it."""
+    stop = threading.Event()
+    interval = get_settings().worker_heartbeat_interval_seconds
+
+    def run() -> None:
+        while not stop.wait(interval):
+            try:
+                _beat(job_id)
+            except Exception:  # noqa: BLE001
+                logger.warning("Could not refresh the heartbeat of job %s", job_id, exc_info=True)
+
+    thread = threading.Thread(target=run, name=f"heartbeat-{job_id}", daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        thread.join(timeout=5)
+
+
+def _recover_orphaned_jobs(db: Session, stale_after_seconds: float | None = None) -> int:
+    """Fail jobs a dead worker left in classifying/extracting/translating (§3's
+    crash-recovery gap). `_claim_next_job` only looks at `status == pending`, so
+    such a job would otherwise sit there forever, invisible to the queue and to the
+    frontend's poll.
+
+    With more than one worker or replica, "in progress" no longer means "orphaned":
+    another worker may be running it right now. A job counts as orphaned only when
+    its heartbeat is missing (claimed before heartbeats existed, or the worker died
+    before its first beat) or older than `worker_stale_after_seconds`. Safe to call
+    from every worker, at startup and periodically.
+
+    Marks them failed with a clear message rather than silently resubmitting
+    them — classify/extract cost a real API call, so a crash-looping job should
+    stop and wait for a deliberate retry (the review screen's "Try again")."""
+    if stale_after_seconds is None:
+        stale_after_seconds = get_settings().worker_stale_after_seconds
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=stale_after_seconds)
     orphaned = (
         db.query(models.ExtractionJob)
         .filter(
@@ -76,8 +123,10 @@ def _recover_orphaned_jobs(db: Session) -> int:
                     models.ExtractionJobStatus.extracting,
                     models.ExtractionJobStatus.translating,
                 ]
-            )
+            ),
+            (models.ExtractionJob.heartbeat_at.is_(None)) | (models.ExtractionJob.heartbeat_at < cutoff),
         )
+        .with_for_update(skip_locked=True)
         .all()
     )
     for job in orphaned:

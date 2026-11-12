@@ -48,6 +48,10 @@ class ExtractionJob(Base):
     prompt_preview: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Refreshed every few seconds by the worker that holds the job while it is
+    # in progress. A job whose beat has gone stale (or never started) belongs to
+    # a dead worker; only then may another worker fail it (job_queue.py).
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     attachment: Mapped[Attachment] = relationship(back_populates="extraction_jobs")
 

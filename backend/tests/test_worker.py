@@ -341,3 +341,60 @@ def test_worker_tick_survives_the_database_being_completely_unreachable(monkeypa
     # Must not raise, and reports "nothing processed" so run_forever sleeps
     # and retries on the next tick rather than busy-looping.
     assert _worker_tick() is False
+
+
+def _in_progress_job(db, *, heartbeat_age_seconds):
+    attachment = _make_attachment(db)
+    beat = None if heartbeat_age_seconds is None else datetime.now(timezone.utc) - timedelta(seconds=heartbeat_age_seconds)
+    job = models.ExtractionJob(
+        attachment_id=attachment.id,
+        kind=models.ExtractionJobKind.extract,
+        status=models.ExtractionJobStatus.extracting,
+        started_at=datetime.now(timezone.utc),
+        heartbeat_at=beat,
+    )
+    db.add(job)
+    db.commit()
+    return job
+
+
+def test_recovery_leaves_a_job_with_a_fresh_heartbeat_alone(seeded):
+    """With a second worker or replica, a job in progress may be running right now
+    on the other one: only a missing or stale heartbeat marks it as orphaned."""
+    live = _in_progress_job(seeded, heartbeat_age_seconds=5)
+    assert _recover_orphaned_jobs(seeded) == 0
+    seeded.refresh(live)
+    assert live.status == models.ExtractionJobStatus.extracting
+
+
+def test_recovery_fails_a_job_whose_heartbeat_went_stale(seeded):
+    dead = _in_progress_job(seeded, heartbeat_age_seconds=10_000)
+    assert _recover_orphaned_jobs(seeded) == 1
+    seeded.refresh(dead)
+    assert dead.status == models.ExtractionJobStatus.failed
+
+
+def test_claiming_a_job_starts_its_heartbeat(seeded):
+    from app.job_queue import _claim_next_job
+
+    attachment = _make_attachment(seeded)
+    seeded.add(models.ExtractionJob(attachment_id=attachment.id, kind=models.ExtractionJobKind.classify,
+                                    status=models.ExtractionJobStatus.pending, started_at=datetime.now(timezone.utc)))
+    seeded.commit()
+    claimed = _claim_next_job(seeded)
+    assert claimed.heartbeat_at is not None
+
+
+def test_heartbeat_context_refreshes_the_beat_while_the_job_runs(seeded, monkeypatch):
+    import time as _time
+
+    from app import job_queue
+    from tests.conftest import TestSessionLocal
+
+    job = _in_progress_job(seeded, heartbeat_age_seconds=10_000)
+    monkeypatch.setattr(job_queue, "SessionLocal", TestSessionLocal)
+    monkeypatch.setattr(job_queue.get_settings(), "worker_heartbeat_interval_seconds", 0.05)
+    with job_queue._heartbeat(job.id):
+        _time.sleep(0.4)
+    seeded.refresh(job)
+    assert (datetime.now(timezone.utc) - job.heartbeat_at).total_seconds() < 5

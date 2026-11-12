@@ -36,6 +36,7 @@ from app.debug_claude_log import announce_debug_log
 from app.job_queue import (
     _claim_next_job,
     _fail_job,
+    _heartbeat,
     _recover_orphaned_jobs,
     _was_cancelled,
 )
@@ -299,7 +300,8 @@ def process_one_job(db: Session) -> bool:
     job_id, kind = job.id, job.kind
     attachment = db.get(models.Attachment, job.attachment_id)
     with bound_job(job_id, attachment.report_id if attachment else None, job.attachment_id):
-        _run_claimed_job(db, job, job_id, kind)
+        with _heartbeat(job_id):
+            _run_claimed_job(db, job, job_id, kind)
     return True
 
 
@@ -382,6 +384,19 @@ def _worker_tick() -> bool:
         return False
 
 
+def _periodic_recovery() -> None:
+    """Re-run orphan recovery while the worker is up, so a job whose worker died is
+    failed within about a minute even when no worker restarts (a replica crashed,
+    another kept running). Never takes the loop down."""
+    try:
+        with SessionLocal() as db:
+            recovered = _recover_orphaned_jobs(db)
+        if recovered:
+            logger.warning("Recovered %d job(s) whose worker stopped sending heartbeats.", recovered)
+    except Exception:  # noqa: BLE001
+        logger.exception("Periodic orphan recovery failed — will retry.")
+
+
 def run_forever() -> None:
     """The actual `python -m app.worker` entry point: one dedicated process,
     one dedicated session per iteration, polling forever (§3). A fresh
@@ -402,9 +417,13 @@ def run_forever() -> None:
     if recovered:
         logger.warning("Recovered %d job(s) left in-progress by a previous worker run.", recovered)
 
+    next_recovery = time.monotonic() + settings.worker_recovery_interval_seconds
     while True:
         if not _worker_tick():
             time.sleep(settings.worker_poll_interval_seconds)
+        if time.monotonic() >= next_recovery:
+            next_recovery = time.monotonic() + settings.worker_recovery_interval_seconds
+            _periodic_recovery()
 
 
 if __name__ == "__main__":
