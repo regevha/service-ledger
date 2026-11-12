@@ -18,9 +18,14 @@ from __future__ import annotations
 import logging
 import re
 import threading
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
+from sqlalchemy import delete, func, select
+from sqlalchemy import text as sa_text
+from sqlalchemy.orm import Session
+
+from app import models
 from app.config import get_settings
 from app.services import prompt_gate
 from app.services.claude_client import (
@@ -63,11 +68,37 @@ _cap_lock = threading.Lock()
 _cap_state: dict[str, Any] = {"day": None, "count": 0}
 
 
-def _under_daily_cap() -> bool:
-    """Counts one model call against today's cap (UTC). False when the cap is used up."""
+_CAP_WINDOW = timedelta(hours=24)
+_CAP_LOCK_KEY = 7_301_001  # pg advisory lock id: serialises count-then-insert across replicas
+_KEEP_ROWS_FOR = timedelta(days=7)
+
+
+def _under_daily_cap(db: Session | None = None) -> bool:
+    """Counts one model call against the cap (a rolling 24 hours, like the job cap). False when
+    it is used up. With a database session the count lives in `search_model_calls`, so it holds
+    across restarts and several API replicas; without one (the offline eval tool) it falls back
+    to a per-process counter by UTC day."""
     cap = settings.search_model_daily_cap
     if cap <= 0:
         return True
+    if db is None:
+        return _under_daily_cap_in_memory(cap)
+    now = datetime.now(timezone.utc)
+    # Serialise the check-then-insert so two replicas cannot both take the last slot.
+    db.execute(sa_text("SELECT pg_advisory_xact_lock(:k)"), {"k": _CAP_LOCK_KEY})
+    used = db.execute(
+        select(func.count(models.SearchModelCall.id)).where(models.SearchModelCall.called_at >= now - _CAP_WINDOW)
+    ).scalar_one()
+    if used >= cap:
+        db.rollback()
+        return False
+    db.add(models.SearchModelCall(called_at=now))
+    db.execute(delete(models.SearchModelCall).where(models.SearchModelCall.called_at < now - _KEEP_ROWS_FOR))
+    db.commit()
+    return True
+
+
+def _under_daily_cap_in_memory(cap: int) -> bool:
     today = datetime.now(timezone.utc).date()
     with _cap_lock:
         if _cap_state["day"] != today:
@@ -344,12 +375,12 @@ def merge(rules: Parsed, data: dict[str, Any], known: Known) -> Parsed:
     return out
 
 
-def parse(text: str, known: Known, today: date) -> Parsed:
+def parse(text: str, known: Known, today: date, db: Session | None = None) -> Parsed:
     """The rule-based answer, improved by one model call when that is switched on and the rules left gaps."""
     rules = parse_search(text, known, today)
     if not wanted(rules) or not enabled():
         return rules
-    if not _under_daily_cap():
+    if not _under_daily_cap(db):
         logger.warning("Model-backed search skipped: daily cap of %s reached", settings.search_model_daily_cap)
         rules.source = "rules_fallback"
         return rules

@@ -56,6 +56,20 @@ class ExtractionJob(Base):
     attachment: Mapped[Attachment] = relationship(back_populates="extraction_jobs")
 
 
+class SearchModelCall(Base):
+    """One model-backed search that was allowed to go out, kept so the daily cap
+    is counted from the database and holds across restarts and several API
+    replicas (the old in-memory counter reset on every restart and was per
+    process). Old rows are pruned as new ones are written."""
+
+    __tablename__ = "search_model_calls"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    called_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
+    )
+
+
 class Translation(Base):
     """One English translation of one attachment, awaiting or past review.
     The original attachment is never changed; this row is linked to it and

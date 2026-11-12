@@ -44,7 +44,7 @@ def test_a_repair_count_question_targets_the_instruments_list(client, monkeypatc
     from app.services import report_query_model
     from app.services.report_query_parse import Parsed
 
-    def fake(text, known, today):
+    def fake(text, known, today, db=None):
         return Parsed(filters={"repairs_op": "gt", "repairs_count": "2"}, understood=[{"key": "repairs", "label": "Above 2 repairs"}], source="ai")
 
     monkeypatch.setattr(report_query_model, "parse", fake)
