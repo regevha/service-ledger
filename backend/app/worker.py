@@ -35,8 +35,8 @@ from app.db import SessionLocal
 from app.debug_claude_log import announce_debug_log
 from app.job_queue import (
     _claim_next_job,
-    _heartbeat,
     _fail_job,
+    _heartbeat,
     _recover_orphaned_jobs,
     _was_cancelled,
 )
