@@ -218,9 +218,9 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             SEED=$(( (RANDOM << 15) | RANDOM ))
             echo "pytest-randomly seed: $SEED" | tee -a "$GITHUB_STEP_SUMMARY"
-            pytest -q --cov -p randomly --randomly-seed=$SEED
+            pytest -q --cov -n auto --dist loadfile -p randomly --randomly-seed=$SEED
           else
-            pytest -q --cov -p no:randomly
+            pytest -q --cov -n auto --dist loadfile -p no:randomly
           fi
 
   # The e2e suite runs as six shards (`playwright test --shard=N/6`), each in its own job with its own

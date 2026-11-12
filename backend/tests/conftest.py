@@ -14,12 +14,26 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger_test",
 )
+# Under pytest-xdist every worker process gets its own database (service_ledger_test_gw0, _gw1, ...):
+# the tests truncate tables between tests and create/drop the schema per session, which two workers
+# sharing one database would break. Done here, before app.db reads DATABASE_URL below.
+_xdist_worker = os.environ.get("PYTEST_XDIST_WORKER")
+if _xdist_worker:
+    _base_url = make_url(os.environ["DATABASE_URL"])
+    _worker_db = f"{_base_url.database}_{_xdist_worker}"
+    _admin = create_engine(_base_url.set(database="postgres"), isolation_level="AUTOCOMMIT")
+    with _admin.connect() as _conn:
+        if not _conn.execute(text("SELECT 1 FROM pg_database WHERE datname = :n"), {"n": _worker_db}).scalar():
+            _conn.execute(text(f'CREATE DATABASE "{_worker_db}"'))
+    _admin.dispose()
+    os.environ["DATABASE_URL"] = _base_url.set(database=_worker_db).render_as_string(hide_password=False)
 # Force stub mode regardless of the developer's own backend/.env: these tests
 # upload fake, non-PDF byte strings and assert exact hardcoded stub values
 # (e.g. "No see events"), so a real Claude call here would both waste a
