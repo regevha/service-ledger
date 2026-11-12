@@ -7,7 +7,7 @@ import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app import models
@@ -136,3 +136,39 @@ def _recover_orphaned_jobs(db: Session, stale_after_seconds: float | None = None
     if orphaned:
         db.commit()
     return len(orphaned)
+
+
+_MIN_RETENTION_DAYS = 2  # the caps in job_limits count over 24 hours; never prune inside that window
+
+
+def prune_finished_jobs(db: Session, retention_days: int | None = None) -> int:
+    """Delete finished (succeeded or failed) jobs completed more than `retention_days` ago, but
+    always keep the newest finished job of each kind per document: the screens and the retry
+    limit read the latest one. Jobs still pending or in progress are never touched. Returns how
+    many rows were deleted. 0 days switches pruning off."""
+    if retention_days is None:
+        retention_days = get_settings().job_retention_days
+    if retention_days <= 0:
+        return 0
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max(retention_days, _MIN_RETENTION_DAYS))
+    finished = [models.ExtractionJobStatus.succeeded, models.ExtractionJobStatus.failed]
+    ranked = (
+        select(
+            models.ExtractionJob.id.label("id"),
+            models.ExtractionJob.completed_at.label("completed_at"),
+            func.row_number()
+            .over(
+                partition_by=(models.ExtractionJob.attachment_id, models.ExtractionJob.kind),
+                order_by=(models.ExtractionJob.started_at.desc().nulls_last(), models.ExtractionJob.id.desc()),
+            )
+            .label("rank"),
+        )
+        .where(models.ExtractionJob.status.in_(finished))
+        .subquery()
+    )
+    doomed = select(ranked.c.id).where(ranked.c.rank > 1, ranked.c.completed_at < cutoff)
+    deleted = db.execute(
+        delete(models.ExtractionJob).where(models.ExtractionJob.id.in_(doomed)).returning(models.ExtractionJob.id)
+    ).all()
+    db.commit()
+    return len(deleted)
