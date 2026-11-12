@@ -223,14 +223,14 @@ jobs:
             pytest -q --cov -p no:randomly
           fi
 
-  # The e2e suite runs as four shards (`playwright test --shard=N/4`), each in its own job with its own
+  # The e2e suite runs as six shards (`playwright test --shard=N/6`), each in its own job with its own
   # Postgres service: the specs share one database with no reset between them, so shards cannot
   # share one. Each shard writes its Istanbul coverage files and uploads them; the job after the shards
   # (named "Frontend (Playwright e2e)" as before) merges all the sets and applies the coverage thresholds
-  # once, on the whole suite, as the single run used to. Add a shard (matrix, the name and `/4` below) when a
+  # once, on the whole suite, as the single run used to. Add a shard (matrix, the name and `/6` below) when a
   # shard's run nears 15 minutes.
   frontend-shards:
-    name: Playwright e2e shard ${{ matrix.shard }} of 4
+    name: Playwright e2e shard ${{ matrix.shard }} of 6
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -238,7 +238,7 @@ jobs:
       # Let the other shard finish when one fails, so a run shows every failing spec at once.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
 
     services:
       postgres:
@@ -313,7 +313,7 @@ jobs:
         # the shards, by the "Frontend (Playwright e2e)" job, on all the shards together.
         working-directory: frontend
         env:
-          SHARD: ${{ matrix.shard }}/4
+          SHARD: ${{ matrix.shard }}/6
         #
         # Pushes and pull requests run the specs in the fixed order. The daily
         # scheduled run (and a manual "Run workflow") runs the spec files in a
