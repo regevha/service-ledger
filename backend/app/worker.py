@@ -389,6 +389,8 @@ def run_forever() -> None:
         settings.worker_poll_interval_seconds,
         settings.use_live_claude,
     )
+    if (warning := settings.stub_mode_warning):
+        logger.warning(warning)
     with SessionLocal() as db:
         recovered = _recover_orphaned_jobs(db)
     if recovered:
