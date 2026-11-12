@@ -32,3 +32,10 @@ backend/storage/debug-claude/
 
 # Backups taken by deploy/azure/backup.sh: real lab data, never commit
 /backups/
+
+# Live Claude runs hold real customer and technician details. Keep only a scrubbed
+# README.md summary in docs/live-runs/<date>/; raw responses and results stay local.
+docs/live-runs/**/raw-responses.jsonl
+docs/live-runs/**/results/
+docs/live-runs/**/scores.json
+docs/live-runs/**/harness/
