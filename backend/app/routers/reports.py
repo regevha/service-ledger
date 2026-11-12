@@ -6,7 +6,7 @@ import json
 import uuid
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -88,8 +88,19 @@ def create_report(payload: schemas.ReportCreate, db: Session = Depends(get_db)):
     return report
 
 
+MAX_PAGE_SIZE = 500
+
+
+def _page(query, limit: int | None, offset: int):
+    """Apply limit/offset. The caller orders the query first, with a unique tiebreaker so pages never overlap."""
+    if offset:
+        query = query.offset(offset)
+    return query.limit(limit) if limit else query
+
+
 @router.get("/reports", response_model=list[schemas.ReportListItemOut])
 def search_reports(
+    *,
     instrument_id: uuid.UUID | None = None,
     model_id: uuid.UUID | None = None,
     place_id: uuid.UUID | None = None,
@@ -102,6 +113,9 @@ def search_reports(
     number_field: str | None = Query(None, description="With number_op and number_value: only reports whose number in this field passes (finalized only)"),
     number_op: str | None = Query(None, description="gt, gte, lt, lte or eq"),
     number_value: float | None = Query(None, description="The number to compare with"),
+    limit: int | None = Query(None, ge=1, le=MAX_PAGE_SIZE, description="Page size. Leave out for every matching report"),
+    offset: int = Query(0, ge=0, description="How many matching reports to skip (with limit)"),
+    response: Response,
     db: Session = Depends(get_db),
 ):
     """§7/§9: filtered search — the browse/list view, not a single report's
@@ -121,7 +135,11 @@ def search_reports(
     required, "quoted phrases" and -excluded words understood. It covers
     finalized reports only, so with a status filter other than finalized the
     answer is empty. Results are ranked best match first, and each row carries
-    a short excerpt around the match."""
+    a short excerpt around the match.
+
+    `limit` and `offset` page the answer; the header `X-Total-Count` always carries how many
+    reports match in all, so a screen can show "40 of 1,203". Without `limit` every match is
+    returned, as before."""
     q = _search_text_param(q)
     _check_field_condition(number_field, number_op, number_value)
     query = _filtered_reports_query(
@@ -139,9 +157,11 @@ def search_reports(
         number_op=number_op,
         number_value=number_value,
     )
+    response.headers["X-Total-Count"] = str(query.order_by(None).count())
     if q:
         _match, rank = report_search.match_expressions(q)
-        reports = query.order_by(rank.desc(), models.Report.created_at.desc()).all()
+        ranked = query.order_by(rank.desc(), models.Report.created_at.desc(), models.Report.id)
+        reports = _page(ranked, limit, offset).all()
         items = []
         for r in reports:
             item = list_item(r)
@@ -151,7 +171,7 @@ def search_reports(
                 item.matched_field = found[1]
             items.append(item)
         return items
-    reports = query.order_by(models.Report.created_at.desc()).all()
+    reports = _page(query.order_by(models.Report.created_at.desc(), models.Report.id), limit, offset).all()
     return [list_item(r) for r in reports]
 
 

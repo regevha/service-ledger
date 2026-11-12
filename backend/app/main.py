@@ -71,6 +71,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Total-Count"],
 )
 
 # Added after CORS, so it is the outermost layer: nothing, not even a preflight
