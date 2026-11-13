@@ -26,7 +26,7 @@ Use this system to build screens for ServiceLedger, a document-first service led
 
 ## Iconography
 
-There is no icon font, sprite or icon package. Icons are small inline SVG outlines drawn in the code: the tab icons (Home, New report, Reports, Analytics, Templates, Instruments, More) in `TabIcon` (`frontend/src/App.tsx`; moved to `frontend/src/components/TopbarTabs.tsx` by SL-56), 24×24 view box, `stroke="currentColor"`, 1.8px stroke, round caps and joins, no fill. The document-glyph mark (`frontend/public/favicon.svg`) uses the same style. A few text glyphs are used as icons: ☾ and ☀ in the theme toggle, "⋯" in row menus, "↓" in "Next ↓". Do not add emoji or an icon set without asking; draw a new icon as an outline in the same style as the tab icons.
+There is no icon font, sprite or icon package. Icons are small inline SVG outlines drawn in the code: the tab icons (Home, New report, Reports, Analytics, Templates, Instruments, More) in `TabIcon` (`frontend/src/App.tsx`; moved to `frontend/src/components/TopbarTabs.tsx` by SL-56), 24×24 view box, `stroke="currentColor"`, 1.8px stroke, round caps and joins, no fill. The document-glyph mark (`frontend/public/favicon.svg`) uses the same style. A few text glyphs are used as icons: ☾ and ☀ in the theme toggle, "⋯" in row menus, "↓" in "Next ↓". A few symbols already appear in the app: 📄 in the New report drop zone, ✓ in the step bar and finished screens, ⚠ in saved filters. Do not add more emoji or an icon set without asking; draw a new icon as an outline in the same style as the tab icons.
 
 ## Components
 
