@@ -8,5 +8,6 @@ migration: false
 files_touched:
   - backend/tests/test_email_intake_models.py
   - backend/tests/test_migration_email_intake.py
+  - backend/tests/conftest.py
 acceptance: [AC-12, AC-18, AC-27, AC-30]
 plan: docs/features/email-intake/PLAN.md

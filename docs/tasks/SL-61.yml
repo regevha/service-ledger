@@ -11,6 +11,7 @@ files_touched:
   - backend/app/models/reports.py
   - backend/alembic/versions/*_email_intake.py
   - docs/features/email-intake/DATA_MODEL.md
+  - backend/tests/conftest.py
   # pair tester SL-62, same branch
   - backend/tests/test_email_intake_models.py
   - backend/tests/test_migration_email_intake.py
