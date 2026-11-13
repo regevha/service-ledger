@@ -69,6 +69,9 @@ jobs:
         run: |
           for i in $(seq 1 36); do
             api=$(docker inspect -f '{{.State.Health.Status}}' api)
+            if [ "$(docker inspect -f '{{.State.Status}}' api)" != "running" ]; then
+              echo "::error::The API container stopped."; docker logs api; exit 1
+            fi
             worker=$(docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' worker)
             echo "after $((i * 5))s: api=$api worker=$worker"
             if [ "$worker" != "running starting" ] && [ "$worker" != "running healthy" ]; then

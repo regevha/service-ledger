@@ -78,6 +78,9 @@ def test_hebrew_names_after_a_role_label_are_removed(text, name):
         ("נחתם על ידי מאיה בת שבע", ""),
         ("מהנדס: אורן בן-דוד", "מהנדס"),
         ("טכנאית: ג'ני צ'רניאק החליפה אטם", "טכנאית החליפה אטם"),
+        # Sign-off spelled with a hyphen or followed by a colon.
+        ("נחתם על-ידי יובל מרגלית", ""),
+        ('בוצע ע"י: ענת קורמן', ""),
     ],
 )
 def test_more_hebrew_name_forms_are_removed_whole(text, expected):
@@ -98,6 +101,11 @@ def test_more_hebrew_name_forms_are_removed_whole(text, expected):
         "הטעם מר מאוד לאחר השטיפה",
         'הוחלף ע"י הטכנאית',
         "הבדיקה נעשתה בן לילה",
+        # "By" followed by an action, not a person (review of the closeout PR).
+        'בוצע ע"י החלפת המסנן והשטיפה הושלמה',
+        'בוצע ע"י כיול מחדש של החיישן',
+        "נבדק על ידי מדידת מתח במוצא",
+        'נבדק ע"י בדיקת לחץ תקינה',
     ],
 )
 def test_hebrew_text_without_a_role_label_is_left_alone(text):

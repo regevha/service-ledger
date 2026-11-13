@@ -44,6 +44,13 @@ _HE_STOP = (
     r"(?!ה?(?:מהנדס|טכנאי|לקוח|מערכת|צוות|חברה|מנהל|שירות|בודק|נציג)(?:ת|ה|ית)?(?![" + _HE + "]))"
 )
 _HE_PART = "[" + _HE + "](?:[" + _HE + "]|" + _G + "(?=[" + _HE + "]))+" + _G + "?"
+# After "by" an action often follows, not a person ("בוצע ע"י החלפת המסנן"): a name never
+# starts with one of these verbal nouns, so the sentence is left whole.
+_HE_ACTION = (
+    r"(?!(?:החלפת|החלפה|בדיקת|בדיקה|מדידת|מדידה|כיול|ניקוי|שימוש|התקנת|התקנה|הוספת|הוספה|"
+    r"שטיפת|שטיפה|תיקון|הרכבת|פירוק|ביצוע|הפעלת|כיבוי|עדכון|החזרת|הזנת|טעינת|הידוק|שימון)"
+    r"(?![" + _HE + "]))"
+)
 _HE_WORD = _HE_STOP + _HE_PART + "(?:[-\u05be]" + _HE_PART + ")*"
 _HE_JOIN = "(?:בן|בת|בר|אבו|אבן)"
 _HE_PERSON = (
@@ -58,7 +65,7 @@ _HE_ROLE_NAME = re.compile(
 )
 _HE_SIGNED_BY = re.compile(
     "(?<![" + _HE + "])(?:נחתם|נחתמה|אושר|אושרה|נבדק|נבדקה|בוצע|בוצעה)" + _SP
-    + "(?:על" + _SP + "ידי|ע" + _Q + "י)" + _SP + _HE_NAME
+    + "(?:על(?:" + _SP + "|[-\u05be])ידי|ע" + _Q + "י)[ \t]*:?[ \t]*" + _HE_ACTION + _HE_NAME
 )
 # A title alone marks a name wherever it stands; the title goes with the name.
 _HE_TITLED_NAME = re.compile("(?<![" + _HE + "])" + _HE_TITLE + "[ \t]*" + _HE_PERSON)
