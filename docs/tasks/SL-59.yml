@@ -15,4 +15,6 @@ files_touched:
   - frontend/src/uploadFiles.test.ts
   - frontend/src/styles/01-shell-forms-intake.css
   - frontend/tests/e2e/new-report-multi-file.spec.ts
+  - frontend/tests/e2e/drag-drop.spec.ts
+  - docs/tasks/SL-59.md
 acceptance: [user request 2026-11-13: several PDFs on the New report screen]
