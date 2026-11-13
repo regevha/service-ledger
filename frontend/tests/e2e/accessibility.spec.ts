@@ -106,3 +106,54 @@ test('analytics with a table that scrolls sideways', async ({ page, request }) =
   await expect.poll(() => scroller.evaluate((el) => el.scrollWidth > el.clientWidth), { message: 'the table is wider than its box' }).toBe(true);
   await scan(page, 'analytics-narrow');
 });
+
+// Borders that mark out a control need 3:1 against what is next to them (WCAG 1.4.11). axe does not check
+// non-text contrast, so this does: light mode, a plain .btn (added to the page for the check, because the
+// intake screen's only desktop button is a filled primary one) and the name field, against --surface. SL-57 raised --input-border to pass; this keeps a later token edit from undoing it.
+test('light-mode control borders reach 3:1 against the surface', async ({ page, context }) => {
+  await context.addInitScript(() => {
+    try {
+      localStorage.setItem('sl.theme', 'light');
+    } catch {
+      /* the theme check below then fails instead of measuring the wrong theme */
+    }
+  });
+  await page.goto('/#/new');
+  await page.getByTestId('tab-new').click();
+  await expect(page.getByTestId('intake-dropzone')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.dataset.theme), 'light theme is in force').toBe('light');
+  const ratios = await page.evaluate(() => {
+    const rgb = (css: string) => {
+      const probe = document.createElement('span');
+      probe.style.color = css;
+      document.body.appendChild(probe);
+      const m = getComputedStyle(probe).color.match(/\d+(\.\d+)?/g)!.map(Number);
+      probe.remove();
+      return m.slice(0, 3);
+    };
+    const lum = ([r, g, b]: number[]) => {
+      const c = [r, g, b].map((v) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    };
+    const ratio = (a: number[], b: number[]) => {
+      const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    const surface = rgb(getComputedStyle(document.documentElement).getPropertyValue('--surface').trim());
+    const out: Record<string, number> = {};
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.textContent = 'Probe';
+    document.body.appendChild(btn);
+    for (const sel of ['.btn', '.text-input']) {
+      const el = sel === '.btn' ? btn : document.querySelector(sel);
+      out[sel] = el ? Math.round(ratio(rgb(getComputedStyle(el).borderTopColor), surface) * 100) / 100 : 0;
+    }
+    btn.remove();
+    return out;
+  });
+  for (const [sel, r] of Object.entries(ratios)) expect(r, `${sel} border against --surface`).toBeGreaterThanOrEqual(3);
+});

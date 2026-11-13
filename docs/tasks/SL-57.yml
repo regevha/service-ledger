@@ -1,0 +1,14 @@
+id: SL-57
+title: Light-mode input and button borders reach 3:1 contrast
+owner: frontend-dev
+branch: SL-57-input-border-contrast
+wave: F1
+depends_on: []
+migration: false
+files_touched:
+  - docs/tasks/SL-57.yml
+  - docs/PLAN.md
+  - frontend/src/index.css
+  - frontend/tests/e2e/accessibility.spec.ts
+acceptance: [SL-57]         # docs/PLAN.md, Wave F1 row
+issue: 313
