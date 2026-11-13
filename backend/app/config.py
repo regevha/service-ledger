@@ -125,6 +125,10 @@ class Settings(BaseSettings):
     # Output limit of one extract call. A template with long tables (labor, parts,
     # detector values) needs room: a cut-off answer is refused, not half-used.
     extract_max_tokens: int = 8192
+    # Give the extraction prompt the newest corrections people made to earlier readings of the same form
+    # (services/read_accuracy.recent_corrections), so a mistake is not repeated. Live reading only.
+    learn_from_corrections: bool = True
+    learn_from_corrections_limit: int = 12
 
     # Model-backed search (docs: claude/proposal-model-backed-search.md). When a plain-words question leaves
     # words the rules could not place, one small call to a cheap model turns it into filters. Off by default,

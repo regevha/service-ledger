@@ -82,6 +82,8 @@ for (const [section, link, ready] of [
   ['data export', 'Data export', '.admin-title'],
   ['field aliases', 'Field aliases', '.admin-body .section-title'],
   ['appearance', 'Appearance', '.admin-body h2'],
+  ['reading accuracy', 'Reading accuracy', '.admin-body .admin-title'],
+  ['glossary', 'Glossary', '.admin-body .admin-title'],
 ] as const) {
   test(`admin: ${section}`, async ({ page }) => {
     await page.goto('/#/new');
