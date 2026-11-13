@@ -17,7 +17,8 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+/** Like apiFetch, but also gives back the response headers (a paged list's X-Total-Count). */
+export async function apiFetchWithHeaders<T>(path: string, init?: RequestInit): Promise<{ data: T; headers: Headers }> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
@@ -60,6 +61,10 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(response.status, detail, existingReportId);
   }
 
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  if (response.status === 204) return { data: undefined as T, headers: response.headers };
+  return { data: (await response.json()) as T, headers: response.headers };
+}
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await apiFetchWithHeaders<T>(path, init)).data;
 }
