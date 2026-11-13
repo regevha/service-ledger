@@ -54,6 +54,39 @@ def test_hebrew_names_after_a_role_label_are_removed(text, name):
     assert out != text
 
 
+# Forms the first rules missed (Wave A review). Every word of the invented name must go,
+# not only the surname, and the rest of the sentence must stay.
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        # Feminine role labels.
+        ("מהנדסת: תמר אלנבוים החליפה את המסנן", "מהנדסת החליפה את המסנן"),
+        ("טכנאית: שירה גולדפרב בדקה את הלחץ", "טכנאית בדקה את הלחץ"),
+        ("לקוחה - נועה פרלמוטר אישרה את התיקון", "לקוחה אישרה את התיקון"),
+        ("אשת קשר: גלית הרשקוביץ", "אשת קשר"),
+        # The abbreviation ע"י, with an ASCII quote and with gershayim.
+        ('נחתם ע"י יובל מרגלית. המערכת מוכנה', "המערכת מוכנה"),
+        ("אושר ע״י ענת קורמן", ""),
+        # A name after a title, alone or after a role label.
+        ('ד"ר רונית שגיא בדקה את המכשיר', "בדקה את המכשיר"),
+        ("הבדיקה בוצעה מול ד״ר רונית שגיא", "הבדיקה בוצעה מול"),
+        ("פרופ' עמית זלצמן אישר את הכיול", "אישר את הכיול"),
+        ("גב' דנה ורדימון חתמה על הדוח", "חתמה על הדוח"),
+        ('מהנדס: ד"ר אבי שטרנליכט החליף את המשאבה', "מהנדס החליף את המשאבה"),
+        # Three-word names with a joining word, and hyphenated surnames.
+        ("טכנאי: אורן בן דוד בדק את הלחץ", "טכנאי בדק את הלחץ"),
+        ("נחתם על ידי מאיה בת שבע", ""),
+        ("מהנדס: אורן בן-דוד", "מהנדס"),
+        ("טכנאית: ג'ני צ'רניאק החליפה אטם", "טכנאית החליפה אטם"),
+        # Sign-off spelled with a hyphen or followed by a colon.
+        ("נחתם על-ידי יובל מרגלית", ""),
+        ('בוצע ע"י: ענת קורמן', ""),
+    ],
+)
+def test_more_hebrew_name_forms_are_removed_whole(text, expected):
+    assert scrub_text(text) == expected
+
+
 @pytest.mark.parametrize(
     "text",
     [
@@ -62,6 +95,17 @@ def test_hebrew_names_after_a_role_label_are_removed(text, name):
         "המהנדס בדק את המערכת לאחר התיקון",
         "הלקוח ביקש לבדוק שוב את הצינורית",
         "תקלה במשאבה, הוחלף אטם מספר 641922",
+        "המהנדסת בדקה את המערכת והלקוחה אישרה",
+        "הוחלף על ידי החלפת המסנן",
+        "המים מרים מעט, נבדק pH",
+        "הטעם מר מאוד לאחר השטיפה",
+        'הוחלף ע"י הטכנאית',
+        "הבדיקה נעשתה בן לילה",
+        # "By" followed by an action, not a person (review of the closeout PR).
+        'בוצע ע"י החלפת המסנן והשטיפה הושלמה',
+        'בוצע ע"י כיול מחדש של החיישן',
+        "נבדק על ידי מדידת מתח במוצא",
+        'נבדק ע"י בדיקת לחץ תקינה',
     ],
 )
 def test_hebrew_text_without_a_role_label_is_left_alone(text):

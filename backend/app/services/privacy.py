@@ -28,20 +28,47 @@ _PHONE = re.compile(r"(?<![\w/])(?:\+\d[\d\s-]{7,}\d|0\d{1,3}[\s-]\d{3,4}[\s-]?\
 _SIGNED_BY = re.compile(r"\b(?i:signed|approved|checked|reviewed) by\s+(?:[A-Z]\.|[A-Z][\w'’-]+)(?:\s+(?:[A-Z]\.|[A-Z][\w'’-]+)){0,3}")
 _ROLES = {"engineer", "technician", "customer", "contact"}
 
-# Hebrew has no capitals, so a name is recognised only by a role label right before it:
-# "מהנדס: <name>", "לקוח - <name>", "נחתם על ידי <name>". A name is one or two Hebrew
-# words (first and last name; a third would swallow the verb that usually follows).
-# The label must start a word, so "המהנדס" or "הלקוח" never match, and a word that is
-# itself a role or generic noun is not taken for a name ("אושר על ידי הלקוח").
+# Hebrew has no capitals, so a name is recognised only by what comes right before it:
+# a role label ("מהנדס: <name>", "טכנאית - <name>"), a sign-off ("נחתם על ידי <name>",
+# "אושר ע"י <name>") or a title ("ד"ר <name>", "גב' <name>"). A name is one or two Hebrew
+# words, or two joined by בן/בת/בר/אבו/אבן ("אורן בן דוד"); a word may be hyphenated
+# ("בן-דוד") or carry a geresh ("ג'ני"). A free third word is not taken: it would swallow
+# the verb that usually follows. "מר" is not a title here: it is also the word "bitter".
+# A label must start a word, so "המהנדס" or "הלקוחה" never match, and a word
+# that is itself a role or generic noun is not taken for a name ("אושר על ידי הלקוח").
 _HE = "\u05d0-\u05ea"
-_HE_STOP = r"(?!ה?(?:מהנדס|טכנאי|לקוח|מערכת|צוות|חברה|מנהל|שירות|בודק|נציג)(?![" + _HE + "]))"
-_HE_NAME = _HE_STOP + "[" + _HE + "]{2,}(?:[ \t]+" + _HE_STOP + "[" + _HE + "]{2,})?(?![" + _HE + "])"
+_Q = "[\"\u05f4]"  # gershayim, typed either way: ד"ר / ד״ר
+_G = "['\u05f3]"  # geresh: גב' / גב׳
+_SP = "[ \t]+"
+_HE_STOP = (
+    r"(?!ה?(?:מהנדס|טכנאי|לקוח|מערכת|צוות|חברה|מנהל|שירות|בודק|נציג)(?:ת|ה|ית)?(?![" + _HE + "]))"
+)
+_HE_PART = "[" + _HE + "](?:[" + _HE + "]|" + _G + "(?=[" + _HE + "]))+" + _G + "?"
+# After "by" an action often follows, not a person ("בוצע ע"י החלפת המסנן"): a name never
+# starts with one of these verbal nouns, so the sentence is left whole.
+_HE_ACTION = (
+    r"(?!(?:החלפת|החלפה|בדיקת|בדיקה|מדידת|מדידה|כיול|ניקוי|שימוש|התקנת|התקנה|הוספת|הוספה|"
+    r"שטיפת|שטיפה|תיקון|הרכבת|פירוק|ביצוע|הפעלת|כיבוי|עדכון|החזרת|הזנת|טעינת|הידוק|שימון)"
+    r"(?![" + _HE + "]))"
+)
+_HE_WORD = _HE_STOP + _HE_PART + "(?:[-\u05be]" + _HE_PART + ")*"
+_HE_JOIN = "(?:בן|בת|בר|אבו|אבן)"
+_HE_PERSON = (
+    "(?:" + _HE_WORD + _SP + _HE_JOIN + "(?:" + _SP + "|[-\u05be])" + _HE_WORD
+    + "|" + _HE_WORD + "(?:" + _SP + _HE_WORD + ")?)(?![" + _HE + "])"
+)
+_HE_TITLE = "(?:ד" + _Q + "ר|דר" + _G + "|פרופ" + _G + "|פרופסור|גב" + _G + "|הגב" + _G + "|גברת)(?![" + _HE + "])"
+_HE_NAME = "(?:" + _HE_TITLE + "[ \t]*)?" + _HE_PERSON
 _HE_ROLE_NAME = re.compile(
-    "(?<![" + _HE + "])(מהנדס|טכנאי|לקוח|איש[ \t]+קשר)[ \t]*(?::|[ \t][-–])[ \t]*" + _HE_NAME
+    "(?<![" + _HE + "])(מהנדסת|מהנדס|טכנאית|טכנאי|לקוחה|לקוח|(?:איש|אשת)[ \t]+קשר)"
+    "[ \t]*(?::|[ \t][-–])[ \t]*" + _HE_NAME
 )
 _HE_SIGNED_BY = re.compile(
-    "(?<![" + _HE + "])(?:נחתם|נחתמה|אושר|אושרה|נבדק|נבדקה|בוצע|בוצעה)[ \t]+על[ \t]+ידי[ \t]+" + _HE_NAME
+    "(?<![" + _HE + "])(?:נחתם|נחתמה|אושר|אושרה|נבדק|נבדקה|בוצע|בוצעה)" + _SP
+    + "(?:על(?:" + _SP + "|[-\u05be])ידי|ע" + _Q + "י)[ \t]*:?[ \t]*" + _HE_ACTION + _HE_NAME
 )
+# A title alone marks a name wherever it stands; the title goes with the name.
+_HE_TITLED_NAME = re.compile("(?<![" + _HE + "])" + _HE_TITLE + "[ \t]*" + _HE_PERSON)
 
 
 def scrub_text(text: str) -> str:
@@ -50,6 +77,7 @@ def scrub_text(text: str) -> str:
     out = _ROLE_NAME.sub(lambda m: m.group(1).lower() if m.group(1).lower() in _ROLES else "", text)
     out = _HE_ROLE_NAME.sub(lambda m: re.sub(r"\s+", " ", m.group(1)), out)
     out = _HE_SIGNED_BY.sub("", out)
+    out = _HE_TITLED_NAME.sub("", out)
     for rule in (_BY_ON, _SIGNED_BY, _CONTRACT_NUMBER, _SMX, _EMAIL):
         out = rule.sub("", out)
     # A phone number needs 8 or more digits in a row, so part numbers and dates stay.
