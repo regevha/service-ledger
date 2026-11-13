@@ -1,0 +1,21 @@
+id: SL-60
+title: Batch upload screen grouped by status, with actions for a whole group
+owner: frontend-dev
+branch: SL-60-batch-screen-redesign
+wave: F2
+depends_on: []
+migration: false
+files_touched:
+  - docs/tasks/SL-60.yml
+  - docs/tasks/SL-60.md
+  - docs/features/batch-screen/DESIGN.md
+  - frontend/src/components/BatchIntake.tsx
+  - frontend/src/components/batch/**
+  - frontend/src/batchState.ts
+  - frontend/src/batchState.test.ts
+  - frontend/src/batchRun.ts
+  - frontend/src/App.css
+  - frontend/src/styles/13-batch-screen.css
+  - frontend/tests/e2e/batch-upload.spec.ts
+  - frontend/tests/e2e/batch-screen-groups.spec.ts
+acceptance: [user feedback 2026-11-13 on the batch screen]
