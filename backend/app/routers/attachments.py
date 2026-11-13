@@ -27,7 +27,7 @@ from app.services.duplicates import (
 )
 from app.services.field_locator import FieldToLocate, locate_fields
 from app.services.job_limits import CANCELLED_UNSENT, enforce_job_limits
-from app.services.page_text import PDFIUM_LOCK, page_words
+from app.services.page_text import PDFIUM_LOCK, count_pdf_pages, page_words
 from app.services.text_reader import extract_text, read_work_order
 from app.services.translation import translation_gate
 
@@ -124,7 +124,7 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, request: Req
         file_path=str(dest),
         original_filename=original_filename,
         file_type=media_type,
-        page_count=1,  # TODO: compute real page count once PDF preprocessing (§4 step 2) is wired in.
+        page_count=count_pdf_pages(contents) if media_type == PDF else 1,
         content_sha256=content_sha256,
         # Read from the PDF's own text, no model involved, so the same visit
         # scanned twice is flagged right at upload — before (or without)

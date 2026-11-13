@@ -118,3 +118,20 @@ def _page_words_locked(pdfium, path: str | Path, page: int) -> tuple[list[WordBo
         return words, count > 0
     finally:
         pdf.close()
+
+
+def count_pdf_pages(contents: bytes) -> int:
+    """How many pages a PDF has, read from the bytes already in memory at upload. A PDF that
+    cannot be opened counts as one page: the upload is still stored, and the later steps
+    (reading, the scan view) report the real problem when they open it."""
+    import pypdfium2 as pdfium
+
+    try:
+        with PDFIUM_LOCK:
+            pdf = pdfium.PdfDocument(contents)
+            try:
+                return max(1, len(pdf))
+            finally:
+                pdf.close()
+    except pdfium.PdfiumError:
+        return 1
