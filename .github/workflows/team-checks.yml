@@ -1,0 +1,43 @@
+name: team-checks
+
+on:
+  pull_request:
+
+# Least privilege: the jobs only read the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  task-scope:
+    name: changes stay inside the task's files_touched
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install PyYAML
+        run: python3 -m pip install --break-system-packages pyyaml==6.0.2
+      - name: Check task scope
+        env:
+          BRANCH: ${{ github.head_ref }}
+          BASE: origin/${{ github.base_ref }}
+        run: python3 scripts/ci/check_task_scope.py "$BRANCH" "$BASE"
+
+  alembic-heads:
+    name: exactly one Alembic head per migrations folder
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check heads
+        run: python3 scripts/ci/check_alembic_heads.py .
