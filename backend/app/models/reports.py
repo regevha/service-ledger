@@ -31,6 +31,7 @@ from .enums import (
 from .instruments import Instrument
 
 if TYPE_CHECKING:
+    from .intake import ReportSource
     from .jobs import ExtractionJob, Translation
 
 
@@ -146,6 +147,16 @@ class Report(Base):
     instrument: Mapped[Instrument | None] = relationship(back_populates="reports")
     template: Mapped[ReportTemplate | None] = relationship(back_populates="reports")
     attachments: Mapped[list["Attachment"]] = relationship(back_populates="report", cascade="all, delete-orphan")
+    # Where the report came from (models/intake.py); None for a web upload. Loaded with the report
+    # (selectin), so the reports list gets every source in one extra query, not one per row. Deleting
+    # the report through the ORM deletes the source too; the foreign key cascades as well.
+    source: Mapped["ReportSource | None"] = relationship(
+        back_populates="report",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
 
 
 class Attachment(Base):
