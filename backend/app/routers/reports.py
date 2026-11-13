@@ -289,6 +289,16 @@ def get_report(report_id: uuid.UUID, db: Session = Depends(get_db)):
     return report
 
 
+@router.get("/reports/{report_id}/item", response_model=schemas.ReportListItemOut)
+def get_report_item(report_id: uuid.UUID, db: Session = Depends(get_db)):
+    """One report as a list row (the shape GET /reports returns), for a screen that has a report's
+    address and needs the row without loading the whole list to find it."""
+    report = db.get(models.Report, report_id)
+    if not report:
+        raise HTTPException(404, "Report not found")
+    return list_item(report)
+
+
 @router.get("/reports/{report_id}/duplicates", response_model=list[schemas.DuplicateReportOut])
 def get_report_duplicates(report_id: uuid.UUID, db: Session = Depends(get_db)):
     """Other saved reports that probably record the same visit as this one:

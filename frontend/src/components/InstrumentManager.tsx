@@ -6,7 +6,7 @@ import {
   listInstrumentRepairCounts,
   listInstrumentTypes,
   listPlaces,
-  listReports,
+  countReports,
   type Instrument,
   type Place,
 } from '../api';
@@ -128,12 +128,11 @@ export function InstrumentManagerScreen({
   async function askToDelete(instrument: Instrument) {
     setDeleteError(null);
     try {
-      const reports = await listReports({ instrument_id: instrument.id });
-      setPendingDelete({
-        instrument,
-        total: reports.length,
-        finalized: reports.filter((r) => r.status === 'finalized').length,
-      });
+      const [total, finalized] = await Promise.all([
+        countReports({ instrument_id: instrument.id }),
+        countReports({ instrument_id: instrument.id, status: 'finalized' }),
+      ]);
+      setPendingDelete({ instrument, total, finalized });
     } catch (e) {
       setDeleteError(e instanceof ApiError ? e.message : 'Could not check this instrument’s reports.');
     }

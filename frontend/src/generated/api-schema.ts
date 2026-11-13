@@ -627,6 +627,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/{report_id}/item": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Report Item
+         * @description One report as a list row (the shape GET /reports returns), for a screen that has a report's
+         *     address and needs the row without loading the whole list to find it.
+         */
+        get: operations["get_report_item_reports__report_id__item_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{report_id}/duplicates": {
         parameters: {
             query?: never;
@@ -4263,6 +4284,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_item_reports__report_id__item_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportListItemOut"];
+                };
             };
             /** @description Validation Error */
             422: {
