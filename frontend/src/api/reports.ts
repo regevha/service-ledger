@@ -1,4 +1,4 @@
-import { API_BASE, apiFetch } from './http';
+import { API_BASE, apiFetch, apiFetchWithHeaders } from './http';
 import type { Report, ReportListItem, ReportStatus, ReportType } from './types';
 
 // ---------- Reports ----------
@@ -50,13 +50,39 @@ export interface ReportFilters {
   repairs_count?: string;
 }
 
-export function listReports(filters: ReportFilters = {}): Promise<ReportListItem[]> {
+function reportsQuery(filters: ReportFilters, extra: Record<string, string> = {}): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
     if (value) params.set(key, value);
   }
+  for (const [key, value] of Object.entries(extra)) params.set(key, value);
   const qs = params.toString();
-  return apiFetch(`/reports${qs ? `?${qs}` : ''}`);
+  return qs ? `?${qs}` : '';
+}
+
+/** Every matching report. For screens that need them all; the Reports list pages instead (listReportsPage). */
+export function listReports(filters: ReportFilters = {}): Promise<ReportListItem[]> {
+  return apiFetch(`/reports${reportsQuery(filters)}`);
+}
+
+export interface ReportsPage {
+  items: ReportListItem[];
+  /** How many reports match in all, not how many are in this page. */
+  total: number;
+}
+
+/** One page of the matching reports, with the total that match. */
+export async function listReportsPage(filters: ReportFilters, limit: number, offset: number): Promise<ReportsPage> {
+  const { data, headers } = await apiFetchWithHeaders<ReportListItem[]>(
+    `/reports${reportsQuery(filters, { limit: String(limit), offset: String(offset) })}`
+  );
+  const total = Number(headers.get('X-Total-Count'));
+  return { items: data, total: Number.isFinite(total) && headers.has('X-Total-Count') ? total : data.length };
+}
+
+/** How many reports match, without loading them. */
+export async function countReports(filters: ReportFilters = {}): Promise<number> {
+  return (await listReportsPage(filters, 1, 0)).total;
 }
 
 // Not routed through apiFetch — this is a direct link href, not a fetch: the

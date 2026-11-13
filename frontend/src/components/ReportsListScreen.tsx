@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { LoadError } from './LoadError';
 import {
   listReports,
+  listReportsPage,
   type Instrument,
   type ReportFilters,
   type ReportListItem,
@@ -12,6 +13,7 @@ import { ReportDetailScreen } from './ReportDetailScreen';
 import { ReportFilterBar } from './ReportFilterBar';
 import { AskReportsBox } from './AskReportsBox';
 import { useKeptSearch, useKeptSearchSync } from '../keptSearchContext';
+import { mergePage, REPORTS_PAGE_SIZE } from './reports/paging';
 import { ReportGroups } from './reports/ReportGroups';
 import { ReportRow } from './reports/ReportRow';
 import { ReportTableHead } from './reports/ReportTableHead';
@@ -82,6 +84,10 @@ export function ReportsListScreen({
   }, []);
   useKeptSearchSync(filters, adoptKept);
   const [items, setItems] = useState<ReportListItem[]>([]);
+  // How many reports match in all; `items` holds only the pages loaded so far.
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreFailed, setLoadMoreFailed] = useState(false);
   // Column the table is sorted by (null: the server's order). Sorting is done here, on the rows already loaded.
   const [sort, setSort] = useState<SortState | null>(null);
   const [groupMode, setGroupMode] = useState<GroupMode>(readGroupMode);
@@ -101,12 +107,29 @@ export function ReportsListScreen({
 
   const { loading, error, retry } = useAsyncEffect(
     async (isCancelled) => {
-      const list = await listReports(filters);
-      if (!isCancelled()) setItems(list);
+      const page = await listReportsPage(filters, REPORTS_PAGE_SIZE, 0);
+      if (isCancelled()) return;
+      setItems(page.items);
+      setTotal(page.total);
+      setLoadMoreFailed(false);
     },
     [filters, refreshNonce],
     'Could not load reports.'
   );
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const page = await listReportsPage(filters, REPORTS_PAGE_SIZE, items.length);
+      // Reports saved meanwhile can shift the pages by a row; never show one twice.
+      setItems((have) => mergePage(have, page.items));
+      setTotal(page.total);
+    } catch {
+      setLoadMoreFailed(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // The address bar and this screen's own nav stack follow each other: opening a report
   // or instrument here updates the path; a path set elsewhere (the Back button, a link,
@@ -279,6 +302,17 @@ export function ReportsListScreen({
             {shown.map(renderRow)}
           </div>
           </>
+          )}
+          {items.length < total && (
+            <div className="load-more" data-testid="load-more">
+              <div className="muted">
+                Showing {items.length} of {total}. Sorting and grouping apply to the reports shown.
+              </div>
+              {loadMoreFailed && <div className="error">Could not load more reports. Try again.</div>}
+              <button className="btn" disabled={loadingMore} onClick={() => { setLoadMoreFailed(false); void loadMore(); }}>
+                {loadingMore ? 'Loading…' : 'Load more'}
+              </button>
+            </div>
           )}
         </>
       )}
