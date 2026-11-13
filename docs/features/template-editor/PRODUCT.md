@@ -1,6 +1,6 @@
 # Template editor: product brief
 
-Status: draft for the user. Written 2026-11-13. Owner: product-manager.
+Status: Q1 to Q5 answered 2026-11-13; ready for planning. Written 2026-11-13. Owner: product-manager.
 
 ## 1. Problem and users
 
@@ -90,7 +90,7 @@ kind of document gets its own template.
 
 - AC-01 `must`: In the template editor I can add a new report type by typing a
   plain name (for example "Calibration"). It then appears in every report-type
-  list in the app (template editor, report type picker, filters, labels) without
+  list in the app (template editor, report type picker, filters, analytics, classification, labels) without
   a code change or a deploy.
 - AC-02 `must`: The three existing types keep working and keep their current
   names and reports. Existing reports and templates are unchanged after the
@@ -108,7 +108,7 @@ As a facility manager, I start from a sample report PDF and mark the fields on
 the page.
 
 - AC-06 `must`: "New template" offers a choice of starting points: from a
-  sample PDF (uploaded now, or a stored one), from a copy of an existing
+  sample PDF (a stored one, the waiting draft's own, or one uploaded now that is discarded when I finish unless I choose to keep it as the template's reference sample), from a copy of an existing
   template, or blank.
 - AC-07 `must`: In the editor the PDF page is always visible next to the field
   list. Each field already marked is shown as a box on the page with its name.
@@ -130,7 +130,7 @@ the page.
   and name fields by hand, and the screen says that no suggestions are possible
   for this file.
 - AC-14 `later`: A suggested first draft of fields from the sample PDF, by
-  Claude. Needs a decision on cost and privacy; see Q5.
+  Claude. Not in this build (R-14).
 
 ### Story C. See the result before saving
 As a facility manager, I see how the review screen will look while I build.
@@ -174,7 +174,7 @@ reports.
   time they are opened, and values of a removed field are kept (not lost) until
   the report is finalized or the person removes them.
 - AC-26 `must`: Each saved change of an in-use template is a new numbered
-  version. I can see the version list with date and a one-line summary of the
+  version. Every template that exists before this feature becomes version 1, with its reports unchanged. I can see the version list with date and a one-line summary of the
   change, and open an older version read-only.
 - AC-27 `later`: Restore an older version as a new version.
 - AC-28 `must`: A report shows which version of the template it was made with
@@ -195,6 +195,8 @@ making a version for a specific model.
   the Every model template").
 
 ### Story G. Create the type while a draft waits
+Email intake (`docs/features/email-intake/PRODUCT.md`, branch `spec-email-intake`, AC-10 outcome 2) creates drafts marked "needs a report type". Creating a type and template from such a draft must be quick; AC-33 to AC-36 are written for that case.
+
 As a facility manager with a draft that "needs a report type" (from email
 intake), I can pick or create the type right there.
 
@@ -208,7 +210,7 @@ intake), I can pick or create the type right there.
   name, check the suggested fields, save. No other screen is required first.
 
 ### Story H. Privacy and safety in the editor
-- AC-37 `must`: A sample PDF and its text are shown only to the person editing.
+- AC-37 `must`: A sample PDF and its text are shown only to the person editing, and an upload is discarded when editing ends unless I chose to keep it as the reference sample.
   The saved template keeps field names, types, notes, choices and box positions,
   but never the sample's text, file name or any value read from it.
 - AC-38 `must`: When a field name or note suggested from the sample looks like a
@@ -224,21 +226,29 @@ intake), I can pick or create the type right there.
 
 | # | Rule | Status |
 |---|------|--------|
-| R-1 | Report types become data, not a fixed list of three. The three current types stay, with their current names. | `assumed` (needed for AC-01; see Q1 for how it is offered) |
+| R-1 | Report types become data, not a fixed list of three. The three current types stay, with their current names. New types appear everywhere types are used: filters, analytics, templates and classification. | `decided` 2026-11-13 (Q1 = A) |
 | R-2 | A template is for one instrument type, one report type and either one model or every model. A model-specific template wins over "every model". This is today's rule and stays. | `decided` (existing behaviour, `PLAN.md` / template resolution) |
-| R-3 | Finalized reports never change because a template changed. | `assumed`; expensive to change later, see Q2 |
-| R-4 | Open drafts move to the newest version when next opened; removed-field values are kept. | `assumed`, see Q2 |
+| R-3 | Finalized reports never change because a template changed. User: "every change in the report structure must not harm reports already uploaded." Numbered versions; every existing template becomes version 1. | `decided` 2026-11-13 (Q2 = A) |
+| R-4 | Open drafts move to the newest version when next opened; removed-field values are kept. | `decided` 2026-11-13 (Q2 = A; the kept-values detail is `assumed`) |
 | R-5 | Desktop first. The editor must not break on a phone but no phone design is built. | `decided` (lead's context: desktop first) |
 | R-6 | English only. | `decided` (CLAUDE.md) |
-| R-7 | Who may edit templates: today everyone. When sign-in with editor and read-only roles arrives, only editors. This feature adds no roles and adds one clear place to check (one "may edit templates" rule). | `assumed`; see Q4 |
+| R-7 | Who may edit templates: anyone past the shared password. When sign-in with editor and read-only roles arrives, only editors; admin-only creation of report types comes then too. This feature adds no roles and adds one clear place to check (one "may edit templates" rule). | `decided` 2026-11-13 (Q1: admin-only creation comes with roles later); Q4 `assumed` A |
 | R-8 | Trials use the stub reading unless live Claude is on. A live trial counts toward the daily Claude limit (60 per day). | `decided` (CLAUDE.md user decisions, cost rule) |
 | R-9 | Templates, types and versions are shared across the installation and may be seen by other institutes only as field names and structure, never as sample content. | `assumed`; confirm with Q3 |
-| R-10 | Starting the editor from a sample: the sample can be a stored PDF or one uploaded just for the editor. An uploaded sample is kept only for the editing session unless saved on purpose. | `assumed`, see Q3 |
+| R-10 | Samples come from stored reports, from the waiting draft's own PDF, or are uploaded only while editing. An upload is discarded unless kept on purpose as the template's reference sample. | `decided` 2026-11-13 (Q3 = A) |
 | R-11 | Template audit (suggest fields from real reports), import/export, restoring versions, and saved test samples are not in this build. | `decided` as non-goals in this brief; the user can reverse |
+| R-14 | No Claude field suggestions in this build; suggestions are word-based only. | `assumed` 2026-11-13 (Q5 = A) |
 | R-12 | The editor reuses existing field types and the existing "Compare" and "Field aliases" tools; neither is changed. | `assumed` |
 | R-13 | Stop at demo-ready: when every `must` criterion is met, the team stops and reports. `later` items are listed, not built. | `decided` (CLAUDE.md) |
 
-## 5. Open questions (most important first)
+## 5. Questions and answers (2026-11-13)
+
+Answered: Q1 = A (real, user-made types; admin-only creation with roles later).
+Q2 = A (numbered versions). Q3 = A (samples as in R-10). Q4 = A, `assumed`.
+Q5 = A, `assumed`. Q6 `assumed`. No open questions remain. The original options
+are kept below for the record.
+
+### Original questions
 
 **Q1. Is a new report type a real type, or just a name on a template?**
 Today the type is a fixed list of three, used for filters, labels and the
@@ -309,4 +319,4 @@ finalized report did not change.
 
 ## Changes
 
-None yet.
+- 2026-11-13: Nir answered Q1 to Q5. R-1, R-3, R-4, R-7, R-10 now `decided`; new R-14 (`assumed`). Edited AC-01 (analytics and classification named), AC-06 and AC-37 (upload discarded unless kept), AC-14 (not built), AC-26 (existing templates become version 1). Added the email-intake link under Story G. No build had started, so no tasks are affected beyond the planner's inputs.
