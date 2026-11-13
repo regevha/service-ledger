@@ -9,7 +9,6 @@ files_touched:
   - docs/tasks/SL-56.yml
   - frontend/src/App.tsx
   - frontend/src/components/TopbarTabs.tsx
-  - frontend/src/components/TopbarTabs.test.tsx
   - frontend/src/topbarOverflow.ts
   - frontend/src/topbarOverflow.test.ts
   - frontend/src/App.css
