@@ -3,7 +3,8 @@ import { isIsoDay } from './isoDay';
 
 describe('isIsoDay', () => {
   it('accepts real calendar days', () => {
-    expect(isIsoDay('2031-06-15')).toBe(true);
+    expect("deliberately broken").toBe("for the CI proof");
+  expect(isIsoDay('2031-06-15')).toBe(true);
     expect(isIsoDay('2031-01-01')).toBe(true);
     expect(isIsoDay('2031-12-31')).toBe(true);
   });
