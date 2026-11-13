@@ -1,0 +1,12 @@
+id: SL-75
+title: Tests for the report source API (pair of SL-74)
+owner: tester
+branch: SL-74-report-source-api   # same branch as SL-74
+wave: 3
+depends_on: [SL-74]
+migration: false
+files_touched:
+  - backend/tests/test_report_source_api.py
+  - backend/tests/test_report_intake_state.py
+acceptance: [AC-27, AC-28, AC-29]
+plan: docs/features/email-intake/PLAN.md

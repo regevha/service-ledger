@@ -1,0 +1,17 @@
+id: SL-81
+title: Source line on draft and report page, Received-by-email marker
+owner: frontend-dev
+branch: SL-81-source-line-ui
+wave: 4
+depends_on: [SL-63, SL-74, SL-76]
+migration: false
+files_touched:
+  - frontend/src/components/review/SourceLine.tsx
+  - frontend/src/sourceLabel.ts
+  - frontend/src/sourceLabel.test.ts
+  - frontend/src/components/ReportDetailScreen.tsx
+  - frontend/src/components/reports/ReportRow.tsx
+  - frontend/src/api/types.ts
+  - frontend/src/styles/*-email-intake.css
+acceptance: [AC-03, AC-20, AC-28]
+plan: docs/features/email-intake/PLAN.md

@@ -1,0 +1,12 @@
+id: SL-80
+title: Tests for the held, log and status API (pair of SL-79)
+owner: tester
+branch: SL-79-held-log-api   # same branch as SL-79
+wave: 4
+depends_on: [SL-79]
+migration: false
+files_touched:
+  - backend/tests/test_email_held_api.py
+  - backend/tests/test_email_log_api.py
+acceptance: [AC-11, AC-12, AC-26]
+plan: docs/features/email-intake/PLAN.md

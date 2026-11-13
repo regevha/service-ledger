@@ -1,0 +1,19 @@
+id: SL-85
+title: Continue an unread draft in the intake flow
+owner: frontend-dev
+branch: SL-85-continue-draft
+wave: 5
+depends_on: [SL-63, SL-74, SL-81]
+migration: false
+files_touched:
+  - frontend/src/App.tsx
+  - frontend/src/components/IntakeFlow.tsx
+  - frontend/src/components/intake/useIntakeSteps.ts
+  - frontend/src/components/intake/useIntakeJobs.ts
+  - frontend/src/components/ReportDetailScreen.tsx
+  - frontend/src/api/reports.ts
+  - frontend/src/api/types.ts
+  - frontend/src/intakeResume.ts
+  - frontend/src/intakeResume.test.ts
+acceptance: [AC-01, AC-10]
+plan: docs/features/email-intake/PLAN.md

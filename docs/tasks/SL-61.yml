@@ -1,0 +1,19 @@
+id: SL-61
+title: Email intake models and migration 00NN_email_intake
+owner: db-engineer
+branch: SL-61-email-intake-models
+wave: 1
+depends_on: []
+migration: true             # number = next after the head of main at build time
+files_touched:
+  - backend/app/models/intake.py
+  - backend/app/models/__init__.py
+  - backend/app/models/reports.py
+  - backend/alembic/versions/*_email_intake.py
+  - docs/features/email-intake/DATA_MODEL.md
+  # pair tester SL-62, same branch
+  - backend/tests/test_email_intake_models.py
+  - backend/tests/test_migration_email_intake.py
+  - docs/tasks/SL-62.md
+acceptance: [AC-12, AC-18, AC-20, AC-25, AC-27, AC-30, AC-32]
+plan: docs/features/email-intake/PLAN.md

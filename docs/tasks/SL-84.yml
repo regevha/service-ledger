@@ -1,0 +1,17 @@
+id: SL-84
+title: Admin - held files and email log screens
+owner: frontend-dev
+branch: SL-84-held-log-ui
+wave: 5
+depends_on: [SL-63, SL-76, SL-79]
+migration: false
+files_touched:
+  - frontend/src/components/email/EmailIntakeAdmin.tsx
+  - frontend/src/components/email/HeldFiles.tsx
+  - frontend/src/components/email/EmailLog.tsx
+  - frontend/src/emailLog.ts
+  - frontend/src/emailLog.test.ts
+  - frontend/src/api/emailIntake.ts
+  - frontend/src/styles/*-email-intake.css
+acceptance: [AC-11, AC-12, AC-26]
+plan: docs/features/email-intake/PLAN.md

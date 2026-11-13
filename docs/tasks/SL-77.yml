@@ -1,0 +1,14 @@
+id: SL-77
+title: Replies - compose and send one per email
+owner: backend-dev
+branch: SL-77-email-replies
+wave: 4
+depends_on: [SL-66, SL-72]
+migration: false
+files_touched:
+  - backend/app/services/email_reply.py
+  # pair tester SL-78, same branch
+  - backend/tests/test_email_reply.py
+  - docs/tasks/SL-78.md
+acceptance: [AC-05, AC-13, AC-14, AC-15, AC-16, AC-17]
+plan: docs/features/email-intake/PLAN.md

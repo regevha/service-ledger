@@ -1,0 +1,12 @@
+id: SL-83
+title: Tests for the poller and auto extract (pair of SL-82)
+owner: tester
+branch: SL-82-email-poller   # same branch as SL-82
+wave: 5
+depends_on: [SL-82]
+migration: false
+files_touched:
+  - backend/tests/test_email_poller.py
+  - backend/tests/test_worker_auto_extract.py
+acceptance: [AC-01, AC-13, AC-16, AC-18]
+plan: docs/features/email-intake/PLAN.md

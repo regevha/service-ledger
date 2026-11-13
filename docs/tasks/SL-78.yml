@@ -1,0 +1,11 @@
+id: SL-78
+title: Tests for replies (pair of SL-77)
+owner: tester
+branch: SL-77-email-replies   # same branch as SL-77
+wave: 4
+depends_on: [SL-77]
+migration: false
+files_touched:
+  - backend/tests/test_email_reply.py
+acceptance: [AC-13, AC-14, AC-15]
+plan: docs/features/email-intake/PLAN.md

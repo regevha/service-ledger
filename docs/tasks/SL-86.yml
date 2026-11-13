@@ -1,0 +1,11 @@
+id: SL-86
+title: Backend acceptance suite for email intake
+owner: tester
+branch: SL-86-email-acceptance-tests
+wave: 6
+depends_on: [SL-74, SL-79, SL-82]
+migration: false
+files_touched:
+  - backend/tests/test_email_intake_acceptance.py
+acceptance: [AC-09, AC-13, AC-16, AC-17, AC-18, AC-24, AC-25, AC-29, AC-30]
+plan: docs/features/email-intake/PLAN.md

@@ -1,0 +1,12 @@
+id: SL-69
+title: Tests for the allow list (pair of SL-68)
+owner: tester
+branch: SL-68-allow-list-api   # same branch as SL-68
+wave: 2
+depends_on: [SL-68]
+migration: false
+files_touched:
+  - backend/tests/test_allow_list.py
+  - backend/tests/test_allow_list_api.py
+acceptance: [AC-20, AC-21, AC-30]
+plan: docs/features/email-intake/PLAN.md

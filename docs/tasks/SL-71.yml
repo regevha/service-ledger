@@ -1,0 +1,11 @@
+id: SL-71
+title: Tests for the relevance check (pair of SL-70)
+owner: tester
+branch: SL-70-email-relevance   # same branch as SL-70
+wave: 2
+depends_on: [SL-70]
+migration: false
+files_touched:
+  - backend/tests/test_email_relevance.py
+acceptance: [AC-09, AC-10]
+plan: docs/features/email-intake/PLAN.md

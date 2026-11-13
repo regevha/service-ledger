@@ -1,0 +1,21 @@
+id: SL-66
+title: Email settings, mailbox and sender adapters, demo CLI
+owner: backend-dev
+branch: SL-66-email-adapters
+wave: 2
+depends_on: []
+migration: false
+files_touched:
+  - backend/app/config.py
+  - backend/.env.example
+  - backend/.gitignore
+  - backend/app/services/mailbox.py
+  - backend/app/services/mail_sender.py
+  - backend/app/tools/email_demo_send.py
+  # pair tester SL-67, same branch
+  - backend/tests/test_mailbox.py
+  - backend/tests/test_mail_sender.py
+  - backend/tests/test_email_settings.py
+  - docs/tasks/SL-67.md
+acceptance: [AC-04, AC-13, AC-25, R-13]
+plan: docs/features/email-intake/PLAN.md

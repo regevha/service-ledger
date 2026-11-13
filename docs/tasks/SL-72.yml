@@ -1,0 +1,19 @@
+id: SL-72
+title: Intake core - process one message
+owner: backend-dev
+branch: SL-72-email-intake-core
+wave: 3
+depends_on: [SL-61, SL-64, SL-66, SL-68, SL-70]
+migration: false
+files_touched:
+  - backend/app/services/email_intake.py
+  - backend/app/services/auto_read.py
+  - backend/app/services/held_files.py
+  - backend/app/services/job_limits.py
+  # pair tester SL-73, same branch
+  - backend/tests/test_email_intake.py
+  - backend/tests/test_auto_read.py
+  - backend/tests/test_job_limits.py
+  - docs/tasks/SL-73.md
+acceptance: [AC-01, AC-02, AC-05, AC-06, AC-07, AC-08, AC-09, AC-10, AC-11, AC-12, AC-16, AC-17, AC-18, AC-19, AC-20, AC-24, AC-25, AC-27]
+plan: docs/features/email-intake/PLAN.md

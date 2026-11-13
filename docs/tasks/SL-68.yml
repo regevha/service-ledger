@@ -1,0 +1,20 @@
+id: SL-68
+title: Allow-list service and admin API
+owner: backend-dev
+branch: SL-68-allow-list-api
+wave: 2
+depends_on: [SL-61]
+migration: false
+files_touched:
+  - backend/app/services/allow_list.py
+  - backend/app/schemas/email_intake.py
+  - backend/app/schemas/__init__.py
+  - backend/app/routers/email_intake.py
+  - backend/app/main.py
+  - frontend/src/generated/api-schema.ts
+  # pair tester SL-69, same branch
+  - backend/tests/test_allow_list.py
+  - backend/tests/test_allow_list_api.py
+  - docs/tasks/SL-69.md
+acceptance: [AC-20, AC-21, AC-30, AC-32]
+plan: docs/features/email-intake/PLAN.md

@@ -1,0 +1,19 @@
+id: SL-74
+title: Report source in the API, and the intake-state endpoint
+owner: backend-dev
+branch: SL-74-report-source-api
+wave: 3
+depends_on: [SL-61]
+migration: false
+files_touched:
+  - backend/app/schemas/reports.py
+  - backend/app/services/report_views.py
+  - backend/app/routers/report_intake_state.py
+  - backend/app/main.py
+  - frontend/src/generated/api-schema.ts
+  # pair tester SL-75, same branch
+  - backend/tests/test_report_source_api.py
+  - backend/tests/test_report_intake_state.py
+  - docs/tasks/SL-75.md
+acceptance: [AC-03, AC-27, AC-28, AC-29]
+plan: docs/features/email-intake/PLAN.md

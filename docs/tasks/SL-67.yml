@@ -1,0 +1,13 @@
+id: SL-67
+title: Tests for the email adapters and settings (pair of SL-66)
+owner: tester
+branch: SL-66-email-adapters   # same branch as SL-66
+wave: 2
+depends_on: [SL-66]
+migration: false
+files_touched:
+  - backend/tests/test_mailbox.py
+  - backend/tests/test_mail_sender.py
+  - backend/tests/test_email_settings.py
+acceptance: [AC-04, R-13]
+plan: docs/features/email-intake/PLAN.md

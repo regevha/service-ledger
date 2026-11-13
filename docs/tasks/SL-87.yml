@@ -1,0 +1,15 @@
+id: SL-87
+title: Playwright flows for email intake
+owner: e2e-tester
+branch: SL-87-email-e2e
+wave: 6
+depends_on: [SL-76, SL-81, SL-82, SL-84, SL-85]
+migration: false
+files_touched:
+  - frontend/playwright.config.ts
+  - frontend/tests/e2e/helpers/email.ts
+  - frontend/tests/e2e/helpers/syntheticPdf.ts
+  - frontend/tests/e2e/email-intake.spec.ts
+  - frontend/tests/e2e/email-intake-admin.spec.ts
+acceptance: [AC-01, AC-03, AC-04, AC-10, AC-11, AC-13, AC-20, AC-21, AC-26, AC-28]
+plan: docs/features/email-intake/PLAN.md

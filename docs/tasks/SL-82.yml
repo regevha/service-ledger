@@ -1,0 +1,16 @@
+id: SL-82
+title: Mailbox poller in the worker, and auto extract after classify
+owner: backend-dev
+branch: SL-82-email-poller
+wave: 5
+depends_on: [SL-72, SL-77, SL-79]
+migration: false
+files_touched:
+  - backend/app/email_poller.py
+  - backend/app/worker.py
+  # pair tester SL-83, same branch
+  - backend/tests/test_email_poller.py
+  - backend/tests/test_worker_auto_extract.py
+  - docs/tasks/SL-83.md
+acceptance: [AC-01, AC-13, AC-16, AC-18, AC-25, R-8, R-9]
+plan: docs/features/email-intake/PLAN.md

@@ -1,0 +1,12 @@
+id: SL-88
+title: Email intake demo notes (WSL, folder mode, optional Gmail)
+owner: backend-dev
+branch: SL-88-email-demo-notes
+wave: 6
+depends_on: [SL-82]
+migration: false
+files_touched:
+  - docs/features/email-intake/DEMO.md
+  - backend/README.md
+acceptance: [AC-04, R-13]
+plan: docs/features/email-intake/PLAN.md

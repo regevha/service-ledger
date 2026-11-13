@@ -1,0 +1,11 @@
+id: SL-63
+title: Email intake design brief
+owner: ux-reviewer
+branch: SL-63-email-intake-design
+wave: 1
+depends_on: []
+migration: false
+files_touched:
+  - docs/features/email-intake/DESIGN.md
+acceptance: [AC-03, AC-10, AC-20, AC-21, AC-26, AC-28]
+plan: docs/features/email-intake/PLAN.md

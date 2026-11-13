@@ -1,0 +1,16 @@
+id: SL-64
+title: Email message parsing and PDF structural check
+owner: backend-dev
+branch: SL-64-email-parse-pdf-check
+wave: 1
+depends_on: []
+migration: false
+files_touched:
+  - backend/app/services/email_message.py
+  - backend/app/services/pdf_safety.py
+  # pair tester SL-65, same branch
+  - backend/tests/test_email_message.py
+  - backend/tests/test_pdf_safety.py
+  - docs/tasks/SL-65.md
+acceptance: [AC-05, AC-06, AC-07, AC-08, AC-15, AC-18, AC-24]
+plan: docs/features/email-intake/PLAN.md

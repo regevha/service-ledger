@@ -1,0 +1,14 @@
+id: SL-70
+title: Relevance check with four outcomes, no model call
+owner: backend-dev
+branch: SL-70-email-relevance
+wave: 2
+depends_on: []
+migration: false
+files_touched:
+  - backend/app/services/email_relevance.py
+  # pair tester SL-71, same branch
+  - backend/tests/test_email_relevance.py
+  - docs/tasks/SL-71.md
+acceptance: [AC-09, AC-10]
+plan: docs/features/email-intake/PLAN.md

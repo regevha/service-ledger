@@ -1,0 +1,19 @@
+id: SL-76
+title: Admin - Allowed senders screen
+owner: frontend-dev
+branch: SL-76-allowed-senders-ui
+wave: 3
+depends_on: [SL-63, SL-68]
+migration: false
+files_touched:
+  - frontend/src/components/AdminScreen.tsx
+  - frontend/src/components/email/EmailIntakeAdmin.tsx
+  - frontend/src/components/email/AllowedSenders.tsx
+  - frontend/src/components/email/allowedSenderRules.ts
+  - frontend/src/components/email/allowedSenderRules.test.ts
+  - frontend/src/api/emailIntake.ts
+  - frontend/src/api/index.ts
+  - frontend/src/styles/*-email-intake.css   # next free number at build time
+  - frontend/src/App.css
+acceptance: [AC-20, AC-21]
+plan: docs/features/email-intake/PLAN.md

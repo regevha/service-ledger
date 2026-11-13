@@ -1,0 +1,19 @@
+id: SL-79
+title: Held files, email log and status API
+owner: backend-dev
+branch: SL-79-held-log-api
+wave: 4
+depends_on: [SL-66, SL-72]
+migration: false
+files_touched:
+  - backend/app/routers/email_intake.py
+  - backend/app/schemas/email_intake.py
+  - backend/app/services/held_files.py
+  - backend/app/services/intake_log.py
+  - frontend/src/generated/api-schema.ts
+  # pair tester SL-80, same branch
+  - backend/tests/test_email_held_api.py
+  - backend/tests/test_email_log_api.py
+  - docs/tasks/SL-80.md
+acceptance: [AC-10, AC-11, AC-12, AC-26]
+plan: docs/features/email-intake/PLAN.md
