@@ -67,9 +67,6 @@
     visibility: hidden;
     pointer-events: none;
   }
-  .view-tab.tab-end {
-    margin-left: 0;
-  }
   /* No More button while everything fits: kept out of the row, still measurable. */
   .topbar-more-idle {
     position: absolute;

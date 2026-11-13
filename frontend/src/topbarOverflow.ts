@@ -1,21 +1,30 @@
 /**
- * How many of the top bar's tabs fit in the space they have.
+ * Which of the top bar's tabs stay in the row, given the space they have.
  *
  * `widths` are the tabs' own widths in order, `gap` is the space between two neighbours,
  * `available` is the width of the tab row and `moreWidth` is the width of the "More" button.
- * Tabs leave from the right: the answer is how many stay visible from the left.
- * When every tab fits, no More button is needed, so its width is not counted.
+ * `active` is the index of the current view's tab, or -1 when no tab is current.
+ *
+ * When every tab fits, all stay and no More button is needed, so its width is not counted.
+ * Otherwise tabs leave from the right, one at a time, into More, but the active tab never leaves:
+ * it keeps its place in the row and the tab before or after it folds instead (user decision, #322).
+ * The active tab stays even when it does not fit beside More on its own.
  */
-export function visibleTabCount(widths: number[], available: number, moreWidth: number, gap: number): number {
+export function shownTabs(widths: number[], available: number, moreWidth: number, gap: number, active: number): boolean[] {
   const total = widths.reduce((sum, w) => sum + w, 0) + gap * Math.max(0, widths.length - 1);
-  if (total <= available) return widths.length;
+  if (total <= available) return widths.map(() => true);
+  const shown = widths.map(() => false);
   let used = moreWidth;
-  let count = 0;
-  for (const w of widths) {
-    const next = used + gap + w;
+  if (active >= 0 && active < widths.length) {
+    shown[active] = true;
+    used += gap + widths[active];
+  }
+  for (let i = 0; i < widths.length; i += 1) {
+    if (i === active) continue;
+    const next = used + gap + widths[i];
     if (next > available) break;
     used = next;
-    count += 1;
+    shown[i] = true;
   }
-  return count;
+  return shown;
 }
