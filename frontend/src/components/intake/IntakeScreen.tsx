@@ -72,12 +72,13 @@ export function IntakeScreen({
           e.preventDefault();
           setDragging(false);
           const files = Array.from(e.dataTransfer.files);
-          if (onBatchFiles && chooseIntakeRoute(files).kind === 'batch') {
+          const route = onBatchFiles ? chooseIntakeRoute(files) : null;
+          if (onBatchFiles && route?.kind === 'batch') {
             setDropError(null);
             onBatchFiles(files);
             return;
           }
-          const problem = dropProblem(files);
+          const problem = route ? (route.kind === 'problem' ? route.message : null) : dropProblem(files);
           // A refused drop leaves the file already chosen in place; say so, so it is not a surprise.
           setDropError(problem && file ? `${problem} Keeping ${chosenLabel}.` : problem);
           if (!problem) setFiles(files);
@@ -106,12 +107,13 @@ export function IntakeScreen({
               e.target.value = '';
               return;
             }
-            if (onBatchFiles && chooseIntakeRoute(picked).kind === 'batch') {
+            const route = onBatchFiles && picked.length > 1 ? chooseIntakeRoute(picked) : null;
+            if (onBatchFiles && route?.kind === 'batch') {
               onBatchFiles(picked);
               e.target.value = '';
               return;
             }
-            const problem = picked.length > 1 ? dropProblem(picked) : null;
+            const problem = route ? (route.kind === 'problem' ? route.message : null) : picked.length > 1 ? dropProblem(picked) : null;
             if (problem) {
               setDropError(problem);
               return;

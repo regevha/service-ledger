@@ -28,10 +28,16 @@ export type IntakeChoice =
   | { kind: 'batch' } // two or more PDFs: each becomes its own report on the batch screen
   | { kind: 'problem'; message: string };
 
-/** Where chosen or dropped files on the New report screen go. Two or more PDFs (with or
- *  without images) go to the batch screen, which checks the file types and the size of the batch. */
+/** Shown when two or more PDFs are chosen together with photos (user decision, #326: refuse the mix). */
+export const PDFS_WITH_PHOTOS =
+  'Upload the PDFs and the photos separately: each PDF becomes its own report, and photos of the pages make one report.';
+
+/** Where chosen or dropped files on the New report screen go. Two or more files that are all PDFs go to
+ *  the batch screen, which checks the size of the batch. Several PDFs mixed with photos are refused, as
+ *  one PDF with photos always was; anything else follows dropProblem. */
 export function chooseIntakeRoute(files: { name: string; type: string }[]): IntakeChoice {
-  if (files.filter(isPdfFile).length >= 2) return { kind: 'batch' };
-  const message = dropProblem(files);
+  const pdfs = files.filter(isPdfFile).length;
+  if (pdfs >= 2 && pdfs === files.length) return { kind: 'batch' };
+  const message = pdfs >= 2 && files.every(isAcceptedFile) ? PDFS_WITH_PHOTOS : dropProblem(files);
   return message ? { kind: 'problem', message } : { kind: 'single' };
 }

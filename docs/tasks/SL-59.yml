@@ -2,7 +2,7 @@ id: SL-59
 title: Several PDFs can be chosen or dropped on the New report screen
 owner: frontend-dev
 branch: SL-59-new-report-multi-file
-wave: F2
+wave: F1
 depends_on: [SL-56]   # both edit frontend/src/App.tsx; this branch starts from SL-56
 migration: false
 files_touched:
@@ -17,4 +17,6 @@ files_touched:
   - frontend/tests/e2e/new-report-multi-file.spec.ts
   - frontend/tests/e2e/drag-drop.spec.ts
   - docs/tasks/SL-59.md
-acceptance: [user request 2026-11-13: several PDFs on the New report screen]
+  - docs/PLAN.md
+acceptance: [SL-59]         # docs/PLAN.md, Wave F1 row (from the user's request of 2026-11-13)
+issue: 328

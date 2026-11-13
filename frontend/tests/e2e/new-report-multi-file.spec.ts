@@ -37,6 +37,34 @@ test('one PDF keeps the single-report flow', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeEnabled();
 });
 
+test('two PDFs with a photo are refused, and the screen stays on New report (#326)', async ({ page }) => {
+  await page.goto('/#/new');
+  await page.getByTestId('intake-file-input').setInputFiles([
+    pdf('mix-a.pdf'),
+    pdf('mix-b.pdf'),
+    { name: 'mix-c.png', mimeType: 'image/png', buffer: Buffer.from('x') },
+  ]);
+  await expect(page.getByRole('alert')).toContainText('Upload the PDFs and the photos separately');
+  await expect(page).toHaveURL(/#\/new/);
+  await expect(page.getByTestId('batch-screen')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeDisabled();
+});
+
+test('two PDFs and a photo dropped together are refused too', async ({ page }) => {
+  await page.goto('/#/new');
+  const dt = await page.evaluateHandle(() => {
+    const d = new DataTransfer();
+    d.items.add(new File(['%PDF-1.4'], 'drop-mix-a.pdf', { type: 'application/pdf' }));
+    d.items.add(new File(['%PDF-1.4'], 'drop-mix-b.pdf', { type: 'application/pdf' }));
+    d.items.add(new File(['x'], 'drop-mix-c.png', { type: 'image/png' }));
+    return d;
+  });
+  await page.locator('.dropzone').dispatchEvent('drop', { dataTransfer: dt });
+  await expect(page.getByRole('alert')).toContainText('Upload the PDFs and the photos separately');
+  await expect(page).toHaveURL(/#\/new/);
+  await expect(page.getByTestId('batch-screen')).toHaveCount(0);
+});
+
 test('one PDF with photos is refused and the message says what to do', async ({ page }) => {
   await page.goto('/#/new');
   await page.getByTestId('intake-file-input').setInputFiles([
