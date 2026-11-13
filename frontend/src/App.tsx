@@ -1,4 +1,5 @@
 import { ThemeToggle } from './components/ThemeToggle';
+import { TopbarTabs } from './components/TopbarTabs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, getAppConfig, listInstruments, type AppConfig, type Instrument, type ReportTemplate } from './api';
 import { AdminScreen } from './components/AdminScreen';
@@ -57,27 +58,6 @@ function parseHash(hash: string): Route {
 // shared across all of them: the instrument list (fetched once here and
 // threaded down, so a create/edit anywhere refreshes it everywhere) and the
 // app-wide confidence-threshold config.
-
-// Small outline icons for the phone's bottom bar (hidden on wide screens, where the tabs are text only).
-function TabIcon({ name }: { name: 'home' | 'new' | 'reports' | 'analytics' | 'templates' | 'instruments' | 'more' }) {
-  const common = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true, className: 'tab-icon' };
-  switch (name) {
-    case 'home':
-      return (<svg {...common}><path d="M4 11l8-7 8 7v9H4z" /><path d="M10 20v-6h4v6" /></svg>);
-    case 'new':
-      return (<svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></svg>);
-    case 'reports':
-      return (<svg {...common}><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5M10 13h6M10 17h6" /></svg>);
-    case 'analytics':
-      return (<svg {...common}><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></svg>);
-    case 'templates':
-      return (<svg {...common}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 10h16M10 10v10" /></svg>);
-    case 'more':
-      return (<svg {...common}><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></svg>);
-    case 'instruments':
-      return (<svg {...common}><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3" /><path d="M8 15h8" /></svg>);
-  }
-}
 
 export default function App() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
@@ -262,40 +242,7 @@ export default function App() {
         <button type="button" className="masthead masthead-link" data-testid="masthead-home" aria-label="ServiceLedger, go to Home" onClick={() => selectView('home')}>
           <span className="mark" /> ServiceLedger
         </button>
-        <nav className="view-tabs" aria-label="Main">
-          {/* Wide screens only: on a phone the five-tab bar is full, so Home is the first item of More. */}
-          <button className={`view-tab tab-wide-only ${view === 'home' ? 'active' : ''}`} data-testid="tab-home" aria-current={view === 'home' ? 'page' : undefined} onClick={() => selectView('home')}>
-            <TabIcon name="home" />
-            <span className="tab-label">Home</span>
-          </button>
-          <button className={`view-tab ${view === 'new' || view === 'batch' ? 'active' : ''}`} data-testid="tab-new" aria-current={view === 'new' || view === 'batch' ? 'page' : undefined} onClick={() => selectView('new')}>
-            <TabIcon name="new" />
-            <span className="tab-label">New report</span>
-          </button>
-          <button className={`view-tab ${view === 'reports' ? 'active' : ''}`} data-testid="tab-reports" aria-current={view === 'reports' ? 'page' : undefined} onClick={() => selectView('reports')}>
-            <TabIcon name="reports" />
-            <span className="tab-label">Reports</span>
-          </button>
-          <button className={`view-tab ${view === 'analytics' ? 'active' : ''}`} data-testid="tab-analytics" aria-current={view === 'analytics' ? 'page' : undefined} onClick={() => selectView('analytics')}>
-            <TabIcon name="analytics" />
-            <span className="tab-label">Analytics</span>
-          </button>
-          <button className={`view-tab tab-wide-only ${view === 'templates' ? 'active' : ''}`} data-testid="tab-templates" aria-current={view === 'templates' ? 'page' : undefined} onClick={() => selectView('templates')}>
-            <TabIcon name="templates" />
-            <span className="tab-label">Templates</span>
-          </button>
-          <button className={`view-tab ${view === 'instruments' ? 'active' : ''}`} data-testid="tab-instruments" aria-current={view === 'instruments' ? 'page' : undefined} onClick={() => selectView('instruments')}>
-            <TabIcon name="instruments" />
-            <span className="tab-label">Instruments</span>
-          </button>
-          <button className={`view-tab tab-phone-only ${view === 'more' ? 'active' : ''} ${view === 'templates' || view === 'admin' ? 'within' : ''}`} data-testid="tab-more" aria-current={view === 'more' ? 'page' : undefined} onClick={() => selectView('more')}>
-            <TabIcon name="more" />
-            <span className="tab-label">More</span>
-          </button>
-          <button className={`view-tab tab-wide-only tab-end ${view === 'admin' ? 'active' : ''}`} data-testid="tab-admin" aria-current={view === 'admin' ? 'page' : undefined} onClick={() => selectView('admin')}>
-            <span className="tab-label">Admin</span>
-          </button>
-        </nav>
+        <TopbarTabs view={view} onSelect={selectView} />
         {view !== 'new' && (
           <button className="btn primary topbar-new" data-testid="topbar-new-report" onClick={() => selectView('new')}>
             + New report
