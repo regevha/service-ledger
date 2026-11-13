@@ -5,6 +5,10 @@ Every agent loads this file, so it is kept short. Details live in `docs/team/`: 
 ## Team
 The session is the **lead/orchestrator**: it delegates, keeps the plan current, pushes branches and opens PRs. Agents: `product-manager` (brief, `AC-nn`, acceptance), `architect` (plan, `docs/tasks/SL-nn.yml`), `db-engineer` (models, migrations, seeds), `backend-dev` (`backend/app/`), `frontend-dev` (`frontend/` and its Vitest tests), `tester` (`backend/tests/`), `e2e-tester` (`frontend/tests/e2e*`, Playwright configs), `ux-reviewer` (design brief, review of the running app; read-only on code), `reviewer` (read-only review), `devops` (CI, Docker, `deploy/`), `project-manager` (status, wave reports).
 
+## Lead lock (sessions, not agents)
+- One lead session per repo, enforced by hooks (`.claude/settings.json`, `scripts/team/lead_lock.py`; details in `docs/team/process.md`). The session-start hook says who holds the lock.
+- Any change to the repo is made by the session holding the lock (directly or through agents, per the token budget). Take it first: `python3 scripts/team/lead_lock.py acquire --purpose "..."`. Without it, only answer and investigate; never work around the push/merge block.
+
 ## Rules every agent follows
 - Work only on your task, in your own worktree and branch (`SL-nn-...`), inside your spec's `files_touched`. Need another file: report it as a request. Never edit another agent's area.
 - Commit locally, never push. Use your own throwaway database (`service_ledger_<task>_<role>`) and ports when you need them, and clean both up. The shared test database and the Playwright ports are used by one agent at a time, as the lead says.
