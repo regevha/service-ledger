@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LoadError } from './LoadError';
 import {
-  listReports,
+  ApiError,
+  getReportItem,
   listReportsPage,
   type Instrument,
   type ReportFilters,
@@ -151,14 +152,14 @@ export function ReportsListScreen({
     // The list endpoint gives the full list item the detail screen takes; unfiltered,
     // so the current filters can't hide it.
     let cancelled = false;
-    listReports({})
-      .then((all) => {
-        if (cancelled) return;
-        const item = all.find((r) => r.id === path);
-        if (item) setScreen({ kind: 'report', item, returnTo: { kind: 'list' } });
-        else onPath?.('');
+    getReportItem(path)
+      .then((item) => {
+        if (!cancelled) setScreen({ kind: 'report', item, returnTo: { kind: 'list' } });
       })
-      .catch(() => undefined);
+      .catch((e: unknown) => {
+        // A report that no longer exists, or an address that is not a report: back to the list. Any other failure leaves the screen as it is.
+        if (!cancelled && e instanceof ApiError && (e.status === 404 || e.status === 422)) onPath?.('');
+      });
     return () => {
       cancelled = true;
     };

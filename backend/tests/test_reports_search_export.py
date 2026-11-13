@@ -266,3 +266,11 @@ def test_ranked_text_search_pages_too(client, seeded):
     paged = client.get("/reports", params={"q": "scan", "limit": 2, "offset": 2})
     assert [r["id"] for r in paged.json()] == [r["id"] for r in full[2:4]]
     assert paged.headers["X-Total-Count"] == "4"
+
+
+def test_one_report_as_a_list_row(client, seeded):
+    made = _seed_many(seeded, 2)
+    row = client.get(f"/reports/{made[1].id}/item")
+    assert row.status_code == 200
+    assert row.json() == next(r for r in client.get("/reports").json() if r["id"] == str(made[1].id))
+    assert client.get("/reports/00000000-0000-0000-0000-000000000000/item").status_code == 404

@@ -80,6 +80,11 @@ export async function listReportsPage(filters: ReportFilters, limit: number, off
   return { items: data, total: Number.isFinite(total) && headers.has('X-Total-Count') ? total : data.length };
 }
 
+/** One report as a list row, without loading the list. */
+export function getReportItem(reportId: string): Promise<ReportListItem> {
+  return apiFetch(`/reports/${reportId}/item`);
+}
+
 /** How many reports match, without loading them. */
 export async function countReports(filters: ReportFilters = {}): Promise<number> {
   return (await listReportsPage(filters, 1, 0)).total;

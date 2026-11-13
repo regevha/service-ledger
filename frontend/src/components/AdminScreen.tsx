@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listReports, reportsExportUrl, type Instrument, type ReportFilters, type ReportStatus, type ReportType } from '../api';
+import { countReports, reportsExportUrl, type Instrument, type ReportFilters, type ReportStatus, type ReportType } from '../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { useTheme } from '../theme';
 import { DateInput } from './DateInput';
@@ -74,9 +74,9 @@ function DataExport({ instruments }: { instruments: Instrument[] }) {
   useEffect(() => {
     let cancelled = false;
     const timer = window.setTimeout(() => {
-      listReports(JSON.parse(key) as ReportFilters)
-        .then((items) => {
-          if (!cancelled) setCount(items.length);
+      countReports(JSON.parse(key) as ReportFilters)
+        .then((total) => {
+          if (!cancelled) setCount(total);
         })
         .catch(() => {
           if (!cancelled) setCount(null);

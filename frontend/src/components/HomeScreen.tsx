@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ApiError, getHomeSummary, listReports, type HomeSummary, type Instrument, type ReportFilters, type ReportListItem } from '../api';
+import { ApiError, getHomeSummary, listReportsPage, type HomeSummary, type Instrument, type ReportFilters, type ReportListItem } from '../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { dueText, finalizedNote, instrumentLabel, keptAsReadPercent, maintenanceItems, MIN_FIELDS_FOR_PERCENT, waitingAge, waitingReports } from '../home';
 import { AskReportsBox } from './AskReportsBox';
@@ -87,13 +87,14 @@ export function HomeScreen({
 
   const load = useCallback(() => {
     return Promise.all([
-      listReports({ status: 'extracted' }),
-      listReports({ status: 'in_review' }),
+      // Only the newest few of each are shown, so only those are loaded; the counts come from the summary.
+      listReportsPage({ status: 'extracted' }, SHOWN, 0),
+      listReportsPage({ status: 'in_review' }, SHOWN, 0),
       getHomeSummary(),
     ])
       .then(([extracted, inReview, summary]) => {
         setError(null);
-        setData({ waiting: waitingReports(extracted, inReview), summary });
+        setData({ waiting: waitingReports(extracted.items, inReview.items), summary });
       })
       .catch((e: unknown) => setError(e instanceof ApiError ? e.message : 'Could not load the reports.'));
   }, []);
