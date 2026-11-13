@@ -192,6 +192,14 @@ SL-37 starts as soon as Wave A is merged and can run in parallel with Wave B. It
 
 Gate (not a task): external ingress only after SL-37..SL-55 are done and a rate limit is in place, then by a separate user decision. Production deploys stay manual and need the user's go-ahead.
 
+### Wave F1: UI follow-ups from the design sessions
+
+Small UI tasks that came from design notes made in claude.ai sessions. The criteria here are the checkable version of those notes; the specs trace to these rows.
+
+| ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
+|---|---|---|---|---|---|---|
+| SL-56 | frontend-dev | On desktop and tablet, top bar tabs that do not fit fold into a More menu instead of wrapping or being cut off. Issue #321, #322, #323. | At 1280 and 1100 px all tabs show, with no More button, and Admin sits at the right end. Narrower, tabs leave from the right into More and come back as space returns; the row never scrolls sideways or wraps. The current view's tab never folds (#322). More is a keyboard menu (Arrow keys, Home, End, Escape returns focus to More). Phone layout unchanged. The full e2e suite is green at Playwright's 1280 px default. A reviewer looks at the running app at 1280, 1100, 900 and 700 px and at 200% zoom. | `frontend/src/App.tsx`, `frontend/src/App.css`, `frontend/src/components/TopbarTabs.tsx` (new), `frontend/src/topbarOverflow.ts` (new), `frontend/src/topbarOverflow.test.ts` (new), `frontend/src/styles/12-topbar-more.css` (new), `frontend/tests/e2e/topbar-more-menu.spec.ts` (new), `docs/PLAN.md` | none | done |
+
 ## File-overlap check
 
 Files touched by more than one task, and how the overlap is resolved:

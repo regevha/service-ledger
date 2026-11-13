@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PHONE_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
-import { visibleTabCount } from '../topbarOverflow';
+import { shownTabs } from '../topbarOverflow';
 
 type IconName = 'home' | 'new' | 'reports' | 'analytics' | 'templates' | 'instruments' | 'more';
 
@@ -42,7 +42,8 @@ const TABS: Tab[] = [
 
 /**
  * The top bar's view tabs. On desktop and tablet widths the tabs that do not fit leave from the right,
- * one at a time, into a "More" menu. A phone keeps its bottom tab bar and its own More tab.
+ * one at a time, into a "More" menu; the current view's tab never leaves (see shownTabs).
+ * A phone keeps its bottom tab bar and its own More tab.
  * Tabs that do not fit stay in the page (invisible, out of the row) so they can still be measured.
  */
 export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: TabTarget) => void }) {
@@ -51,8 +52,10 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
   const moreRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [visible, setVisible] = useState(TABS.length);
+  // Which tabs stay in the row, one bit per tab in TABS order (a number, so an unchanged answer does not re-render).
+  const [shownBits, setShownBits] = useState((1 << TABS.length) - 1);
   const [open, setOpen] = useState(false);
+  const activeIndex = TABS.findIndex((t) => t.isActive(view));
 
   const measure = useCallback(() => {
     const nav = navRef.current;
@@ -60,8 +63,10 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
     const widths = TABS.map((t) => tabRefs.current[t.id]?.getBoundingClientRect().width ?? 0);
     const moreWidth = moreRef.current?.getBoundingClientRect().width || 90;
     const gap = parseFloat(getComputedStyle(nav).columnGap) || 0;
-    setVisible(visibleTabCount(widths, nav.clientWidth, moreWidth, gap));
-  }, []);
+    const mask = shownTabs(widths, nav.clientWidth, moreWidth, gap, activeIndex);
+    setShownBits(mask.reduce((bits, on, i) => (on ? bits | (1 << i) : bits), 0));
+    // A new current view can change which tab has to stay, so measuring starts again when it changes (below).
+  }, [activeIndex]);
 
   // The observer reports once when it starts and again on every size change of the row or the window.
   useLayoutEffect(() => {
@@ -90,8 +95,8 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
     };
   }, [measure]);
 
-  const shown = phone ? TABS.length : visible;
-  const hidden = TABS.slice(shown);
+  const isShown = (i: number) => phone || (shownBits & (1 << i)) !== 0;
+  const hidden = TABS.filter((_, i) => !isShown(i));
   const moreActive = hidden.some((t) => t.isActive(view));
   const menuOpen = open && hidden.length > 0 && !phone;
   // Nothing is folded any more (wider window or a phone): forget that the menu was open.
@@ -143,7 +148,7 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
     <nav className="view-tabs" aria-label="Main" ref={navRef}>
       {TABS.map((t, i) => {
         const active = t.isActive(view);
-        const out = !phone && i >= shown;
+        const out = !isShown(i);
         return (
           <button
             key={t.id}

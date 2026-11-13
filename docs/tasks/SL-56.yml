@@ -7,6 +7,7 @@ depends_on: []
 migration: false
 files_touched:
   - docs/tasks/SL-56.yml
+  - docs/PLAN.md
   - frontend/src/App.tsx
   - frontend/src/components/TopbarTabs.tsx
   - frontend/src/topbarOverflow.ts
@@ -14,4 +15,5 @@ files_touched:
   - frontend/src/App.css
   - frontend/src/styles/12-topbar-more.css
   - frontend/tests/e2e/topbar-more-menu.spec.ts
-acceptance: [design artifact "ServiceLedger: top bar, tabs collapse into More"]
+acceptance: [SL-56]         # docs/PLAN.md, Wave F1 row
+issue: 321
