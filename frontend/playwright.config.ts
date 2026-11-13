@@ -1,5 +1,7 @@
 import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
+import { BACKEND_PORT, E2E_DATABASE_URL } from './playwright.ports';
+import { suiteAuth } from './tests/e2e/helpers/auth';
 
 // Pinned to this exact executable only where it actually exists (the cloud
 // sandbox this suite was first written in, which pre-installs Chromium here
@@ -26,11 +28,7 @@ const PINNED_CHROMIUM = existsSync(SANDBOX_CHROMIUM) ? SANDBOX_CHROMIUM : undefi
 // "8001" literal — changing this without also catching every duplicate used
 // to be exactly the kind of drift nothing would catch until a spec started
 // failing for an unrelated-looking reason.
-export const BACKEND_PORT = 8001;
 const FRONTEND_PORT = 5174;
-// Exported for the same reason as BACKEND_PORT above — playwright.live.config.ts
-// imports this instead of redefining its own copy of the literal.
-export const E2E_DATABASE_URL = 'postgresql+psycopg2://service_ledger:service_ledger_dev@localhost:5432/service_ledger_e2e';
 
 // Launch settings for the Chromium-based projects only. undefined PINNED_CHROMIUM (see above) falls back
 // to Playwright's own installed browser, which is what every machine other than that one sandbox needs.
@@ -72,6 +70,7 @@ export default defineConfig({
 
   use: {
     baseURL: `http://localhost:${FRONTEND_PORT}`,
+    ...suiteAuth(),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

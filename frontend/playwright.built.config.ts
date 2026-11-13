@@ -2,7 +2,8 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
-import { E2E_DATABASE_URL } from './playwright.config';
+import { E2E_DATABASE_URL } from './playwright.ports';
+import { suiteAuth } from './tests/e2e/helpers/auth';
 
 // The suite against what is actually deployed: the production build of the page, served by the
 // backend itself (FRONTEND_DIST_DIR), behind the shared password. No Vite server, one origin, so the
@@ -44,7 +45,7 @@ export default defineConfig({
     baseURL: ORIGIN,
     // Sent with every request, including the specs' direct API calls. The gate spec opens its own
     // contexts when it needs none or the wrong one.
-    httpCredentials: { username: 'tester', password: BUILT_PASSWORD, send: 'always' },
+    ...suiteAuth(BUILT_PASSWORD),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     launchOptions: {

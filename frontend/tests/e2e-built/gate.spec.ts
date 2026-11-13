@@ -1,5 +1,6 @@
 import { test, expect } from '../e2e/coverage';
 import { seedReport } from '../e2e/helpers/api';
+import { noCredentials, asUser } from '../e2e/helpers/auth';
 
 // The shared password in front of the whole app, as a browser meets it on the built page.
 // (playwright.built.config.ts runs these with the right password already set; a spec that needs
@@ -9,7 +10,7 @@ const ORIGIN = process.env.API_BASE_URL!;
 const BUILT_PASSWORD = process.env.BUILT_PASSWORD!;
 
 test('without a password the page and the API both answer 401 with a Basic challenge', async ({ browser }) => {
-  const context = await browser.newContext({ baseURL: ORIGIN, httpCredentials: undefined });
+  const context = await browser.newContext({ baseURL: ORIGIN, ...noCredentials });
   try {
     const page = await context.newPage();
     const response = await page.goto('/');
@@ -26,7 +27,7 @@ test('without a password the page and the API both answer 401 with a Basic chall
 test('a wrong password is refused', async ({ browser }) => {
   const context = await browser.newContext({
     baseURL: ORIGIN,
-    httpCredentials: { username: 'tester', password: 'not-the-password-0000', send: 'always' },
+    ...asUser('not-the-password-0000'),
   });
   try {
     const page = await context.newPage();
@@ -40,7 +41,7 @@ test('a wrong password is refused', async ({ browser }) => {
 test('the right password reaches the app, and any user name will do', async ({ browser }) => {
   const context = await browser.newContext({
     baseURL: ORIGIN,
-    httpCredentials: { username: 'someone-else', password: BUILT_PASSWORD, send: 'always' },
+    ...asUser(BUILT_PASSWORD, 'someone-else'),
   });
   try {
     const page = await context.newPage();
@@ -53,7 +54,7 @@ test('the right password reaches the app, and any user name will do', async ({ b
 });
 
 test('/health stays open without a password and reveals nothing else', async ({ browser }) => {
-  const context = await browser.newContext({ baseURL: ORIGIN, httpCredentials: undefined });
+  const context = await browser.newContext({ baseURL: ORIGIN, ...noCredentials });
   try {
     const res = await context.request.get('/health');
     expect(res.status()).toBe(200);
@@ -75,7 +76,7 @@ test('a scan downloads through the gate, and not without the password', async ({
   expect(ok.headers()['content-type']).toContain('pdf');
   expect((await ok.body()).subarray(0, 4).toString()).toBe('%PDF');
 
-  const context = await browser.newContext({ baseURL: ORIGIN, httpCredentials: undefined });
+  const context = await browser.newContext({ baseURL: ORIGIN, ...noCredentials });
   try {
     expect((await context.request.get(`/attachments/${attachmentId}/file`)).status()).toBe(401);
   } finally {

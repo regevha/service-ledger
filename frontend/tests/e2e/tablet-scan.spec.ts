@@ -2,7 +2,7 @@ import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
 import { createNumericTemplate } from './numeric-fixture';
-import { BACKEND_PORT } from '../../playwright.config';
+import { BACKEND_PORT } from '../../playwright.ports';
 
 // Tablet widths (621-899px) have no room for the scan beside the form either, so they get the same
 // Fields | Scan switch as a phone; at 900px the scan sits beside the form.

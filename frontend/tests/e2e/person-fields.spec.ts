@@ -1,7 +1,7 @@
 import { type APIRequestContext } from '@playwright/test';
 import { test, expect } from './coverage';
 import { uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
+import { BACKEND_PORT } from '../../playwright.ports';
 
 // Fields a person fills in (fault category) are not
 // printed on the form. The model still suggests a value, but Review always asks for it to

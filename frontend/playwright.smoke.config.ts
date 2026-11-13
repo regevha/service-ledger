@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { suiteAuth } from './tests/e2e/helpers/auth';
 
 // A short check of a deployment that is already running, to be run right after a deploy
 // (deploy/smoke.sh does it). No servers are started and nothing is built: it talks to the address
@@ -33,6 +34,6 @@ export default defineConfig({
   timeout: 120_000,
   use: {
     baseURL: BASE_URL,
-    httpCredentials: { username: 'smoke', password: SMOKE_PASSWORD, send: 'always' },
+    ...suiteAuth(SMOKE_PASSWORD, 'smoke'),
   },
 });

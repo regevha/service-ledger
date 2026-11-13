@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from './coverage';
 import { uniqueFixture, uniquePdf } from './unique-upload';
-import { BACKEND_PORT } from '../../playwright.config';
+import { BACKEND_PORT } from '../../playwright.ports';
 
 // Leaving a screen that has unsaved edits (PR 3 of the review-and-finalize plan): a tab, the browser's
 // Back button, a screen's own Back and "Back to Classify" all ask first: Stay, Discard changes, Save and leave.
