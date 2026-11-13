@@ -92,3 +92,21 @@ def test_a_fillable_forms_typed_values_are_drawn_on_the_page_image(client):
     # The field sits at y 700..740 of an 842-high page (scale 1 at width 595).
     box = img.crop((100, 842 - 740, 400, 842 - 700))
     assert min(box.getdata()) < 100, "the typed value is missing from the page image"
+
+
+def test_upload_stores_the_real_page_count(client):
+    report = client.post("/reports", json={"technician_name": "R. Tester"}).json()
+    sent = client.post(f"/reports/{report['id']}/attachments", files={"file": ("two.pdf", _two_page_pdf(), "application/pdf")})
+    assert sent.status_code == 201 and sent.json()["page_count"] == 2
+    assert client.get(f"/reports/{report['id']}").json()["attachments"][0]["page_count"] == 2
+
+
+def test_an_image_is_one_page_and_an_unreadable_pdf_falls_back_to_one(client):
+    from app.services.page_text import count_pdf_pages
+
+    buf = io.BytesIO()
+    Image.new("RGB", (20, 20), "white").save(buf, "PNG")
+    att = _upload(client, "scan.png", buf.getvalue(), "image/png")
+    assert client.get(f"/attachments/{att}/pages").json() == {"page_count": 1}
+    assert count_pdf_pages(b"%PDF-1.4 this is not a real pdf") == 1
+    assert count_pdf_pages(_two_page_pdf()) == 2
