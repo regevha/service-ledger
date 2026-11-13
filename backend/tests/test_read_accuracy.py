@@ -178,3 +178,74 @@ def test_stub_translation_applies_the_glossary(client, tmp_path):
         result = translation.translate(a)
     assert "yearly PM" in result.translated_text
     assert any(n.startswith("Glossary:") for n in result.notes)
+
+
+def test_glossary_validation_and_lookups(client):
+    import uuid
+
+    import pytest
+
+    from app.services.domain_errors import InvalidError, NotFoundError
+
+    with TestSessionLocal() as db:
+        with pytest.raises(InvalidError, match="at most"):
+            glossary.create_term(db, None, "x" * 121, "right", None)
+        with pytest.raises(InvalidError, match="the same"):
+            glossary.create_term(db, None, "Laser Alignment", "laser alignment", None)
+        with pytest.raises(NotFoundError):
+            glossary.update_term(db, uuid.uuid4(), {"note": "x"})
+        term = glossary.create_term(db, "כיוון", None, "alignment", "a note")
+        with pytest.raises(InvalidError, match="blank"):
+            glossary.update_term(db, term.id, {"english_term": "  "})
+    block = glossary.prompt_block([SimpleNamespace(source_term=None, wrong_term="x y", english_term="z", note="n")])
+    assert '- use "z"; never write "x y" (n)' in block
+    text, fixes = glossary.apply_fixes("LASER DIRECTION", [SimpleNamespace(wrong_term="laser direction", english_term="laser alignment")])
+    assert text == "LASER ALIGNMENT" and fixes[0].times == 1
+    assert glossary.apply_fixes("abc", [SimpleNamespace(wrong_term=None, english_term="z")]) == ("abc", [])
+
+
+def test_values_are_shown_as_one_short_line():
+    from app.services.read_accuracy import MAX_SHOWN, _show
+
+    assert _show(None) == ""
+    assert _show(True) == "yes" and _show(False) == "no"
+    assert _show([{"part": "valve", "qty": 1}]) == '[{"part": "valve", "qty": 1}]'
+    assert _show("a\n  b") == "a b"
+    long = _show("x" * 500)
+    assert len(long) == MAX_SHOWN and long.endswith("…")
+
+
+def test_report_names_in_the_corrections_list(client):
+    with TestSessionLocal() as db:
+        instrument = models.Instrument(name="Lab Aria", model="FACSAria III", serial_number=f"SN-{datetime.now().timestamp()}", manufacturer="BD")
+        db.add(instrument)
+        db.flush()
+        r = _finalized(db, {"a": "1"}, {"a": "2"})
+        r.instrument_id = instrument.id
+        db.commit()
+    [c] = client.get("/analytics/read-accuracy").json()["corrections"]
+    assert c["instrument"] == "Lab Aria (FACSAria III)" and c["form"] == "No form"
+
+
+def test_live_translate_prompt_gets_the_glossary(client, monkeypatch, tmp_path):
+    from app.services import translation
+
+    seen = {}
+
+    def fake_call(**kw):
+        seen["prompt"] = kw["request_kwargs"]["messages"][0]["content"][1]["text"]
+        raise translation.TranslationError("stop here")
+
+    monkeypatch.setattr(translation, "call_claude_tool", fake_call)
+    monkeypatch.setattr(translation, "claude_content_block", lambda path: {"type": "text", "text": "doc"})
+    monkeypatch.setattr(translation, "_get_client", lambda: None)
+    terms = [SimpleNamespace(source_term="כיוון לייזר", wrong_term="laser direction", english_term="laser alignment", note=None)]
+    import pytest
+
+    with pytest.raises(translation.TranslationError):
+        translation._live_translate(SimpleNamespace(file_path=str(tmp_path / "x.pdf")), [], terms)
+    assert 'never write "laser direction"' in seen["prompt"]
+    result = translation.TranslationResult("he", 0.9, "Laser direction ok", [], [], [])
+    fixed = translation._apply_glossary(result, terms)
+    assert fixed.translated_text == "Laser alignment ok" and fixed.notes
+    assert translation._apply_glossary(result._replace(translated_text="fine"), terms).notes == []
