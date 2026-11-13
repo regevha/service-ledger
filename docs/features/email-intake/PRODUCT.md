@@ -1,6 +1,6 @@
 # Email intake: product brief
 
-Status: draft, waiting for the user's answers (see "Open questions").
+Status: questions answered 2026-11-13; ready for the architect. No open product questions.
 Owner: product-manager. Date: 2026-11-13.
 
 ## Problem and users
@@ -12,21 +12,24 @@ Today a report enters only through the web upload (single file or batch on Home)
 Users:
 - **Sender**: a core facility manager or technician who has a service report PDF (often forwarded by the vendor) and would rather email it than open the app.
 - **Approver**: the person who checks and approves reports. Today this is anyone behind the shared password. Per-user sign-in is planned (Wave C, SL-38 onward) but not built.
+- **Admin**: manages the allow list and the "Check: maybe not a service report" list.
 
 ## Goals
 
-- A person emails a PDF to one dedicated address and the report appears in the app as a draft, read and ready to check.
-- Unsafe or irrelevant mail never reaches the reading step, and the sender is told why.
+- A person emails a PDF to one dedicated address and the report appears in the app as a draft, ready to check.
+- Unsafe or irrelevant mail never reaches the reading step, and the allowed sender is told why.
+- Every report shows and records where it came from.
 - Nothing is approved by email intake. A person still checks and approves in the app.
 
 ## Non-goals (not built in the first version)
 
 - Auto-approval of any report.
 - Reading the email body as report content, or storing it.
-- Replying with edits in free text ("change the date to ...").
+- Any reply-email confirmation or correction (see US-6, `later`).
 - Several mailboxes, per-institute mailboxes, mail rules or folders.
 - Creating or hosting the production mailbox (a deployment task for the owner; the app only needs its connection details).
 - Sign-in, roles and user accounts (separate plan, SL-38 onward).
+- A real malware scanner (`later`, with the production mailbox).
 - Live Claude calls in the demo (stub mode stays the default).
 
 ## User stories and acceptance criteria
@@ -34,108 +37,98 @@ Users:
 ### US-1 Send a report by email (must)
 As a sender, I email a PDF to the intake address and get the report as a draft in the app.
 
-- AC-01 (must): An email from an allowed sender with one PDF attachment produces one draft report in the app, shown with the same reading result as a web upload of that file. It is not approved.
-- AC-02 (must): An email with several PDFs produces one draft per PDF, up to 10 per email. Files beyond that are left out and the sender is told.
-- AC-03 (must): Drafts from email are marked as "Received by email" and show the received time, so the approver can tell them from web uploads. They are not marked with the sender's address.
+- AC-01 (must): An email from an allowed sender with one PDF attachment that is a recognised service report produces one draft in the app, shown with the same reading result as a web upload of that file. It is not approved.
+- AC-02 (must): An email with several PDFs produces one outcome per PDF, up to 10 per email. Files beyond that are left out and the sender is told.
+- AC-03 (must): Drafts from email are marked "Received by email" and show the received time, so the approver can tell them from web uploads.
 - AC-04 (must): The first version works without a real mailbox: a local fake mailbox (a folder or a test double the app reads from) lets the demo and the tests send a message and see the draft. Gmail is an optional real mailbox for the demo.
-- AC-05 (must): An email with no attachment, or only unsupported ones, creates nothing and the sender gets a short reply saying what to send.
+- AC-05 (must): An email with no attachment, or only unsupported ones, creates nothing and an allowed sender gets a short reply saying what to send.
 
 ### US-2 Unsafe or irrelevant mail is stopped (must)
 As the owner, I want only safe service reports to reach the reading step.
 
 - AC-06 (must): Only PDF attachments are taken. Images, Office files, archives, executables, scripts and any file whose content is not really a PDF (wrong type for its name) are refused.
-- AC-07 (must): A PDF over the existing PDF upload limit (20 MB today) is refused with the limit stated. The same limit applies to web and email.
-- AC-08 (must): A PDF that is encrypted, damaged, has no readable pages, has active content (embedded scripts, launch actions, embedded files) or fails a malware scan is refused and never opened by the reading step. The sender is told "could not be accepted" without technical detail.
+- AC-07 (must): A PDF over the existing PDF upload limit (20 MB today) is refused with the limit stated. Web and email share the one limit.
+- AC-08 (must): The structural PDF check refuses a PDF that is not a real PDF, is encrypted, is damaged or has no readable pages, or contains JavaScript, launch actions or embedded files. Such a file is never opened by the reading step. The sender is told "could not be accepted" without technical detail.
 - AC-09 (must): Text in the email subject, body or PDF that tries to give the system instructions has no effect: it changes no setting, sender, role or report field. The tester checks this with an invented example.
-- AC-10 (must): A PDF that is not a service report (the classifier finds no instrument or report type it knows) is not loaded as a draft. The sender is told it was not recognised as a service report. It is kept out of the report list (see rule R-9 for what is kept).
-- AC-11 (must): Mail from an address that is not on the allowed list creates nothing. No reply is sent to it (see R-4), and the refusal is visible to admins in a log or a screen.
-- AC-12 (must): Every refused or stopped message leaves an admin-visible entry: time, reason, number of files. It holds no body text, no attachment name and no sender address beyond what R-6 allows.
+- AC-10 (must): Relevance means "is this a service report for a lab instrument", not "do we already have its template". Each PDF ends in exactly one of four outcomes:
+  1. Recognised form: loads as a draft and is read as usual.
+  2. Service report with no matching template (new maker or report type): loads as a draft marked "needs a report type". A person picks or creates the type before it is read, using the existing template-suggestion step. Not read by Claude before that.
+  3. Clearly not a service report (invoice, CV, random PDF, a malicious test file): refused, and the allowed sender is told why. Nothing is kept (R-9).
+  4. Unsure: held in a separate "Check: maybe not a service report" list. It is not read by Claude (so it does not use the daily cap) and is not in the review list. An admin can release it for reading or delete it.
+- AC-11 (must): Mail from an address or domain that is not on the allow list creates nothing and gets no reply (R-4). The refusal is visible to admins in a log or screen.
+- AC-12 (must): Every refused or held message leaves an admin-visible entry: time, outcome, reason, number of files. It holds no body text and no attachment name. It holds the sender address only for allowed senders.
+- AC-26 (must): The "Check: maybe not a service report" list shows, for each held file, the received time, the sender label and the reason it was held. An admin can release or delete each one, and the screen says exactly what delete removes.
 
 ### US-3 Know what happened (must)
-As a sender, I want to know if my email worked.
+As an allowed sender, I want to know if my email worked. One short email per message, never one per file.
 
-- AC-13 (must): Within 5 minutes of sending (stub mode, demo size files), the sender gets one reply per email. On success it says how many drafts were created and that a person still has to approve them. On failure it says which file failed and why in plain words.
-- AC-14 (must): Replies never contain extracted field values, other people's data or a link that works without sign-in or the shared password.
-- AC-15 (must): A reply is sent only to an allowed sender, to the address the message came from, never to a Reply-To or other header address.
-- AC-16 (must): If the daily limit of Claude jobs (60) is reached, the email is not lost: the sender is told it is waiting, and the report is read when the limit resets, or the sender is told to resend. Which of the two is rule R-8.
+- AC-13 (must): Within 5 minutes of sending (stub mode, demo-size files), an allowed sender gets exactly one reply per email. It covers every file in it and says one of: "received, waiting for approval"; "held for a check"; "refused", with the reason in plain words. A mixed email lists each file's outcome in the one reply.
+- AC-14 (must): Replies never contain extracted field values, other people's data, or a link that works without sign-in or the shared password.
+- AC-15 (must): A reply goes only to an allowed sender, to the address the message came from, never to a Reply-To or other header address. Replies carry no instruction to reply with content; the first version reads no replies (US-6).
+- AC-16 (must): If the daily limit of Claude jobs (60) is reached, the email is not lost: the sender is told it is waiting and the report is read after the limit resets (R-8). Files held under outcome 4 never use the cap.
 
 ### US-4 Duplicates (must)
 - AC-17 (must): The same PDF bytes as a report already read are not loaded again. The reply says it is already in the system, without opening it to the sender.
-- AC-18 (must): The same email delivered twice (same message ID) creates drafts once.
+- AC-18 (must): The same email delivered twice (same message ID) creates outcomes once and sends one reply.
 - AC-19 (must): A matching work-order number only warns on the draft, as for web upload. It never blocks.
 
-### US-5 Whose report is it (must for the answer, build depends on Q1)
-- AC-20 (must): Each draft from email is linked to the person or label the sender address maps to (see Q1), and the review screen shows it.
-- AC-21 (must): An admin can add, remove and list allowed sender addresses. Removing one stops new mail at once and does not delete existing drafts.
+### US-5 Whose report is it, and where it came from (must)
+- AC-20 (must): The admin allow list holds single addresses and whole domains. Each entry has a team or role label (for a domain, one label for the whole domain). A draft from a listed sender is loaded for that label and shows it on the review screen.
+- AC-21 (must): Only an admin can add, remove and list allow-list entries. Removing one stops new mail at once and does not delete existing drafts.
+- AC-27 (must): Each email-sourced report records where it came from: the sender address (as received), the label that matched, the received time and how it arrived (email). This is stored beside the report, not in a report field.
+- AC-28 (must): The source (sender, label, received time) is shown inside the app on the draft and on the report page, for web uploads as well as email ("Uploaded in the app" for web, with the uploader once sign-in exists).
+- AC-29 (must): The source never appears in report fields, the CSV export, or anything shared with another institute. A tester exports a report that came by email and finds no sender address or label.
+- AC-30 (must): If a sender's allow-list entry is later removed or changed, the source already recorded on past reports stays as it was.
+- AC-31 (later): When sign-in arrives, a label is linked to a user row, and the uploader is recorded for web uploads the same way.
 
-### US-6 Confirm by reply (later, depends on Q3)
-- AC-22 (later): After reading, the sender gets a reply listing the main facts read (instrument, report type, date). Replying "yes" approves nothing by itself; it moves the draft to "confirmed by sender" for the approver.
-- AC-23 (later): A "yes" from a different address than the original sender, or arriving after 7 days, is ignored.
+### US-6 Reply-email confirmation and corrections (later)
+- AC-22 (later): Reply-email confirmation is not in the first version. One notification email per message is all the sender receives, and replies to it are ignored.
+- AC-23 (later, trigger): If reading accuracy stays below 99%, replies that carry corrections (option C in the old Q3) may be added. Needs its own brief: matching a reply to its draft, accepting it only from the original sender within a time limit, and a second approval by a person.
 
 ### US-7 Privacy (must)
-- AC-24 (must): Email body text, subject, attachment names and sender addresses never appear in any report field, prompt, fixture, log line or screenshot. They go through the same rules as other document text (`services/privacy.py`).
-- AC-25 (must): The body is not stored. The sender address is stored only as needed to apply Q1 and the allow list. Raw message copies are deleted once handled (see R-9).
+- AC-24 (must): Email body text, subject, attachment names and sender addresses never appear in any report field, prompt, fixture, log line or screenshot. Document text taken from PDFs goes through the same rules as other uploads (`services/privacy.py`).
+- AC-25 (must): The body is not stored. The sender address is stored only as provenance (AC-27) and in the allow list. Raw message copies are deleted once handled (R-9).
+- AC-32 (must): The allow list lives in the database and is managed only by admins. No address is in the repo, seed files, fixtures or tests (tests use invented addresses at a reserved example domain).
+
+### US-8 Real malware scanning (later)
+- AC-33 (later): A real malware scanner is added as an extra layer with the production mailbox. The structural PDF check (AC-08) stays.
 
 ## Product rules
 
 | # | Rule | Status |
 |---|------|--------|
 | R-1 | Email intake only makes drafts. A person approves in the app. | decided (user: "before final approval") |
-| R-2 | PDF only. Images stay web-upload only. | assumed (email image attachments are mostly signatures and logos) |
+| R-2 | PDF only. Images stay web-upload only. | assumed |
 | R-3 | Same size limit and duplicate rules as web upload. | assumed |
-| R-4 | Mail from unknown senders is dropped silently (no reply), so the address cannot be probed and nobody can use the app to send mail to others. | assumed |
+| R-4 | Mail from unknown senders is dropped silently (no reply). | decided 2026-11-13 (Q5: unknown senders get nothing) |
 | R-5 | One intake address for the whole app. | assumed |
-| R-6 | Stored about a message: received time, message ID, sender address (while it is on the allow list), outcome. Nothing else. | assumed |
-| R-7 | Email counts toward the 60 Claude jobs per day, same as web upload. | decided (daily cap) |
-| R-8 | When the daily cap is hit, the email waits in the queue and is read after the reset; the sender is told. | assumed |
-| R-9 | A refused or non-service-report PDF is not kept. The raw message is deleted when handled, success or not. | assumed (retention can be raised later) |
+| R-6 | Stored about a message: received time, message ID, outcome, and for allowed senders the address and matched label. Nothing from the body. | assumed |
+| R-7 | Email counts toward the 60 Claude jobs per day, same as web upload. Held files (outcome 4) do not. | decided (daily cap; Q4) |
+| R-8 | When the daily cap is hit, the email waits and is read after the reset; the sender is told. | assumed |
+| R-9 | A refused file is not kept. The raw message is deleted when handled. Held files are kept only until an admin releases or deletes them. | assumed |
 | R-10 | Max 10 PDFs per email. A sender may send at most 20 emails per hour; more are dropped. | assumed |
-| R-11 | Drafts are shared with the whole app (everyone behind the password sees them), until sign-in exists. | open (Q1) |
-| R-12 | Reply-email confirmation is not in the first version. | open (Q3) |
-| R-13 | Real mailbox: Gmail for the demo; production mailbox is created by the owner on Azure or Microsoft 365. Credentials are secrets, never in the repo. | decided (user: Gmail for the demo) |
+| R-11 | Allow list of addresses and whole domains, each with a team or role label, managed by admins, stored in the database. A listed sender's mail loads as a draft for that label. The label links to a user row when sign-in arrives. | decided 2026-11-13 (Q1, Q2) |
+| R-12 | No reply-email confirmation in the first version. One notification email per message. Corrections by reply may come later if accuracy stays below 99%. | decided 2026-11-13 (Q3) |
+| R-13 | Gmail for the demo; the production mailbox is created by the owner. Credentials are secrets, never in the repo. | decided (user: Gmail for the demo) |
 | R-14 | English UI and English replies. | decided |
+| R-15 | The source (sender address and label) is stored as provenance beside the report, not as a report field. It is shown inside the app, and stays out of report fields, the CSV export and anything shared with another institute. | assumed (lead's reading of "show and document where the report came from"; user may overrule) |
+| R-16 | Relevance = "a service report for a lab instrument", with four outcomes (AC-10). | decided 2026-11-13 (Q4) |
+| R-17 | Reply to allowed senders only, one short email per message. The demo uses the structural PDF check; a real scanner is `later`. | decided 2026-11-13 (Q5) |
+| R-18 | Labels are team or role names, not personal names. | assumed (privacy rule) |
 
-## Open questions (most important first)
+## Open questions
 
-### Q1. Which user does a report belong to, given there are no accounts yet?
-The user wants the report loaded "for the relevant user according to the email it was received from". No users exist today.
-- A. Allow list of sender addresses, each with a display name (for example a first name or a team label). Drafts show that label. When sign-in arrives, each entry is linked to a user row.
-- B. All email drafts land in one shared "Email inbox" list. Owner mapping waits for sign-in.
-- C. Wait until sign-in (SL-38+) is built, then do email intake.
-Recommendation: A. It gives the user what was asked, works in the demo, and the allow list is also the safety check for unknown senders. The label must be a team or role name, not a full personal name, to respect the privacy rule (see Q2).
-Blocks: AC-11, AC-20, AC-21, the data model, and the architect's plan.
-
-### Q2. May the allow list hold personal email addresses, and may the app show who sent a draft?
-Reports are shared between institutes. An email address is contact detail.
-- A. Addresses are stored only in the allow list (admin screen), never in report fields or on shared reports. The draft shows the label from Q1 only inside this app.
-- B. Allow whole domains (for example the institute's domain) instead of single addresses; no per-person label.
-- C. Show the address on the draft.
-Recommendation: A, with B as an optional extra later. C breaks the privacy rule.
-Blocks: AC-03, AC-24, AC-25, R-6.
-
-### Q3. Is the reply-email confirmation wanted now?
-- A. Not in the first version (marked "later").
-- B. Yes, in the first version: reply "yes" moves the draft to "confirmed by sender".
-- C. Reply with corrections too.
-Recommendation: A. It needs reply-thread matching and a second security check, and adds little while a person approves anyway. Revisit when sign-in exists.
-Blocks: AC-22, AC-23, R-12.
-
-### Q4. What should "relevant" mean?
-- A. The classifier must recognise an instrument and a report type it knows. Anything else is stopped (AC-10).
-- B. Stricter: also require the instrument to already exist in the app.
-- C. Looser: load everything that is a clean PDF and let the approver reject.
-Recommendation: A. B blocks first reports of a new instrument; C wastes Claude jobs and fills the list.
-Blocks: AC-10, R-9.
-
-### Q5. Is a reply to the sender acceptable, and is a malware scan required in the demo?
-- A. Reply to allowed senders only (R-4); in the demo the scan is the structural PDF check (AC-08) and a real scanner is added for the Azure mailbox.
-- B. No replies at all. Result is shown only in the app.
-- C. Real malware scanner required before the demo.
-Recommendation: A. Replies are what the user asked for; a real scanner needs infrastructure the owner has not chosen yet.
-Blocks: AC-08, AC-13, the Azure mailbox task.
+None. Q1 to Q5 were answered by the user on 2026-11-13 (see Changes).
 
 ## Cheap details, assumed (tell me to change any)
-R-2, R-3, R-4, R-5, R-6, R-8, R-9, R-10 above; also the 5-minute reply time in AC-13 and the 10-file limit in AC-02.
+R-2, R-3, R-5, R-6, R-8, R-9, R-10, R-15, R-18; the 5-minute reply time in AC-13 and the 10-file limit in AC-02.
 
 ## Changes
-(none yet)
+
+- 2026-11-13: User answered Q1 to Q5.
+  - Q1 (A): allow list with labels. Recorded as R-11; AC-20, AC-21 updated.
+  - Q2 (A, B and C): addresses stay in the admin allow list; whole domains allowed; where a report came from is shown and recorded. Added AC-27 to AC-30, AC-32; R-15 recorded as `assumed`. This replaces the earlier "never show the sender" wording in AC-03.
+  - Q3 (A now, C later): confirmation stories moved to `later` with the 99% accuracy trigger (AC-22, AC-23, R-12).
+  - Q4 (new option): relevance is "a service report for a lab instrument", four outcomes. Rewrote AC-10, added AC-26 for the held list, updated R-7, R-9, R-16.
+  - Q5 (A): one reply per message to allowed senders only. AC-13 and AC-15 updated; structural PDF check in AC-08; real scanner `later` (AC-33); R-4 and R-17 decided.
+  - No build had started, so no tasks are affected yet.
