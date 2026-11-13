@@ -97,6 +97,11 @@ jobs:
           # A crash or a bad config prints no summary line; do not read that as "0 errors".
           grep -qE '^(Found [0-9]+ errors? in|Success: no issues found)' /tmp/mypy.out \
             || { echo "::error::mypy did not finish with a summary line; see its output above."; exit 1; }
+          # mypy only warns about a bad setting and then ignores it; fail so the config stays valid.
+          if grep -q '^mypy\.ini:' /tmp/mypy.out; then
+            echo "::error::mypy rejected a setting in backend/mypy.ini; see its output above."
+            exit 1
+          fi
           count=$(grep -c ': error:' /tmp/mypy.out || true)
           baseline=$(tr -d '[:space:]' < mypy-baseline.txt)
           echo "mypy errors: $count (baseline: $baseline)"

@@ -77,6 +77,7 @@ def test_hebrew_names_after_a_role_label_are_removed(text, name):
         ("טכנאי: אורן בן דוד בדק את הלחץ", "טכנאי בדק את הלחץ"),
         ("נחתם על ידי מאיה בת שבע", ""),
         ("מהנדס: אורן בן-דוד", "מהנדס"),
+        ("טכנאית: ג'ני צ'רניאק החליפה אטם", "טכנאית החליפה אטם"),
     ],
 )
 def test_more_hebrew_name_forms_are_removed_whole(text, expected):
@@ -94,6 +95,7 @@ def test_more_hebrew_name_forms_are_removed_whole(text, expected):
         "המהנדסת בדקה את המערכת והלקוחה אישרה",
         "הוחלף על ידי החלפת המסנן",
         "המים מרים מעט, נבדק pH",
+        "הטעם מר מאוד לאחר השטיפה",
         'הוחלף ע"י הטכנאית',
         "הבדיקה נעשתה בן לילה",
     ],
