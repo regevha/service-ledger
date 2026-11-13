@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
-import { BACKEND_PORT, E2E_DATABASE_URL } from './playwright.config';
+import { BACKEND_PORT, E2E_DATABASE_URL } from './playwright.ports';
+import { suiteAuth } from './tests/e2e/helpers/auth';
 
 // A separate, opt-in config for the one spec in tests/e2e-live/ that exercises
 // the real Claude API end to end through the UI — everything in tests/e2e/
@@ -50,6 +51,7 @@ export default defineConfig({
 
   use: {
     baseURL: `http://localhost:${FRONTEND_PORT}`,
+    ...suiteAuth(),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     launchOptions: {

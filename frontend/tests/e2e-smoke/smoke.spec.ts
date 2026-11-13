@@ -1,5 +1,6 @@
 import { test, expect, request as playwrightRequest } from '@playwright/test';
 import { seedReport } from '../e2e/helpers/api';
+import { noCredentials } from '../e2e/helpers/auth';
 
 // Is the deployment up, closed to strangers, and keeping files? Works against live Claude as well
 // as the stub: nothing here waits on an extraction unless SMOKE_STUB=1.
@@ -8,7 +9,7 @@ const BASE_URL = process.env.API_BASE_URL!;
 const marker = () => `SMOKE-${Date.now()}`;
 
 test('/health is open and answers ok', async () => {
-  const anonymous = await playwrightRequest.newContext({ baseURL: BASE_URL, httpCredentials: undefined });
+  const anonymous = await playwrightRequest.newContext({ baseURL: BASE_URL, ...noCredentials });
   try {
     const res = await anonymous.get('/health');
     expect(res.status()).toBe(200);
@@ -19,7 +20,7 @@ test('/health is open and answers ok', async () => {
 });
 
 test('without the password the app and the API answer 401', async () => {
-  const anonymous = await playwrightRequest.newContext({ baseURL: BASE_URL, httpCredentials: undefined });
+  const anonymous = await playwrightRequest.newContext({ baseURL: BASE_URL, ...noCredentials });
   try {
     expect((await anonymous.get('/')).status()).toBe(401);
     expect((await anonymous.get('/reports')).status()).toBe(401);

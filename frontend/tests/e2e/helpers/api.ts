@@ -1,5 +1,5 @@
 import { type APIRequestContext, type APIResponse, expect } from '@playwright/test';
-import { BACKEND_PORT } from '../../../playwright.config';
+import { BACKEND_PORT } from '../../../playwright.ports';
 import { uniquePdf } from '../unique-upload';
 import { TIMEOUT } from '../timeouts';
 
