@@ -192,6 +192,14 @@ SL-37 starts as soon as Wave A is merged and can run in parallel with Wave B. It
 
 Gate (not a task): external ingress only after SL-37..SL-55 are done and a rate limit is in place, then by a separate user decision. Production deploys stay manual and need the user's go-ahead.
 
+### Wave F1: UI follow-ups from the design sessions
+
+Small UI tasks that came from design notes made in claude.ai sessions. The criteria here are the checkable version of those notes; the specs trace to these rows.
+
+| ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
+|---|---|---|---|---|---|---|
+| SL-58 | lead | Export the ServiceLedger design system (claude.ai Design System artifact) into `docs/design-system/`. Docs only, no app change. Issue #317, #319, #320. | `check_tokens.py` reports every colour token matching `frontend/src/index.css` in light and dark. Every claim in the README about sizes, files and formats matches the app's code. `components.css` adds no rule the app does not have. | `docs/design-system/**`, `docs/PLAN.md` | SL-57 (merge after it: `input-border`) | done |
+
 ## File-overlap check
 
 Files touched by more than one task, and how the overlap is resolved:

@@ -3,10 +3,12 @@ title: Export the ServiceLedger design system into the repo
 owner: lead
 branch: SL-58-design-system-export
 wave: F1
-depends_on: []
+depends_on: [SL-57]
 migration: false
 files_touched:
   - docs/tasks/SL-58.yml
   - docs/tasks/SL-58.md
+  - docs/PLAN.md
   - docs/design-system/**
-acceptance: [Design System artifact "ServiceLedger"]
+acceptance: [SL-58]         # docs/PLAN.md, Wave F1 row
+issue: 317
