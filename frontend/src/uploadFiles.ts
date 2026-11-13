@@ -15,7 +15,23 @@ export function dropProblem(files: { name: string; type: string }[]): string | n
   if (files.length === 0) return 'Nothing was dropped. Drop a PDF or an image file.';
   const bad = files.find((f) => !isAcceptedFile(f));
   if (bad) return `\u201c${bad.name}\u201d is not a PDF or an image (PNG, JPEG, GIF or WebP).`;
-  const isPdf = (f: { name: string; type: string }) => f.type === 'application/pdf' || (!f.type && f.name.toLowerCase().endsWith('.pdf'));
-  if (files.length > 1 && files.some(isPdf)) return 'Drop one PDF, or photos of the pages — not both. One report per upload.';
+  if (files.length > 1 && files.some(isPdfFile)) return 'Drop one PDF, or photos of the pages — not both. To upload several reports, choose only PDFs.';
   return null;
+}
+
+export function isPdfFile(f: { name: string; type: string }): boolean {
+  return f.type === 'application/pdf' || (!f.type && f.name.toLowerCase().endsWith('.pdf'));
+}
+
+export type IntakeChoice =
+  | { kind: 'single' } // one PDF, or one or more photos: the usual one-report flow
+  | { kind: 'batch' } // two or more PDFs: each becomes its own report on the batch screen
+  | { kind: 'problem'; message: string };
+
+/** Where chosen or dropped files on the New report screen go. Two or more PDFs (with or
+ *  without images) go to the batch screen, which checks the file types and the size of the batch. */
+export function chooseIntakeRoute(files: { name: string; type: string }[]): IntakeChoice {
+  if (files.filter(isPdfFile).length >= 2) return { kind: 'batch' };
+  const message = dropProblem(files);
+  return message ? { kind: 'problem', message } : { kind: 'single' };
 }
