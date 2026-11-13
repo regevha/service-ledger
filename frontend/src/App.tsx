@@ -12,6 +12,7 @@ import { BatchIntake } from './components/BatchIntake';
 import { TemplateManagerScreen } from './components/TemplateManager';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { ActiveSearchLine } from './components/ActiveSearch';
+import { OfflineBanner } from './components/OfflineBanner';
 import { AskSheet, AskSheetButton } from './components/AskSheet';
 import { PHONE_QUERY, useMediaQuery } from './hooks/useMediaQuery';
 import { InstrumentAskContext } from './instrumentAskContext';
@@ -256,6 +257,7 @@ export default function App() {
         <ThemeToggle />
       </header>
 
+      <OfflineBanner />
       <ActiveSearchLine view={view} />
       {askAvailable && askOpen && (
         <AskSheet
