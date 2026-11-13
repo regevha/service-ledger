@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ACCEPTED_TYPES, dropProblem } from '../../uploadFiles';
+import { ACCEPTED_TYPES, chooseIntakeRoute, dropProblem } from '../../uploadFiles';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 export function IntakeScreen({
@@ -9,6 +9,7 @@ export function IntakeScreen({
   setFiles,
   onStart,
   onOpenBatch,
+  onBatchFiles,
 }: {
   technicianName: string;
   setTechnicianName: (v: string) => void;
@@ -16,6 +17,8 @@ export function IntakeScreen({
   setFiles: (f: File[]) => void;
   onStart: () => void;
   onOpenBatch?: () => void;
+  /** Two or more PDFs were chosen or dropped: hand them to the batch screen. */
+  onBatchFiles?: (files: File[]) => void;
 }) {
   const file = files[0] ?? null;
   const chosenLabel = files.length > 1 ? `${files.length} photos — one report` : file?.name;
@@ -69,7 +72,13 @@ export function IntakeScreen({
           e.preventDefault();
           setDragging(false);
           const files = Array.from(e.dataTransfer.files);
-          const problem = dropProblem(files);
+          const route = onBatchFiles ? chooseIntakeRoute(files) : null;
+          if (onBatchFiles && route?.kind === 'batch') {
+            setDropError(null);
+            onBatchFiles(files);
+            return;
+          }
+          const problem = route ? (route.kind === 'problem' ? route.message : null) : dropProblem(files);
           // A refused drop leaves the file already chosen in place; say so, so it is not a surprise.
           setDropError(problem && file ? `${problem} Keeping ${chosenLabel}.` : problem);
           if (!problem) setFiles(files);
@@ -79,6 +88,7 @@ export function IntakeScreen({
         <div className="primary">
           {dragging ? 'Drop the file here' : file ? chosenLabel : phone ? 'Take a photo or choose a file' : 'Click to choose a scan or PDF, or drop it here'}
         </div>
+        {onBatchFiles && !dragging && !file && <div className="secondary">Several PDFs? Each becomes its own report.</div>}
         <input
           type="file"
           multiple
@@ -97,7 +107,13 @@ export function IntakeScreen({
               e.target.value = '';
               return;
             }
-            const problem = picked.length > 1 ? dropProblem(picked) : null;
+            const route = onBatchFiles && picked.length > 1 ? chooseIntakeRoute(picked) : null;
+            if (onBatchFiles && route?.kind === 'batch') {
+              onBatchFiles(picked);
+              e.target.value = '';
+              return;
+            }
+            const problem = route ? (route.kind === 'problem' ? route.message : null) : picked.length > 1 ? dropProblem(picked) : null;
             if (problem) {
               setDropError(problem);
               return;
@@ -156,13 +172,14 @@ export function IntakeScreen({
         <p className="intake-subheading">Upload the scan or photos. We read the instrument and visit type, then you check the details.</p>
         {onOpenBatch && (
           <p className="intake-batch-link">
-            Have a pile of PDFs?{' '}
+            Have a pile of PDFs? Drop them all here, or{' '}
             <button type="button" className="link-button" data-testid="open-batch" onClick={onOpenBatch}>
-              Upload several at once
+              open the several-files screen
             </button>
+            .
           </p>
         )}
-        <p className="hint-text">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one PDF, or several photos of the pages, per report; any instrument, any report type</p>
+        <p className="hint-text">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one PDF, or several photos of the pages, per report (several PDFs: each becomes its own report); any instrument, any report type</p>
         <aside className="next-card" data-testid="intake-next-card" aria-label="What happens next">
           <div className="next-card-title">What happens next</div>
           <ol>

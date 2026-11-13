@@ -76,7 +76,7 @@ test('a file that is not a PDF or an image is refused on the spot, with the reas
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeDisabled();
 });
 
-test('several PDFs at once are refused: one PDF per report', async ({ page }) => {
+test('several PDFs at once open the batch screen, one report each', async ({ page }) => {
   await page.goto('/#/new');
   const dt = await dataTransfer(
     page,
@@ -87,8 +87,8 @@ test('several PDFs at once are refused: one PDF per report', async ({ page }) =>
     PDF()
   );
   await page.locator('.dropzone').dispatchEvent('drop', { dataTransfer: dt });
-  await expect(page.getByRole('alert')).toContainText('Drop one PDF');
-  await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeDisabled();
+  await expect(page.getByTestId('batch-screen')).toBeVisible();
+  await expect(page.getByTestId('batch-row')).toHaveCount(2);
 });
 
 test('a good drop after a refused one clears the message, and so does using the file picker', async ({ page }) => {
