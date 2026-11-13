@@ -192,6 +192,14 @@ SL-37 starts as soon as Wave A is merged and can run in parallel with Wave B. It
 
 Gate (not a task): external ingress only after SL-37..SL-55 are done and a rate limit is in place, then by a separate user decision. Production deploys stay manual and need the user's go-ahead.
 
+### Wave F1: UI follow-ups from the design sessions
+
+Small UI tasks that came from design notes made in claude.ai sessions. The criteria here are the checkable version of those notes; the specs trace to these rows.
+
+| ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
+|---|---|---|---|---|---|---|
+| SL-57 | frontend-dev | Light-mode `--input-border` reaches 3:1 for borders that identify a control (WCAG 1.4.11). Issue #313, #316. | Light `--input-border` is at least 3:1 on `--surface`, `--paper`, `--bg` and `--surface-2`. Dark values unchanged. `accessibility.spec.ts` fails if a light `.btn` or `.text-input` border drops below 3:1 on `--surface`. A reviewer looks at the running app in light and dark mode. | `frontend/src/index.css`, `frontend/tests/e2e/accessibility.spec.ts`, `docs/PLAN.md` | none | done |
+
 ## File-overlap check
 
 Files touched by more than one task, and how the overlap is resolved:

@@ -7,6 +7,8 @@ depends_on: []
 migration: false
 files_touched:
   - docs/tasks/SL-57.yml
+  - docs/PLAN.md
   - frontend/src/index.css
   - frontend/tests/e2e/accessibility.spec.ts
-acceptance: [design artifact "ServiceLedger: input border contrast, before and after"]
+acceptance: [SL-57]         # docs/PLAN.md, Wave F1 row
+issue: 313
