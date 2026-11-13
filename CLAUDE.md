@@ -46,6 +46,7 @@ You are the **lead/orchestrator**. You do not write app code yourself. You deleg
   - Which document wins on a conflict: product brief (what) over API/data contracts over design brief over `docs/PLAN.md` (tasks). An agent that finds a conflict reports it to the lead, not silently picks one.
   - Run the project-manager's plan-health check (file overlaps, missing dependencies, contradictions between docs, duplicate task IDs) before launching each wave.
   - "Tests pass" is not evidence that the screen is right. Closing a UI task needs a reviewer or ux-reviewer who looked at the running app.
+  - A change that sends new things to an existing screen (more files, a new state, a new kind of item) also gets a ux-reviewer look at that screen as it is, with realistic data in every state, not only at the new parts. Lesson from SL-59: several PDFs from New report landed on a batch screen that repeated the same sentence and buttons on every row and offered no action for a whole group (user feedback 2026-11-13, now SL-60).
   - Task IDs are unique across plan files; agents add rows only after re-reading the file, and edit only their own row.
   - Agents that are stopped mid-task leave unfinished files; treat those as unfinished and redo them, never as partial credit.
 - Max 3 fix loops per task, then escalate to the user with a summary.
