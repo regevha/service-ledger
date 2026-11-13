@@ -1,0 +1,37 @@
+name: Task
+description: One unit of work from docs/PLAN.md (created by architect).
+labels: ["task"]
+body:
+  - type: input
+    id: task_id
+    attributes:
+      label: Task ID
+      description: Unique across plan files, e.g. SL-16.
+    validations:
+      required: true
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Owner
+      options: [db-engineer, backend-dev, frontend-dev, tester, e2e-tester, devops]
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Testable. Cite the AC-nn IDs from docs/PRODUCT.md when it exists.
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files touched
+      description: Complete list, including wiring files (main.py, routers, App.tsx) and lockfiles. Must match docs/tasks/SL-nn.yml.
+    validations:
+      required: true
+  - type: textarea
+    id: depends
+    attributes:
+      label: Depends on
+      description: Linked issues for every task whose code this one imports.

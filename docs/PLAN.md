@@ -198,6 +198,7 @@ Small UI tasks that came from design notes made in claude.ai sessions. The crite
 
 | ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
 |---|---|---|---|---|---|---|
+| SL-57 | frontend-dev | Light-mode `--input-border` reaches 3:1 for borders that identify a control (WCAG 1.4.11). Issue #313, #316. | Light `--input-border` is at least 3:1 on `--surface`, `--paper`, `--bg` and `--surface-2`. Dark values unchanged. `accessibility.spec.ts` fails if a light `.btn` or `.text-input` border drops below 3:1 on `--surface`. A reviewer looks at the running app in light and dark mode. | `frontend/src/index.css`, `frontend/tests/e2e/accessibility.spec.ts`, `docs/PLAN.md` | none | done |
 | SL-58 | lead | Export the ServiceLedger design system (claude.ai Design System artifact) into `docs/design-system/`. Docs only, no app change. Issue #317, #319, #320. | `check_tokens.py` reports every colour token matching `frontend/src/index.css` in light and dark. Every claim in the README about sizes, files and formats matches the app's code. `components.css` adds no rule the app does not have. | `docs/design-system/**`, `docs/PLAN.md` | SL-57 (merge after it: `input-border`) | done |
 
 ## File-overlap check
