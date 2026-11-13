@@ -1,6 +1,6 @@
 # ServiceLedger design system
 
-The reference for building ServiceLedger screens: the rules below, the tokens in `tokens.json`, and the component styles in `components.css`. It is exported from the claude.ai Design System artifact "ServiceLedger" (synced from `frontend/src/index.css` and `frontend/src/styles/` at `main@82aae57`, 2026-11-13). The app's own CSS stays the source of truth: if `frontend/src/index.css` and `tokens.json` disagree, the app wins and this folder is out of date (`check_tokens.py` finds the differences).
+The reference for building ServiceLedger screens: the rules below, the tokens in `tokens.json`, and the component styles in `components.css`. It is exported from the claude.ai Design System artifact "ServiceLedger" (synced from `frontend/src/index.css` and `frontend/src/styles/` at `main@82aae57`, 2026-11-13). The app's own CSS stays the source of truth: if `frontend/src/index.css` and `tokens.json` disagree, the app wins and this folder is out of date (`check_tokens.py` compares the colour tokens, light and dark; spacing, radius, type and shadows are checked by hand).
 
 Use this system to build screens for ServiceLedger, a document-first service ledger for lab instruments: a lab manager uploads a scanned service report, the app reads it, and the person checks and finalizes it. The audience is core facility managers, so the interface is calm, dense with facts and never decorative.
 
@@ -18,7 +18,7 @@ Use this system to build screens for ServiceLedger, a document-first service led
 - **Light and dark.** Both themes ship; the app follows the device until the person presses the toggle. Dark is a soft slate-blue (`bg` #232a3b), not near-black, and surfaces get lighter as they rise: `bg`, `surface`, `surface-2`. The scan image stays on `paper` in both themes.
 - **Type.** `IBM Plex Sans` for UI at `text-base` (15px) on desktop, `IBM Plex Mono` for serials and codes. Headings use weight 600; section labels are `section-label` (uppercase, `text-faint`).
 - **Shape.** `radius-sm` (8px) for buttons, inputs and fields, `radius` (14px) for cards and the app frame, `radius-pill` for badges, pills and toasts. Cards sit on `bg` with a 1px `border` and `shadow`; menus use `shadow-menu`, toasts `shadow-pop`.
-- **Spacing.** Steps `space-1…6` (4, 8, 12, 16, 24, 32). Touch targets are at least 44px on phones and 46px for form controls.
+- **Spacing.** Steps `space-1…6` (4, 8, 12, 16, 24, 32). Touch targets, buttons and inputs on phones are at least 44px high (inputs use 16px text on phones so the browser does not zoom).
 - **Flagged fields** use a 4px `flag` left bar, the `flag-soft` fill and a text label together, never colour alone.
 - **Charts.** One indigo hue with thin 8px bars, 4px rounded ends and direct labels; keyed multi-series lines use `series-1…5` in that fixed order.
 - **Focus.** A 2px solid `accent` outline, offset 2px (1px on inputs), visible on every interactive element.
@@ -26,7 +26,7 @@ Use this system to build screens for ServiceLedger, a document-first service led
 
 ## Iconography
 
-There is no icon font or sprite. The app uses a handful of text glyphs (☾ and ☀ in the theme toggle, "···" in row menus, "↓" in "Next ↓") and the document-glyph mark (`frontend/public/favicon.svg`). Do not add emoji or an icon set without asking; draw new icons as plain 1.8px-stroke outlines like the mark.
+There is no icon font, sprite or icon package. Icons are small inline SVG outlines drawn in the code: the tab icons (Home, New report, Reports, Analytics, Templates, Instruments, More) in `TabIcon` (`frontend/src/App.tsx`; moved to `frontend/src/components/TopbarTabs.tsx` by SL-56), 24×24 view box, `stroke="currentColor"`, 1.8px stroke, round caps and joins, no fill. The document-glyph mark (`frontend/public/favicon.svg`) uses the same style. A few text glyphs are used as icons: ☾ and ☀ in the theme toggle, "⋯" in row menus, "↓" in "Next ↓". Do not add emoji or an icon set without asking; draw a new icon as an outline in the same style as the tab icons.
 
 ## Components
 
