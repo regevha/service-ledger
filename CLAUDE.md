@@ -16,7 +16,7 @@ You are the **lead/orchestrator**. You do not write app code yourself. You deleg
 - `reviewer`: read-only review of every change before it counts as done
 
 ## Workflow (every feature)
-0. **Product** (new user-facing feature only): delegate to `product-manager` for a brief with acceptance criteria. Put its open product questions to the user in one batch and wait for answers (or record them as `assumed`) before planning.
+0. **Product** (new user-facing feature only): delegate to `product-manager` for a brief with acceptance criteria. Put its open product questions to the user one at a time (see "Working with the user") and wait for answers (or record them as `assumed`) before planning.
 1. **Plan**: delegate to `architect`. Every task's acceptance criteria must trace to a plan section or acceptance criterion. It writes/updates `docs/PLAN.md` and the `docs/tasks/SL-nn.yml` specs.
 2. **Data**: if the feature changes data, `db-engineer` goes first: migration, model, seed. Backend work that needs it waits.
 3. **Design** (any task with UI): `ux-reviewer` writes a design brief first; `frontend-dev` builds to it. After the build, `ux-reviewer` reviews the running app alongside `reviewer`.
@@ -49,6 +49,36 @@ You are the **lead/orchestrator**. You do not write app code yourself. You deleg
   - Task IDs are unique across plan files; agents add rows only after re-reading the file, and edit only their own row.
   - Agents that are stopped mid-task leave unfinished files; treat those as unfinished and redo them, never as partial credit.
 - Max 3 fix loops per task, then escalate to the user with a summary.
+
+## ServiceLedger knowledge for every agent (from the owner's decisions and past sessions)
+- **Privacy first:** reports are shared between institutes. No person's name, contact, account or contract detail in any stored field, prompt example, fixture, log line or screenshot. Scrubbed fields are capped at confidence 0.5 (`services/privacy.py`). A new path that stores text from a document (an email body, a filename, a sender address) must go through the same rules or be kept out of report fields.
+- **UI wording:** plain words, short sentences, say what to do next. Places are "Institute" and "Building" on screen. English only. Every delete says exactly what it deletes. Phone: inputs 16 px, touch targets at least 44 px, bottom tab bar.
+- **Design system:** reuse the existing CSS variables in `frontend/src/index.css` (`--accent`, `--good`, `--warn`, `--crit`, `--space-*`, `--text-*`, `--radius*`) and existing classes (`stat-tile`, `trend-table`, `admin-*`, `banner banner-*`, `btn`, `hint-text`, `sr-only`). New CSS goes in a new numbered file under `frontend/src/styles/`, imported from `App.css` (both sides of a merge tend to append to `App.css`: check the braces balance after resolving).
+- **Screens and routing:** hash routes (`#/home`, `#/new`, `#/reports/<id>`, `#/admin/<section>`); new admin-style screens go in `AdminScreen.tsx` sections. A scrollable table wrapper needs `tabIndex={0} role="region" aria-label=...` (axe).
+- **Backend shape:** routers stay thin; logic in `services/`; domain errors via `services/domain_errors.py` (`NotFoundError`, `InvalidError`, `ConflictError`). Tests patch names on `classification.py`, `extraction.py` and `worker.py`: do not move or rename those names. Jobs run in the worker (`app/worker.py`, `job_queue.py`); the API never calls Claude directly for intake.
+- **Tests:** backend tests use `tests/conftest.py` (tables made with `create_all`, so data seeded only by a migration is not there in tests). e2e specs share one database: create unique names (a timestamp), clean up what you add (an instrument left behind breaks other specs), never assert absolute counts. `goto('/')` lands on Home; use `goto('/#/new')` for intake and `page.reload()` for a second `goto` to the same hash. Check a new test by breaking the code on purpose once.
+- **Worktrees:** a new git worktree has no `backend/.venv` or `frontend/node_modules`. Symlink them from the main checkout (`/home/claude/service-ledger`) instead of installing; never run `npm install` in a worktree (it rewrites `package-lock.json`). Never use `git stash` (shared across worktrees). Never `pkill -f` a pattern that appears in your own command; stop servers by process id.
+- **Misleading errors:** a 500 from uvicorn has no CORS headers, so the browser says "Could not reach the backend": read the server log. A database built by an old migration chain fails with "Can't locate revision": recreate it, never `alembic stamp`.
+- **Visual baselines** (`@visual` specs) come from CI, not from local runs (fonts differ). Do not update them locally; tell the lead.
+- **Docs style** for anything the user reads: plain English, short sentences, no jargon, no marketing words.
+
+## Local environment (cloud workspace)
+- Postgres: `pg_ctlcluster 16 main start` (stops between sessions). Role `service_ledger` / `service_ledger_dev`.
+- **Isolation:** each agent uses its own databases named `service_ledger_<task>_<role>` (lower case, e.g. `service_ledger_sl20_tester`), creates them, and drops them when done; ports `8100 + slot` for the API and `5200 + slot` for Vite (the lead assigns the slot). The full backend suite (`service_ledger_test`) and Playwright (`service_ledger_e2e`, fixed ports 8001 and 5174) use shared databases and ports: only one agent runs each at a time, the one the lead names.
+- Backend: `cd backend && .venv/bin/python -m pytest -p no:randomly` (full suite about 8 minutes locally; run the relevant files first with `--no-cov`), `.venv/bin/ruff check .` (ruff 0.17.4), `.venv/bin/mypy app` (error count must not exceed `backend/mypy-baseline.txt`).
+- Frontend: `cd frontend && npx tsc -b && npx oxlint && npx vitest run && npm run build`.
+- Playwright: Chromium is under `/opt/pw-browsers` with a build number that differs from what Playwright wants; symlink it into a temporary `PLAYWRIGHT_BROWSERS_PATH` under the requested name. Run with `backend/.venv/bin` on PATH: `npx playwright test tests/e2e/<spec>`.
+- A real browser check (Playwright screenshot of the running page) is required before a UI task is `in-review`. "Tests pass" is not evidence that a screen is right.
+
+## Feature work (the user's feature requests)
+- A user-facing feature gets a folder `docs/features/<feature>/` with `PRODUCT.md` (product-manager), `API.md` and `DATA_MODEL.md` (architect, then db-engineer), `DESIGN.md` (ux-reviewer). Its tasks are a new section in `docs/PLAN.md` with `SL-nn` IDs continuing after the highest one in use; the hardening sections are left alone.
+- **Stop at demo-ready** applies to feature work (not to the hardening plan): when the feature's must-have criteria are met, the lead stops, gives the user the **WSL run instructions** for the feature branch (`~/service-ledger` in WSL2 Ubuntu: fetch, check out, migrate, seed demo data, start the API, the worker and Vite) and asks whether to continue. Nothing beyond the brief is built.
+- Live Claude calls cost money: agents work in stub mode (`USE_LIVE_CLAUDE=false`, the default) unless the user says otherwise; any outside service (mail, HTTP) gets a fake that tests and the WSL demo use.
+
+## Working with the user
+- Replies in English, even when the user writes in Hebrew.
+- Product questions and decisions go to the user **one question at a time**, most important first, each with the options and a recommendation. Cheap-to-change details are decided and listed as `assumed` instead of asked.
+- At the end of each feature or wave, the lead updates the claude.ai project docs (`claude/open-items.md` and a session note) so the user sees status outside GitHub.
 
 ## Collision avoidance (lead enforces)
 - **One task, one worktree, one branch, one PR.** Each build agent works in its own git worktree on a branch named after its task (`SL-16-worker-id`) and opens one PR. Reviewer and tester check the PR's commit, never a tree that is still changing. Merge PRs one at a time, rebasing the next on the result. **Agents commit locally and never push**; the lead pushes and opens the PR from the agent's report and hand-off note.

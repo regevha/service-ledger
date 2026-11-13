@@ -22,7 +22,7 @@ NON_TASK_PREFIXES = ("spec-", "team-", "process-", "closeout-", "docs-", "depend
 
 # LEGACY: branch-name prefixes that open PRs still use. Allowed for now so those PRs
 # are not blocked; remove this tuple (and its use below) once they are merged or closed.
-LEGACY_PREFIXES = ("phase", "feature/", "frontend/", "nir/", "ci/", "docs/")
+LEGACY_PREFIXES = ("phase", "feature/", "frontend/", "nir/", "nir-", "ci/", "docs/")
 ALLOWED_PREFIXES = NON_TASK_PREFIXES + LEGACY_PREFIXES
 
 
