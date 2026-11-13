@@ -1,0 +1,30 @@
+name: Defect
+description: A failing behaviour found by tester, e2e-tester, reviewer or ux-reviewer.
+labels: ["defect"]
+body:
+  - type: input
+    id: task_id
+    attributes:
+      label: Task ID the defect was found in (e.g. SL-16)
+    validations:
+      required: true
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Owner of the fix
+      options: [db-engineer, backend-dev, frontend-dev, tester, e2e-tester, devops]
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Repro steps, expected vs actual
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options: [Blocking, Should fix, Nice to have]
+    validations:
+      required: true
