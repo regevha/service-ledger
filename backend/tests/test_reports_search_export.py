@@ -220,3 +220,49 @@ def test_export_csv_extracted_fields_column_is_valid_json(client, seeded):
     # The whole point: this must parse as JSON, not raise on the boolean/
     # null/list values a real report can have.
     assert json.loads(rows[0]["extracted_fields_json"]) == fields
+
+
+def _seed_many(db_session, n):
+    made = [
+        _make_report(db_session, model="FACSAria III", report_type=ReportType.repair, status=ReportStatus.finalized,
+                     report_date=date(2026, 1, 1), technician=f"Tech {i}", extracted_fields={"fault_description": f"scan number {i}"})
+        for i in range(n)
+    ]
+    return made
+
+
+def test_list_pages_with_limit_and_offset_and_reports_the_total(client, seeded):
+    made = _seed_many(seeded, 5)
+    everything = client.get("/reports")
+    assert len(everything.json()) == 5 and everything.headers["X-Total-Count"] == "5"  # no limit: unchanged
+
+    first = client.get("/reports", params={"limit": 2})
+    second = client.get("/reports", params={"limit": 2, "offset": 2})
+    last = client.get("/reports", params={"limit": 2, "offset": 4})
+    assert [len(r.json()) for r in (first, second, last)] == [2, 2, 1]
+    assert all(r.headers["X-Total-Count"] == "5" for r in (first, second, last))
+    ids = [row["id"] for r in (first, second, last) for row in r.json()]
+    assert len(set(ids)) == 5 and set(ids) == {str(r.id) for r in made}  # no overlap, nothing missed
+    assert ids == [row["id"] for row in everything.json()]  # same order as the unpaged list
+
+
+def test_total_counts_matches_not_the_page_and_a_page_past_the_end_is_empty(client, seeded):
+    _seed_many(seeded, 3)
+    page = client.get("/reports", params={"limit": 1, "offset": 10})
+    assert page.json() == [] and page.headers["X-Total-Count"] == "3"
+    assert client.get("/reports", params={"technician": "Tech 1", "limit": 5}).headers["X-Total-Count"] == "1"
+
+
+def test_limit_must_be_between_1_and_the_maximum(client, seeded):
+    assert client.get("/reports", params={"limit": 0}).status_code == 422
+    assert client.get("/reports", params={"limit": 501}).status_code == 422
+    assert client.get("/reports", params={"limit": 500}).status_code == 200
+
+
+def test_ranked_text_search_pages_too(client, seeded):
+    _seed_many(seeded, 4)
+    full = client.get("/reports", params={"q": "scan"}).json()
+    assert len(full) == 4
+    paged = client.get("/reports", params={"q": "scan", "limit": 2, "offset": 2})
+    assert [r["id"] for r in paged.json()] == [r["id"] for r in full[2:4]]
+    assert paged.headers["X-Total-Count"] == "4"

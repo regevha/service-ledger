@@ -532,6 +532,10 @@ export interface paths {
          *     finalized reports only, so with a status filter other than finalized the
          *     answer is empty. Results are ranked best match first, and each row carries
          *     a short excerpt around the match.
+         *
+         *     `limit` and `offset` page the answer; the header `X-Total-Count` always carries how many
+         *     reports match in all, so a screen can show "40 of 1,203". Without `limit` every match is
+         *     returned, as before.
          */
         get: operations["search_reports_reports_get"];
         put?: never;
@@ -4067,6 +4071,10 @@ export interface operations {
                 number_op?: string | null;
                 /** @description The number to compare with */
                 number_value?: number | null;
+                /** @description Page size. Leave out for every matching report */
+                limit?: number | null;
+                /** @description How many matching reports to skip (with limit) */
+                offset?: number;
             };
             header?: never;
             path?: never;
