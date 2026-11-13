@@ -1,16 +1,17 @@
 # Nir proposals: mockups
 
-`index.html` is a single self-contained page (open it in a browser) with seven clickable mockups in the app's
+`index.html` is a single self-contained page (open it in a browser) with eight clickable mockups in the app's
 Slate and indigo look. They show layout and flow only; nothing saves or calls the backend, and the example
 data is made up.
 
-1. AI search and summary box
+1. AI search and summary box (one rounded field like the Home page, with an ask-by-voice microphone; recording is simulated)
 2. Template editor that picks fields straight from the PDF
 3. Home page (built: the Home tab, the screen the app opens on)
 4. Small-laptop layouts (1024, 1280, 1366 wide)
 5. Several PDFs in one batch, with a confirmation step per file
 6. Filters that start small and grow
 7. More ideas
+8. The app on a phone (a phone-sized frame with five screens: AI search with the voice sheet, Home, batch upload, filters with bottom sheets, and the template editor; recording is simulated)
 
 ## What is built from these
 

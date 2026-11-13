@@ -7,7 +7,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: a numbered switcher over seven framed screens, each drawn in ServiceLedger's own Slate and indigo tokens (copied from frontend/src/index.css). */
+/* Layout: a numbered switcher over eight framed screens, each drawn in ServiceLedger's own Slate and indigo tokens (copied from frontend/src/index.css). */
 :root {
   --bg: #f4f6fa; --surface: #ffffff; --surface-2: #eef1f7; --border: #dde2ec; --border-strong: #c9d0de;
   --text: #1b2230; --text-muted: #566074; --text-faint: #636d83;
@@ -114,10 +114,37 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 .row-list > * + * { border-top: 1px solid var(--border); }
 
 /* 1. AI search */
-.aibox { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px; padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; }
-.aibox-top { display: flex; align-items: flex-start; gap: 10px; }
-.aibox-top > svg { width: 22px; height: 22px; margin-top: 10px; stroke: var(--accent); flex: none; }
-.aibox textarea { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 17px; line-height: 1.45; resize: none; padding: 8px 0; outline: none; height: 58px; }
+.aibox { display: flex; flex-direction: column; gap: 12px; }
+.aibox-field { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; min-height: 62px; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
+.aibox-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.aibox-field > svg { width: 20px; height: 20px; stroke: var(--accent); flex: none; }
+.aibox textarea { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 16px; line-height: 24px; resize: none; padding: 0; outline: none; height: 24px; max-height: 96px; overflow: hidden; }
+.aibox textarea::placeholder { color: var(--text-muted); opacity: 1; }
+.aibox .kbd { margin-left: 0; flex: none; }
+.mic { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-muted); display: grid; place-items: center; padding: 0; cursor: pointer; }
+.mic:hover { background: var(--surface-2); color: var(--accent-strong); }
+.mic svg { width: 20px; height: 20px; }
+.mic .ic-stop { display: none; }
+.aibox-field.rec .mic { background: var(--crit); border-color: var(--crit); color: #fff; }
+.aibox-field.rec .mic .ic-mic { display: none; } .aibox-field.rec .mic .ic-stop { display: block; }
+.aibox-field.busy .mic { opacity: .5; pointer-events: none; }
+.aibox-rec { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.aibox-rec[hidden], .aibox-cancel[hidden] { display: none; }
+.recdot { width: 10px; height: 10px; border-radius: 50%; background: var(--crit); flex: none; animation: recpulse 1.2s ease-in-out infinite; }
+.aibox-field.busy .recdot { background: var(--text-faint); animation: none; }
+.wave { display: flex; align-items: center; gap: 3px; height: 28px; flex: 1; min-width: 40px; overflow: hidden; }
+.wave i { display: block; width: 3px; flex: none; border-radius: 2px; background: var(--accent); height: 8px; animation: wavebar 1s ease-in-out infinite; }
+.aibox-field.busy .wave i { animation: none; height: 6px; background: var(--text-faint); }
+.recmsg { color: var(--text-muted); font-size: 13.5px; white-space: nowrap; }
+.rect { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+.aibox-cancel { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: none; color: var(--text-muted); display: grid; place-items: center; padding: 0; cursor: pointer; }
+.aibox-cancel:hover { background: var(--surface-2); }
+.aibox-cancel svg { width: 16px; height: 16px; }
+.aibox-note { font-size: 12.5px; color: var(--text-muted); }
+@keyframes recpulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes wavebar { 0%, 100% { height: 6px; } 50% { height: 24px; } }
+@media (max-width: 640px) { .aibox .kbd { display: none; } .recmsg { display: none; } }
+@media (prefers-reduced-motion: reduce) { .recdot, .wave i { animation: none; } .wave i { height: 14px; } }
 .aibox-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .ex { border: 1px dashed var(--border-strong); background: none; border-radius: 999px; padding: 3px 11px; font-size: 12.5px; color: var(--text-muted); }
 .ex:hover, .ex.on { border-style: solid; color: var(--accent-strong); background: var(--accent-soft); border-color: transparent; }
@@ -140,6 +167,155 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 .bars div { display: grid; grid-template-columns: 62px 1fr 46px; gap: 10px; align-items: center; font-size: 13px; color: var(--text-muted); }
 .bars i { display: block; height: 10px; border-radius: 0 4px 4px 0; background: var(--bar); }
 .bars em { font-style: normal; font-family: var(--font-mono); color: var(--text); text-align: right; }
+
+/* 8. Phone */
+.ph-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.ph-switch { display: inline-flex; max-width: 100%; overflow-x: auto; border: 1px solid var(--input-border); border-radius: 10px; background: var(--surface); }
+.ph-switch button { flex: none; border: 0; background: none; height: 40px; padding: 0 14px; font-size: 13.5px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+.ph-switch button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); }
+.phone { position: relative; width: min(390px, 100%); height: 800px; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); border: 9px solid #1c2230; border-radius: 46px; box-shadow: var(--shadow-pop); }
+.ph-status { flex: none; height: 34px; padding: 4px 22px 0; display: flex; align-items: center; justify-content: space-between; background: var(--surface); font-size: 13px; font-weight: 600; }
+.ph-status .sys { display: flex; align-items: center; gap: 6px; color: var(--text); }
+.ph-status .bat { width: 22px; height: 11px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+.ph-status .bat::after { content: ""; position: absolute; inset: 1.5px 5px 1.5px 1.5px; background: currentColor; border-radius: 1px; }
+.ph-bar { flex: none; height: 52px; padding: 0 12px 0 16px; display: flex; align-items: center; justify-content: space-between; background: var(--surface); border-bottom: 1px solid var(--border); }
+.ph-bar .brand { font-size: 16px; }
+.ph-icon { width: 44px; height: 44px; border: 0; background: none; border-radius: 50%; display: grid; place-items: center; color: var(--text-muted); padding: 0; }
+.ph-icon svg { width: 22px; height: 22px; }
+.ph-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px 20px; display: flex; flex-direction: column; gap: 14px; }
+.ph-body > * { flex: none; }
+.ph-body h3 { font-size: 22px; font-weight: 600; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ph-body h3 span { font-size: 13.5px; font-weight: 400; color: var(--text-muted); }
+.ph-field { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; min-height: 62px; border: 1px solid var(--border-strong); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
+.ph-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ph-field > svg { width: 20px; height: 20px; stroke: var(--accent); flex: none; }
+.ph-field textarea { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 15px; line-height: 21px; resize: none; padding: 0; outline: none; height: 42px; max-height: 126px; }
+.ph-field textarea::placeholder { color: var(--text-muted); opacity: 1; }
+.ph-round { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-muted); display: grid; place-items: center; padding: 0; }
+.ph-round svg { width: 21px; height: 21px; }
+.ph-round.go { background: var(--accent-fill); border-color: transparent; color: var(--on-fill); }
+.ph-ex { display: flex; gap: 8px; overflow-x: auto; margin: 0 -14px; padding: 0 14px 2px; scrollbar-width: none; }
+.ph-ex .ex { flex: none; height: 36px; padding: 0 13px; font-size: 13.5px; }
+.phone .seg { align-self: flex-start; }
+.phone .seg button { height: 40px; padding: 0 16px; font-size: 14px; }
+.ph-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ph-chips .fchip { height: 34px; font-size: 13px; }
+.ph-chips .fchip button { width: 26px; height: 26px; }
+.ph-res { padding: 13px 14px; display: flex; flex-direction: column; gap: 8px; }
+.ph-res h4 { margin: 0; font-size: 15.5px; font-weight: 600; }
+.ph-res .meta { color: var(--text-muted); font-size: 13px; }
+.ph-res .foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.phone .sum { grid-template-columns: 1fr; gap: 16px; padding: 16px; }
+.ph-recent { overflow: hidden; }
+.ph-recent .lbl { padding: 12px 16px 4px; display: block; }
+.ph-recent button { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 12px; padding: 8px 16px; border: 0; background: none; text-align: left; color: var(--text); font-size: 14.5px; }
+.ph-recent button + button { border-top: 1px solid var(--border); }
+.ph-recent button:hover { background: var(--surface-2); }
+.ph-recent svg { width: 18px; height: 18px; color: var(--text-muted); flex: none; }
+.ph-hint { padding: 14px 16px; color: var(--text-muted); font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.ph-hint b { color: var(--text); font-weight: 600; }
+.ph-nav { flex: none; height: 66px; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--border); padding-bottom: 6px; }
+.ph-nav span { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 500; color: var(--text-muted); min-height: 48px; }
+.ph-nav svg { width: 22px; height: 22px; }
+.ph-nav .on { color: var(--accent-strong); }
+.ph-nav .fab { width: 46px; height: 46px; border-radius: 50%; background: var(--accent-fill); color: var(--on-fill); display: grid; place-items: center; align-self: center; justify-self: center; margin-top: -14px; box-shadow: var(--shadow); }
+.ph-nav .fab svg { width: 24px; height: 24px; }
+.ph-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.ph-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 10px 20px 28px; display: flex; flex-direction: column; align-items: center; gap: 14px; box-shadow: var(--shadow-pop); }
+.ph-sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); }
+.ph-sheet h4 { margin: 4px 0 0; font-size: 18px; font-weight: 600; }
+.ph-sheet .clock { font-family: var(--font-mono); font-size: 30px; line-height: 1; }
+.ph-sheet .wave { width: 100%; height: 64px; justify-content: center; flex: none; gap: 4px; }
+.ph-sheet .wave i { width: 4px; }
+.ph-sheet .say { color: var(--text-muted); font-size: 14px; text-align: center; max-width: 30ch; }
+.ph-sheet .ctl { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; margin-top: 4px; }
+.ph-stop { width: 72px; height: 72px; border-radius: 50%; border: 0; background: var(--crit); color: #fff; display: grid; place-items: center; padding: 0; }
+.ph-stop svg { width: 28px; height: 28px; }
+.ph-stop[disabled] { opacity: .45; }
+.ph-sheet .ctl .btn { height: 48px; justify-self: start; }
+.ph-sheet.busy .wave i { animation: none; height: 6px; background: var(--text-faint); }
+.ph-sheet.busy .recdot { background: var(--text-faint); animation: none; }
+@media (max-width: 440px) { .phone { border-width: 0; border-radius: 0; height: 780px; box-shadow: none; } .ph-status { display: none; } }
+
+.ph-switch[hidden] { display: none; }
+.ph-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 12px 0 4px; border: 0; background: none; color: var(--accent-strong); font-size: 15px; font-weight: 500; }
+.ph-back svg { width: 20px; height: 20px; }
+.ph-fake { width: 100%; text-align: left; cursor: pointer; color: var(--text-muted); font-size: 15px; }
+.ph-fake > span:not(.ph-round) { flex: 1; }
+.ph-drops { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ph-drops button { min-height: 76px; border: 1.5px dashed var(--border-strong); border-radius: 14px; background: var(--surface); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 500; padding: 8px; }
+.ph-drops svg { width: 24px; height: 24px; stroke: var(--accent); }
+.ph-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ph-tiles .ph-tile { padding: 10px 8px; min-width: 0; }
+.ph-tiles .ph-tile .v { font-size: 22px; }
+.ph-tiles .ph-tile .l { font-size: 11.5px; }
+.ph-tile { padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; border-left: 3px solid transparent; }
+.ph-tile.hot { border-left-color: var(--flag); }
+.ph-tile .v { font-size: 28px; font-weight: 600; line-height: 1.1; }
+.ph-tile .l { font-size: 13px; color: var(--text-muted); }
+.ph-card-h { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 4px 16px; }
+.ph-card-h h4 { margin: 0; font-size: 16px; font-weight: 600; }
+.ph-q { display: grid; grid-template-columns: 10px 1fr; gap: 12px; padding: 12px 16px; align-items: start; }
+.ph-q + .ph-q, .ph-due + .ph-due, .ph-file + .ph-file { border-top: 1px solid var(--border); }
+.ph-q .dot { margin-top: 7px; }
+.ph-q .t, .ph-due .t { font-size: 15px; font-weight: 500; }
+.ph-q .m, .ph-due .m { font-size: 13px; color: var(--text-muted); }
+.ph-q .acts { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.ph-due { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; }
+.ph-due .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.phone .btn { height: 44px; }
+.phone .btn.sm { height: 40px; }
+.ph-steps { display: flex; gap: 6px; font-size: 12.5px; color: var(--text-muted); flex-wrap: wrap; }
+.ph-steps span { padding: 3px 10px; border-radius: 999px; background: var(--surface-2); }
+.ph-steps .done { color: var(--good); } .ph-steps .on { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+.ph-file { width: 100%; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: center; padding: 12px 14px; border: 0; background: none; text-align: left; color: var(--text); min-height: 64px; }
+.ph-file .nm { display: block; font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-file > span:last-child { min-width: 0; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.ph-file > span:last-child > span:first-child { width: 100%; min-width: 0; }
+.ph-file .ds { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-file .ds { display: block; font-size: 12.5px; color: var(--text-muted); }
+.ph-pg { width: 30px; height: 38px; border-radius: 4px; background: var(--paper); display: flex; flex-direction: column; gap: 3px; padding: 6px 5px; }
+.ph-pg i { display: block; height: 2px; background: #9aa3b5; border-radius: 1px; }
+.ph-mini { padding: 14px 14px 16px; font-size: 12.5px; cursor: default; }
+.ph-sums { display: flex; flex-wrap: wrap; gap: 6px; }
+.phone .why2 { font-size: 14px; color: var(--text-muted); }
+.ph-form { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.ph-form h4 { margin: 0; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.phone .sel, .phone .input { height: 46px; font-size: 15px; }
+.ph-form .acts { display: flex; flex-direction: column; gap: 8px; }
+.ph-form .acts .btn { justify-content: center; }
+.ph-search { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 52px; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface); }
+.ph-search svg { width: 20px; height: 20px; stroke: var(--text-muted); flex: none; }
+.ph-search input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 15px; height: 48px; outline: none; }
+.ph-chiprow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ph-chiprow .fchip { flex: none; height: 40px; padding: 0 6px 0 12px; font-size: 13.5px; cursor: pointer; }
+.ph-chiprow .fchip button { width: 28px; height: 28px; }
+.ph-chiprow .fchip.addf { border-style: dashed; color: var(--accent-strong); padding: 0 14px; }
+.ph-count { font-size: 14px; color: var(--text-muted); } .ph-count b { color: var(--text); font-weight: 600; }
+.ph-sheet.l { align-items: stretch; max-height: 78%; overflow-y: auto; gap: 10px; }
+.ph-sheet.l .grab { align-self: center; }
+.ph-sheet.l h4 { margin: 2px 0 0; }
+.ph-opt { display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 0 4px; border-bottom: 1px solid var(--border); font-size: 15.5px; }
+.ph-opt input { width: 22px; height: 22px; accent-color: var(--accent-fill); flex: none; }
+.ph-opt .c { margin-left: auto; color: var(--text-muted); font-size: 13px; font-family: var(--font-mono); }
+.ph-sheet .foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 6px; }
+.ph-sheet .foot .btn { min-width: 96px; justify-content: center; }
+.ph-sheet .picked { font-family: var(--font-mono); font-size: 13px; background: var(--flag-soft); border-left: 3px solid var(--flag); padding: 8px 10px; border-radius: 0 8px 8px 0; overflow-wrap: anywhere; }
+.ph-sheet .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ph-sheet label.f { display: flex; flex-direction: column; gap: 4px; }
+.phone .paper { padding: 18px 16px 20px; font-size: 13px; cursor: default; }
+.phone .p-row { grid-template-columns: 92px 1fr; }
+.phone .p-row.two { grid-template-columns: 92px 1fr; }
+.phone .p-row.two > .lbl:nth-of-type(2) { margin-top: 4px; }
+.phone button.tx { border: 0; background: rgba(59,79,184,.07); outline: 1px dashed #7a8bdc; color: inherit; font: inherit; font-family: var(--font-mono); font-size: 12.5px; text-align: left; padding: 6px 8px; min-height: 32px; margin: 2px 2px 2px 0; cursor: pointer; }
+.phone button.tx.mapped { background: rgba(59,79,184,.14); outline: 1.5px solid #3b4fb8; }
+.phone button.tx.sel { background: rgba(181,115,8,.22); outline: 2px solid #b57308; }
+.ph-flist { display: flex; flex-direction: column; gap: 6px; }
+.ph-flist .fld { grid-template-columns: 24px 1fr auto 40px; min-height: 48px; }
+.ph-flist .fld button { width: 40px; height: 40px; border: 0; background: none; border-radius: 8px; display: grid; place-items: center; color: var(--text-muted); padding: 0; }
+.ph-flist .fld button svg { width: 14px; height: 14px; }
+.ph-hintline { display: flex; gap: 8px; font-size: 13.5px; color: var(--text-muted); align-items: flex-start; }
+.ph-hintline svg { width: 18px; height: 18px; flex: none; margin-top: 2px; stroke: var(--accent); }
 
 /* 2. Template editor */
 .ed { display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-height: 640px; }
@@ -347,7 +523,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 
 <div class="head"><div class="head-in">
   <h1>ServiceLedger · Nir proposals</h1>
-  <div class="sub">Seven mockups on branch <span class="mono">nir</span>. Visuals only: click around, nothing here saves or calls the backend. Example data is made up.</div>
+  <div class="sub">Eight mockups on branch <span class="mono">nir</span>. Visuals only: click around, nothing here saves or calls the backend. Example data is made up.</div>
   <div class="switch" role="tablist" aria-label="Proposals">
     <button role="tab" data-s="s1"><b>1</b>AI search</button>
     <button role="tab" data-s="s2"><b>2</b>Template editor</button>
@@ -356,6 +532,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
     <button role="tab" data-s="s5"><b>5</b>Batch upload</button>
     <button role="tab" data-s="s6"><b>6</b>Filters</button>
     <button role="tab" data-s="s7"><b>7</b>More ideas</button>
+    <button role="tab" data-s="s8"><b>8</b>Phone</button>
   </div>
 </div></div>
 
@@ -370,6 +547,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
       <li><b>Understood as</b> turns the sentence into the same filters as the Reports screen. No hidden logic.</li>
       <li><b>Why it matched</b> quotes the value or text that made each report a hit.</li>
       <li><b>Summarize</b> answers across the matches and lists the reports it used.</li>
+      <li><b>Ask by voice</b>: tap the microphone, say the question, tap stop. It is turned into text in the same box, so the chips show what was heard and understood. Recording is simulated in this mockup.</li>
     </ul>
   </div>
   <div class="scroller"><div class="frame">
@@ -377,11 +555,24 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
     <div class="page">
       <div class="page-title"><h3>Reports</h3><span id="s1count"></span></div>
       <div class="aibox">
-        <div class="aibox-top">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
-          <textarea id="q" aria-label="Ask about your reports" spellcheck="false"></textarea>
-          <button class="btn primary" id="s1go">Search</button>
+        <div class="aibox-field" id="aifield">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>
+          <textarea id="q" rows="1" aria-label="Ask about your reports" placeholder="Ask about your reports, for example “which instruments are overdue for PM?”" spellcheck="false"></textarea>
+          <div class="aibox-rec" id="airec" hidden>
+            <span class="recdot" aria-hidden="true"></span>
+            <span class="wave" id="aiwave" aria-hidden="true"></span>
+            <span class="rect" id="rect">0:00</span>
+            <span class="recmsg" id="recmsg">Listening…</span>
+          </div>
+          <span class="kbd" id="aikbd">Ctrl K</span>
+          <button class="aibox-cancel" id="s1cancel" type="button" aria-label="Cancel recording" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          <button class="mic" id="s1mic" type="button" aria-label="Ask by voice" aria-pressed="false" title="Ask by voice">
+            <svg class="ic-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            <svg class="ic-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+          </button>
+          <button class="btn primary" id="s1go" type="button">Search</button>
         </div>
+        <span class="aibox-note" id="airecnote" role="status" aria-live="polite"></span>
         <div class="aibox-row">
           <div class="seg" role="group" aria-label="Mode"><button id="m-find" aria-pressed="true">Find reports</button><button id="m-sum" aria-pressed="false">Summarize</button></div>
           <span class="lbl" style="margin-left:6px">Try</span>
@@ -476,7 +667,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
           <div class="row-list">
             <div class="q-row"><span class="dot warn"></span><div><div class="t">FACSAria III · P69200123</div><div class="m">PM report, 14 Sep · 3 of 12 fields flagged</div></div><span class="pill warn">In review</span><button class="btn sm">Review</button></div>
             <div class="q-row"><span class="dot warn"></span><div><div class="t">Cytek Aurora · R1-0412</div><div class="m">PM report, 9 Sep · 1 of 14 fields flagged</div></div><span class="pill warn">In review</span><button class="btn sm">Review</button></div>
-            <div class="q-row"><span class="dot crit"></span><div><div class="t">scan0042.pdf</div><div class="m">Serial number unreadable · choose the instrument</div></div><span class="pill crit">Needs a choice</span><button class="btn sm">Choose</button></div>
+            <div class="q-row"><span class="dot crit"></span><div><div class="t">scan0042.pdf</div><div class="m">Serial number unreadable · choose the instrument</div></div><span class="pill crit">Non registered instrument</span><button class="btn sm">Choose</button></div>
             <div class="q-row"><span class="dot"></span><div><div class="t">FACSDiscover S8 · S8-2210</div><div class="m">Installation report · extracted, not yet opened</div></div><span class="pill">Extracted</span><button class="btn sm">Review</button></div>
             <div class="q-row"><span class="dot crit"></span><div><div class="t">CytoFLEX_repair.pdf</div><div class="m">Reading failed after 2 tries</div></div><span class="pill crit">Failed</span><button class="btn sm">Retry</button></div>
           </div>
@@ -649,6 +840,44 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 
 </div>
 
+<!-- 8 -->
+<section class="screen" id="s8">
+  <div class="intro">
+    <h2>The app on a phone</h2>
+    <p>The mockups above are drawn for a desk. This tab shows the same ideas in a phone frame: one thumb, one column, and a bottom bar for the main places. Pick a screen with the switcher; everything inside the phone is clickable.</p>
+    <ul>
+      <li><b>AI search</b>: ask by typing or by voice, with the answer as stacked cards.</li>
+      <li><b>Home</b>: what needs you today, the maintenance that is due, and two big buttons to add reports (camera or files).</li>
+      <li><b>Batch upload</b>: the queue as a list; tap a file to confirm it, or confirm the confident ones together.</li>
+      <li><b>Filters</b>: chips that scroll sideways, and a bottom sheet with a checklist instead of a pop-over.</li>
+      <li><b>Template editor</b>: tap a piece of text on the page to make it a field.</li>
+    </ul>
+    <p style="margin-top:10px">Recording and the camera are simulated; nothing is heard, photographed or sent. Every tap target is at least 44 px.</p>
+  </div>
+  <div class="ph-wrap">
+    <div class="ph-switch" id="phscreens" role="group" aria-label="Phone screen">
+      <button data-phs="ai" aria-pressed="true">AI search</button>
+      <button data-phs="home" aria-pressed="false">Home</button>
+      <button data-phs="batch" aria-pressed="false">Batch upload</button>
+      <button data-phs="filters" aria-pressed="false">Filters</button>
+      <button data-phs="tpl" aria-pressed="false">Template editor</button>
+    </div>
+    <div class="ph-switch" id="phstates" role="group" aria-label="AI search state">
+      <button data-ph="ask" aria-pressed="true">Ask</button>
+      <button data-ph="rec" aria-pressed="false">Listening</button>
+      <button data-ph="res" aria-pressed="false">Results</button>
+      <button data-ph="sum" aria-pressed="false">Summary</button>
+    </div>
+    <div class="phone" id="phone" aria-label="Phone mockup">
+      <div class="ph-status"><span>9:41</span><span class="sys"><span>5G</span><span class="bat" aria-hidden="true"></span></span></div>
+      <div class="ph-bar"><span class="brand"><i id="phlogo"></i><span>ServiceLedger</span></span><button class="ph-icon" aria-label="More" type="button"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button></div>
+      <div class="ph-body" id="phbody"></div>
+      <nav class="ph-nav" id="phnav" aria-label="Main"></nav>
+      <div id="phsheet"></div>
+    </div>
+  </div>
+</section>
+
 <script>
 (function () {
   var ICON = {
@@ -674,7 +903,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
   });
 
   /* switcher + hash route */
-  var screens = ['s1', 's2', 's3', 's4', 's5', 's6', 's7'];
+  var screens = ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'];
   function show(id) {
     if (screens.indexOf(id) < 0) id = 's1';
     screens.forEach(function (s) { document.getElementById(s).classList.toggle('on', s === id); });
@@ -715,6 +944,8 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
   ];
   var cur = 0, mode = 'find';
   var X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  /* one line tall, growing with the text; a hidden tab measures 0, so it keeps one line until it is shown */
+  function fitQ() { var q = document.getElementById('q'); q.style.height = '24px'; var h = q.scrollHeight; q.style.height = (h ? Math.min(h, 96) : 24) + 'px'; }
   function renderS1() {
     var e = EX[cur];
     document.getElementById('q').value = e.q;
@@ -735,12 +966,58 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
     document.querySelectorAll('.ex').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-ex') === cur); });
     document.getElementById('m-find').setAttribute('aria-pressed', mode === 'find');
     document.getElementById('m-sum').setAttribute('aria-pressed', mode === 'sum');
+    fitQ();
   }
   document.querySelectorAll('.ex').forEach(function (b) { b.addEventListener('click', function () { cur = +b.getAttribute('data-ex'); renderS1(); }); });
   document.getElementById('m-find').addEventListener('click', function () { mode = 'find'; renderS1(); });
   document.getElementById('m-sum').addEventListener('click', function () { mode = 'sum'; renderS1(); });
-  document.getElementById('s1go').addEventListener('click', renderS1);
+  document.getElementById('s1go').addEventListener('click', function () { renderS1(); });
   renderS1();
+
+  /* voice (simulated): record, stop, "transcribe" into the box, then search */
+  (function () {
+    var field = document.getElementById('aifield'), mic = document.getElementById('s1mic');
+    var q = document.getElementById('q'), rec = document.getElementById('airec'), kbd = document.getElementById('aikbd');
+    var cancel = document.getElementById('s1cancel'), go = document.getElementById('s1go');
+    var note = document.getElementById('airecnote'), msg = document.getElementById('recmsg'), clock = document.getElementById('rect');
+    var wave = document.getElementById('aiwave'), timer = null, secs = 0, state = 'idle', pend = null;
+    for (var i = 0; i < 40; i++) { var b = document.createElement('i'); b.style.animationDelay = (-((i * 137) % 100) / 100).toFixed(2) + 's'; b.style.animationDuration = (0.7 + ((i * 53) % 60) / 100).toFixed(2) + 's'; wave.appendChild(b); }
+    var fit = fitQ;
+    function setState(s) {
+      state = s;
+      field.classList.toggle('rec', s === 'rec'); field.classList.toggle('busy', s === 'busy');
+      var live = s !== 'idle';
+      rec.hidden = !live; q.hidden = live; kbd.hidden = live; cancel.hidden = s !== 'rec'; go.disabled = live;
+      mic.setAttribute('aria-pressed', s === 'rec');
+      mic.setAttribute('aria-label', s === 'rec' ? 'Stop and send' : 'Ask by voice');
+      mic.title = s === 'rec' ? 'Stop and send' : 'Ask by voice';
+      msg.textContent = s === 'busy' ? 'Turning speech into text…' : 'Listening…';
+      note.textContent = s === 'rec' ? 'Recording. Tap stop to send, or the cross to discard.' : s === 'busy' ? 'Sending the recording…' : '';
+    }
+    function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+    function fmt(n) { return Math.floor(n / 60) + ':' + ('0' + (n % 60)).slice(-2); }
+    mic.addEventListener('click', function () {
+      if (state === 'idle') {
+        secs = 0; clock.textContent = '0:00'; setState('rec');
+        timer = setInterval(function () { secs++; clock.textContent = fmt(secs); }, 1000);
+      } else if (state === 'rec') {
+        stopTimer(); setState('busy');
+        pend = setTimeout(function () {
+          cur = (cur + 1) % EX.length; setState('idle'); renderS1();
+          note.textContent = 'Heard this question. Mockup only: nothing was recorded.';
+          setTimeout(function () { if (state === 'idle') note.textContent = ''; }, 4000);
+        }, 900);
+      }
+    });
+    cancel.addEventListener('click', function () { stopTimer(); setState('idle'); note.textContent = 'Recording discarded.'; setTimeout(function () { if (state === 'idle') note.textContent = ''; }, 2500); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && state === 'rec') cancel.click();
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && q.offsetParent !== null && state === 'idle') { e.preventDefault(); q.focus(); q.select(); }
+    });
+    q.addEventListener('input', fit);
+    if (window.ResizeObserver) new ResizeObserver(fit).observe(field); else window.addEventListener('resize', fit);
+    fit();
+  })();
 
   /* ---------- 2. Template editor ---------- */
   var fields = [];
@@ -868,7 +1145,7 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
     { f: 'FACSAria_PM_Sep (1).pdf', inst: 'BD FACSAria III · P69200123', type: 'Preventive maintenance', c: 97, st: 'dup', why: 'Same content as FACSAria_PM_Sep.pdf, already in this batch.' }
   ];
   var sel = 0;
-  var STL = { ready: ['Ready to confirm', 'good'], choose: ['Needs your choice', 'crit'], reading: ['Reading…', 'mute'], dup: ['Duplicate', 'warn'], done: ['Confirmed', 'good'] };
+  var STL = { ready: ['Ready to confirm', 'good'], choose: ['Non registered instrument', 'crit'], reading: ['Reading…', 'mute'], dup: ['Duplicate', 'warn'], done: ['Confirmed', 'good'] };
   function renderS5() {
     var cnt = { ready: 0, choose: 0, reading: 0, dup: 0, done: 0 };
     FILES.forEach(function (x) { cnt[x.st]++; });
@@ -988,6 +1265,307 @@ mark { background: var(--flag-soft); color: inherit; box-shadow: inset 0 -2px 0 
 
   show(location.hash.slice(1));
   if (!location.hash) show('s1');
+
+  /* ---------- 8. Phone (every screen) ---------- */
+  (function () {
+    var body = document.getElementById('phbody'), sheet = document.getElementById('phsheet'), nav = document.getElementById('phnav'), phone = document.getElementById('phone');
+    var statesRow = document.getElementById('phstates');
+    document.getElementById('phlogo').innerHTML = ic('reports');
+    function svg(inner, extra) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ' + (extra || '') + '>' + inner + '</svg>'; }
+    var I = {
+      spark: svg('<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/>', 'style="stroke:var(--accent)"'),
+      mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+      send: svg('<path d="M12 19V5M5 12l7-7 7 7"/>'),
+      stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>',
+      back: svg('<path d="M15 5l-7 7 7 7"/>'),
+      cam: svg('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),
+      files: svg('<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>'),
+      search: svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>'),
+      info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>')
+    };
+    var screen = 'ai';
+
+    /* ---- AI search state ---- */
+    var st = 'ask', pcur = 0, secs = 0, timer = null, pend = null, busy = false;
+    var SHORT = ['PM reports, laser delay', 'More than 2 repairs', 'Reports mentioning a PMT'];
+    /* ---- Batch state ---- */
+    var pf = FILES.map(function (f) { return JSON.parse(JSON.stringify(f)); }), bsel = null;
+    /* ---- Filters state ---- */
+    var fAct = ['model', 'type', 'date'], fSel = JSON.parse(JSON.stringify(SELV)), fOpen = null;
+    /* ---- Template state ---- */
+    var PAPER = [
+      ['Customer', [['customer', 'Text', 'Demo Institution, Flow Cytometry Core']]],
+      ['Instrument', [['instrument_model', 'Text', 'BD FACSAria III']]],
+      ['Serial no.', [['serial_number', 'Text', 'P69200123']], 'Work order', [['work_order', 'Text', 'WO-04215114']]],
+      ['Visit date', [['visit_date', 'Date', '14/09/2026']], 'Engineer', [['engineer', 'Text', 'D. Levi']]],
+      'MEASUREMENTS',
+      ['Laser delay', [['laser_delay', 'Number', '29.40']], 'Range', [['laser_delay_range', 'Text', '24.0 – 28.0']]],
+      ['Sheath pressure', [['sheath_pressure', 'Number', '4.9']], 'Nozzle', [['nozzle_size', 'Number', '100']]],
+      'WORK PERFORMED',
+      ['Summary', [['work_summary', 'Text (long)', 'Replaced sheath filter and O-rings. Cleaned fluidics path.']]],
+      'PARTS REPLACED',
+      ['Part no.', [['part_number', 'Text', '344287']], 'Qty', [['part_qty', 'Number', '2']]]
+    ];
+    var PIECE = {};
+    PAPER.forEach(function (r) { if (typeof r === 'string') return; [r[1], r[3]].forEach(function (ps) { (ps || []).forEach(function (p) { PIECE[p[0]] = { key: p[0], type: p[1], text: p[2], label: p === r[1][0] ? r[0] : r[2] || r[0] }; }); }); });
+    var tf = ['customer', 'instrument_model', 'serial_number', 'visit_date'].map(function (k) { return { key: k, type: PIECE[k].type, text: PIECE[k].text }; });
+    var tpick = null;
+
+    function fmt(n) { return Math.floor(n / 60) + ':' + ('0' + (n % 60)).slice(-2); }
+    function stopTimer() { if (timer) { clearInterval(timer); timer = null; } if (pend) { clearTimeout(pend); pend = null; } }
+
+    /* ================= AI search ================= */
+    function aiField(filled) {
+      return '<div class="ph-field">' + I.spark + '<textarea id="phq" rows="2" aria-label="Ask about your reports" placeholder="Ask about your reports, or tap the microphone" spellcheck="false">' + (filled ? EX[pcur].q : '') + '</textarea>' +
+        '<button class="ph-round" data-a="mic" type="button" aria-label="Ask by voice">' + I.mic + '</button>' +
+        '<button class="ph-round go" data-a="send" type="button" aria-label="Search">' + I.send + '</button></div>';
+    }
+    function aiExamples() {
+      return '<div class="ph-ex">' + SHORT.map(function (s, i) { return '<button class="ex' + (st !== 'ask' && i === pcur ? ' on' : '') + '" data-a="ex" data-v="' + i + '" type="button">' + s + '</button>'; }).join('') + '</div>';
+    }
+    function aiResults(summary) {
+      var e = EX[pcur], h = '';
+      h += '<div class="seg" role="group" aria-label="Mode"><button data-a="mode" data-v="res" aria-pressed="' + !summary + '">Find reports</button><button data-a="mode" data-v="sum" aria-pressed="' + summary + '">Summarize</button></div>';
+      h += '<div class="ph-chips"><span class="lbl">Understood as</span>' + e.chips.map(function (c) { return '<span class="fchip"><span class="k">' + c[0] + ':</span><b>' + c[1] + '</b><button aria-label="Remove ' + c[0] + '" type="button">' + X + '</button></span>'; }).join('') + '</div>';
+      if (summary) {
+        var max = Math.max.apply(null, e.bars.map(function (b) { return b[1]; }));
+        h += '<div class="card sum"><div><h4>Summary</h4><ul>' + e.sum.map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ul><p style="color:var(--text-muted);font-size:13px;margin-top:10px">Based on the ' + e.rows.length + ' reports below.</p></div><div><div class="lbl" style="margin-bottom:10px">' + e.unit + '</div><div class="bars">' + e.bars.map(function (b) { return '<div><span>' + b[0] + '</span><span><i style="width:' + Math.round(b[1] / max * 100) + '%"></i></span><em>' + b[1] + '</em></div>'; }).join('') + '</div></div></div>';
+      }
+      h += e.rows.map(function (r) {
+        return '<div class="card ph-res"><div><h4>' + r[0] + '</h4><div class="meta">' + r[1] + '</div></div><div class="why">' + r[2] + '</div><div class="foot"><span class="pill ' + r[4] + '">' + r[3] + '</span><button class="btn sm quiet" type="button">Open</button></div></div>';
+      }).join('');
+      return h;
+    }
+    function viewAi() {
+      var done = st === 'res' || st === 'sum';
+      var h = '<h3>Reports' + (done ? '<span>' + EX[pcur].rows.length + ' reports match</span>' : '') + '</h3>' + aiField(done) + aiExamples();
+      if (!done) {
+        h += '<div class="card ph-hint"><b>Ask in your own words</b><span>Type or tap the microphone. For example: “which instruments are overdue for PM?”</span></div>';
+        h += '<div class="card ph-recent"><span class="lbl">Recent questions</span>' + EX.map(function (e, i) { return '<button type="button" data-a="ex" data-v="' + i + '">' + I.search.replace('<svg', '<svg aria-hidden="true"') + '<span>' + e.q + '</span></button>'; }).join('') + '</div>';
+      } else h += aiResults(st === 'sum');
+      return h;
+    }
+    function recSheet() {
+      var w = ''; for (var i = 0; i < 30; i++) w += '<i style="animation-delay:' + (-((i * 137) % 100) / 100).toFixed(2) + 's;animation-duration:' + (0.7 + ((i * 53) % 60) / 100).toFixed(2) + 's"></i>';
+      return '<div class="ph-scrim"></div><div class="ph-sheet' + (busy ? ' busy' : '') + '" role="dialog" aria-label="Listening">' +
+        '<span class="grab"></span><h4>' + (busy ? 'Turning speech into text…' : 'Listening…') + '</h4><div class="clock" id="phclock">' + fmt(secs) + '</div>' +
+        '<div class="wave" aria-hidden="true">' + w + '</div>' +
+        '<p class="say">' + (busy ? 'One moment.' : 'Say the question, for example “which instruments are overdue for PM?”') + '</p>' +
+        '<div class="ctl"><button class="btn quiet" data-a="cancel" type="button"' + (busy ? ' disabled' : '') + '>Cancel</button><button class="ph-stop" data-a="stop" type="button" aria-label="Stop and send"' + (busy ? ' disabled' : '') + '>' + I.stop + '</button><span></span></div></div>';
+    }
+
+    /* ================= Home ================= */
+    function viewHome() {
+      var q = function (dot, t, m, pc, pt, act) { return '<div class="ph-q"><span class="dot ' + dot + '"></span><div><div class="t">' + t + '</div><div class="m">' + m + '</div><div class="acts"><span class="pill ' + pc + '">' + pt + '</span><button class="btn sm" type="button">' + act + '</button></div></div></div>'; };
+      var due = function (n, s, pc, pt, m) { return '<div class="ph-due"><div class="top"><span class="t">' + n + ' · ' + s + '</span><span class="pill ' + pc + '">' + pt + '</span></div><span class="m">' + m + '</span></div>'; };
+      return '<h3>Today<span>Friday 6 November</span></h3>' +
+        '<button class="ph-field ph-fake" data-a="go" data-v="ai" type="button" aria-label="Ask about your reports">' + I.spark + '<span>Ask about your reports…</span><span class="ph-round" style="pointer-events:none">' + I.mic + '</span></button>' +
+        '<div class="ph-drops"><button data-a="go" data-v="batch" type="button">' + I.cam + 'Scan with camera</button><button data-a="go" data-v="batch" type="button">' + I.files + 'Choose files</button></div>' +
+        '<div class="ph-tiles"><div class="card ph-tile hot"><span class="v">7</span><span class="l">To review</span></div><div class="card ph-tile hot"><span class="v">2</span><span class="l">PM overdue</span></div><div class="card ph-tile"><span class="v">34</span><span class="l">Finalized</span></div><div class="card ph-tile"><span class="v">91%</span><span class="l">No edits</span></div></div>' +
+        '<div class="card"><div class="ph-card-h"><h4>Needs your attention</h4><button class="btn sm quiet" data-a="go" data-v="filters" type="button">All ›</button></div>' +
+        q('warn', 'FACSAria III · P69200123', 'PM report, 14 Sep · 3 of 12 fields flagged', 'warn', 'In review', 'Review') +
+        q('warn', 'Cytek Aurora · R1-0412', 'PM report, 9 Sep · 1 of 14 fields flagged', 'warn', 'In review', 'Review') +
+        q('crit', 'scan0042.pdf', 'Serial number unreadable · choose the instrument', 'crit', 'Non registered instrument', 'Choose') +
+        q('', 'FACSDiscover S8 · S8-2210', 'Installation report · extracted, not yet opened', '', 'Extracted', 'Review') +
+        q('crit', 'CytoFLEX_repair.pdf', 'Reading failed after 2 tries', 'crit', 'Failed', 'Retry') + '</div>' +
+        '<div class="card"><div class="ph-card-h"><h4>Maintenance due</h4><button class="btn sm quiet" type="button">All ›</button></div>' +
+        due('LSRFortessa', 'F-1187', 'crit', '14 days over', 'Last PM 28 Jul · every 3 months') +
+        due('Attune NxT', 'AT-5530', 'crit', '3 days over', 'Last PM 3 Aug · every 3 months') +
+        due('FACSAria III', 'P69200187', 'warn', 'in 9 days', 'Last PM 2 Aug · every 3 months') +
+        due('CytoFLEX LX', 'C-0771', 'mute', 'in 24 days', 'Last PM 21 Aug · every 3 months') + '</div>';
+    }
+
+    /* ================= Batch upload ================= */
+    function bcounts() { var c = { ready: 0, choose: 0, reading: 0, dup: 0, done: 0 }; pf.forEach(function (x) { c[x.st]++; }); return c; }
+    function viewBatch() {
+      if (bsel === null) {
+        var c = bcounts();
+        var sums = ['done', 'ready', 'choose', 'reading', 'dup'].filter(function (k) { return c[k]; }).map(function (k) { return '<span class="pill ' + STL[k][1] + '">' + c[k] + ' ' + STL[k][0].toLowerCase().replace('…', '') + '</span>'; }).join('');
+        return '<div class="ph-steps"><span class="done">✓ Upload</span><span class="on">2 Classify</span><span>3 Review</span></div>' +
+          '<h3>' + pf.length + ' files<span><button class="btn sm quiet" type="button" style="margin-left:6px">+ Add more</button></span></h3>' +
+          '<div class="ph-sums">' + sums + '</div>' +
+          '<button class="btn primary" data-a="ball" type="button" style="justify-content:center"' + (c.ready ? '' : ' disabled') + '>' + (c.ready ? 'Confirm ' + c.ready + ' confident ' + (c.ready === 1 ? 'file' : 'files') : 'Nothing confident left to confirm') + '</button>' +
+          '<div class="card" style="overflow:hidden">' + pf.map(function (x, i) {
+            var s = STL[x.st];
+            return '<button class="ph-file" data-a="bopen" data-v="' + i + '" type="button"><span class="ph-pg" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span><span><span class="nm">' + x.f + '</span><span class="ds">' + (x.st === 'reading' ? 'Finding the instrument…' : x.inst + (x.c ? ' · ' + x.c + '%' : '')) + '</span></span><span class="pill ' + s[1] + '">' + s[0] + '</span></span></button>';
+          }).join('') + '</div>';
+      }
+      var x = pf[bsel], h = '<button class="ph-back" data-a="bback" type="button">' + I.back + pf.length + ' files</button>';
+      h += '<div class="card paper ph-mini" style="border-radius:8px"><div class="p-title" style="font-size:11px"><span>SERVICE REPORT</span><span>' + (x.type || '…') + '</span></div><div class="p-row"><span class="lbl">Instrument</span><span class="mono">' + (x.inst ? x.inst.split(' · ').pop() : '…') + '</span></div><div class="p-row"><span class="lbl">Type</span><span>' + (x.type || '…') + '</span></div></div>';
+      if (x.st === 'reading') h += '<div class="card ph-form"><h4>' + x.f + '</h4><div class="why2">Reading the first pages. This file can be confirmed as soon as it finishes; the others are not waiting for it.</div><div class="acts"><button class="btn" data-a="bskip" type="button">Skip for now</button></div></div>';
+      else if (x.st === 'dup') h += '<div class="card ph-form"><h4>' + x.f + '</h4><div class="why2">' + x.why + '</div><span class="pill warn" style="align-self:flex-start">Duplicate</span><div class="acts"><button class="btn primary" data-a="bremove" type="button">Remove from batch</button><button class="btn" data-a="bkeep" type="button">Keep it anyway</button></div></div>';
+      else {
+        var opts = ['BD FACSAria III · P69200187', 'Cytek Aurora · R1-0412', 'FACSDiscover S8 · S8-2210'];
+        var first = x.inst === 'Not found' ? 'Choose an instrument…' : x.inst;
+        h += '<div class="card ph-form"><h4>' + x.f + '</h4><div class="why2">' + x.why + '</div>' +
+          '<div><label class="lbl" for="phbi">Instrument</label><select class="sel" id="phbi" data-a="bsel"><option>' + first + '</option>' + opts.filter(function (o) { return o !== first; }).map(function (o) { return '<option>' + o + '</option>'; }).join('') + '</select></div>' +
+          '<div><label class="lbl" for="phbt">Report type</label><select class="sel" id="phbt"><option>' + x.type + '</option><option>Malfunction / repair</option><option>Installation / upgrade</option></select></div>' +
+          '<div class="acts"><button class="btn primary" id="phconf" data-a="bconf" type="button"' + (x.inst === 'Not found' ? ' disabled' : '') + '>Confirm &amp; next</button><button class="btn" data-a="bskip" type="button">Skip</button></div></div>';
+      }
+      return h;
+    }
+    function bnext() { for (var k = 1; k <= pf.length; k++) { var j = (bsel + k) % pf.length; if (pf[j].st === 'ready' || pf[j].st === 'choose') { bsel = j; return; } } bsel = null; }
+
+    /* ================= Filters ================= */
+    function fcount() {
+      var n = 214;
+      fAct.forEach(function (k) {
+        var d = DEF[k], s = fSel[k];
+        if (d.kind === 'one') { var o = d.opts.filter(function (o) { return o[0] === s[0]; })[0]; n *= o ? o[1] : 1; }
+        else if (s.length) { var tot = 0, got = 0; d.opts.forEach(function (o) { tot += o[1]; if (s.indexOf(o[0]) >= 0) got += o[1]; }); n *= got / tot; }
+      });
+      return Math.max(0, Math.round(n));
+    }
+    function fchipTxt(k) {
+      var d = DEF[k], s = fSel[k];
+      if (!s.length) return '<span class="k">' + d.label + ':</span><b>any</b>';
+      return '<span class="k">' + d.label + ':</span><b>' + s[0] + '</b>' + (s.length > 1 ? '<span class="pill" style="height:18px;padding:0 6px">+' + (s.length - 1) + '</span>' : '');
+    }
+    function viewFilters() {
+      var n = fcount(), rest = Object.keys(DEF).filter(function (k) { return fAct.indexOf(k) < 0; });
+      var h = '<h3>Reports</h3><label class="ph-search">' + I.search + '<input placeholder="Search report text…" aria-label="Search report text"></label>';
+      h += '<div class="ph-chiprow">' + fAct.map(function (k) { return '<span class="fchip" role="button" tabindex="0" data-a="fopen" data-v="' + k + '">' + fchipTxt(k) + '<button data-a="fx" data-v="' + k + '" aria-label="Remove ' + DEF[k].label + ' filter" type="button">' + X + '</button></span>'; }).join('') +
+        (rest.length ? '<button class="fchip addf" data-a="fadd" type="button">+ Add filter</button>' : '') + (fAct.length ? '<button class="btn sm quiet" data-a="fclr" type="button" style="flex:none">Clear all</button>' : '') + '</div>';
+      h += '<div class="ph-count"><b>' + n + ' reports</b> ' + (fAct.length ? 'match ' + fAct.length + ' filter' + (fAct.length === 1 ? '' : 's') : 'in total') + '</div>';
+      h += ROWS.slice(0, Math.min(5, Math.max(n, 0))).map(function (r) {
+        return '<div class="card ph-res"><div><h4>' + r[0] + '</h4><div class="meta">' + r[1] + ' · ' + r[2] + '</div></div><div class="foot"><span class="meta mono" style="font-size:13px">' + r[3] + '</span><span class="pill ' + r[5] + '">' + r[4] + '</span></div></div>';
+      }).join('');
+      return h;
+    }
+    function filterSheet() {
+      if (fOpen === '__add') {
+        return '<div class="ph-scrim" data-a="sclose"></div><div class="ph-sheet l" role="dialog" aria-label="Add filter"><span class="grab"></span><h4>Add a filter</h4>' +
+          Object.keys(DEF).filter(function (k) { return fAct.indexOf(k) < 0; }).map(function (k) { return '<button class="ph-opt" data-a="faddkey" data-v="' + k + '" type="button" style="background:none;border-width:0 0 1px;width:100%;color:var(--text);text-align:left">+ ' + DEF[k].label + '</button>'; }).join('') +
+          '<div class="foot"><span></span><button class="btn" data-a="sclose" type="button">Close</button></div></div>';
+      }
+      var d = DEF[fOpen], s = fSel[fOpen];
+      return '<div class="ph-scrim" data-a="sclose"></div><div class="ph-sheet l" role="dialog" aria-label="' + d.label + '"><span class="grab"></span><h4>' + d.label + '</h4>' +
+        d.opts.map(function (o, i) { return '<label class="ph-opt"><input type="' + (d.kind === 'one' ? 'radio' : 'checkbox') + '" name="phopt" data-a="fopt" data-v="' + i + '"' + (s.indexOf(o[0]) >= 0 ? ' checked' : '') + '><span>' + o[0] + '</span>' + (d.kind === 'multi' ? '<span class="c">' + o[1] + '</span>' : '') + '</label>'; }).join('') +
+        '<div class="foot"><button class="btn quiet" data-a="fnone" type="button">' + (d.kind === 'multi' ? 'Select none' : '') + '</button><button class="btn primary" data-a="sclose" type="button">Done · ' + fcount() + ' reports</button></div></div>';
+    }
+
+    /* ================= Template editor ================= */
+    function tmapped(k) { for (var i = 0; i < tf.length; i++) if (tf[i].key === k) return i; return -1; }
+    function viewTpl() {
+      var rows = PAPER.map(function (r) {
+        if (typeof r === 'string') return '<div class="p-sec">' + r + '</div>';
+        var cell = function (ps) { return '<span>' + ps.map(function (p) { var m = tmapped(p[0]); return '<button class="tx' + (m >= 0 ? ' mapped' : '') + (tpick === p[0] ? ' sel' : '') + '" type="button" data-a="tpick" data-v="' + p[0] + '"' + (m >= 0 ? ' data-n="' + (m + 1) + '"' : '') + '>' + p[2] + '</button>'; }).join(' ') + '</span>'; };
+        var h = '<div class="p-row' + (r[2] ? ' two' : '') + '"><span class="lbl">' + r[0] + '</span>' + cell(r[1]);
+        if (r[2]) h += '<span class="lbl">' + r[2] + '</span>' + cell(r[3]);
+        return h + '</div>';
+      }).join('');
+      return '<div><h3 style="font-size:19px">Preventive maintenance</h3><div class="m" style="color:var(--text-muted);font-size:13px">BD FACSAria III · ' + tf.length + ' fields · used by 38 reports</div></div>' +
+        '<div class="ph-hintline">' + I.info + '<span>Tap a piece of text on the page to make it a field. Fields already added are marked with numbers.</span></div>' +
+        '<div class="paper"><div class="p-title"><span>SERVICE REPORT</span><span>PM</span></div>' + rows + '</div>' +
+        '<div class="lbl">Fields in this template</div><div class="ph-flist">' + tf.map(function (f, i) {
+          return '<div class="fld"><span class="n">' + (i + 1) + '</span><span class="nm">' + f.key + '</span><span class="pill mute">' + f.type + '</span><button data-a="trm" data-v="' + i + '" aria-label="Remove field ' + f.key + '" type="button">' + X + '</button></div>';
+        }).join('') + '</div>' +
+        '<div style="display:flex;gap:8px"><button class="btn primary" type="button" style="flex:1;justify-content:center">Save template</button><button class="btn" type="button">Test on a PDF</button></div>';
+    }
+    function tplSheet() {
+      var p = PIECE[tpick], m = tmapped(tpick);
+      if (m >= 0) return '<div class="ph-scrim" data-a="sclose"></div><div class="ph-sheet l" role="dialog" aria-label="Field"><span class="grab"></span><h4>Field ' + (m + 1) + ': ' + tf[m].key + '</h4><div class="picked">' + p.text + '</div><div class="foot"><button class="btn" data-a="trm" data-v="' + m + '" type="button">Remove field</button><button class="btn primary" data-a="sclose" type="button">Close</button></div></div>';
+      var types = ['Text', 'Number', 'Date', 'Text (long)'];
+      return '<div class="ph-scrim" data-a="sclose"></div><div class="ph-sheet l" role="dialog" aria-label="Add field"><span class="grab"></span><h4>Add a field</h4><div class="picked">' + p.text + '</div>' +
+        '<div class="two"><label class="f"><span class="lbl">Name</span><input class="input" id="phtn" value="' + p.key + '"></label><label class="f"><span class="lbl">Type</span><select class="sel" id="phtt">' + types.map(function (t) { return '<option' + (t === p.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label></div>' +
+        '<div class="foot"><button class="btn" data-a="sclose" type="button">Cancel</button><button class="btn primary" data-a="tadd" type="button">Add field</button></div></div>';
+    }
+
+    /* ================= render ================= */
+    function navHtml() {
+      var on = { home: 0, ai: 1, filters: 1, batch: 2, tpl: 4 }[screen];
+      var item = function (i, label, icon, go) { return '<span class="' + (on === i ? 'on' : '') + '" ' + (go ? 'role="button" tabindex="0" data-a="go" data-v="' + go + '"' : '') + '>' + icon + label + '</span>'; };
+      return item(0, 'Today', ic('home'), 'home') + item(1, 'Reports', ic('reports'), 'ai') + '<span role="button" tabindex="0" data-a="go" data-v="batch" aria-label="New report"><b class="fab" style="font-weight:400">' + ic('new') + '</b></span>' + item(3, 'Analytics', ic('analytics'), '') + item(4, 'More', ic('instruments'), 'tpl');
+    }
+    function fitQ2() { var q = document.getElementById('phq'); if (q) { q.style.height = '42px'; var h = q.scrollHeight; if (h > 42) q.style.height = Math.min(h, 126) + 'px'; } }
+    function renderBody() {
+      body.innerHTML = { ai: viewAi, home: viewHome, batch: viewBatch, filters: viewFilters, tpl: viewTpl }[screen]();
+      fitQ2();
+    }
+    function sheetHtml() {
+      if (screen === 'ai' && st === 'rec') return recSheet();
+      if (screen === 'filters' && fOpen) return filterSheet();
+      if (screen === 'tpl' && tpick) return tplSheet();
+      return '';
+    }
+    function render() {
+      renderBody(); sheet.innerHTML = sheetHtml(); nav.innerHTML = navHtml();
+      document.querySelectorAll('[data-phs]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-phs') === screen); });
+      document.querySelectorAll('[data-ph]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-ph') === st); });
+      statesRow.hidden = screen !== 'ai'; if (!(screen === 'tpl' && tpick)) body.style.paddingBottom = '';
+    }
+    function goScreen(s) {
+      stopTimer(); busy = false; if (st === 'rec') st = 'ask'; fOpen = null; tpick = null; if (s !== 'batch') bsel = null;
+      screen = s; render(); body.scrollTop = 0;
+    }
+    function startRec() {
+      stopTimer(); secs = 0; busy = false; st = 'rec'; render();
+      timer = setInterval(function () { secs++; var c = document.getElementById('phclock'); if (c) c.textContent = fmt(secs); }, 1000);
+    }
+    function sendRec() {
+      stopTimer(); busy = true; render();
+      pend = setTimeout(function () { pend = null; busy = false; pcur = (pcur + 1) % EX.length; st = 'res'; render(); body.scrollTop = 0; }, 900);
+    }
+    function aiTo(s) { stopTimer(); busy = false; st = s; render(); body.scrollTop = 0; }
+
+    phone.addEventListener('click', function (e) {
+      var el = e.target.closest('[data-a]'); if (!el) return;
+      if (el.tagName === 'INPUT' || el.tagName === 'SELECT') return; /* handled by change */
+      var a = el.getAttribute('data-a'), v = el.getAttribute('data-v');
+      if (a === 'fx') { e.stopPropagation(); fAct.splice(fAct.indexOf(v), 1); fSel[v] = []; if (fOpen === v) fOpen = null; render(); return; }
+      switch (a) {
+        case 'go': if (v) goScreen(v); break;
+        case 'mic': startRec(); break;
+        case 'send': aiTo('res'); break;
+        case 'stop': sendRec(); break;
+        case 'cancel': aiTo('ask'); break;
+        case 'ex': pcur = +v; aiTo('res'); break;
+        case 'mode': aiTo(v); break;
+        case 'bopen': bsel = +v; renderBody(); body.scrollTop = 0; break;
+        case 'bback': bsel = null; renderBody(); break;
+        case 'bconf': pf[bsel].st = 'done'; bnext(); renderBody(); body.scrollTop = 0; break;
+        case 'bskip': bnext(); renderBody(); body.scrollTop = 0; break;
+        case 'ball': pf.forEach(function (x) { if (x.st === 'ready') x.st = 'done'; }); renderBody(); break;
+        case 'bremove': pf.splice(bsel, 1); bsel = null; renderBody(); break;
+        case 'bkeep': pf[bsel].st = 'ready'; renderBody(); break;
+        case 'fopen': fOpen = v; render(); break;
+        case 'fadd': fOpen = '__add'; render(); break;
+        case 'faddkey': fAct.push(v); fOpen = v; render(); break;
+        case 'fclr': fAct = []; Object.keys(fSel).forEach(function (k) { fSel[k] = []; }); fOpen = null; render(); break;
+        case 'fnone': fSel[fOpen] = []; render(); break;
+        case 'sclose': fOpen = null; tpick = null; render(); break;
+        case 'tpick': tpick = v; render(); body.style.paddingBottom = '300px'; var sel = body.querySelector('.tx.sel'); if (sel) body.scrollTop = Math.max(0, sel.offsetTop - 120); break;
+        case 'trm': tf.splice(+v, 1); tpick = null; render(); break;
+        case 'tadd': {
+          var nm = (document.getElementById('phtn').value || PIECE[tpick].key).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || PIECE[tpick].key;
+          tf.push({ key: nm, type: document.getElementById('phtt').value, text: PIECE[tpick].text, piece: tpick });
+          tpick = null; render(); break;
+        }
+      }
+    });
+    phone.addEventListener('change', function (e) {
+      var el = e.target, a = el.getAttribute && el.getAttribute('data-a');
+      if (a === 'fopt') {
+        var d = DEF[fOpen], o = d.opts[+el.getAttribute('data-v')][0], s = fSel[fOpen];
+        if (d.kind === 'one') fSel[fOpen] = [o]; else { var i = s.indexOf(o); if (i >= 0) s.splice(i, 1); else s.push(o); }
+        renderBody(); var done = sheet.querySelector('[data-a="sclose"].primary'); if (done) done.textContent = 'Done · ' + fcount() + ' reports';
+      } else if (a === 'bsel') {
+        var b = document.getElementById('phconf'); if (b) b.disabled = el.selectedIndex === 0;
+      }
+    });
+    phone.addEventListener('keydown', function (e) {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role="button"][data-a]')) { e.preventDefault(); e.target.click(); }
+    });
+    document.getElementById('phscreens').addEventListener('click', function (e) { var b = e.target.closest('[data-phs]'); if (b) goScreen(b.getAttribute('data-phs')); });
+    document.querySelectorAll('[data-ph]').forEach(function (b) {
+      b.addEventListener('click', function () { var s = b.getAttribute('data-ph'); if (screen !== 'ai') { screen = 'ai'; } if (s === 'rec') startRec(); else aiTo(s); });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || document.getElementById('s8').offsetParent === null) return;
+      if (screen === 'ai' && st === 'rec' && !busy) aiTo('ask'); else if (fOpen || tpick) { fOpen = null; tpick = null; render(); }
+    });
+    render();
+  })();
 })();
 </script>
 
