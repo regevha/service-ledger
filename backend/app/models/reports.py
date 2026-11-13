@@ -19,6 +19,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
+from app.services.storage_paths import to_absolute, to_stored
 
 from .enums import (
     DEFAULT_INSTRUMENT_TYPE_KEY,
@@ -155,7 +156,9 @@ class Attachment(Base):
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     report_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("reports.id"), nullable=False, index=True)
-    file_path: Mapped[str] = mapped_column(String, nullable=False)
+    # The path inside the storage root (services/storage_paths.py), so the database survives a move of
+    # the storage. Everything else reads and writes `file_path` below, which is the full path.
+    stored_path: Mapped[str] = mapped_column("file_path", String, nullable=False)
     # What the uploader's file was called: plain text from the client, cleaned
     # (services/attachment_names.py), used for the download name and nothing
     # else. The file on disk is named by a UUID, never by this. NULL for rows
@@ -174,6 +177,16 @@ class Attachment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     report: Mapped[Report] = relationship(back_populates="attachments")
+
+    @property
+    def file_path(self) -> str:
+        """The full path of the scan on disk: the stored path joined to the storage root."""
+        return to_absolute(self.stored_path)
+
+    @file_path.setter
+    def file_path(self, value: str) -> None:
+        self.stored_path = to_stored(value)
+
     # Deleting an attachment (which deleting its report does) takes its jobs
     # with it: extraction_jobs.attachment_id is NOT NULL and has no ondelete.
     extraction_jobs: Mapped[list["ExtractionJob"]] = relationship(
