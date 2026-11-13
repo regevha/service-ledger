@@ -16,6 +16,9 @@ test('Home shows waiting reports and opens the new-report screen', async ({ page
   await expect(page).toHaveURL(/#\/reports\//);
 
   await page.goto('/#/home');
+  // Wait for Home itself first: if the move away from the review screen is held up (for example by a
+  // leave-this-screen question), the failure then says so instead of a 60 s wait for the button.
+  await expect(page.getByTestId('home-screen')).toBeVisible({ timeout: 10_000 });
   await page.getByTestId('home-new-report').click();
   await expect(page.getByTestId('tab-new')).toHaveAttribute('aria-current', 'page');
 });

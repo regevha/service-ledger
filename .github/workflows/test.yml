@@ -343,18 +343,22 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Upload traces/screenshots on failure
+      - name: Upload traces/screenshots on failure or a flaky retry
         # playwright.config.ts writes an HTML report to playwright-report/ and
         # retain-on-failure traces and only-on-failure screenshots to
         # test-results/ (the report links to both). Open the report with
         # `npx playwright show-report <unzipped folder>`.
-        if: failure()
+        # `always()` (not just `failure()`) so a test that failed once and passed on its retry
+        # (reported as "flaky") leaves its trace too; on a clean run the folders are empty and
+        # nothing is uploaded.
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-test-results-shard-${{ matrix.shard }}
           path: |
             frontend/playwright-report/
             frontend/test-results/
+          if-no-files-found: ignore
           retention-days: 7
 
   frontend:
