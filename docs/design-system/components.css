@@ -1,0 +1,55 @@
+/* ServiceLedger component styles for the design system previews, rewritten from the rules in frontend/src/styles
+   (sl- class names, px instead of rem). Where they differ, the app's CSS wins.
+   Uses the tokens in tokens.json as CSS variables (--bg, --surface, ...). The app itself does not load this file. */
+.sl-btn{font-family:var(--font-ui);font-size:13px;font-weight:600;padding:10px 18px;border-radius:var(--radius-sm);border:1px solid var(--input-border);background:var(--surface);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.sl-btn:hover:not(:disabled){background:var(--surface-2)}
+.sl-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sl-btn.small{padding:6px 12px;font-size:12px}
+.sl-btn.primary{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--on-fill)}
+.sl-btn.primary:hover:not(:disabled){background:var(--accent-fill-hover)}
+.sl-btn.primary:disabled{background:var(--border-strong);border-color:var(--border-strong);color:var(--text-faint);cursor:not-allowed}
+.sl-btn.danger{color:var(--crit);border-color:var(--crit)}
+.sl-btn.danger:hover:not(:disabled){background:var(--crit-soft)}
+.sl-btn.danger:active:not(:disabled){background:var(--crit);border-color:var(--crit);color:var(--on-crit)}
+.sl-btn.danger.solid{background:var(--crit);border-color:var(--crit);color:var(--on-crit)}
+.sl-btn.danger.solid:hover:not(:disabled){background:var(--crit);filter:brightness(1.08)}
+.sl-btn.danger:disabled{color:var(--text-faint);border-color:var(--border)}
+.sl-link{background:none;border:none;padding:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
+.sl-badge{font-family:var(--font-ui);font-size:12px;font-weight:600;padding:3px 10px;border-radius:var(--radius-pill);white-space:nowrap;display:inline-block}
+.sl-badge-good{background:var(--good-soft);color:var(--good)}
+.sl-badge-warn{background:var(--flag-soft);color:var(--text);border:1px solid var(--flag)}
+.sl-pill{font-family:var(--font-ui);font-size:12px;font-weight:600;padding:3px 10px;border-radius:var(--radius-pill);white-space:nowrap;display:inline-block;text-transform:capitalize}
+.sl-pill.neutral{background:var(--surface-2);color:var(--text-muted)}
+.sl-pill.review{background:var(--flag-soft);color:var(--text)}
+.sl-pill.ok{background:var(--good-soft);color:var(--good)}
+.sl-pill.overdue{background:var(--crit-soft);color:var(--crit)}
+.sl-pill.quiet{background:var(--surface-2);color:var(--text-faint)}
+.sl-banner{font-family:var(--font-ui);font-size:13px;padding:12px 16px;border-radius:10px;border:1px solid transparent;line-height:1.5}
+.sl-banner-info{background:var(--accent-soft);color:var(--accent-strong);border-color:var(--accent)}
+.sl-banner-warn{background:var(--flag-soft);color:var(--text);border-color:var(--border);box-shadow:inset 4px 0 0 var(--flag)}
+.sl-banner-crit{background:var(--crit-soft);color:var(--text);border-color:var(--border);box-shadow:inset 4px 0 0 var(--crit)}
+.sl-field{font-family:var(--font-ui);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px}
+.sl-field.pending{border-color:var(--flag);border-left-width:4px;background:var(--flag-soft)}
+.sl-field-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.sl-field-label{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+.sl-field-unit{color:var(--text-faint);font-weight:500}
+.sl-field-note{font-size:12px;color:var(--text-faint);margin-top:8px;line-height:1.5}
+.sl-input{font-family:var(--font-ui);font-size:14px;padding:9px 12px;border-radius:var(--radius-sm);border:1px solid var(--input-border);background:var(--surface);color:var(--text);width:100%;box-sizing:border-box}
+.sl-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.sl-theme-toggle{width:36px;height:36px;border-radius:50%;border:1px solid var(--input-border);background:var(--surface);color:var(--text);font-size:17px;line-height:1;cursor:pointer}
+.sl-theme-toggle:hover{background:var(--surface-2)}
+.sl-toast{display:inline-block;font-family:var(--font-ui);background:var(--text);color:var(--surface);padding:10px 18px;border-radius:var(--radius-pill);font-size:14px;font-weight:600;box-shadow:var(--shadow-pop)}
+.sl-row-menu{position:relative;display:inline-flex}
+.sl-row-menu-list{display:flex;flex-direction:column;min-width:140px;padding:4px;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-sm);box-shadow:var(--shadow-menu)}
+.sl-row-menu-item{font-family:var(--font-ui);font-size:13px;text-align:left;padding:7px 10px;border:none;border-radius:6px;background:none;color:var(--text);cursor:pointer}
+.sl-row-menu-item:hover,.sl-row-menu-item:focus-visible{background:var(--surface-2)}
+.sl-row-menu-item.danger{color:var(--crit)}
+.sl-bar-chart{display:grid;grid-template-columns:minmax(120px,.9fr) minmax(0,2fr) max-content;align-items:center;gap:10px;font-family:var(--font-ui)}
+.sl-bar-row{display:contents}
+.sl-bar-label{font-size:14px;color:var(--text)}
+.sl-bar-sub{display:block;font-size:11px;color:var(--text-faint);font-family:var(--font-mono)}
+.sl-bar-track{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.sl-bar-fill{height:100%;border-radius:4px;background:var(--accent-fill)}
+.sl-bar-value{font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.sl-stage{background:var(--bg);color:var(--text);padding:16px;font-family:var(--font-ui)}
+.sl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
