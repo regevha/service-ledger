@@ -69,6 +69,9 @@ Claude API" for going from the deterministic stub to a live model.
 # Backend — tests against a real (separate) Postgres test database
 cd backend && pytest
 
+# Frontend — Vitest unit tests
+cd frontend && npm test
+
 # Frontend — Playwright specs against a running backend
 cd frontend && npm run test:e2e
 ```
@@ -79,6 +82,14 @@ request — see the badge at the top of this file. CI runs them with coverage
 (`pytest --cov`, `npm run test:e2e:coverage`) and **fails when coverage drops**:
 backend below 95% (`backend/.coveragerc`), frontend below 88% lines or 70%
 branches (`frontend/package.json`). Raise those floors when coverage improves.
+
+A separate `static-checks` job runs on the same triggers: Ruff (backend lint),
+mypy (the error count may not rise above the baseline in
+`backend/mypy-baseline.txt`), a check that the models match the migrations,
+Oxlint, the TypeScript type-check (`tsc -b`), the Vitest unit tests, and a
+check that the committed frontend API types match the backend's OpenAPI schema
+(API-schema drift). For the local commands see
+[`backend/README.md`](backend/README.md) and [`frontend/README.md`](frontend/README.md).
 
 **Test order is shuffled once a day, not on every push.** Pushes and pull
 requests run the tests in the fixed order. A scheduled CI run once a day
@@ -100,4 +111,19 @@ available — see `frontend/README.md` and that script for details.
 - [`docs/service-ledger-tdd.html`](docs/service-ledger-tdd.html) — SL-TDD-001, the technical design doc (modules, request lifecycles, API surface).
 - [`docs/service-ledger-tracker.html`](docs/service-ledger-tracker.html) — build tracker against the spec.
 - [`docs/service-ledger-demo-script.md`](docs/service-ledger-demo-script.md) — a presenter's walkthrough of the app end to end.
+- [`docs/PLAN.md`](docs/PLAN.md) — the hardening plan: waves, migration order and decisions.
 - `docs/*-demo.html` — standalone UI mockups the real screens were built against.
+
+## Deployment status
+
+The Azure deployment is internal-only for now: ingress is `INGRESS=internal`
+and access is gated by one shared password (see
+[`deploy/azure/README.md`](deploy/azure/README.md)). Per-user sign-in
+(Phase 4 in [`docs/PLAN.md`](docs/PLAN.md)) is planned before it is made
+reachable from the internet.
+
+## License and security
+
+All rights reserved (see [`LICENSE`](LICENSE)). Report vulnerabilities through
+GitHub's private vulnerability reporting, not a public issue (see
+[`SECURITY.md`](SECURITY.md)).
