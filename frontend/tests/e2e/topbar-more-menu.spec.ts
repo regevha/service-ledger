@@ -51,7 +51,9 @@ test('the More menu opens with the keyboard, opens a view and closes on Escape',
   await page.keyboard.press('Enter');
   const admin = page.getByRole('menuitem', { name: 'Admin' });
   await expect(admin).toBeVisible();
-  await admin.focus();
+  await expect(page.getByRole('menuitem').first()).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(admin).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#\/admin/);
   await expect(menu).toBeHidden();

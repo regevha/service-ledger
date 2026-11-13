@@ -57,8 +57,8 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
   const measure = useCallback(() => {
     const nav = navRef.current;
     if (!nav) return;
-    const widths = TABS.map((t) => tabRefs.current[t.id]?.offsetWidth ?? 0);
-    const moreWidth = moreRef.current?.offsetWidth || 90;
+    const widths = TABS.map((t) => tabRefs.current[t.id]?.getBoundingClientRect().width ?? 0);
+    const moreWidth = moreRef.current?.getBoundingClientRect().width || 90;
     const gap = parseFloat(getComputedStyle(nav).columnGap) || 0;
     setVisible(visibleTabCount(widths, nav.clientWidth, moreWidth, gap));
   }, []);
@@ -67,6 +67,7 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
   useLayoutEffect(() => {
     const nav = navRef.current;
     if (!nav || typeof ResizeObserver === 'undefined') return;
+    measure();
     const observer = new ResizeObserver(() => measure());
     observer.observe(nav);
     observer.observe(document.documentElement);
@@ -93,6 +94,8 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
   const hidden = TABS.slice(shown);
   const moreActive = hidden.some((t) => t.isActive(view));
   const menuOpen = open && hidden.length > 0 && !phone;
+  // Nothing is folded any more (wider window or a phone): forget that the menu was open.
+  if (open && !menuOpen) setOpen(false);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -108,6 +111,7 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
 
   const choose = (id: TabTarget) => {
     setOpen(false);
+    moreRef.current?.focus();
     onSelect(id);
   };
 
