@@ -19,3 +19,4 @@ export * from './translations';
 export * from './savedFilters';
 export * from './instrumentModels';
 export * from './manufacturers';
+export * from './accuracy';

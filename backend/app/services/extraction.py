@@ -33,6 +33,8 @@ import logging
 from datetime import date, datetime, timedelta
 from typing import NamedTuple
 
+from sqlalchemy.orm import object_session
+
 from app.config import get_settings
 from app.models import Attachment, ReportTemplate
 from app.schemas import REPORT_DATE_KEY, TemplateFieldType
@@ -66,6 +68,7 @@ from app.services.extraction_prompt import (  # noqa: F401  (moved; re-exported 
 )
 from app.services.field_values import normalize_values
 from app.services.privacy import scrub_values
+from app.services.read_accuracy import corrections_prompt_block, recent_corrections
 from app.services.text_extraction import text_extract
 from app.services.translation import source_block
 
@@ -226,6 +229,17 @@ def _confidence_value(confidence: object, name: str, attachment_path: str) -> fl
         return 0.0
 
 
+def _learned_corrections(attachment: Attachment, template: ReportTemplate) -> str:
+    """The prompt section with past corrections on this form, or "" (switched off, no session, none yet)."""
+    if not settings.learn_from_corrections or getattr(template, "id", None) is None:
+        return ""
+    db = object_session(attachment) if hasattr(attachment, "_sa_instance_state") else None
+    if db is None:
+        return ""
+    found = recent_corrections(db, template.id, settings.learn_from_corrections_limit)
+    return corrections_prompt_block(found)
+
+
 def _live_extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
     fields = template.field_schema.get("fields", [])
     try:
@@ -235,6 +249,7 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> Extractio
     with_boxes = _wants_boxes(attachment, document_block)
     tool = _build_extract_tool(fields, with_boxes)
     prompt = _EXTRACT_PROMPT_HEADER + "\n\nFields to extract:\n" + _field_list_for_prompt(fields)
+    prompt += _learned_corrections(attachment, template)
     if with_boxes:
         prompt += _BOX_PROMPT
 

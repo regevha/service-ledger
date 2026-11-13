@@ -1290,6 +1290,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analytics/read-accuracy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Read Accuracy
+         * @description How much of the reading was approved without an edit: the overall share of fields and of reports, by week,
+         *     by field, by form and by source (translated or not), the newest corrections, and the translation edits.
+         */
+        get: operations["get_read_accuracy_analytics_read_accuracy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/glossary-terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Glossary Terms */
+        get: operations["list_glossary_terms_glossary_terms_get"];
+        put?: never;
+        /**
+         * Create Glossary Term
+         * @description Add a term. The next translation is given it, and a wrong wording left in a translation is corrected.
+         */
+        post: operations["create_glossary_term_glossary_terms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/glossary-terms/{term_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Glossary Term */
+        delete: operations["delete_glossary_term_glossary_terms__term_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Glossary Term */
+        patch: operations["update_glossary_term_glossary_terms__term_id__patch"];
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1622,6 +1682,49 @@ export interface components {
             labor_hours_by_fault_category: {
                 [key: string]: number;
             };
+        };
+        /** GlossaryTermIn */
+        GlossaryTermIn: {
+            /** Source Term */
+            source_term?: string | null;
+            /** Wrong Term */
+            wrong_term?: string | null;
+            /** English Term */
+            english_term: string;
+            /** Note */
+            note?: string | null;
+        };
+        /** GlossaryTermOut */
+        GlossaryTermOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Source Term */
+            source_term: string | null;
+            /** Wrong Term */
+            wrong_term: string | null;
+            /** English Term */
+            english_term: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** GlossaryTermPatch */
+        GlossaryTermPatch: {
+            /** Source Term */
+            source_term?: string | null;
+            /** Wrong Term */
+            wrong_term?: string | null;
+            /** English Term */
+            english_term?: string | null;
+            /** Note */
+            note?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2138,6 +2241,13 @@ export interface components {
             /** Total Qty */
             total_qty: number;
         };
+        /** PhraseChangeOut */
+        PhraseChangeOut: {
+            /** Before */
+            before: string;
+            /** After */
+            after: string;
+        };
         /** PlaceCreate */
         PlaceCreate: {
             /**
@@ -2240,6 +2350,120 @@ export interface components {
             name?: string | null;
             /** Parent Id */
             parent_id?: string | null;
+        };
+        /** ReadAccuracyFieldOut */
+        ReadAccuracyFieldOut: {
+            /** Field */
+            field: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+        };
+        /** ReadAccuracyFormOut */
+        ReadAccuracyFormOut: {
+            /** Template Id */
+            template_id: string | null;
+            /** Form */
+            form: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Reports */
+            reports: number;
+            /** Untouched */
+            untouched: number;
+        };
+        /**
+         * ReadAccuracyOut
+         * @description How much of the reading people approved without an edit, over reports finalized in the last `days` days
+         *     (null: all of them). `goal` is the share of fields to reach (0.99).
+         */
+        ReadAccuracyOut: {
+            /** Days */
+            days: number | null;
+            /** Goal */
+            goal: number;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Reports */
+            reports: number;
+            /** Reports Untouched */
+            reports_untouched: number;
+            /** Weeks */
+            weeks: components["schemas"]["ReadAccuracyWeekOut"][];
+            /** By Field */
+            by_field: components["schemas"]["ReadAccuracyFieldOut"][];
+            /** By Form */
+            by_form: components["schemas"]["ReadAccuracyFormOut"][];
+            /** By Source */
+            by_source: components["schemas"]["ReadAccuracySourceOut"][];
+            /** Corrections */
+            corrections: components["schemas"]["ReadCorrectionOut"][];
+            translations: components["schemas"]["TranslationAccuracyOut"];
+        };
+        /**
+         * ReadAccuracySourceOut
+         * @description "translated" (read from an accepted Hebrew translation) or "original" (read from the document itself).
+         */
+        ReadAccuracySourceOut: {
+            /** Source */
+            source: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Reports */
+            reports: number;
+            /** Untouched */
+            untouched: number;
+        };
+        /**
+         * ReadAccuracyWeekOut
+         * @description Reports finalized in the week starting `week_start` (a Monday).
+         */
+        ReadAccuracyWeekOut: {
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Reports */
+            reports: number;
+            /** Untouched */
+            untouched: number;
+        };
+        /**
+         * ReadCorrectionOut
+         * @description One field a person changed before approving: what was read and what was kept.
+         */
+        ReadCorrectionOut: {
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /** Finalized At */
+            finalized_at: string | null;
+            /** Instrument */
+            instrument: string | null;
+            /** Form */
+            form: string;
+            /** Field */
+            field: string;
+            /** Read */
+            read: string;
+            /** Kept */
+            kept: string;
+            /** Translated */
+            translated: boolean;
         };
         /**
          * RectOut
@@ -2817,6 +3041,29 @@ export interface components {
         TranslationAccept: {
             /** Accepted Text */
             accepted_text?: string | null;
+        };
+        /** TranslationAccuracyOut */
+        TranslationAccuracyOut: {
+            /** Accepted */
+            accepted: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Edits */
+            edits: components["schemas"]["TranslationEditOut"][];
+        };
+        /** TranslationEditOut */
+        TranslationEditOut: {
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /** Finalized At */
+            finalized_at: string | null;
+            /** Instrument */
+            instrument: string | null;
+            /** Changes */
+            changes: components["schemas"]["PhraseChangeOut"][];
         };
         /** TranslationOut */
         TranslationOut: {
@@ -5398,6 +5645,155 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HomeSummaryOut"];
+                };
+            };
+        };
+    };
+    get_read_accuracy_analytics_read_accuracy_get: {
+        parameters: {
+            query?: {
+                /** @description Reports finalized in the last N days; leave out for 90, send 0 for all. */
+                days?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadAccuracyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_glossary_terms_glossary_terms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlossaryTermOut"][];
+                };
+            };
+        };
+    };
+    create_glossary_term_glossary_terms_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GlossaryTermIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlossaryTermOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_glossary_term_glossary_terms__term_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_glossary_term_glossary_terms__term_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GlossaryTermPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlossaryTermOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -1,0 +1,181 @@
+/* Admin: Reading accuracy and the technical glossary. */
+.accuracy,
+.glossary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.acc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.acc-head .admin-lead {
+  max-width: 62ch;
+}
+.acc-tiles .stat-tile.acc-good .stat-value {
+  color: var(--good);
+}
+.acc-tiles .stat-tile.acc-near .stat-value {
+  color: var(--warn);
+}
+.acc-tiles .stat-tile.acc-far .stat-value {
+  color: var(--crit);
+}
+.acc-section h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.acc-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+.acc-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4);
+}
+.acc-table {
+  width: 100%;
+}
+.acc-table td.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.acc-muted {
+  color: var(--text-faint);
+  font-size: var(--text-sm);
+}
+.acc-bar-col {
+  width: 40%;
+  min-width: 140px;
+}
+.acc-bar {
+  position: relative;
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+}
+.acc-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+.acc-bar-fill.acc-good {
+  background: var(--good);
+}
+.acc-bar-fill.acc-near {
+  background: var(--flag);
+}
+.acc-bar-fill.acc-far {
+  background: var(--crit);
+}
+.acc-bar-goal {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+}
+.acc-read {
+  color: var(--crit);
+  text-decoration-thickness: 1px;
+}
+.acc-kept {
+  color: var(--good);
+  text-decoration: none;
+  font-weight: 500;
+}
+.acc-corrections td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.acc-source-row td {
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+.acc-tr-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.acc-tr-list ul {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.acc-change {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.home-tile-link {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+}
+.glossary-form {
+  max-width: 520px;
+}
+.glossary-actions,
+.glossary-row-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.glossary-row-actions {
+  justify-content: flex-end;
+}
+.acc-add-term {
+  flex-basis: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+/* Text columns read better left-aligned in the plain font; the numbers keep the table's mono style. */
+.acc-table td:not(.num),
+.acc-table th {
+  text-align: left;
+  font-family: var(--font-ui);
+}
+.acc-table th.num,
+.acc-table td.num {
+  text-align: right;
+}
+.acc-corrections {
+  table-layout: fixed;
+}
+.acc-corrections td {
+  white-space: normal;
+}
+.acc-corrections th:nth-child(1) {
+  width: 26%;
+}
+.acc-corrections th:nth-child(2) {
+  width: 18%;
+}
+.acc-tr-list,
+.acc-tr-list a {
+  font-size: var(--text-base);
+}
+.glossary-table td {
+  white-space: normal;
+}
+.glossary > .btn {
+  align-self: flex-start;
+}

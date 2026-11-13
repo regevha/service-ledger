@@ -31,8 +31,11 @@ import logging
 import re
 from typing import NamedTuple
 
+from sqlalchemy.orm import object_session
+
 from app.config import get_settings
 from app.models import Attachment
+from app.services import glossary
 from app.services.attachment_names import source_name
 from app.services.claude_client import call_claude_tool, extract_tool_use
 from app.services.claude_client import get_client as _get_client
@@ -215,13 +218,31 @@ def _stub_translate(attachment: Attachment, include_pages: list[int]) -> Transla
     return TranslationResult("he", 0.8, text, ignored, ["2046", "Y1033", "N7-97566"], [], reader="stub")
 
 
-def _live_translate(attachment: Attachment, include_pages: list[int]) -> TranslationResult:
+def _glossary_terms(attachment: Attachment) -> list:
+    """The lab's glossary, read through the attachment's own session (none for a bare stand-in in a test)."""
+    db = object_session(attachment) if hasattr(attachment, "_sa_instance_state") else None
+    if db is None:
+        return []
+    return glossary.list_terms(db)
+
+
+def _apply_glossary(result: TranslationResult | None, terms: list) -> TranslationResult | None:
+    """Correct known wrong renderings left in the text, and say so in the notes the reviewer reads."""
+    if result is None or not terms:
+        return result
+    text, fixes = glossary.apply_fixes(result.translated_text, terms)
+    if not fixes:
+        return result
+    return result._replace(translated_text=text, notes=[*result.notes, *glossary.fix_notes(fixes)])
+
+
+def _live_translate(attachment: Attachment, include_pages: list[int], terms: list | None = None) -> TranslationResult:
     try:
         document_block = claude_content_block(attachment.file_path)
     except UnsupportedDocumentError as e:
         raise TranslationError(str(e)) from e
 
-    prompt = _PROMPT
+    prompt = _PROMPT + glossary.prompt_block(terms or [])
     if include_pages:
         pages = ", ".join(str(p) for p in sorted(set(include_pages)))
         prompt += (
@@ -375,15 +396,16 @@ def translate(attachment: Attachment, include_pages: list[int] | None = None) ->
                 "This document is in Hebrew and cannot be translated without a Claude API key. "
                 "Set ANTHROPIC_API_KEY and USE_LIVE_CLAUDE, then try again."
             )
-        return _stub_translate(attachment, include)
+        return _apply_glossary(_stub_translate(attachment, include), _glossary_terms(attachment))
     if layer_share is not None and layer_share <= settings.hebrew_letter_threshold and not include:
         return None  # a readable text layer that is not Hebrew: no model call
     if layer_share is None and not include and _live_hebrew_share(attachment) <= settings.hebrew_letter_threshold:
         return None  # a scan the model says is not Hebrew: the small check was enough
-    result = _live_translate(attachment, include)
+    terms = _glossary_terms(attachment)
+    result = _live_translate(attachment, include, terms)
     if result.hebrew_share <= settings.hebrew_letter_threshold and not include:
         return None
-    return result
+    return _apply_glossary(result, terms)
 
 
 def current_translation(attachment: Attachment):

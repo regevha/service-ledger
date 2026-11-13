@@ -38,6 +38,7 @@ from .reports import Attachment, Report, ReportTemplate, report_chronological_or
 from .jobs import ExtractionJob, SearchModelCall, Translation  # noqa: F401
 from .saved_filters import SavedReportFilter  # noqa: F401
 from .field_aliases import FieldAliasGroup, FieldAliasName  # noqa: F401
+from .glossary import GlossaryTerm  # noqa: F401
 
 
 # Importing the search module registers the before_flush listener that keeps
