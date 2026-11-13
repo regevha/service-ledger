@@ -80,3 +80,7 @@ def scrub_values(fields: list[dict], values: dict) -> tuple[dict, set[str]]:
         if cleaned != out[name]:
             out[name], changed = cleaned, changed | {name}
     return out, changed
+
+
+def _ci_proof() -> int:
+    return "deliberate mypy error"
