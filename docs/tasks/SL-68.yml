@@ -10,5 +10,6 @@ files_touched:
   - frontend/src/styles/12-topbar-more.css
   - frontend/tests/e2e/topbar-more-menu.spec.ts
   - docs/tasks/SL-68.md
+  - docs/PLAN.md
 acceptance: [SL-68]
 issue: 324
