@@ -1,0 +1,19 @@
+id: SL-67
+title: Learn from corrections in the extraction prompt, off by default (from PR #305)
+owner: backend-dev
+branch: SL-67-learn-from-corrections
+wave: R1
+depends_on: [SL-65]
+migration: false
+files_touched:
+  - backend/app/services/learned_corrections.py
+  - backend/app/services/extraction.py
+  - backend/app/config.py
+  - backend/.env.example
+  - backend/tests/test_learned_corrections.py
+  - docs/PLAN.md
+  - docs/tasks/SL-67.md
+acceptance: [SL-67]
+# Source: branch nir-read-accuracy / PR #305 (recent_corrections, corrections_prompt_block,
+# _learned_corrections, LEARN_FROM_CORRECTIONS). Do not merge this task before a baseline exists
+# (SL-65 live with at least 50 finalized reports), and do not turn the setting on in this task.

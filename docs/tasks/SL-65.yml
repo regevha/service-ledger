@@ -1,0 +1,36 @@
+id: SL-65
+title: Reading accuracy page, measured on what people approve (from PR #305)
+owner: backend-dev          # frontend-dev builds the screen on the same branch
+branch: SL-65-read-accuracy
+wave: R1
+depends_on: []                   # worker.py is also edited by SL-17: serial, whichever opens first
+migration: false
+files_touched:
+  - backend/app/services/read_accuracy.py
+  - backend/app/routers/accuracy.py
+  - backend/app/schemas/analytics.py
+  - backend/app/seed_accuracy_demo.py
+  - backend/app/main.py
+  - backend/app/worker.py
+  - backend/app/services/extraction.py
+  - backend/.coveragerc
+  - backend/tests/test_read_accuracy.py
+  - frontend/src/api/accuracy.ts
+  - frontend/src/api/index.ts
+  - frontend/src/components/AccuracyScreen.tsx
+  - frontend/src/components/AdminScreen.tsx
+  - frontend/src/components/HomeScreen.tsx
+  - frontend/src/App.css
+  - frontend/src/styles/11-accuracy.css
+  - frontend/src/generated/api-schema.ts
+  - frontend/tests/e2e/read-accuracy.spec.ts
+  - frontend/tests/e2e/accessibility.spec.ts
+  - frontend/vite.config.ts
+  - frontend/README.md
+  - docs/PLAN.md
+  - docs/tasks/SL-65.md
+acceptance: [SL-65]
+# Source: branch nir-read-accuracy / PR #305, commits d8e3fd7 and 67b40cb. Take ONLY the measurement
+# parts. Leave out the glossary (SL-66) and the learning from corrections (SL-67): no glossary files, no
+# migration, no `recent_corrections`, no "Add to glossary" button, no change to the extraction prompt.
+# The branch's own tests and CI pass on it; do not rebase it, rebuild the parts on main.

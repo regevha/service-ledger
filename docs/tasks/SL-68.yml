@@ -1,0 +1,14 @@
+id: SL-68
+title: More menu hardening and a fuller spec (issues #324, #325)
+owner: frontend-dev
+branch: SL-68-more-menu-hardening
+wave: R1
+depends_on: []
+migration: false
+files_touched:
+  - frontend/src/components/TopbarTabs.tsx
+  - frontend/src/styles/12-topbar-more.css
+  - frontend/tests/e2e/topbar-more-menu.spec.ts
+  - docs/tasks/SL-68.md
+acceptance: [SL-68]
+issue: 324
