@@ -1,0 +1,21 @@
+id: SL-74
+title: "The daily cap counts model jobs only"
+owner: backend-dev          # the lead does it directly (small change)
+branch: SL-74-count-model-jobs-only
+wave: R1
+depends_on: []
+migration: false
+files_touched:
+  - backend/app/services/job_limits.py
+  - backend/app/worker.py
+  - backend/tests/test_job_limits.py
+  - backend/tests/test_job_cap_model_calls.py
+  - docs/PLAN.md
+  - docs/tasks/SL-74.yml
+  - docs/tasks/SL-74.md
+acceptance: [SL-74]
+# Why: reliability review F2. A batch queues three jobs per file (translate, classify, extract) and all three used
+# the daily cap, so 20 uploads used all 60 and the 21st was refused at the translate step. The translate job of a
+# document with a readable non-Hebrew text layer never calls the model.
+# User decision (2026-11-14): at most 60 Claude jobs per day; this makes the counter match that rule. The limit itself
+# is not changed. No migration: the marker is a key in the existing `extraction_jobs.params` JSONB.

@@ -49,7 +49,7 @@ from app.services.extraction import extract as run_extract
 from app.services.extraction import prompt_fingerprint
 from app.services.serial_check import correct_serial_typos
 from app.services.text_reader import extract_text
-from app.services.translation import identifier_check
+from app.services.translation import identifier_check, text_layer_hebrew_share
 from app.services.translation import translate as run_translate
 from app.trace import bound_job, configure_logging
 
@@ -150,6 +150,15 @@ def _run_translate_job(db: Session, job: models.ExtractionJob) -> None:
         return
 
     include_pages = list((job.params or {}).get("include_pages") or [])
+    # A readable text layer that is not Hebrew is decided without the model (see translate()); such a
+    # job must not use up the daily cap, which counts model jobs.
+    layer_share = text_layer_hebrew_share(attachment)
+    no_model = (
+        settings.use_live_claude
+        and not include_pages
+        and layer_share is not None
+        and layer_share <= settings.hebrew_letter_threshold
+    )
     try:
         result = run_translate(attachment, include_pages)
     except TranslationError as e:
@@ -169,6 +178,8 @@ def _run_translate_job(db: Session, job: models.ExtractionJob) -> None:
         if earlier.status != models.TranslationStatus.superseded:
             earlier.status = models.TranslationStatus.superseded
 
+    if result is None and no_model:
+        job.params = {**(job.params or {}), "model_called": False}
     if result is None:
         row = models.Translation(
             attachment_id=attachment.id,
