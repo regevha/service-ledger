@@ -25,6 +25,8 @@ files_touched:
   - frontend/src/generated/api-schema.ts
   - frontend/tests/e2e/read-accuracy.spec.ts
   - frontend/tests/e2e/accessibility.spec.ts
+  - frontend/vite.config.ts
+  - frontend/README.md
   - docs/PLAN.md
   - docs/tasks/SL-65.md
 acceptance: [SL-65]
