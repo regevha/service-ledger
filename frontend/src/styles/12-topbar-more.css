@@ -22,7 +22,7 @@
 .topbar-more-menu {
   position: absolute;
   top: calc(100% - 4px);
-  right: 0;
+  inset-inline-end: 0;
   z-index: 40;
   min-width: 190px;
   padding: 4px;
@@ -36,7 +36,7 @@
 .topbar-more-item {
   min-height: 44px;
   padding: 0 14px;
-  text-align: left;
+  text-align: start;
   font-family: var(--font-ui);
   font-size: 0.875rem;
   font-weight: 600;
@@ -63,7 +63,7 @@
   .view-tab.tab-overflowed {
     position: absolute;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     visibility: hidden;
     pointer-events: none;
   }
@@ -71,7 +71,7 @@
   .topbar-more-idle {
     position: absolute;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     visibility: hidden;
     pointer-events: none;
   }

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { PHONE_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
 import { shownTabs } from '../topbarOverflow';
 
@@ -55,6 +56,9 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
   // Which tabs stay in the row, one bit per tab in TABS order (a number, so an unchanged answer does not re-render).
   const [shownBits, setShownBits] = useState((1 << TABS.length) - 1);
   const [open, setOpen] = useState(false);
+  const menuId = useId();
+  // The menu item that had focus last, to give focus back when a resize folds the menu away under it.
+  const lastItemRef = useRef<string | null>(null);
   const activeIndex = TABS.findIndex((t) => t.isActive(view));
 
   const measure = useCallback(() => {
@@ -73,9 +77,12 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
     const nav = navRef.current;
     if (!nav || typeof ResizeObserver === 'undefined') return;
     measure();
-    const observer = new ResizeObserver(() => measure());
+    // flushSync: the row is settled before the next paint, so a tab never flashes in the wrong place.
+    const observer = new ResizeObserver(() => flushSync(measure));
     observer.observe(nav);
     observer.observe(document.documentElement);
+    // A tab whose label changes width changes the answer too.
+    for (const button of Object.values(tabRefs.current)) if (button) observer.observe(button);
     return () => observer.disconnect();
   }, [measure]);
 
@@ -114,7 +121,17 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
     return () => document.removeEventListener('mousedown', onDown);
   }, [menuOpen]);
 
+  // A resize can unfold every tab while the menu is open, which removes the menu with focus inside it.
+  // Focus then goes to the tab that took the item's place (the More button is hidden once nothing is folded).
+  useEffect(() => {
+    if (menuOpen) return;
+    const id = lastItemRef.current;
+    lastItemRef.current = null;
+    if (id && (document.activeElement === document.body || document.activeElement === null)) tabRefs.current[id]?.focus();
+  }, [menuOpen]);
+
   const choose = (id: TabTarget) => {
+    lastItemRef.current = null;
     setOpen(false);
     moreRef.current?.focus();
     onSelect(id);
@@ -128,7 +145,11 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
       setOpen(false);
       moreRef.current?.focus();
     } else if (e.key === 'Tab') {
-      setOpen(false);
+      // Close the menu and put focus on More before the browser moves it, so Tab goes to the element after More
+      // and Shift+Tab to the one before it, never to a menu item that is about to disappear.
+      lastItemRef.current = null;
+      flushSync(() => setOpen(false));
+      moreRef.current?.focus();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       items[(index + 1) % items.length]?.focus();
@@ -179,6 +200,8 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
           data-testid="topbar-more"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
+          aria-controls={menuOpen ? menuId : undefined}
+          aria-label={moreActive ? `More, current view: ${hidden.find((t) => t.isActive(view))?.label}` : undefined}
           tabIndex={hidden.length === 0 || phone ? -1 : undefined}
           onClick={() => setOpen((o) => !o)}
           onKeyDown={(e) => {
@@ -192,7 +215,7 @@ export function TopbarTabs({ view, onSelect }: { view: string; onSelect: (view: 
           <span className="topbar-more-caret" aria-hidden="true">▾</span>
         </button>
         {menuOpen && (
-          <div className="topbar-more-menu" role="menu" aria-label="More views" ref={menuRef} onKeyDown={onMenuKey}>
+          <div className="topbar-more-menu" id={menuId} role="menu" aria-label="More views" ref={menuRef} onKeyDown={onMenuKey} onFocus={(e) => { lastItemRef.current = (e.target as HTMLElement).dataset.testid?.replace('more-item-', '') ?? null; }}>
             {hidden.map((t) => (
               <button key={t.id} type="button" role="menuitem" className="topbar-more-item" data-testid={`more-item-${t.id}`} aria-current={t.isActive(view) ? 'page' : undefined} onClick={() => choose(t.id)}>
                 {t.label}

@@ -102,3 +102,90 @@ test('a phone keeps its bottom bar and has no top-bar More button', async ({ pag
   await expect(page.getByTestId('tab-more')).toBeVisible();
   await expect(page.getByTestId('topbar-more')).toBeHidden();
 });
+
+test('the More button names the menu it controls and the folded current view', async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.goto('/#/home');
+  const more = page.getByTestId('topbar-more');
+  await expect(more).not.toHaveAttribute('aria-controls', /./);
+  await more.click();
+  const menu = page.getByRole('menu');
+  const id = await menu.getAttribute('id');
+  expect(id).toBeTruthy();
+  await expect(more).toHaveAttribute('aria-controls', id!);
+  await page.keyboard.press('Escape');
+
+  // Reports is in the row at 700 px; make a folded tab the current view by opening it from the menu.
+  await more.click();
+  await page.getByRole('menuitem').first().click();
+  // The chosen view's tab comes back into the row, so More is not "current" any more.
+  await expect(more).not.toHaveAttribute('aria-label', /current view/);
+});
+
+test('arrow keys wrap around the menu', async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.goto('/#/home');
+  const more = page.getByTestId('topbar-more');
+  await more.focus();
+  await page.keyboard.press('ArrowDown');
+  const items = page.getByRole('menuitem');
+  const count = await items.count();
+  expect(count).toBeGreaterThan(1);
+  await expect(items.first()).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(items.nth(count - 1)).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(items.first()).toBeFocused();
+});
+
+test('Tab and Shift+Tab leave the menu closed, with focus next to More', async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.goto('/#/home');
+  const more = page.getByTestId('topbar-more');
+  const menu = page.getByRole('menu');
+
+  await more.focus();
+  await page.keyboard.press('Enter');
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(menu).toBeHidden();
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await expect(more).not.toBeFocused();
+  expect(await page.evaluate(() => document.activeElement?.closest('[role="menu"]'))).toBeNull();
+
+  await more.focus();
+  await page.keyboard.press('Enter');
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Shift+Tab');
+  await expect(menu).toBeHidden();
+  await expect(more).not.toBeFocused();
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
+});
+
+test('a folded tab cannot be reached with Tab', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.goto('/#/home');
+  await expect(page.getByTestId('tab-admin')).toBeHidden();
+  await expect(page.getByTestId('tab-admin')).toHaveAttribute('tabindex', '-1');
+  await page.getByTestId('tab-home').focus();
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))).not.toBe('tab-admin');
+  }
+});
+
+test('a resize that unfolds everything while the menu is open does not lose focus', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.goto('/#/home');
+  const more = page.getByTestId('topbar-more');
+  await more.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menuitem').first()).toBeFocused();
+  const focusedTab = await page.evaluate(() => document.activeElement?.getAttribute('data-testid')?.replace('more-item-', ''));
+
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(page.getByTestId('topbar-more')).toBeHidden();
+  // Focus is on the tab that took the item's place, not on the page body.
+  await expect(page.getByTestId(`tab-${focusedTab}`)).toBeFocused();
+});
