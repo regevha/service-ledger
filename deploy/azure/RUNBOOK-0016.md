@@ -18,7 +18,7 @@ Names: `<src>` is the existing environment you back up (production), `<test>` a 
 
 Steps 1-7 on the test environment may be run before the fix to see the problem, but then the test database ends up stamped 0016 as a no-op and the result proves nothing. **After the fix lands, redo step 3 (restore) in the test environment** (and make sure its job has the fix, by `update.sh <test>` or by re-creating the environment), then redo steps 4-7.
 
-The check below is run at the end of step 1 and again before step 8 on `<src>` (with `rg-<src>` and `job-migrate-<src>`).
+The check (given at the end of step 1) is run there and again before step 8 on `<src>` (with `rg-<src>` and `job-migrate-<src>`).
 
 ## 1. Create the non-production environment
 
