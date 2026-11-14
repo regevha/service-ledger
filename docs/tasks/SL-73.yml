@@ -13,6 +13,7 @@ files_touched:
   - backend/tests/test_stability_quick_fixes.py
   - docs/PLAN.md
   - docs/tasks/SL-73.yml
+  - frontend/src/generated/api-schema.ts
   - docs/tasks/SL-73.md
 acceptance: [SL-73]
 # Why: the reliability review (2026-11-14) F5 (a 1 KB PDF with a huge page made the API need 2.8 GB and
