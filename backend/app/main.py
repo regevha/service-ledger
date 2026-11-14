@@ -1,9 +1,11 @@
 import logging
+import tempfile
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app import schemas, seed_instruments, seed_templates
 from app.config import get_settings
@@ -149,6 +151,28 @@ app.include_router(accuracy.router)
 
 @app.get("/health", tags=["meta"])
 def health():
+    return {"status": "ok"}
+
+
+@app.get("/health/ready", tags=["meta"])
+def health_ready():
+    """Ready to serve: the database answers and the attachment folder can be written.
+    `/health` only says the process is up; this one is for the platform's readiness probe."""
+    problems = []
+    try:
+        with SessionLocal() as session:
+            session.execute(text("SELECT 1"))
+    except Exception:  # any failure means not ready; the reason stays out of the response
+        problems.append("database")
+    try:
+        folder = get_settings().attachment_storage_path
+        folder.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=folder, prefix=".ready-"):
+            pass
+    except OSError:
+        problems.append("storage")
+    if problems:
+        return JSONResponse(status_code=503, content={"status": "not ready", "problems": problems})
     return {"status": "ok"}
 
 

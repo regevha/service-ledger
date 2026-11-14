@@ -59,6 +59,6 @@ class RequestTraceMiddleware:
     def _log(scope, code: int, started: float, unhandled: bool = False) -> None:
         elapsed_ms = (time.perf_counter() - started) * 1000
         path = scope["path"]
-        routine = path == "/health" or (scope["method"] == "GET" and path.startswith("/extraction-jobs/") and code < 400)
+        routine = path in ("/health", "/health/ready") or (scope["method"] == "GET" and path.startswith("/extraction-jobs/") and code < 400)
         level = logging.ERROR if unhandled or code >= 500 else (logging.DEBUG if routine else logging.INFO)
         logger.log(level, "%s %s -> %s in %.0f ms%s", scope["method"], path, code, elapsed_ms, " (unhandled error)" if unhandled else "")
