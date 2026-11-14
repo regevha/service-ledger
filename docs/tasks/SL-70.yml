@@ -1,0 +1,33 @@
+id: SL-70
+title: Accuracy: free text measured on its own and compared loosely, re-read baseline saved and shown
+owner: backend-dev          # frontend-dev builds the screen changes on the same branch
+branch: SL-70-accuracy-free-text
+wave: R1
+depends_on: [SL-65, SL-69]
+migration: false
+files_touched:
+  - backend/app/services/read_compare.py
+  - backend/app/services/read_accuracy.py
+  - backend/app/services/home_summary.py
+  - backend/app/schemas/analytics.py
+  - backend/scripts/reread_baseline.py
+  - backend/tests/test_read_compare.py
+  - backend/tests/test_read_accuracy.py
+  - backend/tests/test_reread_baseline.py
+  - frontend/src/api/accuracy.ts
+  - frontend/src/components/AccuracyScreen.tsx
+  - frontend/src/generated/api-schema.ts
+  - frontend/tests/e2e/read-accuracy.spec.ts
+  - docs/PLAN.md
+  - docs/tasks/SL-70.md
+acceptance: [SL-70]
+# Why: the first real re-read of 9 reports (2026-11-14) gave 67.5% kept, but 89% on structured fields and
+# 1 of 9 on the work_performed narrative, where an exact match counts every rewording as a miss.
+# User decisions (2026-11-14): split structured and free-text fields; compare free text loosely; show the
+# differences on the accuracy page, not in a terminal; save the re-read as the first reading, marked.
+# Free-text fields are named in one constant (work_performed, fault_description, root_cause,
+# service_description), not guessed from the field type. Loose = ignoring case, spacing and punctuation,
+# and nothing else; every other field keeps the exact rule. One compare function serves the page, the Home
+# tile and the script, so the figures stay equal. No migration: the marker is `params.baseline = "reread"`
+# on an extract job row added for the report. Never overwrite an existing first reading. No names, values
+# or file names in any output or log line (public repository).
