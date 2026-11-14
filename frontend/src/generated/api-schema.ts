@@ -2316,6 +2316,19 @@ export interface components {
             untouched: number;
         };
         /**
+         * ReadAccuracyKindOut
+         * @description "structured" (numbers, choices, parts, identifiers: compared exactly) or "free_text" (the narrative fields:
+         *     compared ignoring case, spacing and punctuation).
+         */
+        ReadAccuracyKindOut: {
+            /** Kind */
+            kind: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+        };
+        /**
          * ReadAccuracyOut
          * @description How much of the reading people approved without an edit, over reports finalized in the last `days` days
          *     (null: all of them). `goal` is the share of fields to reach (0.99).
@@ -2345,6 +2358,10 @@ export interface components {
             by_confidence: components["schemas"]["ReadAccuracyConfidenceOut"][];
             /** By Prompt */
             by_prompt: components["schemas"]["ReadAccuracyPromptOut"][];
+            /** By Kind */
+            by_kind: components["schemas"]["ReadAccuracyKindOut"][];
+            /** From Reread */
+            from_reread: number;
             filled_by_hand: components["schemas"]["FilledByHandOut"];
             /** Corrections */
             corrections: components["schemas"]["ReadCorrectionOut"][];

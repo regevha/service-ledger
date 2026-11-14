@@ -12,6 +12,8 @@ test('the accuracy page shows the goal and either figures or a plain empty messa
   if (await page.getByTestId('acc-fields').isVisible()) {
     await expect(page.getByTestId('acc-weeks')).toBeVisible();
     await expect(page.getByTestId('acc-fields')).toContainText('goal 99%');
+    await expect(page.getByTestId('acc-structured')).toBeVisible();
+    await expect(page.getByTestId('acc-free-text')).toBeVisible();
     await expect(page.getByTestId('acc-by-confidence')).toBeVisible();
     await expect(page.getByTestId('acc-by-prompt')).toBeVisible();
     await expect(page.getByTestId('acc-filled-by-hand')).toBeVisible();

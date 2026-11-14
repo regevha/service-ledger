@@ -229,3 +229,26 @@ def test_prompt_hash_is_the_one_scripts_prompt_eval_prints():
 
     preview = {"blocks": [{"type": "document"}, {"type": "text", "text": "Extract"}], "tools": [{"name": "t"}]}
     assert _prompt_hash(preview) == hash_prompt(["Extract"], [{"name": "t"}])
+
+
+def test_free_text_and_structured_fields_are_measured_apart(client):
+    with TestSessionLocal() as db:
+        _finalized(
+            db,
+            {"work_performed": "Replaced the pinch valve.", "root_cause": "Worn valve", "labor_hours": 2.0, "fault_category": "Fluidics"},
+            {"work_performed": "replaced the pinch valve", "root_cause": "Aged laser", "labor_hours": 2.0, "fault_category": "Optics"},
+        )
+    body = client.get("/analytics/read-accuracy").json()
+    kinds = {k["kind"]: (k["fields"], k["unchanged"]) for k in body["by_kind"]}
+    assert kinds == {"structured": (2, 1), "free_text": (2, 1)}
+    assert (body["fields"], body["unchanged"]) == (4, 2)  # the loose rule counts a retyped narrative as kept
+    assert {c["field"] for c in body["corrections"]} == {"root_cause", "fault_category"}
+
+
+def test_reports_whose_first_reading_is_a_re_read_are_counted(client):
+    with TestSessionLocal() as db:
+        r1 = _finalized(db, {"a": "1"}, {"a": "1"})
+        _read_job(db, r1, confidences={"a": 0.9}, params={"baseline": "reread", "prompt_hash": "h", "model": "m"})
+        r2 = _finalized(db, {"a": "1"}, {"a": "1"})
+        _read_job(db, r2, confidences={"a": 0.9}, params={"prompt_hash": "h", "model": "m"})
+    assert client.get("/analytics/read-accuracy").json()["from_reread"] == 1

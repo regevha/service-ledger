@@ -79,6 +79,11 @@ export function AccuracyScreen() {
 
   const goal = data?.goal ?? 0.99;
   const fieldShare = data ? pct(data.unchanged, data.fields) : null;
+  const kindOf = (kind: string) => data?.by_kind.find((k) => k.kind === kind) ?? { fields: 0, unchanged: 0 };
+  const structured = kindOf('structured');
+  const freeText = kindOf('free_text');
+  const structuredShare = pct(structured.unchanged, structured.fields);
+  const freeTextShare = pct(freeText.unchanged, freeText.fields);
   const reportShare = data ? pct(data.reports_untouched, data.reports) : null;
   const trShare = data ? pct(data.translations.unchanged, data.translations.accepted) : null;
   const misses = data ? data.fields - data.unchanged : 0;
@@ -126,6 +131,16 @@ export function AccuracyScreen() {
                 {fieldShare !== null && fieldShare < goal ? `, ${Math.ceil(goal * data.fields - data.unchanged)} fewer edits to reach it` : ''}
               </span>
             </div>
+            <div className={`stat-tile ${tone(structuredShare, goal)}`} data-testid="acc-structured">
+              <span className="stat-value">{formatPct(structuredShare)}</span>
+              <span className="stat-label">Numbers, choices and parts kept as read</span>
+              <span className="home-tile-note">{structured.unchanged} of {structured.fields}; compared exactly; goal {formatPct(goal)}</span>
+            </div>
+            <div className="stat-tile" data-testid="acc-free-text">
+              <span className="stat-value">{formatPct(freeTextShare)}</span>
+              <span className="stat-label">Written descriptions kept as read</span>
+              <span className="home-tile-note">{freeText.unchanged} of {freeText.fields}; case, spacing and punctuation ignored</span>
+            </div>
             <div className="stat-tile" data-testid="acc-reports">
               <span className="stat-value">{formatPct(reportShare)}</span>
               <span className="stat-label">Reports approved with no edit</span>
@@ -139,6 +154,12 @@ export function AccuracyScreen() {
               <span className="home-tile-note">{data.translations.accepted ? `${data.translations.unchanged} of ${data.translations.accepted} Hebrew reports` : 'No translated reports in this period'}</span>
             </div>
           </div>
+
+          {data.from_reread > 0 && (
+            <p className="hint-text" data-testid="acc-from-reread">
+              {data.from_reread} of these {data.reports} reports were finalized before the first reading was kept. Their first reading is the document read again later with the current settings, so it is an estimate.
+            </p>
+          )}
 
           <section className="acc-section" aria-labelledby="acc-weeks-title">
             <h3 id="acc-weeks-title">By week</h3>

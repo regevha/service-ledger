@@ -30,6 +30,7 @@ def _report(db, template, kept, *, minutes_ago=0, first_reading=None, with_file=
     if with_file:
         db.add(models.Attachment(report_id=r.id, file_path=f"{r.id}/{SECRET_FILE}", file_type="application/pdf"))
     db.commit()
+    db.refresh(r)
     return r
 
 
@@ -166,3 +167,64 @@ def test_a_skip_shows_the_error_class_and_its_cause_but_never_the_message(templa
     rb.main(["--run"])
     out = capsys.readouterr().out
     assert "LookupError <- ValueError x1" in out and SECRET_FILE not in out
+
+
+@pytest.fixture
+def live(monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(rb, "get_settings", lambda: SimpleNamespace(use_live_claude=True))
+
+
+def test_save_stores_the_re_read_as_the_first_reading_and_marks_it(template, use_test_db, live, monkeypatch, capsys):
+    monkeypatch.setattr(rb, "extract", _answer({"a": "1", "b": "2"}, {"a": 0.9, "b": 0.6}))
+    with TestSessionLocal() as db:
+        r = _report(db, template, {"a": "1", "b": "other"})
+    assert rb.main(["--run", "--save"]) == 0
+    assert "Saved 1 re-reads" in capsys.readouterr().out
+    with TestSessionLocal() as db:
+        saved = db.get(models.Report, r.id)
+        assert saved.original_fields == {"a": "1", "b": "2"} and saved.extracted_fields == {"a": "1", "b": "other"}
+        [job] = db.query(models.ExtractionJob).all()
+        assert job.params["baseline"] == "reread" and len(job.params["prompt_hash"]) == 12
+        assert job.field_confidences == {"a": 0.9, "b": 0.6}
+        assert job.status == models.ExtractionJobStatus.succeeded
+    with TestSessionLocal() as db:
+        assert rb.unmeasured_reports(db) == []
+
+
+def test_a_run_without_save_stores_nothing(template, use_test_db, live, monkeypatch, capsys):
+    monkeypatch.setattr(rb, "extract", _answer({"a": "1"}, {"a": 0.9}))
+    with TestSessionLocal() as db:
+        r = _report(db, template, {"a": "1"})
+    rb.main(["--run"])
+    assert "Nothing was stored" in capsys.readouterr().out
+    with TestSessionLocal() as db:
+        assert db.get(models.Report, r.id).original_fields is None
+        assert db.query(models.ExtractionJob).count() == 0
+
+
+def test_save_is_refused_for_a_stub_reading(template, use_test_db, monkeypatch, capsys):
+    monkeypatch.setattr(rb, "extract", _answer({"a": "invented"}, {"a": 0.9}))
+    with TestSessionLocal() as db:
+        r = _report(db, template, {"a": "1"})
+    assert rb.main(["--run", "--save"]) == 2
+    assert "must not be stored" in capsys.readouterr().err
+    with TestSessionLocal() as db:
+        assert db.get(models.Report, r.id).original_fields is None
+
+
+def test_save_never_replaces_an_existing_first_reading(template, use_test_db, live):
+    with TestSessionLocal() as db:
+        r = _report(db, template, {"a": "1"})
+        reading = rb.Reading([("a", True, 0.9)], {"a": "new"}, {"a": 0.9}, db.query(models.Attachment).first().id)
+        r.original_fields = {"a": "first"}
+        db.commit()
+        assert rb.save_reading(db, r, reading) is False
+        assert db.get(models.Report, r.id).original_fields == {"a": "first"}
+        assert db.query(models.ExtractionJob).count() == 0
+
+
+def test_save_needs_run(use_test_db):
+    with pytest.raises(SystemExit):
+        rb.main(["--save"])

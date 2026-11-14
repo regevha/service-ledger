@@ -7,6 +7,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.services.read_compare import blank as _blank
+from app.services.read_compare import same_value
 
 ACCURACY_DAYS = 30
 
@@ -21,16 +23,6 @@ def _month_start(day: date) -> date:
 
 def _previous_month_start(day: date) -> date:
     return _month_start(_month_start(day) - timedelta(days=1))
-
-
-def _blank(value: object) -> bool:
-    return value is None or (isinstance(value, str) and value.strip() == "") or value == [] or value == {}
-
-
-def _same(read: object, kept: object) -> bool:
-    if isinstance(read, str) and isinstance(kept, str):
-        return read.strip() == kept.strip()
-    return read == kept
 
 
 def read_accuracy(db: Session, today: date) -> schemas.HomeReadAccuracyOut:
@@ -54,7 +46,7 @@ def read_accuracy(db: Session, today: date) -> schemas.HomeReadAccuracyOut:
             if _blank(read):
                 continue
             counted += 1
-            if _same(read, kept.get(key)):
+            if same_value(key, read, kept.get(key)):
                 unchanged += 1
         if counted:
             reports += 1

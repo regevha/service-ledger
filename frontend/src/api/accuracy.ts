@@ -31,6 +31,13 @@ export interface ReadAccuracyConfidence {
   unchanged: number;
 }
 
+export interface ReadAccuracyKind {
+  /** "structured": compared exactly. "free_text": the narrative fields, compared ignoring case, spacing and punctuation. */
+  kind: 'structured' | 'free_text' | string;
+  fields: number;
+  unchanged: number;
+}
+
 export interface ReadAccuracyPrompt {
   prompt_hash: string;
   model: string;
@@ -70,6 +77,9 @@ export interface ReadAccuracy {
   by_source: ReadAccuracySource[];
   by_confidence: ReadAccuracyConfidence[];
   by_prompt: ReadAccuracyPrompt[];
+  by_kind: ReadAccuracyKind[];
+  /** Reports whose first reading is a later re-read of the document (not the reading made when it was uploaded). */
+  from_reread: number;
   filled_by_hand: { empty: number; filled: number };
   corrections: ReadCorrection[];
   translations: { accepted: number; unchanged: number; edits: TranslationEdit[] };
