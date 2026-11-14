@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -62,17 +62,28 @@ def _attachment_to_read(db: Session, report: models.Report) -> models.Attachment
     return db.scalars(select(models.Attachment).where(models.Attachment.report_id == report.id).order_by(models.Attachment.created_at)).first()
 
 
-def reread(db: Session, report: models.Report) -> list[tuple[str, bool, float | None]] | None:
-    """(field name, same as approved, confidence) for every field the new reading filled in; None when
-    the report cannot be read again (no template, no document, a refused or failed answer)."""
+Row = list[tuple[str, bool, float | None]]
+
+
+def _error_kind(error: BaseException) -> str:
+    """Class names only (the app's error and the library error behind it): safe to print, a message may hold a path."""
+    cause = error.__cause__ or error.__context__
+    return type(error).__name__ + (f" <- {type(cause).__name__}" if cause is not None else "")
+
+
+def reread(db: Session, report: models.Report) -> Row | str:
+    """(field name, same as approved, confidence) for every field the new reading filled in; a short reason
+    when the report cannot be read again."""
     template = db.get(models.ReportTemplate, report.template_id) if report.template_id else None
     attachment = _attachment_to_read(db, report)
-    if template is None or attachment is None:
-        return None
+    if template is None:
+        return "no template"
+    if attachment is None:
+        return "no document"
     try:
         result = extract(attachment, template)
-    except Exception:  # noqa: BLE001 - one unreadable report must not stop the run; its message may hold a path
-        return None
+    except Exception as error:  # noqa: BLE001 - one unreadable report must not stop the run; its message may hold a path
+        return _error_kind(error)
     kept = report.extracted_fields or {}
     return [
         (name, _same(value, kept.get(name)), _confidence(result.field_confidences.get(name)))
@@ -85,12 +96,15 @@ def _confidence(value: object) -> float | None:
     return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
 
-def summarize(rows: list[list[tuple[str, bool, float | None]] | None]) -> str:
-    """The text a run prints, built from counts and field names only."""
-    done = [r for r in rows if r is not None]
+def summarize(rows: list[Row | str]) -> str:
+    """The text a run prints, built from counts, field names and error class names only."""
+    done = [r for r in rows if not isinstance(r, str)]
+    skipped = Counter(r for r in rows if isinstance(r, str))
     fields = [f for r in done for f in r]
     kept = sum(1 for _, same, _ in fields if same)
-    lines = [f"Re-read {len(done)} reports ({len(rows) - len(done)} skipped: no template or document, or no usable answer)."]
+    lines = [f"Re-read {len(done)} reports ({sum(skipped.values())} skipped)."]
+    if skipped:
+        lines.append("Skipped because: " + ", ".join(f"{why} x{n}" for why, n in skipped.most_common()))
     if not fields:
         return "\n".join(lines + ["No fields were read."])
     lines.append(f"Fields read {len(fields)}; same as the approved value {kept} ({kept / len(fields):.1%}). Goal 99%.")
