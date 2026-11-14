@@ -20,6 +20,7 @@ the hash is the same (or changed on purpose), plus pass/fail per value.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import date
@@ -70,7 +71,11 @@ def _template_fields(report_type: str, model: str | None) -> list[dict]:
 
 
 def _prompt_hash(preview: dict) -> str:
-    return extraction.hash_prompt([b.get("text") for b in preview["blocks"] if b["type"] == "text"], preview["tools"])
+    material = json.dumps(
+        {"text": [b.get("text") for b in preview["blocks"] if b["type"] == "text"], "tools": preview["tools"]},
+        sort_keys=True, ensure_ascii=False,
+    )
+    return hashlib.sha256(material.encode()).hexdigest()[:12]
 
 
 def _preview_of(call) -> dict:

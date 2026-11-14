@@ -200,3 +200,32 @@ def test_home_figure_equals_page_figure(client):
     home = client.get("/home/summary").json()["read_without_edits"]
     page = client.get("/analytics/read-accuracy?days=30").json()
     assert (home["reports"], home["fields"], home["unchanged"]) == (page["reports"], page["fields"], page["unchanged"]) == (2, 3, 2)
+
+
+def test_extract_job_records_the_prompt_hash_and_model(client, run_worker):
+    from app.services.extraction import prompt_fingerprint
+
+    report = client.post("/reports", json={}).json()
+    attachment = client.post(f"/reports/{report['id']}/attachments", files={"file": ("scan.pdf", b"%PDF-1.4 x", "application/pdf")}).json()
+    client.post(f"/attachments/{attachment['id']}/classify")
+    run_worker()
+    if client.get(f"/reports/{report['id']}").json()["template_id"] is None:  # the stub guessed below threshold
+        instrument = client.get("/instruments").json()[0]
+        template = client.get("/report-templates", params={"model": instrument["model"]}).json()[0]
+        client.patch(f"/reports/{report['id']}/template", json={"instrument_id": instrument["id"], "template_id": template["id"]})
+    job = client.post(f"/attachments/{attachment['id']}/extract").json()
+    run_worker()
+
+    with TestSessionLocal() as db:
+        stored = db.get(models.ExtractionJob, job["id"])
+        template = db.get(models.Report, report["id"]).template
+        assert stored.params["prompt_hash"] == prompt_fingerprint(template)["prompt_hash"]
+        assert len(stored.params["prompt_hash"]) == 12 and stored.params["model"]
+
+
+def test_prompt_hash_is_the_one_scripts_prompt_eval_prints():
+    from app.services.extraction import hash_prompt
+    from scripts.prompt_eval import _prompt_hash
+
+    preview = {"blocks": [{"type": "document"}, {"type": "text", "text": "Extract"}], "tools": [{"name": "t"}]}
+    assert _prompt_hash(preview) == hash_prompt(["Extract"], [{"name": "t"}])

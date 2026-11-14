@@ -73,19 +73,3 @@ def test_template_fields_cannot_be_named_report_date(client):
     )
     assert resp.status_code == 422
     assert "reserved" in resp.text
-
-
-def test_extract_job_records_the_prompt_hash_and_model(client, run_worker):
-    from app import models
-    from app.services.extraction import prompt_fingerprint
-    from tests.conftest import TestSessionLocal
-
-    report_id, attachment_id = _report_ready_to_extract(client, run_worker)
-    job = client.post(f"/attachments/{attachment_id}/extract").json()
-    run_worker()
-
-    with TestSessionLocal() as db:
-        stored = db.get(models.ExtractionJob, job["id"])
-        template = db.get(models.Report, report_id).template
-        assert stored.params["prompt_hash"] == prompt_fingerprint(template)["prompt_hash"]
-        assert len(stored.params["prompt_hash"]) == 12 and stored.params["model"]
