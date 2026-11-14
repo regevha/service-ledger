@@ -1290,6 +1290,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analytics/read-accuracy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Read Accuracy
+         * @description How much of the reading was approved without an edit: the overall share of fields and of reports, by week,
+         *     by field, by form and by source (translated or not), the newest corrections, and the translation edits.
+         */
+        get: operations["get_read_accuracy_analytics_read_accuracy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1579,6 +1600,16 @@ export interface components {
             w: number;
             /** H */
             h: number;
+        };
+        /**
+         * FilledByHandOut
+         * @description Fields the reading left empty. `filled`: a person typed a value before approving.
+         */
+        FilledByHandOut: {
+            /** Empty */
+            empty: number;
+            /** Filled */
+            filled: number;
         };
         /**
          * FleetAnalyticsOut
@@ -2138,6 +2169,13 @@ export interface components {
             /** Total Qty */
             total_qty: number;
         };
+        /** PhraseChangeOut */
+        PhraseChangeOut: {
+            /** Before */
+            before: string;
+            /** After */
+            after: string;
+        };
         /** PlaceCreate */
         PlaceCreate: {
             /**
@@ -2240,6 +2278,153 @@ export interface components {
             name?: string | null;
             /** Parent Id */
             parent_id?: string | null;
+        };
+        /**
+         * ReadAccuracyConfidenceOut
+         * @description Fields whose reading had a confidence in this band when the report was read: how many, how many kept.
+         */
+        ReadAccuracyConfidenceOut: {
+            /** Band */
+            band: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+        };
+        /** ReadAccuracyFieldOut */
+        ReadAccuracyFieldOut: {
+            /** Field */
+            field: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+        };
+        /** ReadAccuracyFormOut */
+        ReadAccuracyFormOut: {
+            /** Template Id */
+            template_id: string | null;
+            /** Form */
+            form: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Reports */
+            reports: number;
+            /** Untouched */
+            untouched: number;
+        };
+        /**
+         * ReadAccuracyOut
+         * @description How much of the reading people approved without an edit, over reports finalized in the last `days` days
+         *     (null: all of them). `goal` is the share of fields to reach (0.99).
+         */
+        ReadAccuracyOut: {
+            /** Days */
+            days: number | null;
+            /** Goal */
+            goal: number;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Reports */
+            reports: number;
+            /** Reports Untouched */
+            reports_untouched: number;
+            /** Weeks */
+            weeks: components["schemas"]["ReadAccuracyWeekOut"][];
+            /** By Field */
+            by_field: components["schemas"]["ReadAccuracyFieldOut"][];
+            /** By Form */
+            by_form: components["schemas"]["ReadAccuracyFormOut"][];
+            /** By Source */
+            by_source: components["schemas"]["ReadAccuracySourceOut"][];
+            /** By Confidence */
+            by_confidence: components["schemas"]["ReadAccuracyConfidenceOut"][];
+            /** By Prompt */
+            by_prompt: components["schemas"]["ReadAccuracyPromptOut"][];
+            filled_by_hand: components["schemas"]["FilledByHandOut"];
+            /** Corrections */
+            corrections: components["schemas"]["ReadCorrectionOut"][];
+            translations: components["schemas"]["TranslationAccuracyOut"];
+        };
+        /**
+         * ReadAccuracyPromptOut
+         * @description Reports read with one prompt (`prompt_hash`) and model; jobs from before this was recorded are "unknown".
+         */
+        ReadAccuracyPromptOut: {
+            /** Prompt Hash */
+            prompt_hash: string;
+            /** Model */
+            model: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Reports */
+            reports: number;
+        };
+        /**
+         * ReadAccuracySourceOut
+         * @description "translated" (read from an accepted Hebrew translation) or "original" (read from the document itself).
+         */
+        ReadAccuracySourceOut: {
+            /** Source */
+            source: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Reports */
+            reports: number;
+            /** Untouched */
+            untouched: number;
+        };
+        /**
+         * ReadAccuracyWeekOut
+         * @description Reports finalized in the week starting `week_start` (a Monday).
+         */
+        ReadAccuracyWeekOut: {
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
+            /** Fields */
+            fields: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Reports */
+            reports: number;
+            /** Untouched */
+            untouched: number;
+        };
+        /**
+         * ReadCorrectionOut
+         * @description One field a person changed before approving: what was read and what was kept.
+         */
+        ReadCorrectionOut: {
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /** Finalized At */
+            finalized_at: string | null;
+            /** Instrument */
+            instrument: string | null;
+            /** Form */
+            form: string;
+            /** Field */
+            field: string;
+            /** Read */
+            read: string;
+            /** Kept */
+            kept: string;
+            /** Translated */
+            translated: boolean;
         };
         /**
          * RectOut
@@ -2817,6 +3002,29 @@ export interface components {
         TranslationAccept: {
             /** Accepted Text */
             accepted_text?: string | null;
+        };
+        /** TranslationAccuracyOut */
+        TranslationAccuracyOut: {
+            /** Accepted */
+            accepted: number;
+            /** Unchanged */
+            unchanged: number;
+            /** Edits */
+            edits: components["schemas"]["TranslationEditOut"][];
+        };
+        /** TranslationEditOut */
+        TranslationEditOut: {
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /** Finalized At */
+            finalized_at: string | null;
+            /** Instrument */
+            instrument: string | null;
+            /** Changes */
+            changes: components["schemas"]["PhraseChangeOut"][];
         };
         /** TranslationOut */
         TranslationOut: {
@@ -5398,6 +5606,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HomeSummaryOut"];
+                };
+            };
+        };
+    };
+    get_read_accuracy_analytics_read_accuracy_get: {
+        parameters: {
+            query?: {
+                /** @description Reports finalized in the last N days; leave out for 90, send 0 for all. */
+                days?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadAccuracyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

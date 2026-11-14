@@ -1,8 +1,8 @@
 # Backend coverage settings. Run with:  python -m pytest --cov   (needs pytest-cov)
 #
-# Only code the test suite could reasonably exercise is measured. Three modules
+# Only code the test suite could reasonably exercise is measured. These modules
 # are left out on purpose, not because they were forgotten:
-#   - seed_demo_reports.py, seed_trend_demo.py: dev/demo convenience scripts
+#   - seed_demo_reports.py, seed_trend_demo.py, seed_accuracy_demo.py: dev/demo convenience scripts
 #     that fill a database with sample data for screenshots and the trend chart.
 #   - testing/reset_db.py: the command-line helper the Playwright config runs
 #     to reset the e2e database; the e2e suite exercises it for real.
@@ -14,6 +14,7 @@ branch = True
 omit =
     app/seed_demo_reports.py
     app/seed_trend_demo.py
+    app/seed_accuracy_demo.py
     app/testing/reset_db.py
 
 [report]

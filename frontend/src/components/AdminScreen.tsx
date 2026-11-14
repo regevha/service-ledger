@@ -3,9 +3,11 @@ import { countReports, reportsExportUrl, type Instrument, type ReportFilters, ty
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { useTheme } from '../theme';
 import { DateInput } from './DateInput';
+import { AccuracyScreen } from './AccuracyScreen';
 import { FieldAliasManagerScreen } from './FieldAliasManager';
 
-type Section = 'export' | 'aliases' | 'appearance';
+type Section = 'export' | 'aliases' | 'appearance' | 'accuracy';
+const SECTIONS: Section[] = ['aliases', 'appearance', 'accuracy'];
 
 /**
  * Admin: housekeeping that is not part of the daily flow. Data export (the CSV that used to sit on the
@@ -13,12 +15,15 @@ type Section = 'export' | 'aliases' | 'appearance';
  * after #/admin/, so a section can be bookmarked.
  */
 export function AdminScreen({ section, onSection, instruments }: { section: string; onSection: (s: string) => void; instruments: Instrument[] }) {
-  const current: Section = section === 'aliases' ? 'aliases' : section === 'appearance' ? 'appearance' : 'export';
+  const current: Section = SECTIONS.find((s) => s === section) ?? 'export';
   return (
     <div className="admin-screen" data-testid="admin-screen">
       <nav className="admin-nav" aria-label="Admin sections">
         <button type="button" className={`admin-nav-item ${current === 'export' ? 'active' : ''}`} aria-current={current === 'export' ? 'page' : undefined} onClick={() => onSection('')}>
           Data export
+        </button>
+        <button type="button" className={`admin-nav-item ${current === 'accuracy' ? 'active' : ''}`} aria-current={current === 'accuracy' ? 'page' : undefined} onClick={() => onSection('accuracy')}>
+          Reading accuracy
         </button>
         <button type="button" className={`admin-nav-item ${current === 'aliases' ? 'active' : ''}`} aria-current={current === 'aliases' ? 'page' : undefined} onClick={() => onSection('aliases')}>
           Field aliases
@@ -28,7 +33,15 @@ export function AdminScreen({ section, onSection, instruments }: { section: stri
         </button>
       </nav>
       <div className="admin-body">
-        {current === 'aliases' ? <FieldAliasManagerScreen onBack={() => onSection('')} /> : current === 'appearance' ? <Appearance /> : <DataExport instruments={instruments} />}
+        {current === 'aliases' ? (
+          <FieldAliasManagerScreen onBack={() => onSection('')} />
+        ) : current === 'appearance' ? (
+          <Appearance />
+        ) : current === 'accuracy' ? (
+          <AccuracyScreen />
+        ) : (
+          <DataExport instruments={instruments} />
+        )}
       </div>
     </div>
   );

@@ -29,6 +29,8 @@ what's already shown in the repair-review-demo artifact.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from datetime import date, datetime, timedelta
 from typing import NamedTuple
@@ -226,6 +228,29 @@ def _confidence_value(confidence: object, name: str, attachment_path: str) -> fl
         return 0.0
 
 
+def _extract_prompt(fields: list[dict], with_boxes: bool) -> tuple[dict, str]:
+    """The tool schema and the text block sent for a template's fields."""
+    tool = _build_extract_tool(fields, with_boxes)
+    prompt = _EXTRACT_PROMPT_HEADER + "\n\nFields to extract:\n" + _field_list_for_prompt(fields)
+    if with_boxes:
+        prompt += _BOX_PROMPT
+    return tool, prompt
+
+
+def hash_prompt(texts: list, tools: list) -> str:
+    """Short fingerprint of what is sent to the model (text blocks and tool schema). `scripts/prompt_eval.py`
+    uses the same function, so a hash there and a hash stored on a job compare."""
+    material = json.dumps({"text": texts, "tools": tools}, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(material.encode()).hexdigest()[:12]
+
+
+def prompt_fingerprint(template: ReportTemplate) -> dict:
+    """What a job records in `params` so accuracy can be compared per prompt: the hash of the text prompt
+    (without the optional box-location block) and the model name."""
+    tool, prompt = _extract_prompt(template.field_schema.get("fields", []), False)
+    return {"prompt_hash": hash_prompt([prompt], [tool]), "model": settings.anthropic_model}
+
+
 def _live_extract(attachment: Attachment, template: ReportTemplate) -> ExtractionResult:
     fields = template.field_schema.get("fields", [])
     try:
@@ -233,10 +258,7 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> Extractio
     except UnsupportedDocumentError as e:
         raise ExtractionError(str(e)) from e
     with_boxes = _wants_boxes(attachment, document_block)
-    tool = _build_extract_tool(fields, with_boxes)
-    prompt = _EXTRACT_PROMPT_HEADER + "\n\nFields to extract:\n" + _field_list_for_prompt(fields)
-    if with_boxes:
-        prompt += _BOX_PROMPT
+    tool, prompt = _extract_prompt(fields, with_boxes)
 
     response = call_claude_tool(
         client=_get_client(),

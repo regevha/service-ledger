@@ -12,6 +12,7 @@ from app.debug_claude_log import announce_debug_log
 from app.frontend_static import mount_frontend
 from app.request_trace import RequestTraceMiddleware
 from app.routers import (
+    accuracy,
     analytics,
     attachments,
     field_aliases,
@@ -143,6 +144,7 @@ app.include_router(attachments.router)
 app.include_router(translations.router)
 app.include_router(analytics.router)
 app.include_router(home.router)
+app.include_router(accuracy.router)
 
 
 @app.get("/health", tags=["meta"])
