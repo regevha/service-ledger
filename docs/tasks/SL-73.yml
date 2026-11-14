@@ -1,0 +1,22 @@
+id: SL-73
+title: "Stabilizing quick fixes: page render pixel cap and a readiness check"
+owner: backend-dev          # the lead does it directly (small changes)
+branch: SL-73-stabilize-quick-fixes
+wave: R1
+depends_on: []
+migration: false
+files_touched:
+  - backend/app/routers/attachments.py
+  - backend/app/main.py
+  - backend/app/shared_password.py
+  - backend/app/request_trace.py
+  - backend/tests/test_stability_quick_fixes.py
+  - docs/PLAN.md
+  - docs/tasks/SL-73.yml
+  - frontend/src/generated/api-schema.ts
+  - docs/tasks/SL-73.md
+acceptance: [SL-73]
+# Why: the reliability review (2026-11-14) F5 (a 1 KB PDF with a huge page made the API need 2.8 GB and
+# the container has 1 GiB) and F4 (/health says ok with the database down). Both are small and need no migration.
+# Not in this task: F6 (refuse corrupt PDFs at upload): many existing tests upload placeholder PDF bytes on purpose,
+# so it needs its own task; F1 and F3 need a migration; F2 is a budget decision.

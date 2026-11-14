@@ -33,6 +33,9 @@ from app.services.translation import translation_gate
 
 logger = logging.getLogger(__name__)
 
+# Largest page bitmap the API will draw, in pixels (about 25 megapixels, about 75 MB as RGB).
+MAX_RENDER_PIXELS = 25_000_000
+
 router = APIRouter(tags=["attachments"])
 settings = get_settings()
 
@@ -243,7 +246,11 @@ def get_attachment_page_image(
             # before the page is loaded (found 2026-11-10: a PIR form looked blank).
             pdf.init_forms()
             pdf_page = pdf[page - 1]
-            scale = width / pdf_page.get_width()
+            # A tiny PDF can declare a page of any size (a 1 KB file once asked for a 2400 x 172800
+            # bitmap and needed 2.8 GB): the scale shrinks until the bitmap stays under MAX_RENDER_PIXELS
+            # (the 0.98 absorbs rounding up to whole pixels).
+            page_w, page_h = pdf_page.get_size()
+            scale = min(width / page_w, (0.98 * MAX_RENDER_PIXELS / (page_w * page_h)) ** 0.5)
             image = pdf_page.render(scale=scale, may_draw_forms=True).to_pil().convert("RGB")
         finally:
             pdf.close()
