@@ -94,3 +94,5 @@ BACKUP_FIRST=1 ./deploy/azure/update.sh sl-test          # backup, then release
 `restore.sh` checks the checksums, shows the manifest, asks you to type the environment name, takes a safety backup of the current state (`backups/<name>-before-restore-...`), stops the API and worker, replaces the database in one transaction (a failure leaves it as it was), copies the scans back, and starts the apps again. Anything saved after the backup is lost. If the backup is older than the deployed code, run `update.sh` afterwards so the migration brings the schema up to date.
 
 The dump is **not encrypted** and holds real lab data; `backups/` is ignored by git, but store the folder somewhere private. Azure also keeps its own automatic database backups (7 days by default; raise with `az postgres flexible-server update --backup-retention 35`). Not yet run against real Azure; the dump and restore commands were tried against a local PostgreSQL.
+
+Before releasing migration 0016 (relative attachment paths), follow the restore test and rollout steps in [`RUNBOOK-0016.md`](RUNBOOK-0016.md).
