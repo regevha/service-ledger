@@ -1,0 +1,26 @@
+id: SL-71
+title: "Accuracy page: show what changed in a correction, prompt rows by form, plain intro"
+owner: backend-dev          # frontend-dev builds the screen changes on the same branch
+branch: SL-71-accuracy-diff-view
+wave: R1
+depends_on: [SL-70]
+migration: false
+files_touched:
+  - backend/app/services/read_accuracy.py
+  - backend/app/schemas/analytics.py
+  - backend/tests/test_read_accuracy.py
+  - frontend/src/api/accuracy.ts
+  - frontend/src/components/AccuracyScreen.tsx
+  - frontend/src/styles/11-accuracy.css
+  - frontend/src/generated/api-schema.ts
+  - frontend/tests/e2e/read-accuracy.spec.ts
+  - docs/PLAN.md
+  - docs/tasks/SL-71.md
+acceptance: [SL-71]
+# Why: on the first real baseline (9 re-read reports) the corrections list cut long texts at 160 characters, so for
+# a long work description the read and approved columns looked the same and the difference was out of sight; the
+# prompt table showed four hashes for nine reports because each form's field list has its own hash; and the intro
+# still said "exactly as it was read".
+# User decision (2026-11-14): differences are to be seen on the page, not in a terminal.
+# No change to what is measured, no migration. Texts shown on the page are the same stored values the page
+# already shows; nothing new is logged or written (public repository: no values in tests beyond invented ones).
