@@ -93,7 +93,7 @@ class Settings(BaseSettings):
     # Finished jobs older than this many days are deleted, except the newest finished job of
     # each kind per document (job_queue.prune_finished_jobs). 0 keeps everything. Kept above
     # the 24 hour windows the job caps count over.
-    job_retention_days: int = 30
+    job_retention_days: int = 90  # D-4 / D-10
     worker_retention_interval_seconds: float = 3600.0
 
     # Debug aid: before each live Claude call the job stops and the intake screen
