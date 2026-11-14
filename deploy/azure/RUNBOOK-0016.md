@@ -10,9 +10,9 @@ Legend: **[script]** = a command in `deploy/azure/*.sh`. **[unchecked]** = a pla
 
 Names: `<src>` is the existing environment you back up (production), `<test>` a new throwaway name (3-14 chars, lowercase letters, digits, hyphens), `<prod>` is `<src>` again at the rollout. All commands run from the repository root, after `az login`, on the commit you intend to release.
 
-## 0. Blocker to clear before step 5 (found while writing this)
+## 0. Blocker: production stays blocked until the deploy.sh migration-job fix (pending) lands
 
-`deploy.sh` creates the migration job `job-migrate-<name>` with only `DATABASE_URL`; `ATTACHMENT_STORAGE_DIR` and the `/data` mount are set on the API and worker apps only. 0016 finds the storage root from `ATTACHMENT_STORAGE_DIR`, so in that job it would use the default `./storage/attachments`, treat every row as "outside" and change nothing, or fail creating a folder it may not write. The app would still read the old full paths, so nothing breaks, but the migration would not have done its work. **Do not run production until the job has the variable and the mount.** This needs a change in `deploy.sh`/`update.sh` (devops request in the hand-off). Step 5 checks it, and step 7 proves the result.
+**Do not run step 8 (production) until "the deploy.sh migration-job fix (pending)" has been merged and applied to `job-migrate-<src>`.** It is a separate devops task, not part of this runbook. The reason: `deploy.sh` creates the migration job `job-migrate-<name>` with only `DATABASE_URL`; `ATTACHMENT_STORAGE_DIR` and the `/data` mount are set on the API and worker apps only. 0016 finds the storage root from `ATTACHMENT_STORAGE_DIR`, so in that job it would use the default `./storage/attachments`, treat every row as "outside" and change nothing, or fail creating a folder it may not write. The app would still read the old full paths, so nothing breaks, but the migration would not have done its work. Steps 1-7 on the test environment may be run before the fix to see the problem, but the step 6 result is only meaningful once the check below passes.
 
 Check [unchecked]:
 ```
@@ -35,7 +35,14 @@ Keep ingress internal (default). It costs money while it exists; `./deploy/azure
 ```
 Check the printed MANIFEST: `migration:` should be `0015_indexes` (or earlier) if 0016 is not yet released, and `attachments` / `scan files` counts should be plausible. Write down the `attachments:` count. The folder holds real data and is not encrypted: keep it private.
 
-## 3. Count rows outside the storage root (before)
+## 3. Restore the backup into the test environment
+
+```
+./deploy/azure/restore.sh <test> backups/<src>-<UTC time>     # [script]
+```
+It asks you to type `<test>`, takes a safety backup of the (empty) test state, stops the apps, replaces the database and copies the scans to the share, then starts the apps. The test environment is now on the old schema with new code; do not open it until step 5 is done.
+
+## 4. Count rows outside the storage root (before)
 
 Open a shell that reuses the scripts' connection helpers [script functions, used in a way no script does; unchecked]:
 ```
@@ -43,18 +50,11 @@ bash
 set -- <test>; source deploy/azure/_common.sh; open_database
 psql -c "select count(*) as total, count(*) filter (where file_path not like '/data/attachments/%') as outside_root from attachments"
 ```
-Stay in this shell for steps 5-7 (it holds the database firewall rule and credentials). Run `close_database; exit` at the end of step 7. Do this only after step 4 (the database must hold the restored data); the line above is shown here to explain the check.
-
-## 4. Restore the backup into the test environment
-
-```
-./deploy/azure/restore.sh <test> backups/<src>-<UTC time>     # [script]
-```
-It asks you to type `<test>`, takes a safety backup of the (empty) test state, stops the apps, replaces the database and copies the scans to the share, then starts the apps. The test environment is now on the old schema with new code; do not open it until step 5 is done. Then run the count from step 3: `total` must equal the manifest's `attachments`; write down `outside_root` (D-9: these rows stay as they are).
+Stay in this shell for steps 5-7 (it holds the database firewall rule and credentials). Run `close_database; exit` at the end of step 7. `total` must equal the manifest's `attachments`; write down `outside_root` (D-9: these rows stay as they are).
 
 ## 5. Run 0016 in the test environment (upgrade)
 
-Confirm the step 0 check passes, then:
+Confirm the step 0 check passes (it will not until the fix lands), then:
 ```
 ./deploy/azure/update.sh <test>          # [script] builds, runs the migration job, waits, rolls the apps
 ```
