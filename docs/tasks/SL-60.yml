@@ -1,0 +1,15 @@
+id: SL-60
+title: Retention default 90 days (D-10)
+owner: backend-dev
+branch: SL-60-retention-default
+wave: G1
+depends_on: []
+migration: false
+mode: direct
+files_touched:
+  - backend/app/config.py
+  - backend/tests/test_config_defaults.py
+  - docs/tasks/SL-60.md
+acceptance: [D-10]
+# Change `job_retention_days` default from 30 to 90 (backend/app/config.py:96) and add a test that the
+# default is 90 when JOB_RETENTION_DAYS is unset. No behaviour change otherwise.
