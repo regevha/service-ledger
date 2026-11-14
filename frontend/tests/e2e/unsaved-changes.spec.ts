@@ -10,7 +10,7 @@ import { BACKEND_PORT } from '../../playwright.config';
 
 const API_BASE = `http://localhost:${BACKEND_PORT}`;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 const dialog = (page: Page) => page.locator('#leave-dialog');
 const firstText = (page: Page) => page.getByTestId('field-list').locator('textarea').first();

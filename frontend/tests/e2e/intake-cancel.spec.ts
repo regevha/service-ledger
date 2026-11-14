@@ -10,7 +10,7 @@ import { API_BASE } from './helpers/api';
 // (classify, extract) is started afterwards.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 async function reportsBy(request: import('@playwright/test').APIRequestContext, marker: string) {
   const all = await (await request.get(`${API_BASE}/reports`)).json();

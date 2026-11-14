@@ -8,7 +8,7 @@ import { API_BASE } from './helpers/api';
 import { confirmClassification } from './helpers/ui';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SAMPLE = path.join(__dirname, 'fixtures', 'sample-work-order.pdf');
+const SAMPLE = path.join(__dirname, 'fixtures', 'synthetic-sample-work-order.pdf');
 
 // Suggesting a template of its own for a report that has none (phase 1 of the
 // template-suggestion proposal): a report read with the generic template gets

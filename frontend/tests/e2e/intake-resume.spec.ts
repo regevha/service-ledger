@@ -8,7 +8,7 @@ import { TIMEOUT } from './timeouts';
 // finding 2). It used to submit the document a second time, so the scan was read twice.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 test('Try again after a timeout waits for the same job instead of submitting another', async ({ page }) => {
   const submits: string[] = [];

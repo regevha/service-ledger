@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('sl.review.showScan', 'on'));
 });
 
-const FORM = readFileSync(path.join(process.cwd(), 'tests/e2e/fixtures/pick-fields-form.pdf'));
+const FORM = readFileSync(path.join(process.cwd(), 'tests/e2e/fixtures/synthetic-pick-fields-form.pdf'));
 
 test('pure helpers: same value, and which mark wins', () => {
   expect(sameValue(' 29.40 ', '29.40')).toBe(true);

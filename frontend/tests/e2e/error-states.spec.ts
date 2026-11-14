@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // need to land on the same '[data-testid="intake-error"]' + Start over / Try again UI, per
 // App.tsx's Phase union — not a raw crash or a silently stuck spinner.
 
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 test('an unreachable backend surfaces a clear connection error', async ({ page }) => {
   await page.route('**/reports', (route) => {

@@ -8,7 +8,7 @@ import { TIMEOUT } from './timeouts';
 // and how it was found, with a way back to change it.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SAMPLE = path.join(__dirname, 'fixtures', 'sample-work-order.pdf');
+const SAMPLE = path.join(__dirname, 'fixtures', 'synthetic-sample-work-order.pdf');
 
 test('an unclear report type is explained, outlined and has to be chosen; Review names the unit', async ({ page }) => {
   await page.goto('/#/new');

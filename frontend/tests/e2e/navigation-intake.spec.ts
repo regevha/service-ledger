@@ -11,7 +11,7 @@ import { finalizeFromReview } from './finalize-helper';
 // following the app (Refresh, Back and bookmarks).
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 async function finalizeOne(page: import('@playwright/test').Page, technician: string) {
   await page.goto('/#/new');
@@ -157,7 +157,7 @@ test.describe('intake flow', () => {
   test('the classify screen asks for one thing, in one line', async ({ page }) => {
     // The sample work order's name is one of the stub's "needs confirming" markers (see manual-confirm.spec.ts).
     await page.goto('/#/new');
-    await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'sample-work-order.pdf')));
+    await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'synthetic-sample-work-order.pdf')));
     await page.click('button:has-text("Upload & classify")');
     const hint = page.locator('.section:has(.section-title:has-text("Detected from the document")) .hint-text');
     await expect(hint).toBeVisible({ timeout: TIMEOUT.flow });

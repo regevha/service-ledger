@@ -15,7 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // extraction can run. This is the exact branch the Reports-tab live tests
 // this session kept landing in for real (see the BD EU work order runs).
 
-const FIXTURE = path.join(__dirname, 'fixtures', 'sample-work-order.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-sample-work-order.pdf');
 
 test('uncertain report type routes through manual confirm before extracting', async ({ page }) => {
   await page.goto('/#/new');

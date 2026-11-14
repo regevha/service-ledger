@@ -8,7 +8,7 @@ import { uniqueFixture } from './unique-upload';
 // field leaves the keyboard on that field rather than on nothing.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 test('flagged fields are named groups that say they need checking, and checking keeps the focus', async ({ page }) => {
   await page.route('**/extraction-jobs/*', async (route) => {
