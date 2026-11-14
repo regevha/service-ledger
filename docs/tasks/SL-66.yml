@@ -1,0 +1,30 @@
+id: SL-66
+title: Technical glossary for the translation prompt (from PR #305)
+owner: db-engineer          # backend-dev and frontend-dev on the same branch
+branch: SL-66-glossary
+wave: R1
+depends_on: [SL-65]
+migration: true
+files_touched:
+  - backend/alembic/versions/*_glossary_terms.py
+  - backend/app/models/glossary.py
+  - backend/app/models/__init__.py
+  - backend/app/services/glossary.py
+  - backend/app/services/translation.py
+  - backend/app/routers/accuracy.py
+  - backend/app/schemas/analytics.py
+  - backend/app/main.py
+  - backend/tests/test_glossary.py
+  - frontend/src/components/GlossaryManager.tsx
+  - frontend/src/components/AccuracyScreen.tsx
+  - frontend/src/components/AdminScreen.tsx
+  - frontend/src/api/accuracy.ts
+  - frontend/src/styles/11-accuracy.css
+  - frontend/src/generated/api-schema.ts
+  - frontend/tests/e2e/read-accuracy.spec.ts
+  - docs/PLAN.md
+  - docs/tasks/SL-66.md
+acceptance: [SL-66]
+# Source: branch nir-read-accuracy / PR #305 (migration 0017_glossary_terms, services/glossary.py,
+# translation.py, GlossaryManager.tsx). The migration takes the next free number when it is merged
+# (see the migration ledger); rename the file and its revision ids then.
