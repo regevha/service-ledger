@@ -1,0 +1,21 @@
+id: SL-69
+title: Re-read finalized reports to get an accuracy baseline now (offline script)
+owner: backend-dev
+branch: SL-69-reread-baseline
+wave: R1
+depends_on: [SL-65]
+migration: false
+files_touched:
+  - backend/scripts/reread_baseline.py
+  - backend/tests/test_reread_baseline.py
+  - docs/PLAN.md
+  - docs/tasks/SL-69.md
+acceptance: [SL-69]
+# Why: reports finalized before `original_fields` was stored cannot be measured (no first reading).
+# This script reads their stored documents again with the current extraction and compares the result to
+# what was approved, so a baseline exists before 50 new reports have been approved.
+# Rules: a script on the developer's machine, never part of the app or the worker. Live Claude only when the
+# user runs it with their own key in the environment (never written anywhere); the tests run in stub mode.
+# Nothing is written to the database. The output is counts and field names only: no field value, no report
+# name or technician, no file name (the repository is public and reports are shared between institutes).
+# Does not touch docs/live-runs/ or the vendor PDFs.
