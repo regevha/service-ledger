@@ -1,0 +1,15 @@
+id: SL-72
+title: "Admin screens fit a phone width"
+owner: frontend-dev         # the lead does it directly (small change)
+branch: SL-72-admin-phone-width
+wave: R1
+depends_on: [SL-71]
+migration: false
+files_touched:
+  - frontend/src/styles/06-filters-lists-responsive.css
+  - docs/PLAN.md
+  - docs/tasks/SL-72.md
+acceptance: [SL-72]
+# Why: at 390 px the reading-accuracy corrections table was clipped on the right (Approved column unreachable).
+# Cause: the phone rule gave .admin-screen a single "1fr" column, whose minimum is the widest content, so the
+# admin area grew to 492 px inside a 390 px screen. Fix: minmax(0, 1fr), so wide tables scroll inside their own wrapper.
