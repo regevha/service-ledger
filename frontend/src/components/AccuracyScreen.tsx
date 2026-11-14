@@ -94,8 +94,8 @@ export function AccuracyScreen() {
         <div>
           <h2 className="admin-title">Reading accuracy</h2>
           <p className="admin-lead">
-            How much of each new report was approved exactly as it was read. The goal is {formatPct(goal)} of fields, so that a report only needs a check
-            and an Approve.
+            How much of each new report was approved without a change to what was read. Written descriptions ignore case, spacing and punctuation;
+            everything else must match exactly. The goal is {formatPct(goal)} of fields, so that a report only needs a check and an Approve.
           </p>
         </div>
         <div className="theme-choice" role="radiogroup" aria-label="Period">
@@ -293,15 +293,16 @@ export function AccuracyScreen() {
               <table className="trend-table acc-table" data-testid="acc-by-prompt">
                 <thead>
                   <tr>
-                    <th scope="col">Prompt, model</th>
+                    <th scope="col">Form, prompt, model</th>
                     <th scope="col" className="num">Fields kept</th>
                     <th scope="col" className="num">Reports</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.by_prompt.map((p) => (
-                    <tr key={`${p.prompt_hash}-${p.model}`}>
+                    <tr key={`${p.form}-${p.prompt_hash}-${p.model}`}>
                       <td>
+                        {p.form} <span className="acc-muted">·</span>{' '}
                         {p.prompt_hash === 'unknown' ? 'Before this was recorded' : <code>{p.prompt_hash}</code>}
                         {p.model !== 'unknown' && <span className="acc-muted"> · {p.model}</span>}
                       </td>
@@ -350,12 +351,36 @@ export function AccuracyScreen() {
                           </span>
                         </td>
                         <td>{fieldLabel(c.field)}</td>
-                        <td>
-                          <del className="acc-read">{c.read || '(empty)'}</del>
-                        </td>
-                        <td>
-                          <ins className="acc-kept">{c.kept || '(empty)'}</ins>
-                        </td>
+                        {c.changes.length > 0 ? (
+                          <td colSpan={2} data-testid="acc-correction-changes">
+                            <ul className="acc-changes">
+                              {c.changes.map((ch, j) => (
+                                <li key={j} className="acc-change">
+                                  <del className="acc-read">{ch.before || '(nothing)'}</del> <span aria-hidden="true">→</span>{' '}
+                                  <ins className="acc-kept">{ch.after || '(removed)'}</ins>
+                                </li>
+                              ))}
+                            </ul>
+                            <details className="acc-full">
+                              <summary>Show the full text</summary>
+                              <p>
+                                <strong>Read:</strong> {c.read_full || '(empty)'}
+                              </p>
+                              <p>
+                                <strong>Approved:</strong> {c.kept_full || '(empty)'}
+                              </p>
+                            </details>
+                          </td>
+                        ) : (
+                          <>
+                            <td>
+                              <del className="acc-read">{c.read || '(empty)'}</del>
+                            </td>
+                            <td>
+                              <ins className="acc-kept">{c.kept || '(empty)'}</ins>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>

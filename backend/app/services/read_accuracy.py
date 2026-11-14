@@ -62,9 +62,10 @@ def _latest_reads(db: Session, report_ids: list[uuid.UUID]) -> dict[uuid.UUID, m
 MAX_CORRECTIONS = 60
 MAX_TRANSLATION_EDITS = 30
 MAX_SHOWN = 160
+MAX_FULL = 4000  # the full read / approved text offered one click away, per correction
 
 
-def _show(value: object) -> str:
+def _show(value: object, limit: int = MAX_SHOWN) -> str:
     """A field value as one short line of text, for the corrections list and the prompt."""
     if value is None:
         text = ""
@@ -74,7 +75,7 @@ def _show(value: object) -> str:
         text = "yes" if value else "no"
     else:
         text = json.dumps(value, ensure_ascii=False, sort_keys=True)
-    return text if len(text) <= MAX_SHOWN else text[: MAX_SHOWN - 1] + "…"
+    return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
 def _week_start(day: date) -> date:
@@ -143,7 +144,7 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
     by_source: dict[str, dict] = defaultdict(lambda: {"fields": 0, "unchanged": 0, "reports": 0, "untouched": 0})
     corrections: list[schemas.ReadCorrectionOut] = []
     by_band: dict[str, dict] = {label: {"fields": 0, "unchanged": 0} for label, _ in BANDS}
-    by_prompt: dict[tuple[str, str], dict] = {}
+    by_prompt: dict[tuple[str, str, str], dict] = {}
     hand = {"empty": 0, "filled": 0}
     by_kind: dict[str, dict] = {"structured": {"fields": 0, "unchanged": 0}, "free_text": {"fields": 0, "unchanged": 0}}
     from_reread = 0
@@ -182,6 +183,14 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
             elif len(corrections) < MAX_CORRECTIONS:
                 corrections.append(
                     schemas.ReadCorrectionOut(
+                        read_full=_show(read, MAX_FULL),
+                        kept_full=_show(kept.get(key), MAX_FULL),
+                        changes=[
+                            schemas.PhraseChangeOut(before=b, after=a)
+                            for b, a in phrase_changes(read, kept.get(key) or "")
+                        ]
+                        if isinstance(read, str) and isinstance(kept.get(key) or "", str)
+                        else [],
                         report_id=report.id,
                         finalized_at=report.finalized_at,
                         instrument=_instrument_name(report),
@@ -211,7 +220,7 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
             continue
         untouched = int(same == counted)
         from_reread += int(params.get("baseline") == "reread")
-        prompt = by_prompt.setdefault(prompt_key, {"fields": 0, "unchanged": 0, "reports": 0})
+        prompt = by_prompt.setdefault((*prompt_key, _template_name(report.template)), {"fields": 0, "unchanged": 0, "reports": 0})
         prompt["fields"] += counted
         prompt["unchanged"] += same
         prompt["reports"] += 1
@@ -249,8 +258,8 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
         by_source=[schemas.ReadAccuracySourceOut(source=k, **v) for k, v in sorted(by_source.items())],
         by_confidence=[schemas.ReadAccuracyConfidenceOut(band=label, **by_band[label]) for label, _ in BANDS],
         by_prompt=[
-            schemas.ReadAccuracyPromptOut(prompt_hash=h, model=m, **v)
-            for (h, m), v in sorted(by_prompt.items(), key=lambda kv: -kv[1]["reports"])
+            schemas.ReadAccuracyPromptOut(prompt_hash=h, model=m, form=f, **v)
+            for (h, m, f), v in sorted(by_prompt.items(), key=lambda kv: (kv[0][2], -kv[1]["reports"], kv[0][0]))
         ],
         by_kind=[schemas.ReadAccuracyKindOut(kind=k, **v) for k, v in by_kind.items()],
         from_reread=from_reread,

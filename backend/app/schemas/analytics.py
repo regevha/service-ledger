@@ -249,8 +249,10 @@ class ReadAccuracyKindOut(BaseModel):
 
 
 class ReadAccuracyPromptOut(BaseModel):
-    """Reports read with one prompt (`prompt_hash`) and model; jobs from before this was recorded are "unknown"."""
+    """Reports of one form read with one prompt (`prompt_hash`, which covers the form's field list) and model; jobs
+    from before this was recorded are "unknown"."""
 
+    form: str
     prompt_hash: str
     model: str
     fields: int
@@ -265,6 +267,11 @@ class FilledByHandOut(BaseModel):
     filled: int
 
 
+class PhraseChangeOut(BaseModel):
+    before: str
+    after: str
+
+
 class ReadCorrectionOut(BaseModel):
     """One field a person changed before approving: what was read and what was kept."""
 
@@ -275,12 +282,11 @@ class ReadCorrectionOut(BaseModel):
     field: str
     read: str
     kept: str
+    # The same two values at much greater length (for "show the full text") and, for text, the changed phrases.
+    read_full: str = ""
+    kept_full: str = ""
+    changes: list[PhraseChangeOut] = []
     translated: bool
-
-
-class PhraseChangeOut(BaseModel):
-    before: str
-    after: str
 
 
 class TranslationEditOut(BaseModel):
