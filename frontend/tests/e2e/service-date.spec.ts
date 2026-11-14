@@ -7,7 +7,7 @@ import { confirmClassification } from './helpers/ui';
 
 import { finalizeFromReview } from './finalize-helper';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 // The service-visit date (Report.report_date) is read off the document by
 // extraction, shown on the review screen for the technician to check, and

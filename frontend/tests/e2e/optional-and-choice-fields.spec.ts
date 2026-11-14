@@ -10,7 +10,7 @@ import { confirmClassification } from './helpers/ui';
 // (not optional) is still flagged. Fault category is a list of choices.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SAMPLE = path.join(__dirname, 'fixtures', 'sample-work-order.pdf');
+const SAMPLE = path.join(__dirname, 'fixtures', 'synthetic-sample-work-order.pdf');
 
 test('an empty optional root cause is not flagged, a blank parts list still is', async ({ page }) => {
   await page.goto('/#/new');

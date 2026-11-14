@@ -16,7 +16,7 @@ import { TIMEOUT } from './timeouts';
 // else is sent in between.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 const PREVIEW = {
   verb: 'classify',

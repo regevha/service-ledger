@@ -10,7 +10,7 @@ import { API_BASE } from './helpers/api';
 // instead of the same failing retry (item 5), and the name box has a label (item 15).
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 const activeStep = (page: import('@playwright/test').Page) => page.locator('.steps .step.active');
 

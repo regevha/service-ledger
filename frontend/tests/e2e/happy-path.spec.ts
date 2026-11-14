@@ -20,7 +20,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // keeps those values. Which report type the stub picks depends on a hash of the stored file path, so
 // the checks are driven by the template the report actually resolved to, not by a fixed list.
 
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 type TemplateField = { name: string; type: string; item_schema?: { name: string; type: string }[] };
 type ReportJson = {

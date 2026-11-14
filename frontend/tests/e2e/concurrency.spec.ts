@@ -11,7 +11,7 @@ import { openReviewFromList } from './helpers/ui';
 // twice, a report finalized from two tabs, and an extraction that never finishes.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 const SAVE_AND_FINALIZE = 'button:has-text("Save & finalize report")';
 
 test('finalize sent twice at once: one wins, the other is refused, nothing breaks', async ({ request }) => {

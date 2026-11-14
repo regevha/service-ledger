@@ -11,7 +11,7 @@ test('click a word on a stored PDF to add it as a template field', async ({ page
   await seedReport(request, {
     model: 'LSRFortessa',
     reportType: 'repair',
-    file: { name: 'pick-fields-form.pdf', contents: readFileSync(path.join(process.cwd(), 'tests/e2e/fixtures/pick-fields-form.pdf')) },
+    file: { name: 'pick-fields-form.pdf', contents: readFileSync(path.join(process.cwd(), 'tests/e2e/fixtures/synthetic-pick-fields-form.pdf')) },
   });
 
   await page.goto('/#/new');

@@ -25,7 +25,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // It lands on the manual-confirm step first, because its report type is below the threshold.
 async function readSampleWorkOrder(page: Page) {
   await page.goto('/#/new');
-  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'sample-work-order.pdf')));
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'synthetic-sample-work-order.pdf')));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
   await confirmClassification(page);
@@ -178,7 +178,7 @@ test('the banner lines up with the fields instead of being inset twice', async (
   // Below 900px the scan pane is gone and the fields use the full width, so the two edges compare directly.
   await page.setViewportSize({ width: 800, height: 900 });
   await page.goto('/#/new');
-  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'confident-scan.pdf')));
+  await page.locator('input[type="file"]').setInputFiles(uniqueFixture(path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf')));
   await page.click('button:has-text("Upload & classify")');
   await page.waitForSelector('[data-testid="field-list"]', { timeout: TIMEOUT.flow });
   const banner = page.locator('#placeholder-notice');
@@ -259,7 +259,7 @@ test('flagged fields are listed above the fields and clear only when marked as c
 
 // Saving without leaving the screen, and not losing edits (PR 1 of the review-and-finalize plan).
 
-const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 async function openIntakeReview(page: import('@playwright/test').Page) {
   await page.goto('/#/new');

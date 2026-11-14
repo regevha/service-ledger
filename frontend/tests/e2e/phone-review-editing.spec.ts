@@ -10,7 +10,7 @@ import { uniqueFixture } from './unique-upload';
 // action is a tap, and every bar, question and button is inside the screen and big enough to hit.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 async function openIntakeReview(page: Page) {
   await page.goto('/#/new');

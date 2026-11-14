@@ -7,7 +7,7 @@ import { TIMEOUT } from './timeouts';
 // The phone's five tabs are a bar at the bottom of the screen with icons; a save shows a short "Saved" message.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 test.describe('on a phone', { tag: '@phone' }, () => {
 

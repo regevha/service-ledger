@@ -11,7 +11,7 @@ import { seedReport, API_BASE } from './helpers/api';
 // is one row, the report header is compact and says what the report is.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 const PHONE = { width: 412, height: 915 };
 
 async function reachReview(page: import('@playwright/test').Page) {

@@ -8,7 +8,7 @@ import { TIMEOUT } from './timeouts';
 // server's own text kept under "Details for support".
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 async function startIntake(page: import('@playwright/test').Page) {
   await page.goto('/#/new');

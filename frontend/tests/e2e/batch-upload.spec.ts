@@ -6,8 +6,8 @@ import { API_BASE } from './helpers/api';
 import { finalizeFromReview } from './finalize-helper';
 import { summarize, runPool, stateForReportStatus, needsPerson, type BatchItem } from '../../src/batchState';
 
-const CONFIDENT = readFileSync(path.join(process.cwd(), 'tests/e2e/fixtures/confident-scan.pdf'));
-const UNSURE = readFileSync(path.join(process.cwd(), 'tests/e2e/fixtures/sample-work-order.pdf'));
+const CONFIDENT = readFileSync(path.join(process.cwd(), 'tests/e2e/fixtures/synthetic-confident-scan.pdf'));
+const UNSURE = readFileSync(path.join(process.cwd(), 'tests/e2e/fixtures/synthetic-sample-work-order.pdf'));
 
 // Several files at once: each is read on its own and ends ready to check, or stopped with a reason.
 

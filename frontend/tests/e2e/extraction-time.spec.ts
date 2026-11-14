@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { TIMEOUT } from './timeouts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(__dirname, 'fixtures', 'confident-scan.pdf');
+const FIXTURE = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 // The extraction duration is measured in the browser during intake and shown
 // on Review & finalize only; it is not stored.
