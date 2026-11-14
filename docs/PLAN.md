@@ -263,6 +263,14 @@ Agents propose API and data-model changes here. The lead accepts or rejects them
 - D-7: worker recovery adds a `worker_id` owner column on top of the heartbeat (SL-16 and following).
 - D-8: Phase 4 uses Microsoft Entra ID with two roles, editor and read-only.
 
+## User decisions (2026-11-14)
+
+- D-9 (P-17, SL-33): keep the merged behaviour of `0016_relative_attachment_paths`: rows whose path is outside `ATTACHMENT_STORAGE_DIR` are left unchanged (lossless). SL-33's "stop with a count" is dropped; a read-only report of how many such rows exist is enough.
+- D-10 (P-19): D-4 stands. `JOB_RETENTION_DAYS` defaults to 90; the code default of 30 in `backend/app/config.py` is changed to 90 (SL-14).
+- D-11 (OQ-7): 0016 is tested first by restoring a recent backup into a non-production Azure environment and running the migration there, with `restore.sh` as the fallback; the user runs it from a runbook the lead writes, then picks the production window.
+- D-12 (OQ-2, SL-01): the user switches on GitHub private vulnerability reporting; SL-01 closes after the user confirms.
+- D-13 (1.1, P-16): the three vendor PDF fixtures are replaced by generated synthetic PDFs with the same layout and fields, the e2e tests switch to them, and the originals are removed. Nobody opens the originals.
+
 ## Open questions
 
 - OQ-1 (1.1): The 3 e2e fixture PDFs and the live-run summary README were never opened by an agent. The user should check them for leftovers; the repo is public and history still holds the raw data (no-rewrite decision stands).
