@@ -66,7 +66,7 @@ Job log if it fails: `az containerapp job logs show -g rg-<test> -n job-migrate-
 
 ## 6. Verify the upgrade
 
-In the shell from step 3:
+In the shell from step 4:
 ```
 psql -c "select version_num from alembic_version"        # 0016_relative_attachment_paths
 psql -c "select count(*) filter (where file_path like '/%') as still_absolute, count(*) filter (where file_path not like '/%') as relative from attachments"
