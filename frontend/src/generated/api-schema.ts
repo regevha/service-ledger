@@ -2369,9 +2369,12 @@ export interface components {
         };
         /**
          * ReadAccuracyPromptOut
-         * @description Reports read with one prompt (`prompt_hash`) and model; jobs from before this was recorded are "unknown".
+         * @description Reports of one form read with one prompt (`prompt_hash`, which covers the form's field list) and model; jobs
+         *     from before this was recorded are "unknown".
          */
         ReadAccuracyPromptOut: {
+            /** Form */
+            form: string;
             /** Prompt Hash */
             prompt_hash: string;
             /** Model */
@@ -2440,6 +2443,21 @@ export interface components {
             read: string;
             /** Kept */
             kept: string;
+            /**
+             * Read Full
+             * @default
+             */
+            read_full: string;
+            /**
+             * Kept Full
+             * @default
+             */
+            kept_full: string;
+            /**
+             * Changes
+             * @default []
+             */
+            changes: components["schemas"]["PhraseChangeOut"][];
             /** Translated */
             translated: boolean;
         };

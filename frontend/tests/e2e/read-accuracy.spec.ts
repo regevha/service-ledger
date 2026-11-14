@@ -7,6 +7,7 @@ test('the accuracy page shows the goal and either figures or a plain empty messa
   await page.goto('/#/admin/accuracy');
   await expect(page.getByRole('heading', { name: 'Reading accuracy' })).toBeVisible();
   await expect(page.getByText(/The goal is 99% of fields/)).toBeVisible();
+  await expect(page.getByText(/approved without a change to what was read/)).toBeVisible();
   await page.getByRole('radio', { name: 'All' }).click();
   await expect(page.getByTestId('accuracy-empty').or(page.getByTestId('acc-fields'))).toBeVisible();
   if (await page.getByTestId('acc-fields').isVisible()) {

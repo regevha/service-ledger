@@ -252,3 +252,37 @@ def test_reports_whose_first_reading_is_a_re_read_are_counted(client):
         r2 = _finalized(db, {"a": "1"}, {"a": "1"})
         _read_job(db, r2, confidences={"a": 0.9}, params={"prompt_hash": "h", "model": "m"})
     assert client.get("/analytics/read-accuracy").json()["from_reread"] == 1
+
+
+def test_a_correction_shows_the_changed_phrase_even_past_the_short_text(client):
+    long_start = " ".join(f"word{i}" for i in range(60))  # longer than the short line of the corrections list
+    with TestSessionLocal() as db:
+        _finalized(
+            db,
+            {"work_performed": f"{long_start} replaced the red laser"},
+            {"work_performed": f"{long_start} replaced the blue laser"},
+        )
+    [c] = client.get("/analytics/read-accuracy").json()["corrections"]
+    assert c["read"].endswith("…") and c["kept"].endswith("…")  # the short lines cannot show the difference
+    assert c["read"] == c["kept"]
+    assert [(p["before"], p["after"]) for p in c["changes"]] == [("the red", "the blue")]
+    assert c["read_full"].endswith("red laser") and c["kept_full"].endswith("blue laser")
+
+
+def test_a_value_that_is_not_text_has_no_phrase_changes(client):
+    with TestSessionLocal() as db:
+        _finalized(db, {"labor_hours": 0.0, "components_replaced": [{"part_name": "Valve"}]}, {"labor_hours": 2, "components_replaced": []})
+    corrections = {c["field"]: c for c in client.get("/analytics/read-accuracy").json()["corrections"]}
+    assert corrections["labor_hours"]["changes"] == [] and corrections["labor_hours"]["kept_full"] == "2"
+    assert corrections["components_replaced"]["changes"] == []
+
+
+def test_prompt_rows_are_listed_form_by_form(client):
+    with TestSessionLocal() as db:
+        a = _template(db, model="Model A")
+        b = _template(db, model="Model B")
+        for template, h in ((b, "bbb"), (a, "aaa"), (a, "aaa2")):
+            r = _finalized(db, {"x": "1"}, {"x": "1"}, template=template)
+            _read_job(db, r, confidences={"x": 0.9}, params={"prompt_hash": h, "model": "m"})
+    rows = [(p["form"], p["prompt_hash"]) for p in client.get("/analytics/read-accuracy").json()["by_prompt"]]
+    assert rows == [("Repair, Model A", "aaa"), ("Repair, Model A", "aaa2"), ("Repair, Model B", "bbb")]

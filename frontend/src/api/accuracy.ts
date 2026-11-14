@@ -39,6 +39,8 @@ export interface ReadAccuracyKind {
 }
 
 export interface ReadAccuracyPrompt {
+  /** The form the prompt was used for: its hash covers that form's field list, so rows are per form. */
+  form: string;
   prompt_hash: string;
   model: string;
   fields: number;
@@ -54,6 +56,10 @@ export interface ReadCorrection {
   field: string;
   read: string;
   kept: string;
+  /** The same values at much greater length, and for text the phrases that changed (before, after). */
+  read_full: string;
+  kept_full: string;
+  changes: { before: string; after: string }[];
   translated: boolean;
 }
 

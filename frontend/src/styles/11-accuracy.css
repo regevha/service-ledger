@@ -154,3 +154,27 @@
 .acc-tr-list a {
   font-size: var(--text-base);
 }
+
+.acc-changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.acc-full {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.acc-full summary {
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.acc-full p {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
