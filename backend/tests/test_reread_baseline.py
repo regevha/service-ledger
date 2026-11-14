@@ -134,3 +134,19 @@ def test_a_run_with_nothing_to_read(use_test_db, monkeypatch, capsys):
     monkeypatch.setattr(rb, "extract", _answer({}, {}))
     assert rb.main(["--run"]) == 0
     assert "Re-read 0 reports" in capsys.readouterr().out
+
+
+def test_the_apps_log_lines_with_file_names_do_not_reach_the_terminal(template, use_test_db, monkeypatch, capsys, caplog):
+    import logging
+
+    def failing(attachment, tpl):
+        logging.getLogger("app.services.claude_client").exception("failed extracting attachment %s", SECRET_FILE)
+        raise RuntimeError("refused")
+
+    monkeypatch.setattr(rb, "extract", failing)
+    with TestSessionLocal() as db:
+        _report(db, template, {"a": "1"})
+    with caplog.at_level(logging.DEBUG):
+        rb.main(["--run"])
+    assert SECRET_FILE not in capsys.readouterr().err + caplog.text
+    assert logging.getLogger().manager.disable == logging.NOTSET  # logging is back on afterwards

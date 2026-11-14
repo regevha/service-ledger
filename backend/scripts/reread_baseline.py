@@ -11,11 +11,12 @@ confidence bands as the page. It is an estimate: a model can answer a little dif
 Run it from backend/ on your own machine, against your own database. A live run needs USE_LIVE_CLAUDE=true and
 your own key in the environment (never written to a file). In stub mode the numbers are not real.
 Writes nothing to the database. The output has counts and field names only: no value, report name,
-technician, file name or path.
+technician, file name or path (the app's own log lines are switched off for the run, since they print file names).
 """
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from collections import defaultdict
 
@@ -129,7 +130,14 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if not get_settings().use_live_claude:
             print("USE_LIVE_CLAUDE is not true: this is the stub reading, the numbers below are not real.", file=sys.stderr)
-        print(summarize([reread(db, report) for report in batch]))
+        # The app's own logging prints the file name (and a stack trace) of a document that fails; those names can
+        # hold a person's name. Nothing but this script's summary may reach the terminal.
+        logging.disable(logging.CRITICAL)
+        try:
+            rows = [reread(db, report) for report in batch]
+        finally:
+            logging.disable(logging.NOTSET)
+        print(summarize(rows))
     return 0
 
 
