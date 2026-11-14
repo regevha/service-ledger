@@ -11,7 +11,9 @@ restarts and, later, across several API replicas:
 
 "Daily" is a rolling 24 hours, which avoids a time-zone argument about where
 midnight is. A job cancelled before its prompt was sent cost nothing and is not
-counted. Raises HTTP 429 with a message a person can act on.
+counted, nor is a job that finished without calling the model (the language check of a
+document with a readable text layer, which is one of the three jobs a batch queues per file).
+Raises HTTP 429 with a message a person can act on.
 """
 from __future__ import annotations
 
@@ -30,9 +32,11 @@ CANCELLED_UNSENT = "Cancelled before the prompt was sent to Claude."
 
 
 def _counted(query):
-    """Jobs that cost (or may have cost) a model call: not the ones cancelled unsent."""
+    """Jobs that cost (or may have cost) a model call: not the ones cancelled unsent, and not the
+    ones the worker marked `model_called: false` (a translate job that only read the text layer)."""
     return query.filter(
-        or_(models.ExtractionJob.error_message.is_(None), models.ExtractionJob.error_message != CANCELLED_UNSENT)
+        or_(models.ExtractionJob.error_message.is_(None), models.ExtractionJob.error_message != CANCELLED_UNSENT),
+        func.coalesce(models.ExtractionJob.params["model_called"].astext, "true") != "false",
     )
 
 

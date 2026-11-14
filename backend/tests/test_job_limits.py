@@ -89,3 +89,42 @@ def test_returning_the_running_job_is_not_limited(client, db_session, monkeypatc
     monkeypatch.setattr(get_settings(), "daily_job_cap", 1)
     again = client.post(f"/attachments/{att}/classify")
     assert again.status_code == 202 and again.json()["id"] == first["id"]
+
+
+def test_jobs_marked_as_not_calling_the_model_do_not_count(client, db_session, monkeypatch):
+    import uuid
+
+    monkeypatch.setattr(get_settings(), "daily_job_cap", 5)
+    att = _upload(client)
+    for _ in range(5):
+        db_session.add(
+            models.ExtractionJob(
+                attachment_id=uuid.UUID(att),
+                kind=models.ExtractionJobKind.translate,
+                status=models.ExtractionJobStatus.succeeded,
+                params={"model_called": False},
+                started_at=datetime.now(timezone.utc),
+            )
+        )
+    db_session.commit()
+    assert client.post(f"/attachments/{att}/classify").status_code == 202
+
+
+def test_a_job_that_did_call_the_model_still_counts(client, db_session, monkeypatch):
+    import uuid
+
+    monkeypatch.setattr(get_settings(), "daily_job_cap", 5)
+    att = _upload(client)
+    other = _upload(client, "other.pdf")
+    for params in (None, {}, {"model_called": True}, {"include_pages": [1]}, {"model_called": True}):
+        db_session.add(
+            models.ExtractionJob(
+                attachment_id=uuid.UUID(other),
+                kind=models.ExtractionJobKind.translate,
+                status=models.ExtractionJobStatus.succeeded,
+                params=params,
+                started_at=datetime.now(timezone.utc),
+            )
+        )
+    db_session.commit()
+    assert client.post(f"/attachments/{att}/classify").status_code == 429
