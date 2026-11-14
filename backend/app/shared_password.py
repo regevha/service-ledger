@@ -24,7 +24,7 @@ from app.config import get_settings
 
 logger = logging.getLogger("app.shared_password")
 
-OPEN_PATHS = {"/health"}
+OPEN_PATHS = {"/health", "/health/ready"}
 
 
 def _password_from_header(value: str | None) -> str | None:
