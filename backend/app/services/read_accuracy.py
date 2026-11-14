@@ -26,7 +26,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app import models, schemas
-from app.services.home_summary import _blank, _same
+from app.services.read_compare import blank as _blank
+from app.services.read_compare import is_free_text, same_value
 
 GOAL = 0.99
 BANDS = (("below_0.70", 0.0), ("0.70_to_0.85", 0.70), ("0.85_and_up", 0.85))
@@ -144,6 +145,8 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
     by_band: dict[str, dict] = {label: {"fields": 0, "unchanged": 0} for label, _ in BANDS}
     by_prompt: dict[tuple[str, str], dict] = {}
     hand = {"empty": 0, "filled": 0}
+    by_kind: dict[str, dict] = {"structured": {"fields": 0, "unchanged": 0}, "free_text": {"fields": 0, "unchanged": 0}}
+    from_reread = 0
     latest = _latest_reads(db, [r.id for r in rows])
     tr = {"accepted": 0, "unchanged": 0}
     tr_edits: list[schemas.TranslationEditOut] = []
@@ -165,12 +168,15 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
                     hand["filled"] += 1
                 continue
             counted += 1
+            kind = by_kind["free_text" if is_free_text(key) else "structured"]
+            kind["fields"] += 1
+            kind["unchanged"] += int(same_value(key, read, kept.get(key)))
             band = _band(confidences.get(key))
             if band is not None:
                 by_band[band]["fields"] += 1
-                by_band[band]["unchanged"] += int(_same(read, kept.get(key)))
+                by_band[band]["unchanged"] += int(same_value(key, read, kept.get(key)))
             by_field[key]["fields"] += 1
-            if _same(read, kept.get(key)):
+            if same_value(key, read, kept.get(key)):
                 same += 1
                 by_field[key]["unchanged"] += 1
             elif len(corrections) < MAX_CORRECTIONS:
@@ -204,6 +210,7 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
         if not counted:
             continue
         untouched = int(same == counted)
+        from_reread += int(params.get("baseline") == "reread")
         prompt = by_prompt.setdefault(prompt_key, {"fields": 0, "unchanged": 0, "reports": 0})
         prompt["fields"] += counted
         prompt["unchanged"] += same
@@ -245,6 +252,8 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
             schemas.ReadAccuracyPromptOut(prompt_hash=h, model=m, **v)
             for (h, m), v in sorted(by_prompt.items(), key=lambda kv: -kv[1]["reports"])
         ],
+        by_kind=[schemas.ReadAccuracyKindOut(kind=k, **v) for k, v in by_kind.items()],
+        from_reread=from_reread,
         filled_by_hand=schemas.FilledByHandOut(**hand),
         corrections=corrections,
         translations=schemas.TranslationAccuracyOut(accepted=tr["accepted"], unchanged=tr["unchanged"], edits=tr_edits),

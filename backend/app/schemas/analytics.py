@@ -239,6 +239,15 @@ class ReadAccuracyConfidenceOut(BaseModel):
     unchanged: int
 
 
+class ReadAccuracyKindOut(BaseModel):
+    """"structured" (numbers, choices, parts, identifiers: compared exactly) or "free_text" (the narrative fields:
+    compared ignoring case, spacing and punctuation)."""
+
+    kind: str
+    fields: int
+    unchanged: int
+
+
 class ReadAccuracyPromptOut(BaseModel):
     """Reports read with one prompt (`prompt_hash`) and model; jobs from before this was recorded are "unknown"."""
 
@@ -303,6 +312,8 @@ class ReadAccuracyOut(BaseModel):
     by_source: list[ReadAccuracySourceOut]
     by_confidence: list[ReadAccuracyConfidenceOut]
     by_prompt: list[ReadAccuracyPromptOut]
+    by_kind: list[ReadAccuracyKindOut]
+    from_reread: int  # reports whose first reading is a later re-read (scripts/reread_baseline.py --save)
     filled_by_hand: FilledByHandOut
     corrections: list[ReadCorrectionOut]
     translations: TranslationAccuracyOut

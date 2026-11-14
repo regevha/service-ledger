@@ -7,10 +7,14 @@ confidence bands as the page. It is an estimate: a model can answer a little dif
 
     python -m scripts.reread_baseline                    # counts only, no Claude call
     python -m scripts.reread_baseline --run --limit 20   # re-read the 20 newest (at most 60 per run)
+    python -m scripts.reread_baseline --run --save       # also store each re-read as the report's first reading
 
 Run it from backend/ on your own machine, against your own database. A live run needs USE_LIVE_CLAUDE=true and
 your own key in the environment (never written to a file). In stub mode the numbers are not real.
-Writes nothing to the database. The output has counts and field names only: no value, report name,
+Writes nothing to the database unless --save is given (live runs only: a stub reading is invented and must never
+be stored). --save fills `original_fields` of a report that has none, never replaces one, and adds an extract job
+row marked `params.baseline = "reread"`, so the accuracy page shows the report and says it comes from a re-read.
+The output has counts and field names only: no value, report name,
 technician, file name or path (the app's own log lines are switched off for the run, since they print file names).
 """
 from __future__ import annotations
@@ -19,6 +23,8 @@ import argparse
 import logging
 import sys
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
+from typing import NamedTuple
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,9 +32,10 @@ from sqlalchemy.orm import Session
 from app import models
 from app.config import get_settings
 from app.db import SessionLocal
-from app.services.extraction import extract
-from app.services.home_summary import _blank, _same
+from app.services.extraction import extract, prompt_fingerprint
 from app.services.read_accuracy import BANDS, _band
+from app.services.read_compare import blank as _blank
+from app.services.read_compare import same_value
 
 MAX_PER_RUN = 60
 DEFAULT_LIMIT = 20
@@ -65,13 +72,20 @@ def _attachment_to_read(db: Session, report: models.Report) -> models.Attachment
 Row = list[tuple[str, bool, float | None]]
 
 
+class Reading(NamedTuple):
+    rows: Row
+    values: dict
+    confidences: dict
+    attachment_id: object
+
+
 def _error_kind(error: BaseException) -> str:
     """Class names only (the app's error and the library error behind it): safe to print, a message may hold a path."""
     cause = error.__cause__ or error.__context__
     return type(error).__name__ + (f" <- {type(cause).__name__}" if cause is not None else "")
 
 
-def reread(db: Session, report: models.Report) -> Row | str:
+def reread(db: Session, report: models.Report) -> Reading | str:
     """(field name, same as approved, confidence) for every field the new reading filled in; a short reason
     when the report cannot be read again."""
     template = db.get(models.ReportTemplate, report.template_id) if report.template_id else None
@@ -85,11 +99,36 @@ def reread(db: Session, report: models.Report) -> Row | str:
     except Exception as error:  # noqa: BLE001 - one unreadable report must not stop the run; its message may hold a path
         return _error_kind(error)
     kept = report.extracted_fields or {}
-    return [
-        (name, _same(value, kept.get(name)), _confidence(result.field_confidences.get(name)))
+    rows = [
+        (name, same_value(name, value, kept.get(name)), _confidence(result.field_confidences.get(name)))
         for name, value in result.extracted_fields.items()
         if not _blank(value)
     ]
+    return Reading(rows, dict(result.extracted_fields), dict(result.field_confidences), attachment.id)
+
+
+def save_reading(db: Session, report: models.Report, reading: Reading) -> bool:
+    """Store a re-read as the report's first reading (one transaction). False when the report already has one."""
+    db.refresh(report, with_for_update=True)
+    if report.original_fields is not None:
+        db.rollback()
+        return False
+    template = db.get(models.ReportTemplate, report.template_id)
+    now = datetime.now(timezone.utc)
+    report.original_fields = reading.values
+    db.add(
+        models.ExtractionJob(
+            attachment_id=reading.attachment_id,
+            kind=models.ExtractionJobKind.extract,
+            status=models.ExtractionJobStatus.succeeded,
+            field_confidences=reading.confidences,
+            params={"baseline": "reread", **(prompt_fingerprint(template) if template is not None else {})},
+            started_at=now,
+            completed_at=now,
+        )
+    )
+    db.commit()
+    return True
 
 
 def _confidence(value: object) -> float | None:
@@ -129,9 +168,15 @@ def summarize(rows: list[Row | str]) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run", action="store_true", help="re-read documents (one Claude call each in a live run); without it only counts are printed")
+    parser.add_argument("--save", action="store_true", help="with --run: store each re-read as the report's first reading, marked as a re-read (live runs only)")
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help=f"reports to re-read, newest first (default {DEFAULT_LIMIT}, at most {MAX_PER_RUN})")
     args = parser.parse_args(argv)
     limit = max(0, min(args.limit, MAX_PER_RUN))
+    if args.save and not args.run:
+        parser.error("--save needs --run")
+    if args.save and not get_settings().use_live_claude:
+        print("--save is refused: USE_LIVE_CLAUDE is not true, so the reading is invented and must not be stored.", file=sys.stderr)
+        return 2
 
     with SessionLocal() as db:
         todo = unmeasured_reports(db)
@@ -148,10 +193,19 @@ def main(argv: list[str] | None = None) -> int:
         # hold a person's name. Nothing but this script's summary may reach the terminal.
         logging.disable(logging.CRITICAL)
         try:
-            rows = [reread(db, report) for report in batch]
+            readings = [reread(db, report) for report in batch]
+            saved = (
+                sum(save_reading(db, report, r) for report, r in zip(batch, readings) if isinstance(r, Reading))
+                if args.save
+                else 0
+            )
         finally:
             logging.disable(logging.NOTSET)
-        print(summarize(rows))
+        print(summarize([r.rows if isinstance(r, Reading) else r for r in readings]))
+        if args.save:
+            print(f"Saved {saved} re-reads as first readings (marked as re-reads). The accuracy page now counts them.")
+        elif any(isinstance(r, Reading) for r in readings):
+            print("Nothing was stored. Add --save to store these as first readings, so the accuracy page shows them.")
     return 0
 
 
