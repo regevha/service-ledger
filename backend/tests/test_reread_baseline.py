@@ -116,6 +116,7 @@ def test_an_unreadable_report_is_skipped_and_the_run_goes_on(template, use_test_
     rb.main(["--run"])
     out = capsys.readouterr().out
     assert "Re-read 1 reports (2 skipped" in out
+    assert "no document x1" in out and "RuntimeError x1" in out
     assert SECRET_FILE not in out and "/data" not in out
 
 
@@ -150,3 +151,18 @@ def test_the_apps_log_lines_with_file_names_do_not_reach_the_terminal(template, 
         rb.main(["--run"])
     assert SECRET_FILE not in capsys.readouterr().err + caplog.text
     assert logging.getLogger().manager.disable == logging.NOTSET  # logging is back on afterwards
+
+
+def test_a_skip_shows_the_error_class_and_its_cause_but_never_the_message(template, use_test_db, monkeypatch, capsys):
+    def refused(attachment, tpl):
+        try:
+            raise ValueError(f"401 for {SECRET_FILE}")
+        except ValueError as cause:
+            raise LookupError(f"failed extracting {SECRET_FILE}") from cause
+
+    monkeypatch.setattr(rb, "extract", refused)
+    with TestSessionLocal() as db:
+        _report(db, template, {"a": "1"})
+    rb.main(["--run"])
+    out = capsys.readouterr().out
+    assert "LookupError <- ValueError x1" in out and SECRET_FILE not in out
