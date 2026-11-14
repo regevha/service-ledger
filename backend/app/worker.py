@@ -46,6 +46,7 @@ from app.services.classification import classify as run_classify
 from app.services.duplicates import normalize_work_order
 from app.services.errors import ClassificationError, ExtractionError, TranslationError
 from app.services.extraction import extract as run_extract
+from app.services.extraction import prompt_fingerprint
 from app.services.serial_check import correct_serial_typos
 from app.services.text_reader import extract_text
 from app.services.translation import identifier_check
@@ -284,6 +285,8 @@ def _run_extract_job(db: Session, job: models.ExtractionJob) -> None:
         report.report_date = result.report_date
     report.status = models.ReportStatus.extracted
     job.field_confidences = result.field_confidences
+    if template is not None:  # always true here: the template id was matched above
+        job.params = {**(job.params or {}), **prompt_fingerprint(template)}
     job.status = models.ExtractionJobStatus.succeeded
     job.completed_at = datetime.now(timezone.utc)
     db.commit()

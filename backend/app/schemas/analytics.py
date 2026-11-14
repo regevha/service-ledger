@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -191,3 +191,118 @@ class ModelTrendOut(BaseModel):
     model: str
     field: str
     series: list[ModelTrendSeriesOut]
+
+
+# ---------- Reading accuracy (GET /analytics/read-accuracy) ----------
+
+
+class ReadAccuracyWeekOut(BaseModel):
+    """Reports finalized in the week starting `week_start` (a Monday)."""
+
+    week_start: date
+    fields: int
+    unchanged: int
+    reports: int
+    untouched: int
+
+
+class ReadAccuracyFieldOut(BaseModel):
+    field: str
+    fields: int
+    unchanged: int
+
+
+class ReadAccuracyFormOut(BaseModel):
+    template_id: uuid.UUID | None
+    form: str
+    fields: int
+    unchanged: int
+    reports: int
+    untouched: int
+
+
+class ReadAccuracySourceOut(BaseModel):
+    """"translated" (read from an accepted Hebrew translation) or "original" (read from the document itself)."""
+
+    source: str
+    fields: int
+    unchanged: int
+    reports: int
+    untouched: int
+
+
+class ReadAccuracyConfidenceOut(BaseModel):
+    """Fields whose reading had a confidence in this band when the report was read: how many, how many kept."""
+
+    band: str  # "below_0.70", "0.70_to_0.85" or "0.85_and_up"
+    fields: int
+    unchanged: int
+
+
+class ReadAccuracyPromptOut(BaseModel):
+    """Reports read with one prompt (`prompt_hash`) and model; jobs from before this was recorded are "unknown"."""
+
+    prompt_hash: str
+    model: str
+    fields: int
+    unchanged: int
+    reports: int
+
+
+class FilledByHandOut(BaseModel):
+    """Fields the reading left empty. `filled`: a person typed a value before approving."""
+
+    empty: int
+    filled: int
+
+
+class ReadCorrectionOut(BaseModel):
+    """One field a person changed before approving: what was read and what was kept."""
+
+    report_id: uuid.UUID
+    finalized_at: datetime | None
+    instrument: str | None
+    form: str
+    field: str
+    read: str
+    kept: str
+    translated: bool
+
+
+class PhraseChangeOut(BaseModel):
+    before: str
+    after: str
+
+
+class TranslationEditOut(BaseModel):
+    report_id: uuid.UUID
+    finalized_at: datetime | None
+    instrument: str | None
+    changes: list[PhraseChangeOut]
+
+
+class TranslationAccuracyOut(BaseModel):
+    accepted: int
+    unchanged: int
+    edits: list[TranslationEditOut]
+
+
+class ReadAccuracyOut(BaseModel):
+    """How much of the reading people approved without an edit, over reports finalized in the last `days` days
+    (null: all of them). `goal` is the share of fields to reach (0.99)."""
+
+    days: int | None
+    goal: float
+    fields: int
+    unchanged: int
+    reports: int
+    reports_untouched: int
+    weeks: list[ReadAccuracyWeekOut]
+    by_field: list[ReadAccuracyFieldOut]
+    by_form: list[ReadAccuracyFormOut]
+    by_source: list[ReadAccuracySourceOut]
+    by_confidence: list[ReadAccuracyConfidenceOut]
+    by_prompt: list[ReadAccuracyPromptOut]
+    filled_by_hand: FilledByHandOut
+    corrections: list[ReadCorrectionOut]
+    translations: TranslationAccuracyOut

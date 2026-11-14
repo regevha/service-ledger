@@ -31,6 +31,20 @@ If you are developing a production application, we recommend enabling type-aware
 
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
 
+## Running through one port (same-origin API)
+
+By default the app talks to the backend at `http://localhost:8000`. A browser that can reach only the dev
+server's port (a browser pane, a port forwarded from WSL) cannot do that. Start the dev server with an empty
+API base and Vite forwards the API calls itself:
+
+```bash
+VITE_API_BASE_URL= npm run dev                         # forwards to http://localhost:8000
+VITE_API_BASE_URL= API_PROXY_TARGET=http://localhost:8001 npm run dev   # another backend port
+```
+
+Only the empty value turns it on (`VITE_API_BASE_URL` unset is the old behaviour), and only the dev server
+does it: `npm run build`, Vitest and Playwright are unaffected.
+
 ## Regenerating API types from the backend
 
 `src/api/` derives its six backend-enum types (`InstrumentStatus`,

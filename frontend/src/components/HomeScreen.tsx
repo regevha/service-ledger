@@ -210,6 +210,9 @@ export function HomeScreen({
                 ? `${data.summary.read_without_edits.fields} fields on ${data.summary.read_without_edits.reports} reports, last ${data.summary.read_without_edits.days} days`
                 : `Shown after ${MIN_FIELDS_FOR_PERCENT} fields are finalized (${data.summary.read_without_edits.fields} so far)`}
           </span>
+          <a className="home-tile-link" href="#/admin/accuracy" data-testid="home-accuracy-link">
+            Details and goal
+          </a>
         </div>
       </div>
 
