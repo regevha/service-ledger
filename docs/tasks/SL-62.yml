@@ -1,0 +1,22 @@
+id: SL-62
+title: Synthetic PDF fixtures replace the vendor PDFs (D-13)
+owner: e2e-tester
+branch: SL-62-synthetic-pdf-fixtures
+wave: G1
+depends_on: []
+migration: false
+files_touched:
+  - frontend/tests/e2e/fixtures/**
+  - frontend/tests/e2e/*.spec.ts
+  - frontend/tests/e2e-smoke/smoke.spec.ts
+  - docs/tasks/SL-62.md
+acceptance: [D-13, "1.1"]
+# Privacy: NEVER open, read, extract text from, render or print the existing PDFs in
+# frontend/tests/e2e/fixtures/ (do not run pypdf, pdftotext, strings, cat or similar on them); never print
+# their file names in reports. Learn what the tests need from the spec files and the backend stub code
+# only (backend/app/services/text_reader.py, classification.py, claude_client.py stub paths, config
+# stub_extract_from_text). Write frontend/tests/e2e/fixtures/generate_synthetic_pdfs.py that builds the
+# replacement PDFs with reportlab (already in backend/requirements.txt) from invented instrument names,
+# serials, institutes and dates; commit its output. Point every spec at the new files, then git rm the
+# three originals. Run the affected Playwright specs and the smoke spec in stub mode on your own ports;
+# report the commands and results. No new package.

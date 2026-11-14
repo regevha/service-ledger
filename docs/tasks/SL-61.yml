@@ -1,0 +1,20 @@
+id: SL-61
+title: Runbook for the 0016 restore test and production rollout (D-11)
+owner: devops
+branch: SL-61-runbook-0016
+wave: G1
+depends_on: []
+migration: false
+files_touched:
+  - deploy/azure/RUNBOOK-0016.md
+  - deploy/azure/README.md
+  - docs/tasks/SL-61.md
+acceptance: [D-11]
+# Docs only. Read deploy/azure/README.md, backup.sh, restore.sh, deploy.sh, update.sh, _common.sh and
+# backend/alembic/versions/0016_relative_attachment_paths.py. Write a step-by-step runbook the user runs:
+# take a backup, restore it into a non-production environment, run 0016 there (upgrade, verify, downgrade,
+# upgrade), count rows outside ATTACHMENT_STORAGE_DIR (D-9: they stay as they are), check the app opens
+# attachments, then the production window with backup first and restore.sh as the fallback. State plainly
+# that these scripts have never run against a real subscription, so the first step is creating the
+# non-production environment. Every command must exist in the scripts; mark anything not checkable as such.
+# Add one link line to README.md. No personal data, no secrets.
