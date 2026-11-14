@@ -1,5 +1,5 @@
 id: SL-70
-title: Accuracy: free text measured on its own and compared loosely, re-read baseline saved and shown
+title: Accuracy, free text measured on its own and compared loosely, re-read baseline saved and shown
 owner: backend-dev          # frontend-dev builds the screen changes on the same branch
 branch: SL-70-accuracy-free-text
 wave: R1
