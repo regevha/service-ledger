@@ -16,7 +16,7 @@ The lead, architect and project-manager follow this; other agents need only CLAU
 
 ## Shared rules
 - `docs/PLAN.md` is the single source of truth for status. Agents update only their own task rows.
-- Statuses: `todo`, `in-progress`, `blocked`, `in-review` (set by the implementing agent when its own checks pass), `done` (set **only by the lead**, after test + review + green CI).
+- Statuses: `todo`, `in-progress`, `blocked`, `in-review` (set by the implementing agent when its own checks pass), `unverified` (merged, but an acceptance criterion could not actually be run, e.g. anything needing Docker; the lead lists what was not run), `done` (set **only by the lead**, after test + review + green CI, and only when every acceptance criterion was run and passed).
 - Root and scaffold files (`.gitignore`, root README, tooling configs) belong to `devops`; the lead may create them when no devops task exists.
 - Importing a declared interface across areas is allowed. Changing such an interface needs a note in the `docs/PLAN.md` "Contract change requests" section (or a `needs-decision` issue if the plan has none).
 - When a fix lands for a defect a tester reported, the lead sends a follow-up to `tester` to remove `todo` flags and re-verify.

@@ -1,0 +1,15 @@
+id: SL-75
+title: "Add the unverified status to the team rules (synced from agents-team-v1 T128)"
+owner: lead
+branch: SL-75-unverified-status
+wave: R1
+depends_on: []
+migration: false
+files_touched:
+  - docs/team/process.md
+  - .claude/agents/project-manager.md
+  - docs/tasks/SL-75.yml
+  - docs/tasks/SL-75.md
+acceptance: []
+# Why: user decision 2026-11-17 (agents-team-v1 #66, #113): merged work with an acceptance criterion that could not be
+# run (e.g. Docker) is `unverified`, not `done`. Rules text only; no code.
