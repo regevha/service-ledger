@@ -1,0 +1,18 @@
+id: SL-76
+title: "Branch-name exemptions move to a per-repo config read from the base ref"
+owner: lead
+branch: SL-76-branch-exemptions-config
+wave: R1
+depends_on: []
+migration: false
+files_touched:
+  - scripts/ci/check_task_scope.py
+  - docs/team/branch_exemptions
+  - docs/team/process.md
+  - .github/workflows/team-checks.yml
+  - docs/tasks/SL-76.yml
+  - docs/tasks/SL-76.md
+acceptance: []
+# Why: user decision 2026-11-17 (agents-team-v1 #114): keep dependabot/ and the legacy prefixes exempt here, but as a
+# per-repo config like agents-team-v1's docs/team/branch_exemptions (T129), read from the base ref so a PR cannot
+# exempt itself. Behaviour for current branches is unchanged. Script keeps its own spec-from-PR flow (not aligned).

@@ -1,0 +1,14 @@
+# Branch-name prefixes that pass the scope check without a task ID (one per line, '#' comments, blank lines ignored).
+# Read from the BASE branch by scripts/ci/check_task_scope.py, so a PR cannot exempt itself. Per repo: do not sync.
+# End each entry with '/' or '-' (matching is startswith).
+dependabot/
+
+# LEGACY: prefixes of PRs that were open before the every-branch-needs-an-ID rule. Delete each line once the PRs
+# that use it are merged or closed; do not use them for new work.
+phase
+feature/
+frontend/
+nir/
+nir-
+ci/
+docs/

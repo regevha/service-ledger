@@ -24,6 +24,8 @@ jobs:
           persist-credentials: false
       - name: Install PyYAML
         run: python3 -m pip install --break-system-packages pyyaml==6.0.2
+      - name: Self-test the task-scope check
+        run: python3 scripts/ci/check_task_scope.py --self-test
       - name: Check task scope
         env:
           BRANCH: ${{ github.head_ref }}
