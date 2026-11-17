@@ -299,3 +299,9 @@ Agents propose API and data-model changes here. The lead accepts or rejects them
 - OQ-2 (SL-01): The user must switch on private vulnerability reporting in the repo's Security settings.
 - OQ-7 (3.3): When is the quiet window for 0016 (already on main; the deploy is what is pending), which non-production environment is used for the restore check, and who runs `restore.sh`? Needed before Wave B reaches 3.3's deploy step. Also P-17.
 - OQ-8 (3.5): When will 50-100 finalized reports be available?
+
+## Small fixes (2026-11-17)
+
+| ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
+|---|---|---|---|---|---|---|
+| SL-78 | frontend-dev | Dark-mode `--input-border` meets WCAG 1.4.11 (3:1). Issue #314. | Both dark definitions in `index.css` change from #7280a0 to #7b88a6 (3.50:1 on `--surface` #2c3448, 3.005:1 on `--surface-2` #353e54); light #7d889f unchanged; frontend checks green; a look at inputs at rest and on hover in system and manual dark mode in the running app. | see `docs/tasks/SL-78.yml` | none | in-review |

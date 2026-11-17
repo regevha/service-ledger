@@ -1,0 +1,37 @@
+id: SL-78
+title: "Dark mode input border meets 3:1 (WCAG 1.4.11)"
+owner: frontend-dev
+branch: SL-78-dark-input-border
+wave: R1
+depends_on: []
+migration: false
+files_touched:
+  - frontend/src/index.css
+  - docs/tasks/SL-78.yml
+  - docs/tasks/SL-78.md
+  - docs/PLAN.md
+acceptance: [SL-78]
+issue: 314
+# Why: issue #314. Dark `--input-border: #7280a0` is 3.14:1 on `--surface` (#2c3448) and
+# 2.70:1 on the hover fill `--surface-2` (#353e54); WCAG 1.4.11 needs 3:1.
+#
+# Change: in frontend/src/index.css set `--input-border` to #7b88a6 in BOTH dark definitions:
+#   - inside the `@media (prefers-color-scheme: dark)` block (about line 91)
+#   - in the manual dark theme block (about line 129)
+# Nothing else changes. The light value #7d889f (line 24) is out of scope and stays.
+#
+# How #7b88a6 was chosen: same hue and saturation as #7280a0 (HLS), lightness raised in
+# 0.001 steps until the WCAG 2.x contrast ratio is >= 3.0 on both backgrounds; first hit
+# (L 0.5373 -> 0.5653). Ratios computed with the WCAG relative-luminance formula in python:
+#   #7b88a6 on #2c3448 (--surface)   = 3.496:1
+#   #7b88a6 on #353e54 (--surface-2) = 3.005:1   (the binding one; thin margin by design)
+#   old #7280a0: 3.139:1 and 2.698:1
+#
+# Acceptance (testable):
+#   1. Both dark `--input-border` lines read #7b88a6; line 24 still reads #7d889f;
+#      `git diff main -- frontend/src/index.css` shows exactly those two lines changed.
+#   2. `npx oxlint`, `npx tsc -b` and `npm test` green in frontend/.
+#   3. UI task: a look at the running app in dark mode (system dark and the manual dark theme)
+#      on a screen with text inputs, at rest and on hover, against the real backend; result in
+#      the report's Evidence line.
+#   4. Hand-off docs/tasks/SL-78.md states the old and new value and the two ratios.
