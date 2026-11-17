@@ -1,0 +1,18 @@
+id: SL-77
+title: "Sync three rules from agents-team-v1: real-app smoke, evidence line, spec checklist"
+owner: lead
+branch: SL-77-sync-three-rules
+wave: R1
+depends_on: []
+migration: false
+files_touched:
+  - CLAUDE.md
+  - docs/team/process.md
+  - docs/team/environment.md
+  - .claude/agents/frontend-dev.md
+  - .claude/agents/reviewer.md
+  - .claude/agents/architect.md
+  - docs/tasks/SL-77.yml
+  - docs/tasks/SL-77.md
+acceptance: []
+# Why: user decision 2026-11-17 after the agents-team-v1 dry run (T123, T124, T125). Wording only; no code or CI change.

@@ -29,7 +29,8 @@ The lead, architect and project-manager follow this; other agents need only CLAU
 - Never run migrations against anything but a local/dev database. Never weaken or skip a CI check to get green; ask the user instead.
 - **Lessons (process rules):**
   - Never run two agents at once that edit files the other one tests or builds on. Sequence them, or give each its own checkout. Every agent that starts servers uses its own ports and its own throwaway database, and cleans both up.
-  - From the first UI task on, the reviewer and the tester check in a real browser (Playwright), not only in unit tests. A short browser smoke test is an in-review gate for each UI task, before the full e2e wave.
+  - From the first UI task on, the reviewer and the tester check in a real browser (Playwright), not only in unit tests. A short browser smoke test against the real backend (not a mocked API) is an in-review gate for each UI task, before the full e2e wave.
+  - Before sending a report to review the lead checks it: the `Evidence:` line has a commit hash that is on the task branch and contains the files the report says changed (`git show --stat <hash>`), and a UI task shows a real-app smoke result. A report without evidence goes back to the agent, not to the reviewer.
   - Which document wins on a conflict: product brief (what) over API/data contracts over design brief over `docs/PLAN.md` (tasks). An agent that finds a conflict reports it to the lead, not silently picks one.
   - Run the project-manager's plan-health check (file overlaps, missing dependencies, contradictions between docs, duplicate task IDs) before launching each wave.
   - "Tests pass" is not evidence that the screen is right. Closing a UI task needs a reviewer or ux-reviewer who looked at the running app.

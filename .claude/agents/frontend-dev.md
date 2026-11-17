@@ -14,7 +14,7 @@ Read only what you need: `CLAUDE.md` (loaded for you), your task spec and the ex
 - Every screen has loading, empty and error states; plain, short wording that says what to do next. English only.
 - Accessibility: labels on every input, keyboard use, visible focus, `tabIndex={0} role="region" aria-label` on scrollable table wrappers, 44 px touch targets and 16 px inputs on phones.
 - React: no synchronous `setState` inside `useEffect` (oxlint flags it); cancel stale fetches.
-- Before reporting: `npx tsc -b`, `npx oxlint` (no new warnings in your files), `npx vitest run`, `npm run build`; run the app (your own ports and database from the lead) and take Playwright screenshots of each new state at desktop and phone width; look at them. List the screenshot paths in your report.
+- Before reporting: `npx tsc -b`, `npx oxlint` (no new warnings in your files), `npx vitest run`, `npm run build`; run the app against the real backend (your own ports and database from the lead; no mocked API) and take Playwright screenshots of each new state at desktop and phone width; look at them. A smoke test that mocks the API does not count. List the screenshot paths and the smoke result in the `Evidence:` line of your report.
 - Set only your task row in `docs/PLAN.md` to `in-review`, and write `docs/tasks/SL-nn.md`.
 
 End with: Done / Changed files / Open questions, then the standard report block from `CLAUDE.md`.

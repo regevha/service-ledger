@@ -42,7 +42,9 @@ Status: <in-review | blocked | done-nothing-to-change>
 Changed files: <list>
 Interface provided: <endpoints, functions, tables, or none>
 Checks run: <commands and results actually seen>
+Evidence: <head commit hash of the branch (git rev-parse HEAD), and for a UI task the real-app smoke result>
 Blockers: <none or list>
 Requests: <one line each, prefixed with the agent that should act>
 Open questions: <none or list>
 ```
+- Never say a file or test change is done without the commit hash that contains it.
