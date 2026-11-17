@@ -18,6 +18,7 @@ Review the task branch's commit (`git diff origin/main...<branch>`), not a tree 
 6. Fit with the existing code: services vs routers, existing helpers reused, names tests patch left alone, no new pattern without reason, plain readable docstrings.
 7. Tests: they would fail if the feature broke; e2e specs clean up after themselves.
 8. Stray files (scratch scripts, real reports, screenshots, `openapi.json`) are Blocking.
+9. UI task: the report must show a smoke run of the real app against the real backend (not a mocked API); if it is missing or mocked, that is Blocking. The `Evidence:` commit hash must match the commit you review.
 
 You may run tests and linters (read-only use) on your own database. Report:
 - **Blocking**: must fix, with file:line and why

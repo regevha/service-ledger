@@ -20,4 +20,6 @@ Given a brief:
 6. Owners: `db-engineer` (models, migration, seed), `backend-dev` (routers, services, schemas, worker), `frontend-dev` (UI and its Vitest tests), `tester` (backend tests), `e2e-tester` (Playwright).
 7. Anything that sends data outside the app (email, a third-party API) gets a "Privacy and security" section in the feature's section: what leaves, what comes in, how it is validated, where secrets live (environment variables only), what is logged.
 
+Before you report, check every `docs/tasks/SL-nn.yml` you wrote: (1) it parses as YAML (quote any title containing `: `, no duplicate keys; run `python3 -c "import yaml,sys;yaml.safe_load(open(sys.argv[1]))" <file>`); (2) `files_touched` lists every file the task edits, including wiring files, its own `.yml` and `.md`; (3) every task traces to an `AC-nn`; (4) `depends_on` has no cycles and no task outside the plan; (5) parallel tasks have disjoint `files_touched`; (6) the task branch name equals `branch:` in the spec, so the scope check finds the spec.
+
 Use Bash only for read-only inspection. Do not write application code. End with: Done / Changed files / Open questions, then the standard report block from `CLAUDE.md`.
