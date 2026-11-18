@@ -1,7 +1,7 @@
 import { test, expect } from './coverage';
 import { seedReport } from './helpers/api';
 
-// The "Ask in plain words" box on the Reports tab fills the same filters the bar below holds.
+// A question on the Reports tab fills the same filters the bar below holds.
 
 test('a plain-words request fills the filters and narrows the list', async ({ page, request }) => {
   const tech = 'Zed Askerson';
@@ -9,8 +9,10 @@ test('a plain-words request fills the filters and narrows the list', async ({ pa
   await seedReport(request, { model: 'LSRFortessa', reportType: 'preventive_maintenance', technician: tech });
 
   await page.goto('/#/reports');
-  await page.getByTestId('ask-input').fill('repairs by zed askerson');
-  await page.getByTestId('ask-submit').click();
+  await expect(page.getByRole('heading', { name: 'Reports', level: 1 })).toBeVisible();
+  const search = page.getByRole('complementary', { name: 'Search & filters' });
+  await search.getByLabel('Filter with a question').fill('repairs by zed askerson');
+  await search.getByRole('button', { name: 'Apply', exact: true }).click();
 
   const chips = page.getByTestId('ask-chip');
   await expect(chips.filter({ hasText: 'Repair' })).toHaveCount(1);

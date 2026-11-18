@@ -229,11 +229,15 @@ export function ReportsListScreen({
 
   return (
     <div className="section">
-      <div className="section-title">Reports</div>
+      <h1 className="reports-page-title">Reports</h1>
 
       <div className="reports-layout">
-      <aside className="reports-filters" aria-label="Filters">
+      <aside className="reports-filters" aria-labelledby="reports-filters-title">
+      <h2 id="reports-filters-title" className="reports-filters-title">Search &amp; filters</h2>
       <AskReportsBox
+        label="Filter with a question"
+        placeholder="Repairs last month"
+        submitLabel="Apply"
         onApply={(next) => {
           setFilters(next);
           setBarKey((k) => k + 1);

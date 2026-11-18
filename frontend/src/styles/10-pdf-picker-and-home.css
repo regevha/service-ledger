@@ -646,14 +646,28 @@ button.ask-chip {
   padding: 0;
   text-align: start;
 }
-/* In the filter column the box is narrow: the button goes under the field and the examples stack. */
-.reports-filters .ask-row {
-  flex-direction: column;
-}
-.reports-filters .ask-examples {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+/* In the narrow Reports sidebar the input takes a full row and the two actions share the next row. */
+@media (min-width: 1000px) {
+  .reports-filters .ask-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .reports-filters .ask-input {
+    grid-column: 1 / -1;
+  }
+  .reports-filters .ask-voice {
+    justify-self: start;
+    min-width: 44px;
+  }
+  .reports-filters .ask-row button[type='submit'] {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .reports-filters .ask-examples {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
 }
 
 /* The masthead is the way back to Home from any screen. */

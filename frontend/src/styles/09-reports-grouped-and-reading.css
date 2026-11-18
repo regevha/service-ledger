@@ -109,6 +109,10 @@
 .status-filter-pill:hover {
   background: var(--surface-2);
 }
+.status-filter-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .status-filter-pill[aria-pressed='true'] {
   background: var(--accent-fill);
   border-color: var(--accent-fill);
@@ -127,6 +131,16 @@
 
 /* From small laptops up: the filters are a column on the left of the list instead of a row above it, so the list
    starts on the first screen. The column scrolls on its own when it is taller than the window. */
+.reports-page-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-3xl);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.reports-filters-title {
+  margin: 0 0 var(--space-3);
+  font-size: 1rem;
+}
 .reports-layout {
   display: block;
 }
