@@ -216,9 +216,9 @@ export function IntakeFlow({
       {phase.name === 'working' && (
         <WorkingPanel
           label={phase.label}
+          jobStatus={phase.jobStatus}
           fileName={file?.name}
           attachmentId={attachmentId ?? undefined}
-          slow={liveClaude}
           onCancel={() => void handleCancel()}
         />
       )}

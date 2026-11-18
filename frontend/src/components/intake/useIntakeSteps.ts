@@ -160,6 +160,13 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
     }
   }
 
+  function waitForJob(jobId: string, timeoutMs?: number) {
+    return pollJob(jobId, {
+      timeoutMs,
+      onStatusChange: (status) => dispatchPhase({ type: 'job-status', status }),
+    });
+  }
+
   async function runExtraction(attId: string, reportId: string, tpl: ReportTemplate) {
     dispatchPhase({ type: 'working', label: 'Reading the fields from the document…' });
     await attempt('Extraction failed unexpectedly.', () => void runExtraction(attId, reportId, tpl), async () => {
@@ -168,7 +175,7 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
       // the result back.
       const startedAt = performance.now();
       const submitted = await submitOrResume(`extract:${attId}`, () => extractAttachment(attId));
-      const job = await pollJob(submitted.id);
+      const job = await waitForJob(submitted.id);
       const elapsedSeconds = (performance.now() - startedAt) / 1000;
       if (job.status === 'failed') {
         failPhase(job.error_message || 'Extraction failed for an unknown reason.', () => void runExtraction(attId, reportId, tpl));
@@ -236,7 +243,7 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
       const submitted = await submitOrResume(`translate:${attId}:${includePages.join(',')}`, () =>
         translateAttachment(attId, includePages)
       );
-      const job = await pollJob(submitted.id, { timeoutMs: 300_000 });
+      const job = await waitForJob(submitted.id, 300_000);
       if (job.status === 'failed') {
         failPhase(job.error_message || 'Translation failed for an unknown reason.', () => void runTranslation(attId, reportId, includePages));
         return;
@@ -266,7 +273,7 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
       // §3/§9: submit returns a pending job immediately; app/worker.py picks
       // it up in the background and this polls until it's done.
       const submitted = await submitOrResume(`classify:${attId}`, () => classifyAttachment(attId));
-      const job = await pollJob(submitted.id);
+      const job = await waitForJob(submitted.id);
       if (job.status === 'failed') {
         failPhase(
           job.error_message || 'Classification failed for an unknown reason.',

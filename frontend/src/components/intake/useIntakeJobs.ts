@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ApiError, PollAborted, cancelExtractionJob, deleteReport, pollExtractionJob } from '../../api';
+import { ApiError, PollAborted, cancelExtractionJob, deleteReport, pollExtractionJob, type ExtractionJobStatus } from '../../api';
 
 /**
  * The job and draft bookkeeping behind the intake wizard's cancel button: which job and draft the
@@ -57,7 +57,10 @@ export function useIntakeJobs() {
 
   // Wait for a job, remembering which one so Cancel can stop it. Returns only if the screen was
   // not cancelled meanwhile; otherwise it throws and the step ends quietly (see attempt).
-  async function pollJob(jobId: string, opts: { timeoutMs?: number } = {}) {
+  async function pollJob(
+    jobId: string,
+    opts: { timeoutMs?: number; onStatusChange?: (status: ExtractionJobStatus) => void } = {}
+  ) {
     if (cancelledRef.current) {
       // Cancel was pressed while this job was being submitted, before it could be stopped by id.
       void cancelExtractionJob(jobId).catch(() => undefined);

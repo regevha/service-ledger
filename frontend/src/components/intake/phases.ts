@@ -1,8 +1,8 @@
-import { type Instrument, type ReportTemplate, type ReportType } from '../../api';
+import { type ExtractionJobStatus, type Instrument, type ReportTemplate, type ReportType } from '../../api';
 
 export type Phase =
   | { name: 'intake' }
-  | { name: 'working'; label: string }
+  | { name: 'working'; label: string; jobStatus?: ExtractionJobStatus }
   | { name: 'review-translation' }
   | { name: 'confirm-classification' }
   | { name: 'review' }
@@ -63,6 +63,7 @@ export function stepOf(phase: Phase): number {
 export type PhaseAction =
   | { type: 'reset' }
   | { type: 'working'; label: string }
+  | { type: 'job-status'; status: ExtractionJobStatus }
   | { type: 'show'; name: 'review' | 'review-translation' | 'confirm-classification' | 'done' }
   | { type: 'already-on-file'; existingReportId: string }
   | {
@@ -82,6 +83,8 @@ export function phaseReducer(prev: Phase, action: PhaseAction): Phase {
       return { name: 'intake' };
     case 'working':
       return { name: 'working', label: action.label };
+    case 'job-status':
+      return prev.name === 'working' ? { ...prev, jobStatus: action.status } : prev;
     case 'show':
       return { name: action.name };
     case 'already-on-file':

@@ -1,5 +1,5 @@
 import { API_BASE, ApiError, apiFetch } from './http';
-import type { Attachment, ExtractionJob, PromptPreview } from './types';
+import type { Attachment, ExtractionJob, ExtractionJobStatus, PromptPreview } from './types';
 
 // ---------- Attachments / extraction ----------
 
@@ -78,15 +78,25 @@ export class PollAborted extends Error {
 
 export async function pollExtractionJob(
   jobId: string,
-  opts: { intervalMs?: number; timeoutMs?: number; signal?: AbortSignal } = {}
+  opts: {
+    intervalMs?: number;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    onStatusChange?: (status: ExtractionJobStatus) => void;
+  } = {}
 ): Promise<ExtractionJob> {
   const intervalMs = opts.intervalMs ?? 400;
   const timeoutMs = opts.timeoutMs ?? 90_000;
   let deadline = Date.now() + timeoutMs;
+  let lastStatus: ExtractionJobStatus | undefined;
   for (;;) {
     if (opts.signal?.aborted) throw new PollAborted();
     const job = await getExtractionJob(jobId);
     if (opts.signal?.aborted) throw new PollAborted();
+    if (job.status !== lastStatus) {
+      lastStatus = job.status;
+      opts.onStatusChange?.(job.status);
+    }
     if (job.status === 'succeeded' || job.status === 'failed') return job;
     if (job.status === 'awaiting_approval' && job.prompt_preview && promptApprovalHandler) {
       const send = await promptApprovalHandler(job.prompt_preview);

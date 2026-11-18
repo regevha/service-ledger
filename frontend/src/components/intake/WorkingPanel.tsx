@@ -1,19 +1,28 @@
 import { useEffect, useState } from 'react';
-import { attachmentFileUrl } from '../../api';
+import { attachmentFileUrl, type ExtractionJobStatus } from '../../api';
 import { ScanPages } from '../ScanPages';
+
+const JOB_STATUS_TEXT: Record<ExtractionJobStatus, string> = {
+  pending: 'Waiting for a worker.',
+  translating: 'Worker is checking the language and translating if needed.',
+  classifying: 'Worker is identifying the instrument and report type.',
+  extracting: 'Worker is reading the report fields.',
+  awaiting_approval: 'Waiting for prompt approval.',
+  succeeded: 'Loading the result.',
+  failed: 'Reading stopped.',
+};
 
 export function WorkingPanel({
   label,
+  jobStatus,
   fileName,
   attachmentId,
-  slow,
   onCancel,
 }: {
   label: string;
+  jobStatus?: ExtractionJobStatus;
   fileName?: string;
   attachmentId?: string;
-  /** True when a live model is reading the scan, which takes a while. */
-  slow: boolean;
   onCancel?: () => void;
 }) {
   const [seconds, setSeconds] = useState(0);
@@ -27,19 +36,21 @@ export function WorkingPanel({
       <div className="working-panel intake-working-status">
         <div className="spinner" aria-hidden="true" />
         <div className="working-text">
-          <div role="status">{label}</div>
+          <div role="status">
+            <div>{label}</div>
+            {jobStatus && <div className="working-detail">{JOB_STATUS_TEXT[jobStatus]}</div>}
+          </div>
           <div className="working-detail">
             {fileName && <span className="working-file" data-testid="intake-working-file">{fileName}</span>}
-            <span>{seconds}s</span>
+            <span>Elapsed {seconds}s</span>
           </div>
-          {slow && seconds >= 90 && <div className="working-detail">Still working. This is taking longer than usual.</div>}
-          <ul className="working-steps" aria-label="Progress">
+          <ol className="working-steps" aria-label="Progress">
             <li className={attachmentId ? 'done' : 'now'} aria-current={attachmentId ? undefined : 'step'}>
               {attachmentId ? 'Scan uploaded' : 'Upload scan'}
             </li>
             <li className={attachmentId ? 'now' : undefined} aria-current={attachmentId ? 'step' : undefined}>Read the report</li>
             <li>You check the result</li>
-          </ul>
+          </ol>
           {onCancel && (
             <button type="button" className="btn small" data-testid="intake-cancel" onClick={onCancel}>
               Cancel
