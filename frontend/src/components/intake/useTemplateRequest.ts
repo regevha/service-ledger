@@ -18,6 +18,7 @@ export function useTemplateRequest(onCreateTemplate?: (request: TemplateRequest)
     waitingRef.current = waiting;
     setTemplateNote(null);
     onCreateTemplate?.({
+      attachmentId: waiting.attachmentId,
       instrumentType: waiting.instrument.instrument_type,
       reportType: waiting.reportType,
       model: waiting.instrument.model,

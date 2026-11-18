@@ -71,6 +71,8 @@ test('a report on the generic template offers a model-specific one, starts from 
     // The Templates tab, prefilled for this report and started from the
     // closest existing template (the sibling in the same family).
     await expect(page.locator('#template-request-notice')).toContainText(`Malfunction / repair report for ${model} is waiting`);
+    await expect(page.getByTestId('pdf-picker-sample').locator('option:checked')).toHaveText('Current report');
+    await expect(page.getByRole('img', { name: /Sample PDF page 1 of/ })).toBeVisible();
     await expect(page.getByTestId('form-label').filter({ hasText: 'Model' }).locator('input')).toHaveValue(model);
     await expect(page.locator('#template-start-from option:checked')).toContainText(`${family} One`);
     await expect(page.locator('#template-start-from option:checked')).toContainText(`${family} family`);

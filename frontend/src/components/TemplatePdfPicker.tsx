@@ -4,7 +4,9 @@ import {
   attachmentPageUrl,
   getAttachmentPageCount,
   getAttachmentPageWords,
+  listFieldAliases,
   listSampleScans,
+  type FieldAliasGroup,
   type FieldSource,
   type FieldType,
   type TemplateField,
@@ -48,6 +50,7 @@ interface Draft {
 
 const IMAGE_WIDTH = 1100;
 const NO_WORDS: PageWord[] = [];
+const NO_ALIASES: FieldAliasGroup[] = [];
 // A drag shorter than this many pixels is a click.
 const CLICK_SLOP_PX = 5;
 
@@ -67,21 +70,27 @@ function sampleLabel(s: SampleScan): string {
 export function TemplatePdfPicker({
   reportType,
   model,
+  attachmentForReport,
   fields,
+  relatedFields,
   onAddField,
+  onUpdateRegion,
 }: {
   reportType: ReportType;
   model: string;
+  attachmentForReport?: string;
   /** The template's fields: their names so a new field never repeats one, and the boxes of those picked from a PDF. */
   fields: TemplateField[];
+  relatedFields: TemplateField[];
   onAddField: (field: PickedField) => void;
+  onUpdateRegion: (index: number, source: FieldSource) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(attachmentForReport));
   // What the server last said, tagged with the request it answers: while the tag is not the current request
   // the answer is stale and the screen shows "loading", so no effect has to reset state before it fetches.
   const sampleKey = `${reportType}|${model.trim()}`;
   const [sampleAnswer, setSampleAnswer] = useState<{ key: string; list: SampleScan[]; error: string | null } | null>(null);
-  const [attachmentId, setAttachmentId] = useState('');
+  const [attachmentId, setAttachmentId] = useState(attachmentForReport ?? '');
   const [pageCount, setPageCount] = useState(1);
   const [page, setPage] = useState(1);
   const pageKey = `${attachmentId}|${page}`;
@@ -97,11 +106,12 @@ export function TemplatePdfPicker({
   const [draft, setDraft] = useState<Draft | null>(null);
   const [drag, setDrag] = useState<Box | null>(null);
   const [added, setAdded] = useState<string[]>([]);
+  const [aliases, setAliases] = useState<FieldAliasGroup[]>(NO_ALIASES);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const overlay = useRef<HTMLDivElement>(null);
   const nextDraftId = useRef(1);
   // The PDF on show, readable inside the promise callback that picks the first one.
-  const attachmentRef = useRef('');
+  const attachmentRef = useRef(attachmentForReport ?? '');
 
   function chooseAttachment(id: string) {
     attachmentRef.current = id;
@@ -120,7 +130,8 @@ export function TemplatePdfPicker({
         if (!live) return;
         setSampleAnswer({ key: sampleKey, list, error: null });
         // Keep the PDF on show when it is still offered; otherwise start on the first one, at its first page.
-        if (!list.some((s) => s.attachment_id === attachmentRef.current)) chooseAttachment(list[0]?.attachment_id ?? '');
+        if (attachmentRef.current === attachmentForReport) return;
+        if (!list.some((s) => s.attachment_id === attachmentRef.current)) chooseAttachment(attachmentForReport ?? list[0]?.attachment_id ?? '');
       })
       .catch((e: unknown) => {
         if (live) setSampleAnswer({ key: sampleKey, list: [], error: e instanceof ApiError ? e.message : 'Could not load the stored PDFs.' });
@@ -128,7 +139,14 @@ export function TemplatePdfPicker({
     return () => {
       live = false;
     };
-  }, [open, reportType, model, sampleKey]);
+  }, [open, reportType, model, sampleKey, attachmentForReport]);
+
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    listFieldAliases().then((list) => { if (live) setAliases(list); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [open]);
 
   // A different PDF starts on its first page.
   useEffect(() => {
@@ -204,9 +222,7 @@ export function TemplatePdfPicker({
     }
     const box: Box = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) };
     const indexes = wordsInBox(words, box);
-    if (indexes.length > 0) startDraft(indexes, boundsOf(words, indexes)!);
-    // A page with no text layer has nothing to snap to: the drawn box itself is the pick.
-    else if (!hasText) startDraft([], box);
+    if (box.w > 0 && box.h > 0) startDraft(indexes, box);
   }
 
   function onDoubleClick(e: React.MouseEvent) {
@@ -230,12 +246,18 @@ export function TemplatePdfPicker({
     setDraft(null);
   }
 
+  function updateRegion(index: number, source: FieldSource) {
+    onUpdateRegion(index, source);
+    showToast(`Updated the region for ${fields[index].name || 'the field'}`);
+    setDraft(null);
+  }
+
   if (!open) {
     return (
       <div className="pdf-picker-closed" data-testid="pdf-picker-closed">
         <div>
           <strong>Pick fields from a PDF</strong>
-          <span>Open a stored report and click or drag over its text to add it as a field.</span>
+          <span>Open a stored report to add or change field regions.</span>
         </div>
         <button type="button" className="btn" data-testid="pdf-picker-open" onClick={() => setOpen(true)}>
           Pick from a PDF
@@ -244,7 +266,7 @@ export function TemplatePdfPicker({
     );
   }
 
-  const noSamples = samples !== null && samples.length === 0;
+  const noSamples = !attachmentForReport && samples !== null && samples.length === 0;
 
   return (
     <section className="pdf-picker" aria-label="Pick fields from a PDF" data-testid="pdf-picker">
@@ -254,12 +276,13 @@ export function TemplatePdfPicker({
           <select
             value={attachmentId}
             onChange={(e) => chooseAttachment(e.target.value)}
-            disabled={!samples || samples.length === 0}
+            disabled={!attachmentForReport && (!samples || samples.length === 0)}
             aria-label="Sample PDF"
             data-testid="pdf-picker-sample"
           >
-            {samples === null && <option value="">Loading…</option>}
-            {samples?.map((s) => (
+            {attachmentForReport && <option value={attachmentForReport}>Current report</option>}
+            {samples === null && !attachmentForReport && <option value="">Loading…</option>}
+            {samples?.filter((s) => s.attachment_id !== attachmentForReport).map((s) => (
               <option key={s.attachment_id} value={s.attachment_id}>
                 {sampleLabel(s)}
               </option>
@@ -302,13 +325,13 @@ export function TemplatePdfPicker({
       )}
       {attachmentId && !pageError && !hasText && !pageLoading && (
         <div className="banner banner-info" data-testid="pdf-picker-no-text">
-          This page has no text layer, so words cannot be picked. Drag a box around the value and name the field yourself.
+          This page has no selectable text. Drag a box around the value to place a field.
         </div>
       )}
 
       {attachmentId && (
         <div className="pdf-picker-stage">
-          <div className="pdf-picker-hint">Click a word, double-click a line, or drag a box around the text. A card then asks what to call the field.</div>
+          <div className="pdf-picker-hint">Click a word, double-click a line, or draw a box. Add a field or use the region for an existing field.</div>
           <div className="pdf-picker-page">
             <img
               className="pdf-picker-image"
@@ -325,6 +348,7 @@ export function TemplatePdfPicker({
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
+              onPointerCancel={() => { dragStart.current = null; setDrag(null); }}
               onDoubleClick={onDoubleClick}
             >
               {words.map((w, i) => (
@@ -347,7 +371,7 @@ export function TemplatePdfPicker({
                   <span className="pdf-marker-name">{f.name}</span>
                 </span>
               ))}
-              {draft && draft.indexes.length === 0 && (
+              {draft && (
                 <span
                   className="pdf-box chosen"
                   style={{ left: `${draft.box.x * 100}%`, top: `${draft.box.y * 100}%`, width: `${draft.box.w * 100}%`, height: `${draft.box.h * 100}%` }}
@@ -366,7 +390,10 @@ export function TemplatePdfPicker({
                 words={words}
                 draft={draft}
                 page={page}
-                taken={[...fieldNames, ...added]}
+                taken={fieldNames}
+                relatedFields={relatedFields}
+                aliases={aliases}
+                onUpdateRegion={updateRegion}
                 onAdd={add}
                 onCancel={() => setDraft(null)}
               />
@@ -394,6 +421,9 @@ function AddFieldCard({
   draft,
   page,
   taken,
+  relatedFields,
+  aliases,
+  onUpdateRegion,
   onAdd,
   onCancel,
 }: {
@@ -401,6 +431,9 @@ function AddFieldCard({
   draft: Draft;
   page: number;
   taken: string[];
+  relatedFields: TemplateField[];
+  aliases: FieldAliasGroup[];
+  onUpdateRegion: (index: number, source: FieldSource) => void;
   onAdd: (field: PickedField) => void;
   onCancel: () => void;
 }) {
@@ -409,10 +442,22 @@ function AddFieldCard({
   const [name, setName] = useState(() => (draft.indexes.length > 0 ? suggestFieldName(words, draft.indexes, taken) : 'field'));
   const [type, setType] = useState<FieldType>(() => (sample ? guessType(sample) : 'text'));
   const [notes, setNotes] = useState(() => suggestNotes(label, page));
+  const [target, setTarget] = useState('');
+  function nameKey(value: string) {
+    return toFieldName(value).replaceAll('_', '');
+  }
+  const matchingNames = new Set([nameKey(label), nameKey(sample)].filter(Boolean));
+  for (const alias of aliases) {
+    const names = [alias.label ?? '', ...alias.names].map(nameKey).filter(Boolean);
+    if (names.some((key) => matchingNames.has(key))) names.forEach((key) => matchingNames.add(key));
+  }
+  const related = [...new Map(relatedFields
+    .filter((field) => matchingNames.has(nameKey(field.name)) && PICKER_TYPES.some(({ value }) => value === field.type))
+    .map((field) => [field.name, field])).values()];
 
   const cleaned = toFieldName(name);
   const duplicate = taken.some((n) => n.toLowerCase() === cleaned);
-  const problem = !cleaned ? 'Give the field a name.' : duplicate ? 'The template already has a field with this name.' : null;
+  const problem = target ? null : !cleaned ? 'Give the field a name.' : duplicate ? 'The template already has a field with this name.' : null;
 
   // Under the picked text, flipped to the left edge when the text is on the right half so the card stays on the page.
   const onRight = draft.box.x > 0.5;
@@ -429,11 +474,39 @@ function AddFieldCard({
       aria-label="Add as a new field"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!problem) onAdd({ name: cleaned, type, notes: notes.trim() || null, source: { page, ...draft.box } });
+        const source = { page, ...draft.box };
+        if (target) onUpdateRegion(Number(target), source);
+        else if (!problem) onAdd({ name: cleaned, type, notes: notes.trim() || null, source });
       }}
     >
-      <div className="pdf-card-title">Add as a new field</div>
+      <div className="pdf-card-title">Use this region</div>
       {sample ? <div className="pdf-card-sample" data-testid="pdf-add-sample">{sample}</div> : <div className="pdf-card-sample muted">The area you drew</div>}
+      {taken.length > 0 && (
+        <label className="pdf-card-field">
+          <span className="pdf-picker-label">Apply to</span>
+          <select value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="">New field</option>
+            {taken.map((field, index) => <option key={index} value={index}>{field || `Unnamed field ${index + 1}`}</option>)}
+          </select>
+        </label>
+      )}
+      {!target && (
+      <>
+      {related.length > 0 && (
+        <label className="pdf-card-field">
+          <span className="pdf-picker-label">Related template fields</span>
+          <select value={related.some((field) => field.name === name) ? name : ''} onChange={(e) => {
+            const suggestion = related.find((field) => field.name === e.target.value);
+            if (suggestion) {
+              setName(suggestion.name);
+              setType(suggestion.type);
+            }
+          }}>
+            <option value="" disabled>Choose a suggestion</option>
+            {related.map((field) => <option key={field.name} value={field.name}>{field.name}</option>)}
+          </select>
+        </label>
+      )}
       <label className="pdf-card-field">
         <span className="pdf-picker-label">Field name</span>
         <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} aria-label="Field name" autoFocus />
@@ -448,6 +521,8 @@ function AddFieldCard({
           ))}
         </select>
       </label>
+      </>
+      )}
       <label className="pdf-card-field">
         <span className="pdf-picker-label">Where to find it (helps the reader)</span>
         <input className="text-input" value={notes} onChange={(e) => setNotes(e.target.value)} aria-label="Where to find it" />
@@ -462,7 +537,7 @@ function AddFieldCard({
           Cancel
         </button>
         <button type="submit" className="btn small primary" disabled={problem !== null}>
-          Add field
+          {target ? 'Set region' : 'Add field'}
         </button>
       </div>
     </form>

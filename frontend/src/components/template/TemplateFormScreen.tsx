@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ApiError, createReportTemplate, getTemplateSuggestions, listAllReportTemplates, listInstrumentTypes, updateReportTemplate, type InstrumentType, type ReportTemplate, type ReportType, type TemplateField, type TemplateUsage } from '../../api';
+import { ApiError, createReportTemplate, getTemplateSuggestions, listAllReportTemplates, listInstrumentTypes, updateReportTemplate, type FieldSource, type InstrumentType, type ReportTemplate, type ReportType, type TemplateField, type TemplateUsage } from '../../api';
 import { REPORT_TYPE_LABEL } from '../../labels';
 import { type TemplateRequest } from '../../templateRequest';
 import { SuggestInput } from '../SuggestInput';
@@ -104,9 +104,14 @@ export function TemplateFormScreen({
     setTouched(true);
   }
 
+  function updateFieldRegion(index: number, source: FieldSource) {
+    setFields((current) => current.map((field, i) => i === index ? { ...field, source } : field));
+    setTouched(true);
+  }
+
   function applyStart(id: string) {
     const option = startOptions.find((o) => o.template.id === id);
-    setFields(option ? structuredClone(option.template.field_schema.fields) : []);
+    setFields(option ? structuredClone(option.template.field_schema.fields).map((field) => ({ ...field, source: undefined })) : []);
     setFieldsVersion((v) => v + 1);
     setTouched(false);
     setPendingStart(null);
@@ -128,8 +133,8 @@ export function TemplateFormScreen({
   useEffect(() => {
     if (!request || autoApplied.current || startOptions.length === 0) return;
     autoApplied.current = true;
-    applyStart(startOptions[0].template.id);
-  }, [request, startOptions]);
+    if (!touched) applyStart(startOptions[0].template.id);
+  }, [request, startOptions, touched]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Set when saving would drop fields that reports already use — the user
@@ -276,7 +281,16 @@ export function TemplateFormScreen({
       <div className="section-title" style={{ marginTop: 18 }}>
         Fields
       </div>
-      <TemplatePdfPicker reportType={reportType} model={model} fields={fields} onAddField={addPickedField} />
+      <TemplatePdfPicker
+        key={request?.attachmentId ?? 'samples'}
+        reportType={reportType}
+        model={model}
+        attachmentForReport={request?.attachmentId}
+        fields={fields}
+        relatedFields={startOptions.flatMap(({ template }) => template.field_schema.fields)}
+        onAddField={addPickedField}
+        onUpdateRegion={updateFieldRegion}
+      />
       <FieldSchemaEditor
         key={fieldsVersion}
         fields={fields}

@@ -7,6 +7,7 @@ import type { ReportType } from './api';
  * reads the report again once that template is saved.
  */
 export interface TemplateRequest {
+  attachmentId: string;
   instrumentType: string;
   reportType: ReportType;
   /** The model exactly as the instrument spells it, so the new template resolves for it. */

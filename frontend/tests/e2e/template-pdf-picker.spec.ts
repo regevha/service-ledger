@@ -41,6 +41,13 @@ test('click a word on a stored PDF to add it as a template field', async ({ page
   // The field is drawn back over the page where it was picked.
   await expect(page.getByTestId('pdf-marker')).toHaveCount(1);
   await expect(page.getByTestId('pdf-marker')).toContainText('laser_delay');
+  const oldRegion = await page.getByTestId('pdf-marker').getAttribute('style');
+  await page.getByTestId('pdf-word').filter({ hasText: 'Laser' }).first().click();
+  await card.getByLabel('Apply to').selectOption({ label: 'laser_delay' });
+  await card.getByRole('button', { name: 'Set region' }).click();
+  await expect(page.getByTestId('pdf-marker')).toHaveCount(1);
+  await expect(page.getByTestId('pdf-marker')).not.toHaveAttribute('style', oldRegion!);
+  const movedRegion = await page.getByTestId('pdf-marker').getAttribute('style');
 
   // And the place is saved with the template: reopening it shows the same marker.
   await page.click('button:has-text("Create template")');
@@ -50,6 +57,7 @@ test('click a word on a stored PDF to add it as a template field', async ({ page
   await expect(page.getByTestId('pdf-word').first()).toBeAttached();
   await expect(page.getByTestId('pdf-marker')).toHaveCount(1);
   await expect(page.getByTestId('pdf-marker')).toContainText('laser_delay');
+  await expect(page.getByTestId('pdf-marker')).toHaveAttribute('style', movedRegion!);
 
   // Removing the field removes its marker.
   await page.locator('.schema-field-row').first().getByRole('button', { name: /Remove/ }).click();
