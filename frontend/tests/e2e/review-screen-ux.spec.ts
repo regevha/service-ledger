@@ -379,11 +379,11 @@ test('reloading or closing the page asks first only while there are unsaved edit
   await expect(page.locator('.toast')).toHaveText('Saved');
   expect(await leavingIsGuarded(page)).toBe(false);
 
-  // Marking a flagged field as checked changes no value, so it is not an unsaved edit.
+  // Review checks are part of the saved state even when the field value is unchanged.
   const flagged = page.locator('.field.pending');
   if ((await flagged.count()) > 0) {
     await flagged.first().getByRole('button', { name: 'Mark as checked' }).click();
-    expect(await leavingIsGuarded(page)).toBe(false);
+    expect(await leavingIsGuarded(page)).toBe(true);
   }
 });
 

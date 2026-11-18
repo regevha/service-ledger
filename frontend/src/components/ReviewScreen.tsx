@@ -22,11 +22,7 @@ import { ReviewRail } from './review/ReviewRail';
  * The field-by-field review/correction UI (§5) — shared between the live
  * intake flow (IntakeFlow.tsx, right after extraction) and an
  * already-saved report opened from the Reports tab (ReportDetailScreen.tsx).
- * The two call sites differ only in what they pass: live intake has fresh
- * per-field extraction confidences and always offers "Save & finalize";
- * browsing a saved report has neither (see `fieldConfidences`/`onFinalize`
- * below), and overrides the heading since "N fields need attention" is
- * meaningless without those confidences.
+ * The call sites use the same persisted confidence and explicit checks.
  */
 const isEmptyValue = (v: unknown) => v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
 
@@ -36,6 +32,8 @@ export function ReviewScreen({
   reportDate,
   onReportDateChange,
   fieldConfidences,
+  checkedFields,
+  onCheckedFieldsChange,
   fieldConfidenceThreshold,
   placeholderValues = false,
   onChange,
@@ -69,6 +67,8 @@ export function ReviewScreen({
   reportDate: string | null;
   onReportDateChange: (value: string | null) => void;
   fieldConfidences: Record<string, number>;
+  checkedFields: string[];
+  onCheckedFieldsChange: (fields: string[]) => void;
   fieldConfidenceThreshold: number;
   // True when extraction ran without an API key: the values and their
   // confidences are placeholders, not reads of the document, so badges say
@@ -81,9 +81,7 @@ export function ReviewScreen({
   // extracted/in_review can finalize; the backend 409s otherwise, so the
   // frontend just doesn't offer the button rather than surfacing that error).
   onFinalize?: () => void;
-  // Override the computed "N fields need attention" heading — that count is
-  // meaningless without fresh extraction confidences (an already-saved
-  // report has none), so the reports list passes its own heading instead.
+  // A saved report can supply its own title and metadata.
   title?: string;
   // A muted line under `title` (date and status of a saved report).
   titleMeta?: ReactNode;
@@ -124,11 +122,14 @@ export function ReviewScreen({
 }) {
   // A low-confidence field stays flagged until the technician explicitly marks it checked.
   // Editing the value does not count: they may have typed over it without looking at the scan.
-  const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
+  const checked = new Set(checkedFields);
+  const clearCheck = (name: string) => {
+    if (checked.has(name)) onCheckedFieldsChange(checkedFields.filter((field) => field !== name));
+  };
   // A finalized report is the record; opening it for changes asks first.
   const [confirmingEdit, setConfirmingEdit] = useState(false);
   const markChecked = (name: string) => {
-    setChecked((prev) => new Set(prev).add(name));
+    onCheckedFieldsChange([...checked, name]);
     // The button disappears once the field is checked; keep the keyboard where it was, on the field.
     const el = listRef.current?.querySelector<HTMLElement>(`[data-field="${name}"]`);
     el?.querySelector<HTMLElement>('input, textarea, select')?.focus({ preventScroll: true });
@@ -307,7 +308,7 @@ export function ReviewScreen({
           ) : undefined
         }
         rail={
-          <ReviewRail template={template} reportDateFlagged={reportDateFlagged} isFlagged={isFlagged} readOnly={readOnly} onGo={goToField} />
+          <ReviewRail template={template} reportDateFlagged={reportDateFlagged} isFlagged={isFlagged} checked={checked} readOnly={readOnly} onGo={goToField} />
         }
       >
       <fieldset className="review-fieldset" disabled={readOnly}>
@@ -326,18 +327,25 @@ export function ReviewScreen({
       >
         <div className="field-list-head">
           <h2 className="field-list-title">What the report says</h2>
-          <span className="field-list-count" data-testid="checked-count">
-            {readOnly ? `${template.field_schema.fields.length + 1} fields` : `${template.field_schema.fields.length + 1 - flaggedCount} of ${template.field_schema.fields.length + 1} checked`}
+          <span className="field-list-count" data-testid="checked-count" aria-live="polite">
+            {readOnly ? `${template.field_schema.fields.length + 1} fields` : `${flaggedCount} of ${template.field_schema.fields.length + 1} flagged for review`}
           </span>
         </div>
+        {!readOnly && Object.keys(fieldConfidences).length === 0 && (
+          <p className="hint-text">Extraction confidence is unavailable. Check the values against the scan.</p>
+        )}
         <ReportDateField
           flagged={reportDateFlagged}
+          checked={checked.has('report_date')}
           readOnly={readOnly}
           confidence={reportDateConfidence}
           threshold={fieldConfidenceThreshold}
           placeholderValues={placeholderValues}
           value={reportDate}
-          onChange={onReportDateChange}
+          onChange={(value) => {
+            if (!sameValue(value, reportDate)) clearCheck('report_date');
+            onReportDateChange(value);
+          }}
           onMarkChecked={() => markChecked('report_date')}
         />
         {template.field_schema.fields.map((field, i) => (
@@ -347,12 +355,16 @@ export function ReviewScreen({
             index={i}
             confidence={fieldConfidences[field.name]}
             flagged={isFlagged(field.name)}
+            checked={checked.has(field.name)}
             readOnly={readOnly}
             isPersonField={personFields.has(field.name)}
             threshold={fieldConfidenceThreshold}
             placeholderValues={placeholderValues}
             value={fields[field.name]}
-            onChange={(v) => onChange(field.name, v)}
+            onChange={(value) => {
+              if (!sameValue(value, fields[field.name])) clearCheck(field.name);
+              onChange(field.name, value);
+            }}
             onMarkChecked={() => markChecked(field.name)}
           />
         ))}

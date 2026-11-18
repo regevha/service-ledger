@@ -16,7 +16,7 @@ function stable(value: unknown): unknown {
   return value;
 }
 
-export function reviewSnapshot(fields: Record<string, unknown>, reportDate: string | null): string {
+export function reviewSnapshot(fields: Record<string, unknown>, reportDate: string | null, checkedFields: string[] = []): string {
   // JSON.stringify leaves out keys whose value is undefined, so {a: undefined} equals {}.
-  return JSON.stringify([stable(fields), reportDate ?? null]);
+  return JSON.stringify([stable(fields), reportDate ?? null, [...checkedFields].sort()]);
 }

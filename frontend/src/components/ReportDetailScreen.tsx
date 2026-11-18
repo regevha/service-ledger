@@ -68,6 +68,7 @@ export function ReportDetailScreen({
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [fields, setFields] = useState<Record<string, unknown>>({});
   const [reportDate, setReportDate] = useState<string | null>(null);
+  const [checkedFields, setCheckedFields] = useState<string[]>([]);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const phone = useMediaQuery('(max-width: 620px)');
@@ -85,7 +86,7 @@ export function ReportDetailScreen({
   // screen itself, so a failure keeps the form and the scan view where they were.
   const [saving, setSaving] = useState<'save' | 'finalize' | null>(null);
   const [saveError, setSaveError] = useState<{ message: string; finalize: boolean } | null>(null);
-  const dirty = savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
+  const dirty = savedSnapshot !== null && reviewSnapshot(fields, reportDate, checkedFields) !== savedSnapshot;
   useUnsavedChangesGuard(dirty);
   const confirmLeave = useConfirmLeave();
 
@@ -112,7 +113,9 @@ export function ReportDetailScreen({
       setReport(r);
       setFields(r.extracted_fields ?? {});
       setReportDate(r.report_date);
-      setSavedSnapshot(reviewSnapshot(r.extracted_fields ?? {}, r.report_date));
+      const checks = r.review_state?.checked_fields ?? [];
+      setCheckedFields(checks);
+      setSavedSnapshot(reviewSnapshot(r.extracted_fields ?? {}, r.report_date, checks));
       // Fetch the report's own template_id directly (GET /report-templates/
       // {id}), not re-resolve "the" template for its instrument model +
       // report type (findTemplate) the way this used to. resolve_template's
@@ -141,11 +144,16 @@ export function ReportDetailScreen({
     setSaving(finalize ? 'finalize' : 'save');
     setSaveError(null);
     // What is being saved is what the form holds now. Edits made while the request runs stay unsaved.
-    const sent = reviewSnapshot(fields, reportDate);
+    const sent = reviewSnapshot(fields, reportDate, checkedFields);
+    const extractionId = report.review_state?.extraction_id ?? null;
     try {
-      const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
+      const updated = await updateReportFields(report.id, {
+        extracted_fields: fields, report_date: reportDate,
+        expected_extraction_id: extractionId, checked_fields: checkedFields,
+      });
       setSavedSnapshot(sent);
-      const final = finalize ? await finalizeReport(report.id) : updated;
+      setReport(updated);
+      const final = finalize ? await finalizeReport(report.id, extractionId) : updated;
       setReport(final);
       setEditing(false);
       setDuplicatesNonce((n) => n + 1); // a save can change what matches
@@ -277,7 +285,10 @@ export function ReportDetailScreen({
           fields={fields}
           reportDate={reportDate}
           onReportDateChange={setReportDate}
-          fieldConfidences={{}}
+          fieldConfidences={report.review_state?.field_confidences ?? {}}
+          checkedFields={checkedFields}
+          onCheckedFieldsChange={setCheckedFields}
+          placeholderValues={report.review_state?.placeholder_values}
           fieldConfidenceThreshold={fieldConfidenceThreshold}
           onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
           onSave={() => void handleSave(false)}
@@ -315,6 +326,7 @@ export function ReportDetailScreen({
               ? () => {
                   setFields(report.extracted_fields ?? {});
                   setReportDate(report.report_date);
+                  setCheckedFields(report.review_state?.checked_fields ?? []);
                   setEditing(false);
                 }
               : undefined

@@ -378,3 +378,49 @@ def test_stub_does_not_answer_a_real_work_order_report_with_the_sample_data(clie
 
     assert client.get(f"/extraction-jobs/{job['id']}").json()["status"] == "succeeded"
     assert decisions == [False]
+
+def test_report_review_state_survives_reopening_and_changes(client, run_worker, monkeypatch):
+    report, attachment = _extracted_report(client, run_worker, monkeypatch)
+    url = f"/reports/{report['id']}"
+    state = report["review_state"]
+    version = {"expected_extraction_id": state["extraction_id"]}
+    assert state["field_confidences"]
+    assert state["checked_fields"] == []
+
+    saved = client.patch(f"{url}/fields", json={**version, "checked_fields": ["report_date"]})
+    assert saved.status_code == 200
+    reopened = client.get(url).json()["review_state"]
+    assert reopened == {**state, "checked_fields": ["report_date"]}
+
+    edited = client.patch(f"{url}/fields", json={"report_date": "2027-01-01"})
+    assert edited.status_code == 200
+    assert edited.json()["review_state"]["checked_fields"] == []
+
+    from app.services.errors import ExtractionError
+
+    def fail_read(*args, **kwargs):
+        raise ExtractionError("Synthetic failed re-read")
+
+    with monkeypatch.context() as patch:
+        patch.setattr("app.worker.run_extract", fail_read)
+        assert client.post(f"/attachments/{attachment['id']}/extract").status_code == 202
+        run_worker()
+    assert client.get(url).json()["review_state"] == state
+
+    assert client.post(f"/attachments/{attachment['id']}/extract").status_code == 202
+    run_worker()
+    replacement = client.get(url).json()
+    assert replacement["review_state"]["extraction_id"] != state["extraction_id"]
+    assert replacement["review_state"]["checked_fields"] == []
+    assert client.patch(f"{url}/fields", json={**version, "checked_fields": ["report_date"]}).status_code == 409
+    assert client.post(f"{url}/finalize", json=version).status_code == 409
+
+    current_version = {"expected_extraction_id": replacement["review_state"]["extraction_id"]}
+    finalized = client.post(f"{url}/finalize", json=current_version)
+    assert finalized.status_code == 200
+    assert finalized.json()["review_state"] == replacement["review_state"]
+
+
+def test_report_without_review_provenance_does_not_invent_confidence(client):
+    report = client.post("/reports", json={}).json()
+    assert client.get(f"/reports/{report['id']}").json()["review_state"] is None

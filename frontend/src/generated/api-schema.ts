@@ -2571,6 +2571,10 @@ export interface components {
          * @description §9: PATCH /reports/{id}/fields — overwrites in place, no audit log in MVP.
          */
         ReportFieldsUpdate: {
+            /** Expected Extraction Id */
+            expected_extraction_id?: string | null;
+            /** Checked Fields */
+            checked_fields?: string[] | null;
             /** Extracted Fields */
             extracted_fields?: {
                 [key: string]: unknown;
@@ -2640,6 +2644,7 @@ export interface components {
             extracted_fields: {
                 [key: string]: unknown;
             };
+            review_state?: components["schemas"]["ReviewStateOut"] | null;
             /** Technician Name */
             technician_name: string | null;
             /** Issuer */
@@ -2739,6 +2744,27 @@ export interface components {
          * @enum {string}
          */
         ReportType: "repair" | "preventive_maintenance" | "installation_upgrade";
+        /** ReviewStateOut */
+        ReviewStateOut: {
+            /** Extraction Id */
+            extraction_id?: string | null;
+            /** Field Confidences */
+            field_confidences?: {
+                [key: string]: number;
+            };
+            /** Checked Fields */
+            checked_fields?: string[];
+            /**
+             * Placeholder Values
+             * @default false
+             */
+            placeholder_values: boolean;
+        };
+        /** ReviewVersion */
+        ReviewVersion: {
+            /** Expected Extraction Id */
+            expected_extraction_id: string | null;
+        };
         /**
          * SampleScanOut
          * @description GET /report-templates/sample-scans: a stored PDF the template editor can
@@ -4732,7 +4758,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReviewVersion"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

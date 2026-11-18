@@ -115,13 +115,19 @@ export function updateReportFields(
   reportId: string,
   // report_date: the service-visit date. Extraction fills it in from the
   // document; the review screen sends it back as corrected (null clears it).
-  payload: { extracted_fields?: Record<string, unknown>; report_date?: string | null }
+  payload: {
+    extracted_fields?: Record<string, unknown>;
+    report_date?: string | null;
+    expected_extraction_id?: string | null;
+    checked_fields?: string[];
+  }
 ): Promise<Report> {
   return apiFetch(`/reports/${reportId}/fields`, { method: 'PATCH', body: JSON.stringify(payload) });
 }
 
-export function finalizeReport(reportId: string): Promise<Report> {
-  return apiFetch(`/reports/${reportId}/finalize`, { method: 'POST' });
+export function finalizeReport(reportId: string, extractionId?: string | null): Promise<Report> {
+  const body = extractionId === undefined ? undefined : JSON.stringify({ expected_extraction_id: extractionId });
+  return apiFetch(`/reports/${reportId}/finalize`, { method: 'POST', body });
 }
 
 // Not routed through apiFetch — same reasoning as reportsExportUrl/

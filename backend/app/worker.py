@@ -115,6 +115,7 @@ def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
             # already-extracted report onto a new template left the old
             # template's field keys sitting in extracted_fields.
             report.extracted_fields = {}
+            report.review_state = None
         report.instrument_id = result.resolved_instrument_id
         report.template_id = result.resolved_template_id
         report.status = models.ReportStatus.classified
@@ -298,6 +299,12 @@ def _run_extract_job(db: Session, job: models.ExtractionJob) -> None:
         report.report_date = result.report_date
     report.status = models.ReportStatus.extracted
     job.field_confidences = result.field_confidences
+    report.review_state = {
+        "extraction_id": str(job.id),
+        "field_confidences": result.field_confidences or {},
+        "checked_fields": [],
+        "placeholder_values": not settings.use_live_claude,
+    }
     if template is not None:  # always true here: the template id was matched above
         job.params = {**(job.params or {}), **prompt_fingerprint(template)}
     job.status = models.ExtractionJobStatus.succeeded

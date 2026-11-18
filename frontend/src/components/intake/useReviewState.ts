@@ -13,7 +13,7 @@ export function useReviewState() {
   const [classification, setClassification] = useState<ClassificationResult | null>(null);
   const [attachmentId, setAttachmentId] = useState<string | null>(null);
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
-  const [fieldConfidences, setFieldConfidences] = useState<Record<string, number>>({});
+  const [checkedFields, setCheckedFields] = useState<string[]>([]);
   // Measured in the browser, from submitting the extraction to the job finishing; shown on Review & finalize only.
   const [extractionSeconds, setExtractionSeconds] = useState<number | null>(null);
   const [fields, setFields] = useState<Record<string, unknown>>({});
@@ -32,7 +32,7 @@ export function useReviewState() {
     setClassification(null);
     setAttachmentId(null);
     setTemplate(null);
-    setFieldConfidences({});
+    setCheckedFields([]);
     setExtractionSeconds(null);
     setFields({});
     setReportDate(null);
@@ -42,13 +42,14 @@ export function useReviewState() {
   }
 
   /** Show a freshly extracted report on the review screen. */
-  function loadExtraction(refreshed: Report, confidences: Record<string, number>, seconds: number) {
+  function loadExtraction(refreshed: Report, seconds: number) {
     setReport(refreshed);
-    setFieldConfidences(confidences);
+    const checks = refreshed.review_state?.checked_fields ?? [];
+    setCheckedFields(checks);
     setExtractionSeconds(seconds);
     setFields(refreshed.extracted_fields ?? {});
     setReportDate(refreshed.report_date);
-    setSavedSnapshot(reviewSnapshot(refreshed.extracted_fields ?? {}, refreshed.report_date));
+    setSavedSnapshot(reviewSnapshot(refreshed.extracted_fields ?? {}, refreshed.report_date, checks));
     setSaveError(null);
   }
 
@@ -57,7 +58,7 @@ export function useReviewState() {
     classification, setClassification,
     attachmentId, setAttachmentId,
     template, setTemplate,
-    fieldConfidences,
+    checkedFields, setCheckedFields,
     extractionSeconds,
     fields, setFields,
     reportDate, setReportDate,

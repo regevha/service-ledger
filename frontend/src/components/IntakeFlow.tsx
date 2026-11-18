@@ -95,7 +95,7 @@ export function IntakeFlow({
 
   const {
     report, setReport, classification, setClassification, attachmentId, setAttachmentId, template, setTemplate,
-    fieldConfidences, extractionSeconds, fields, setFields, reportDate, setReportDate, savedSnapshot, setSavedSnapshot,
+    checkedFields, setCheckedFields, extractionSeconds, fields, setFields, reportDate, setReportDate, savedSnapshot, setSavedSnapshot,
     saving, setSaving, saveError, setSaveError, resetReview, loadExtraction,
   } = useReviewState();
   const { translation, setTranslation, translationBusy, handleAcceptTranslation, handleDiscardTranslation } = useTranslationReview({
@@ -105,7 +105,7 @@ export function IntakeFlow({
     failPhase: (...args) => steps.failPhase(...args),
     runClassification: (...args) => steps.runClassification(...args),
   });
-  const dirty = phase.name === 'review' && savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
+  const dirty = phase.name === 'review' && savedSnapshot !== null && reviewSnapshot(fields, reportDate, checkedFields) !== savedSnapshot;
   useUnsavedChangesGuard(dirty);
   const confirmLeave = useConfirmLeave();
 
@@ -143,7 +143,7 @@ export function IntakeFlow({
     onCancel, onCreateTemplate, onInstrumentAdded,
     cancelledRef, abortRef, jobIdRef, draftIdRef, discardDraftRef, submittedJobs, discardDraft, submitOrResume, pollJob,
     report, setReport, classification, setClassification, attachmentId, setAttachmentId, template, setTemplate,
-    fieldConfidences, extractionSeconds, fields, setFields, reportDate, setReportDate, savedSnapshot, setSavedSnapshot,
+    checkedFields, setCheckedFields, extractionSeconds, fields, setFields, reportDate, setReportDate, savedSnapshot, setSavedSnapshot,
     saving, setSaving, saveError, setSaveError, resetReview, loadExtraction, setTranslation,
   });
   const {
@@ -273,9 +273,11 @@ export function IntakeFlow({
           fields={fields}
           reportDate={reportDate}
           onReportDateChange={setReportDate}
-          fieldConfidences={fieldConfidences}
+          fieldConfidences={report?.review_state?.field_confidences ?? {}}
+          checkedFields={checkedFields}
+          onCheckedFieldsChange={setCheckedFields}
           fieldConfidenceThreshold={fieldConfidenceThreshold}
-          placeholderValues={!liveClaude}
+          placeholderValues={report?.review_state?.placeholder_values ?? !liveClaude}
           onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
           onSave={() => void handleSaveFields(false)}
           onFinalize={() => void handleSaveFields(true)}

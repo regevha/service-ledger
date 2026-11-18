@@ -6,12 +6,14 @@ export function ReviewRail({
   template,
   reportDateFlagged,
   isFlagged,
+  checked,
   readOnly,
   onGo,
 }: {
   template: ReportTemplate;
   reportDateFlagged: boolean;
   isFlagged: (name: string) => boolean;
+  checked: ReadonlySet<string>;
   readOnly: boolean;
   onGo: (name: string) => void;
 }) {
@@ -24,7 +26,7 @@ export function ReviewRail({
             <button type="button" className={`review-rail-item${r.flagged && !readOnly ? ' flagged' : ''}`} onClick={() => onGo(r.name)}>
               <span className="review-rail-num">{r.n}</span>
               <span className="review-rail-label">{r.label}</span>
-              <span className="review-rail-mark" aria-label={r.flagged && !readOnly ? 'needs checking' : 'checked'}>{r.flagged && !readOnly ? '!' : '✓'}</span>
+              <span className="review-rail-mark" aria-label={r.flagged && !readOnly ? 'needs checking' : checked.has(r.name) ? 'checked' : undefined}>{r.flagged && !readOnly ? '!' : checked.has(r.name) ? '✓' : ''}</span>
             </button>
           </li>
         ))}

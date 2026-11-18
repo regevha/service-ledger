@@ -10,6 +10,7 @@ export function ReviewField({
   confidence,
   flagged,
   readOnly,
+  checked,
   isPersonField,
   threshold: fieldConfidenceThreshold,
   placeholderValues,
@@ -22,6 +23,7 @@ export function ReviewField({
   confidence: number | undefined;
   flagged: boolean;
   readOnly: boolean;
+  checked: boolean;
   isPersonField: boolean;
   threshold: number;
   placeholderValues: boolean;
@@ -47,9 +49,9 @@ export function ReviewField({
         {flagged && !readOnly && <span className="sr-only">Needs checking.</span>}
         {isPersonField && !readOnly ? (
           <span className={`badge ${flagged ? 'badge-warn' : 'badge-good'}`} data-testid="person-field-badge">
-            {flagged ? 'suggested, check it' : 'checked'}
+            {checked ? 'checked' : 'suggested, check it'}
           </span>
-        ) : (
+        ) : checked ? <span className="badge badge-good">Checked</span> : (
           confidence !== undefined && (
             <ConfidenceBadge
               confidence={confidence}

@@ -63,6 +63,7 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
     instruments,
     jobIdRef,
     loadExtraction,
+    checkedFields,
     noteDuplicates,
     onCancel,
     onCreateTemplate,
@@ -175,7 +176,7 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
         return;
       }
       const refreshed = await getReport(reportId);
-      loadExtraction(refreshed, job.field_confidences ?? {}, elapsedSeconds);
+      loadExtraction(refreshed, elapsedSeconds);
       dispatchPhase({ type: 'show', name: 'review' });
     });
   }
@@ -412,12 +413,16 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
     setSaving(finalize ? 'finalize' : 'save');
     setSaveError(null);
     // What is being saved is what the form holds now. Edits made while the request runs stay unsaved.
-    const sent = reviewSnapshot(fields, reportDate);
+    const sent = reviewSnapshot(fields, reportDate, checkedFields);
+    const extractionId = report.review_state?.extraction_id ?? null;
     try {
-      const updated = await updateReportFields(report.id, { extracted_fields: fields, report_date: reportDate });
+      const updated = await updateReportFields(report.id, {
+        extracted_fields: fields, report_date: reportDate,
+        expected_extraction_id: extractionId, checked_fields: checkedFields,
+      });
       setSavedSnapshot(sent);
       let final = updated;
-      if (finalize) final = await finalizeReport(report.id);
+      if (finalize) final = await finalizeReport(report.id, extractionId);
       setReport(final);
       if (finalize) dispatchPhase({ type: 'show', name: 'done' });
       else showToast('Saved');

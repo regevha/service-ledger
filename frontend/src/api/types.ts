@@ -141,12 +141,20 @@ export interface ReportTemplate {
 
 export type ReportStatus = components['schemas']['ReportStatus'];
 
+export interface ReportReviewState {
+  extraction_id: string | null;
+  field_confidences: Record<string, number>;
+  checked_fields: string[];
+  placeholder_values: boolean;
+}
+
 export interface Report {
   id: string;
   instrument_id: string | null;
   template_id: string | null;
   status: ReportStatus;
   extracted_fields: Record<string, unknown>;
+  review_state?: ReportReviewState | null;
   technician_name: string | null;
   /** Who issued the form (often a distributor), when classification read one. */
   issuer?: string | null;

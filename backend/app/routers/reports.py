@@ -381,6 +381,7 @@ def confirm_template(report_id: uuid.UUID, payload: schemas.TemplateConfirmation
         # Discard any prior extraction — it ran (or would run) against the
         # wrong schema.
         report.extracted_fields = {}
+        report.review_state = None
     try:
         db.commit()
     except IntegrityError:
@@ -398,11 +399,15 @@ def update_report_fields(report_id: uuid.UUID, payload: schemas.ReportFieldsUpda
     """§9/§6: apply corrections directly to the report's fields — overwrites
     in place, no audit log in MVP (§10). Allowed even on a finalized report
     (§6: "editing a finalized report ... overwrites its fields in place")."""
-    report = db.get(models.Report, report_id)
+    report = db.get(models.Report, report_id, with_for_update=True)
     if not report:
         raise HTTPException(404, "Report not found")
 
     data = payload.model_dump(exclude_unset=True)
+    if "expected_extraction_id" in data:
+        _require_review_version(report, data.pop("expected_extraction_id"))
+    checked_fields = data.pop("checked_fields", None)
+    previous_fields, previous_date = report.extracted_fields or {}, report.report_date
     if "extracted_fields" in data:
         incoming = data.pop("extracted_fields")
         if incoming is None:
@@ -423,6 +428,20 @@ def update_report_fields(report_id: uuid.UUID, payload: schemas.ReportFieldsUpda
     for key, value in data.items():
         setattr(report, key, value)
 
+    if report.review_state or checked_fields:
+        state = dict(report.review_state or {})
+        if checked_fields is None:
+            checked_fields = [
+                name for name in state.get("checked_fields", [])
+                if (report.report_date == previous_date if name == "report_date"
+                    else report.extracted_fields.get(name) == previous_fields.get(name))
+            ]
+        allowed_names = {"report_date"}
+        if report.template is not None:
+            allowed_names.update(field["name"] for field in report.template.field_schema.get("fields", []))
+        state["checked_fields"] = sorted(allowed_names.intersection(checked_fields))
+        report.review_state = state
+
     if report.status in (models.ReportStatus.extracted, models.ReportStatus.in_review):
         report.status = models.ReportStatus.in_review
 
@@ -431,15 +450,25 @@ def update_report_fields(report_id: uuid.UUID, payload: schemas.ReportFieldsUpda
     return report
 
 
+def _require_review_version(report: models.Report, expected_id: uuid.UUID | None) -> None:
+    actual = (report.review_state or {}).get("extraction_id")
+    if actual != (str(expected_id) if expected_id else None):
+        raise HTTPException(409, "This report was read again. Reopen it to review the latest values before saving.")
+
+
 @router.post("/reports/{report_id}/finalize", response_model=schemas.ReportOut)
-def finalize_report(report_id: uuid.UUID, db: Session = Depends(get_db)):
+def finalize_report(
+    report_id: uuid.UUID, payload: schemas.ReviewVersion | None = None, db: Session = Depends(get_db),
+):
     """§9: mark a report finalized. §5: a report is meant to reach this from
     extracted/in_review — finalizing a bare draft would just freeze an empty
     record, so that's rejected rather than silently allowed. Finalizing a
     report that already is finalized returns it unchanged."""
-    report = db.get(models.Report, report_id)
+    report = db.get(models.Report, report_id, with_for_update=True)
     if not report:
         raise HTTPException(404, "Report not found")
+    if payload is not None:
+        _require_review_version(report, payload.expected_extraction_id)
     if report.status == models.ReportStatus.finalized:
         # Finalizing twice (a retry after the reply was lost, a double click) is not an error and
         # changes nothing: the report keeps the time it was first finalized.

@@ -5,6 +5,7 @@ import { DateInput } from '../DateInput';
 export function ReportDateField({
   flagged: reportDateFlagged,
   readOnly,
+  checked,
   confidence: reportDateConfidence,
   threshold: fieldConfidenceThreshold,
   placeholderValues,
@@ -14,6 +15,7 @@ export function ReportDateField({
 }: {
   flagged: boolean;
   readOnly: boolean;
+  checked: boolean;
   confidence: number | undefined;
   threshold: number;
   placeholderValues: boolean;
@@ -33,7 +35,7 @@ export function ReportDateField({
           Service date
         </label>
         {reportDateFlagged && !readOnly && <span className="sr-only">Needs checking.</span>}
-        {reportDateConfidence !== undefined && (
+        {checked ? <span className="badge badge-good">Checked</span> : reportDateConfidence !== undefined && (
           <ConfidenceBadge
             confidence={reportDateConfidence}
             threshold={fieldConfidenceThreshold}

@@ -117,6 +117,8 @@ class Report(Base):
     # What the reading first produced, copied once when it finishes and never edited afterwards, so the
     # Home screen can tell how many fields needed no correction. NULL for a report read before this existed.
     original_fields: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # The active extraction and explicit review checks survive job retention.
+    review_state: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # For a scan or photo: {"attachment_id": str, "boxes": {field: {page, x, y, w, h}}}, where the model said it
     # read each value (approximate). NULL when the document had a text layer, or was read before this existed.
     field_boxes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

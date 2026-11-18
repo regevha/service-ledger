@@ -44,6 +44,17 @@ class ReportCreate(BaseModel):
     report_date: date | None = None
 
 
+class ReviewStateOut(BaseModel):
+    extraction_id: uuid.UUID | None = None
+    field_confidences: dict[str, float] = Field(default_factory=dict)
+    checked_fields: list[str] = Field(default_factory=list)
+    placeholder_values: bool = False
+
+
+class ReviewVersion(BaseModel):
+    expected_extraction_id: uuid.UUID | None
+
+
 class ReportOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -52,6 +63,7 @@ class ReportOut(BaseModel):
     template_id: uuid.UUID | None
     status: ReportStatus
     extracted_fields: dict
+    review_state: ReviewStateOut | None = None
     technician_name: str | None
     # Who issued the form and a second report type, when classification read
     # them off the document (see ClassificationResult).
@@ -121,6 +133,9 @@ class DuplicateReportOut(ReportListItemOut):
 
 class ReportFieldsUpdate(BaseModel):
     """§9: PATCH /reports/{id}/fields — overwrites in place, no audit log in MVP."""
+
+    expected_extraction_id: uuid.UUID | None = None
+    checked_fields: list[str] | None = None
 
     extracted_fields: dict | None = None
     technician_name: str | None = None
