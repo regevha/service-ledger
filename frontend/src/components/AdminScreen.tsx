@@ -23,7 +23,7 @@ export function AdminScreen({ section, onSection, instruments }: { section: stri
           Data export
         </button>
         <button type="button" className={`admin-nav-item ${current === 'accuracy' ? 'active' : ''}`} aria-current={current === 'accuracy' ? 'page' : undefined} onClick={() => onSection('accuracy')}>
-          Reading accuracy
+          Review metrics
         </button>
         <button type="button" className={`admin-nav-item ${current === 'aliases' ? 'active' : ''}`} aria-current={current === 'aliases' ? 'page' : undefined} onClick={() => onSection('aliases')}>
           Field aliases

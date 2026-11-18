@@ -92,10 +92,10 @@ export function AccuracyScreen() {
     <div className="accuracy" data-testid="accuracy-screen">
       <div className="acc-head">
         <div>
-          <h2 className="admin-title">Reading accuracy</h2>
+          <h2 className="admin-title">Review metrics</h2>
           <p className="admin-lead">
-            How much of each new report was approved without a change to what was read. Written descriptions ignore case, spacing and punctuation;
-            everything else must match exactly. The goal is {formatPct(goal)} of fields, so that a report only needs a check and an Approve.
+            See how often reviewers kept the extracted fields and Hebrew translations when they finalized reports.
+            The field metric tracks edits as a proxy for reading quality. The goal is {formatPct(goal)} of fields kept as read.
           </p>
         </div>
         <div className="theme-choice" role="radiogroup" aria-label="Period">
@@ -116,7 +116,7 @@ export function AccuracyScreen() {
 
       {data && data.fields === 0 && (
         <p className="hint-text" data-testid="accuracy-empty">
-          Nothing to measure yet: no report read since this was tracked has been finalized in this period.
+          No finalized reports with tracked extraction results in this period.
         </p>
       )}
 
@@ -163,7 +163,7 @@ export function AccuracyScreen() {
 
           <section className="acc-section" aria-labelledby="acc-weeks-title">
             <h3 id="acc-weeks-title">By week</h3>
-            <div className="trend-table-wrap" tabIndex={0} role="region" aria-label="Accuracy by week, as a table">
+            <div className="trend-table-wrap" tabIndex={0} role="region" aria-label="Review metrics by week, as a table">
               <table className="trend-table acc-table" data-testid="acc-weeks">
                 <thead>
                   <tr>

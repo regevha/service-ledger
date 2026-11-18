@@ -195,7 +195,7 @@ export function HomeScreen({
         </div>
         <div className="stat-tile home-tile" data-testid="home-tile-accuracy">
           <span className="stat-value">{data ? (keptAsReadPercent(data.summary.read_without_edits) ?? '–') : '–'}</span>
-          <span className="stat-label">Fields read without edits</span>
+          <span className="stat-label">Fields kept as read</span>
           <span className="home-tile-note">
             {data === null
               ? ' '
@@ -204,7 +204,7 @@ export function HomeScreen({
                 : `Shown after ${MIN_FIELDS_FOR_PERCENT} fields are finalized (${data.summary.read_without_edits.fields} so far)`}
           </span>
           <a className="home-tile-link" href="#/admin/accuracy" data-testid="home-accuracy-link">
-            Details and goal
+            View review metrics
           </a>
         </div>
       </div>
