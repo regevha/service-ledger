@@ -12,9 +12,13 @@ We’re making it easier to upload several reports, find and review them, and se
 - **Classification accuracy.** Reports can retain classification attempts. The accuracy screen counts automatic results kept, results needing attention, and reports without recorded decisions separately from extraction edits.
 - **Labor-hours comparison.** Instrument comparisons use the same parser as fleet analytics, including decimal commas and alternate field names. The set of report types included in the totals is unchanged.
 
-## Screenshots from earlier local previews
+## Screenshots from the published product commit
 
-These captures show the interface. They were not taken during a test run of the published commit.
+These captures show commit `71919f9` running against an isolated database with synthetic records. A built-in search example was masked in the screenshots. The browser check exercised Home, the desktop and mobile upload queue, a report date filter, and the Classification panel. It left the files queued and did not exercise live document processing.
+
+**Home.** Upload controls and the count of reports awaiting review.
+
+![Home and report upload controls](home-current.png)
 
 **Desktop upload queue.** Two sample PDFs are waiting inside New report.
 
@@ -24,17 +28,17 @@ These captures show the interface. They were not taken during a test run of the 
 
 <img src="upload-mobile.png" alt="Mobile upload queue" width="390">
 
-**Reading accuracy.** The Classification section is separate from extraction metrics. The percentages in this preview are from one report and do not establish accuracy.
+**Reports.** A date filter entered as `DD/MM/YYYY`. The active-filter summary still shows the same date in ISO format.
+
+![Reports with a day-first date filter](reports-current.png)
+
+**Reading accuracy.** The Classification section is separate from extraction metrics. The seeded examples show an automatic result kept, a result that needed attention, and a report without a recorded decision. The percentages illustrate the layout and are not accuracy measurements.
 
 ![Reading accuracy screen](classification-accuracy.png)
 
 ## Separate feature work
 
 Six local branches cover reading progress and scan visibility, review checks and extraction confidence, text search for reports awaiting review, mixed PDF and photo grouping, further UI polish, and a visual template editor. Some UI changes overlap with this WIP snapshot.
-
-**Reading progress from the separate integrated preview.** The synthetic Hebrew report stays visible while the worker shows its current stage.
-
-![Reading progress with a synthetic Hebrew report](reading-progress.jpg)
 
 ## What remains before merge
 
