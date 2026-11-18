@@ -76,6 +76,18 @@
   display: flex;
   flex-direction: column;
 }
+.pdf-picker-suggestions-actions,
+.pdf-picker-suggestions-list {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.pdf-picker-suggestions-list {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
 .pdf-picker-page {
   position: relative;
   width: 100%;

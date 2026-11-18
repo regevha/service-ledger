@@ -3,11 +3,15 @@ for the phone's Fields | Scan switch (Android Chrome cannot show a PDF in an
 <iframe>)."""
 from __future__ import annotations
 
+import base64
 import io
+from types import SimpleNamespace
 
 from PIL import Image
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+
+from app.services import template_drafts
 
 
 def _two_page_pdf() -> bytes:
@@ -71,6 +75,45 @@ def test_unknown_attachment_is_404(client):
     assert client.get(f"/attachments/{missing}/pages/1").status_code == 404
 
 
+def test_template_suggestions_use_one_page_and_filter_unusable_drafts(client, monkeypatch):
+    att = _upload(client, "scan.pdf", _two_page_pdf(), "application/pdf")
+    monkeypatch.setattr(template_drafts, "enabled", lambda: True)
+    monkeypatch.setattr(template_drafts, "get_client", lambda: None)
+    source = {"page": 2, "x": 0.2, "y": 0.2, "w": 0.3, "h": 0.2}
+    field = {"name": "service_notes", "type": "text", "notes": None, "source": source}
+
+    def response(**kwargs):
+        content = kwargs["request_kwargs"]["messages"][0]["content"]
+        assert len(content) == 2
+        assert content[0]["source"]["media_type"] == "image/png"
+        with Image.open(io.BytesIO(base64.b64decode(content[0]["source"]["data"]))) as image:
+            assert max(image.size) <= 1600
+        assert "Use page number 2" in content[1]["text"]
+        fields = [
+            field,
+            field,
+            {**field, "name": "report_date"},
+            {**field, "name": "first_page", "source": {**source, "page": 1}},
+            {**field, "name": "outside", "source": {**source, "x": 0.9}},
+        ]
+        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input={"fields": fields})])
+
+    monkeypatch.setattr(template_drafts, "call_claude_tool", response)
+    res = client.post(f"/attachments/{att}/pages/2/template-field-suggestions")
+    assert res.status_code == 200
+    assert res.json() == [field]
+    assert client.post(f"/attachments/{att}/pages/3/template-field-suggestions").status_code == 404
+
+
+def test_model_suggestions_respect_stub_mode_and_prompt_review(client, monkeypatch):
+    att = _upload(client, "scan.pdf", _two_page_pdf(), "application/pdf")
+    url = f"/attachments/{att}/pages/1/template-field-suggestions"
+    assert client.post(url).status_code == 503
+    monkeypatch.setattr(template_drafts, "enabled", lambda: True)
+    monkeypatch.setattr(template_drafts.settings, "view_prompts", True)
+    assert client.post(url).status_code == 409
+
+
 def _filled_form_pdf() -> bytes:
     """A fillable PDF whose typed value lives in a form field, not in the page content."""
     buf = io.BytesIO()
@@ -110,3 +153,19 @@ def test_an_image_is_one_page_and_an_unreadable_pdf_falls_back_to_one(client):
     assert client.get(f"/attachments/{att}/pages").json() == {"page_count": 1}
     assert count_pdf_pages(b"%PDF-1.4 this is not a real pdf") == 1
     assert count_pdf_pages(_two_page_pdf()) == 2
+
+def test_draft_read_uses_unsaved_fields_and_leaves_report_untouched(client):
+    from app.models import ReportType
+
+    att = _upload(client, "draft-sample.pdf", _two_page_pdf(), "application/pdf")
+    templates_before = client.get("/report-templates/all").json()
+    reports_before = client.get("/reports").json()
+    result = client.post(
+        f"/attachments/{att}/template-extraction-preview",
+        json={"report_type": ReportType.repair.value, "fields": [{"name": "draft_notes", "type": "text"}]},
+    )
+    assert result.status_code == 200
+    assert set(result.json()["fields"]) == {"draft_notes"}
+    assert result.json()["placeholder"] is True
+    assert client.get("/report-templates/all").json() == templates_before
+    assert client.get("/reports").json() == reports_before

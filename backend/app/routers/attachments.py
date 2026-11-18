@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import io
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -15,6 +14,7 @@ from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
 from app.job_trigger import notify_job_queued
+from app.services import prompt_gate, template_drafts
 from app.services.attachment_names import (
     clean_original_filename,
     source_name,
@@ -32,18 +32,18 @@ from app.services.duplicates import (
     find_read_copy,
     normalize_work_order,
 )
+from app.services.errors import ExtractionError
+from app.services.extraction import extract as extract_fields
 from app.services.field_locator import FieldToLocate, locate_fields
 from app.services.html_pdf import ensure_display_pdf
 from app.services.image_size import ImageSizeError, check_image_size
 from app.services.job_limits import CANCELLED_UNSENT, enforce_job_limits
+from app.services.page_image import render_pdf_page
 from app.services.page_text import PDFIUM_LOCK, count_pdf_pages, page_words
 from app.services.text_reader import extract_text, read_work_order
 from app.services.translation import translation_gate
 
 logger = logging.getLogger(__name__)
-
-# Largest page bitmap the API will draw, in pixels (about 25 megapixels, about 75 MB as RGB).
-MAX_RENDER_PIXELS = 25_000_000
 
 router = APIRouter(tags=["attachments"])
 settings = get_settings()
@@ -281,30 +281,13 @@ def get_attachment_page_image(
 
     import pypdfium2 as pdfium
 
-    with PDFIUM_LOCK:
-        try:
-            pdf = pdfium.PdfDocument(str(pdf_path))
-        except pdfium.PdfiumError:
-            raise HTTPException(422, "The stored PDF could not be opened") from None
-        try:
-            if page < 1 or page > len(pdf):
-                raise HTTPException(404, "Page not found")
-            # A fillable form keeps typed values in form fields, not in the page
-            # content; they are drawn only when the form environment exists
-            # before the page is loaded (found 2026-11-10: a PIR form looked blank).
-            pdf.init_forms()
-            pdf_page = pdf[page - 1]
-            # A tiny PDF can declare a page of any size (a 1 KB file once asked for a 2400 x 172800
-            # bitmap and needed 2.8 GB): the scale shrinks until the bitmap stays under MAX_RENDER_PIXELS
-            # (the 0.98 absorbs rounding up to whole pixels).
-            page_w, page_h = pdf_page.get_size()
-            scale = min(width / page_w, (0.98 * MAX_RENDER_PIXELS / (page_w * page_h)) ** 0.5)
-            image = pdf_page.render(scale=scale, may_draw_forms=True).to_pil().convert("RGB")
-        finally:
-            pdf.close()
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    return Response(buffer.getvalue(), media_type="image/png", headers=headers)
+    try:
+        image = render_pdf_page(pdf_path, page, width)
+    except IndexError:
+        raise HTTPException(404, "Page not found") from None
+    except pdfium.PdfiumError:
+        raise HTTPException(422, "The stored PDF could not be opened") from None
+    return Response(image, media_type="image/png", headers=headers)
 
 
 @router.get("/attachments/{attachment_id}/pages/{page}/words", response_model=schemas.PageWordsOut)
@@ -335,6 +318,76 @@ def get_attachment_page_words(attachment_id: uuid.UUID, page: int, db: Session =
         words=[schemas.WordBoxOut(text=w.text, x=w.x, y=w.y, w=w.w, h=w.h, line=w.line) for w in words],
     )
 
+
+@router.post("/attachments/{attachment_id}/pages/{page}/template-field-suggestions", response_model=list[schemas.TemplateFieldDraft])
+def suggest_template_fields(attachment_id: uuid.UUID, page: int, db: Session = Depends(get_db)):
+    """Draft fields for one stored page using the configured document provider."""
+    import pypdfium2 as pdfium
+    from PIL import Image
+
+    if not template_drafts.enabled():
+        raise HTTPException(503, "Model suggestions are unavailable. You can still edit field regions.")
+    if not 1 <= page <= 1000:
+        raise HTTPException(404, "Page not found")
+    if template_drafts.settings.view_prompts:
+        raise HTTPException(409, "Model suggestions are unavailable while prompt review is enabled.")
+    attachment, path = _stored_scan(db, attachment_id)
+    file_type = attachment.file_type
+    if file_type == HTML:
+        pdf_path = _pdf_view(attachment, path)
+        if pdf_path is None:
+            raise HTTPException(404, "This HTML report has no page images")
+        path = pdf_path
+        file_type = PDF
+    db.rollback()  # Do not hold a database transaction during a provider request.
+    if not template_drafts.MODEL_SLOT.acquire(blocking=False):
+        raise HTTPException(429, "A model suggestion is already running. Try again after it finishes.")
+    try:
+        image = template_drafts.page_image(path, file_type, page)
+        return template_drafts.suggest_fields(image, str(path), page)
+    except IndexError:
+        raise HTTPException(404, "Page not found") from None
+    except (OSError, pdfium.PdfiumError, Image.DecompressionBombError):
+        raise HTTPException(422, "The stored page could not be opened") from None
+    except prompt_gate.PromptApprovalNeeded:
+        raise HTTPException(409, "Model suggestions are unavailable while prompt review is enabled.") from None
+    except template_drafts.TemplateDraftError:
+        raise HTTPException(502, "The model could not suggest usable fields. You can continue editing this draft.") from None
+    finally:
+        template_drafts.MODEL_SLOT.release()
+
+
+
+@router.post("/attachments/{attachment_id}/template-extraction-preview", response_model=schemas.TemplateReadPreview)
+def preview_template_extraction(attachment_id: uuid.UUID, payload: schemas.TemplateCreate, db: Session = Depends(get_db)):
+    """Run the normal reader on an unsaved template without changing the report."""
+    if len(payload.fields) > 40:
+        raise HTTPException(422, "Test up to 40 fields at a time.")
+    if template_drafts.settings.view_prompts:
+        raise HTTPException(409, "Test extraction is unavailable while prompt review is enabled.")
+    attachment, _ = _stored_scan(db, attachment_id)
+    if reason := translation_gate(attachment):
+        raise HTTPException(409, reason)
+    db.expunge_all()
+    db.rollback()
+    if not template_drafts.MODEL_SLOT.acquire(blocking=False):
+        raise HTTPException(429, "Another template check is running. Try again after it finishes.")
+    try:
+        template = models.ReportTemplate(
+            instrument_type=payload.instrument_type, report_type=payload.report_type, model=payload.model,
+            field_schema={"fields": [field.model_dump(mode="json", exclude_none=True) for field in payload.fields]},
+        )
+        result = extract_fields(attachment, template)
+        return schemas.TemplateReadPreview(
+            fields=result.extracted_fields,
+            placeholder=not template_drafts.settings.use_live_claude and not template_drafts.settings.stub_extract_from_text,
+        )
+    except prompt_gate.PromptApprovalNeeded:
+        raise HTTPException(409, "Test extraction is unavailable while prompt review is enabled.") from None
+    except ExtractionError:
+        raise HTTPException(502, "Could not read the draft fields. Your template has not changed.") from None
+    finally:
+        template_drafts.MODEL_SLOT.release()
 
 @router.get("/attachments/{attachment_id}/field-locations", response_model=schemas.FieldLocationsOut)
 def get_attachment_field_locations(attachment_id: uuid.UUID, db: Session = Depends(get_db)):

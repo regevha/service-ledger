@@ -958,6 +958,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/attachments/{attachment_id}/pages/{page}/template-field-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suggest Template Fields
+         * @description Draft fields for one stored page using the configured document provider.
+         */
+        post: operations["suggest_template_fields_attachments__attachment_id__pages__page__template_field_suggestions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachment_id}/template-extraction-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Template Extraction
+         * @description Run the normal reader on an unsaved template without changing the report.
+         */
+        post: operations["preview_template_extraction_attachments__attachment_id__template_extraction_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/attachments/{attachment_id}/field-locations": {
         parameters: {
             query?: never;
@@ -2948,6 +2988,22 @@ export interface components {
             fields: components["schemas"]["TemplateFieldIn"][];
         };
         /**
+         * TemplateFieldDraft
+         * @description A proposed field and a region on the sample page. Advice only.
+         */
+        TemplateFieldDraft: {
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "text" | "number" | "date" | "boolean";
+            /** Notes */
+            notes?: string | null;
+            source: components["schemas"]["FieldSource"];
+        };
+        /**
          * TemplateFieldIn
          * @description One row of the structured editor's field list. `options` and
          *     `item_schema` are conditionally required/forbidden by `type` — the same
@@ -2991,6 +3047,15 @@ export interface components {
          * @enum {string}
          */
         TemplateFieldType: "text" | "number" | "boolean" | "date" | "enum" | "enum[]" | "object[]" | "number[detector]" | "number[laser]";
+        /** TemplateReadPreview */
+        TemplateReadPreview: {
+            /** Fields */
+            fields: {
+                [key: string]: unknown;
+            };
+            /** Placeholder */
+            placeholder: boolean;
+        };
         /**
          * TemplateSuggestionOut
          * @description One existing template offered as the starting point for a new one
@@ -5112,6 +5177,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PageWordsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_template_fields_attachments__attachment_id__pages__page__template_field_suggestions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+                page: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateFieldDraft"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_template_extraction_attachments__attachment_id__template_extraction_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateReadPreview"];
                 };
             };
             /** @description Validation Error */

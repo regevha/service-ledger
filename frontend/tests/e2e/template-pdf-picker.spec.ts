@@ -38,6 +38,15 @@ test('click a word on a stored PDF to add it as a template field', async ({ page
   await expect(row.locator('[aria-label="Field name"]')).toHaveValue('laser_delay');
   await expect(row.locator('[aria-label="Field type"]')).toHaveValue('number');
 
+  // A failed optional suggestion leaves the active draft intact.
+  await page.route('**/template-field-suggestions', (route) => route.fulfill({
+    status: 502,
+    json: { detail: 'The model could not suggest usable fields.' },
+  }));
+  await picker.getByRole('button', { name: 'Suggest fields with AI' }).click();
+  await expect(picker.getByRole('alert')).toHaveText('The model could not suggest usable fields.');
+  await expect(row.getByRole('textbox', { name: 'Field name' })).toHaveValue('laser_delay');
+
   // The field is drawn back over the page where it was picked.
   await expect(page.getByTestId('pdf-marker')).toHaveCount(1);
   await expect(page.getByTestId('pdf-marker')).toContainText('laser_delay');

@@ -4,6 +4,7 @@ import { REPORT_TYPE_LABEL } from '../../labels';
 import { type TemplateRequest } from '../../templateRequest';
 import { SuggestInput } from '../SuggestInput';
 import { defaultFieldFor, droppedFieldNames, fieldToPayload, templateProblems } from './fieldSchema';
+import { TemplateReadTest } from './TemplateReadTest';
 import { FieldSchemaEditor } from './FieldSchemaEditor';
 import { TemplatePdfPicker, type PickedField } from '../TemplatePdfPicker';
 
@@ -68,7 +69,7 @@ export function TemplateFormScreen({
   const autoApplied = useRef(false);
 
   useEffect(() => {
-    if (!isCreate) return;
+    if (!instrumentType) return;
     let cancelled = false;
     const timer = setTimeout(() => {
       getTemplateSuggestions({ reportType, instrumentType, model: model.trim() || null })
@@ -95,7 +96,7 @@ export function TemplateFormScreen({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [isCreate, reportType, instrumentType, model]);
+  }, [reportType, instrumentType, model]);
 
   // A field picked from a PDF goes to the end of the list, with the page and box it was picked from.
   function addPickedField(picked: PickedField) {
@@ -111,7 +112,8 @@ export function TemplateFormScreen({
 
   function applyStart(id: string) {
     const option = startOptions.find((o) => o.template.id === id);
-    setFields(option ? structuredClone(option.template.field_schema.fields).map((field) => ({ ...field, source: undefined })) : []);
+    const copied = structuredClone(option?.template.field_schema.fields ?? []);
+    setFields(request ? copied.map((field) => ({ ...field, source: undefined })) : copied);
     setFieldsVersion((v) => v + 1);
     setTouched(false);
     setPendingStart(null);
@@ -287,7 +289,7 @@ export function TemplateFormScreen({
         model={model}
         attachmentForReport={request?.attachmentId}
         fields={fields}
-        relatedFields={startOptions.flatMap(({ template }) => template.field_schema.fields)}
+        relatedFields={startOptions.filter(({ template }) => template.id !== seed?.id).flatMap(({ template }) => template.field_schema.fields)}
         onAddField={addPickedField}
         onUpdateRegion={updateFieldRegion}
       />
@@ -299,6 +301,14 @@ export function TemplateFormScreen({
           setTouched(true);
         }}
       />
+
+      {request?.attachmentId && problems.length === 0 && (
+        <TemplateReadTest
+          key={JSON.stringify([instrumentType, reportType, model, fields])}
+          attachmentId={request.attachmentId}
+          draft={{ instrument_type: instrumentType, report_type: reportType, model: model.trim() || null, fields: fields.map(fieldToPayload) }}
+        />
+      )}
 
       {problems.length > 0 && (
         <ul className="banner banner-warn template-problems" id="template-problems">

@@ -244,6 +244,20 @@ class FieldSource(BaseModel):
         return self
 
 
+class TemplateReadPreview(BaseModel):
+    fields: dict
+    placeholder: bool
+
+
+class TemplateFieldDraft(BaseModel):
+    """A proposed field and a region on the sample page. Advice only."""
+
+    name: str = Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=60)
+    type: Literal["text", "number", "date", "boolean"]
+    notes: str | None = Field(default=None, max_length=140)
+    source: FieldSource
+
+
 class TemplateFieldIn(BaseModel):
     """One row of the structured editor's field list. `options` and
     `item_schema` are conditionally required/forbidden by `type` — the same

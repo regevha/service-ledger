@@ -1,5 +1,6 @@
 import { apiFetch } from './http';
 import type { FieldSource, FieldType, ItemSchemaColumn, ReportTemplate, ReportType, TemplateField } from './types';
+import type { components } from '../generated/api-schema';
 
 // ---------- Report templates ----------
 
@@ -34,6 +35,12 @@ export function getTemplateSuggestions(params: {
   if (params.model) query.set('model', params.model);
   if (params.limit) query.set('limit', String(params.limit));
   return apiFetch(`/report-templates/suggestions?${query}`);
+}
+
+export type TemplateFieldDraft = components['schemas']['TemplateFieldDraft'];
+
+export function suggestTemplateFields(attachmentId: string, page: number): Promise<TemplateFieldDraft[]> {
+  return apiFetch(`/attachments/${attachmentId}/pages/${page}/template-field-suggestions`, { method: 'POST' });
 }
 
 // Two templates of one instrument type with their fields lined up
@@ -132,6 +139,10 @@ export function getTemplateUsage(): Promise<TemplateUsage[]> {
 
 export function getReportTemplate(templateId: string): Promise<ReportTemplate> {
   return apiFetch(`/report-templates/${templateId}`);
+}
+
+export function previewTemplateExtraction(attachmentId: string, payload: TemplateCreatePayload): Promise<{ fields: Record<string, unknown>; placeholder: boolean }> {
+  return apiFetch(`/attachments/${attachmentId}/template-extraction-preview`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export function createReportTemplate(payload: TemplateCreatePayload): Promise<ReportTemplate> {

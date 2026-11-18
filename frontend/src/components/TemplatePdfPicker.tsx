@@ -10,6 +10,7 @@ import {
   type FieldSource,
   type FieldType,
   type TemplateField,
+  type TemplateFieldDraft,
   type PageWord,
   type ReportType,
   type SampleScan,
@@ -31,6 +32,7 @@ import {
 import { REPORT_TYPE_LABEL } from '../labels';
 import { showToast } from '../toast';
 import { plainMessage } from '../plainMessages';
+import { TemplateDraftSuggestions } from './template/TemplateDraftSuggestions';
 
 /** What the picker hands back for the field it was asked to add. The field editor fills in the rest. */
 export interface PickedField {
@@ -46,6 +48,7 @@ interface Draft {
   /** The chosen words (empty for a box drawn on a page that has no text layer). */
   indexes: number[];
   box: Box;
+  suggestion?: TemplateFieldDraft;
 }
 
 const IMAGE_WIDTH = 1100;
@@ -188,8 +191,8 @@ export function TemplatePdfPicker({
     };
   }
 
-  function startDraft(indexes: number[], box: Box) {
-    setDraft({ id: nextDraftId.current++, indexes, box });
+  function startDraft(indexes: number[], box: Box, suggestion?: TemplateFieldDraft) {
+    setDraft({ id: nextDraftId.current++, indexes, box, suggestion });
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -233,7 +236,6 @@ export function TemplatePdfPicker({
     startDraft(line, boundsOf(words, line)!);
   }
 
-  const fieldNames = useMemo(() => fields.map((f) => f.name), [fields]);
   // The fields picked from this page of a PDF, drawn back over it. Where the template was picked from another
   // sample the boxes still land on the same form, since every report of a template is the same layout.
   const markers = useMemo(() => fields.filter((f) => f.source && f.source.page === page), [fields, page]);
@@ -331,6 +333,12 @@ export function TemplatePdfPicker({
 
       {attachmentId && (
         <div className="pdf-picker-stage">
+          <TemplateDraftSuggestions
+            key={pageKey}
+            attachmentId={attachmentId}
+            page={page}
+            onReview={(field) => startDraft(wordsInBox(words, field.source), field.source, field)}
+          />
           <div className="pdf-picker-hint">Click a word, double-click a line, or draw a box. Add a field or use the region for an existing field.</div>
           <div className="pdf-picker-page">
             <img
@@ -390,7 +398,7 @@ export function TemplatePdfPicker({
                 words={words}
                 draft={draft}
                 page={page}
-                taken={fieldNames}
+                fields={fields}
                 relatedFields={relatedFields}
                 aliases={aliases}
                 onUpdateRegion={updateRegion}
@@ -420,7 +428,7 @@ function AddFieldCard({
   words,
   draft,
   page,
-  taken,
+  fields,
   relatedFields,
   aliases,
   onUpdateRegion,
@@ -430,19 +438,21 @@ function AddFieldCard({
   words: PageWord[];
   draft: Draft;
   page: number;
-  taken: string[];
+  fields: TemplateField[];
   relatedFields: TemplateField[];
   aliases: FieldAliasGroup[];
   onUpdateRegion: (index: number, source: FieldSource) => void;
   onAdd: (field: PickedField) => void;
   onCancel: () => void;
 }) {
+  const taken = fields.map((field) => field.name);
   const sample = draft.indexes.length > 0 ? selectedText(words, draft.indexes) : '';
   const label = labelBefore(words, draft.indexes);
-  const [name, setName] = useState(() => (draft.indexes.length > 0 ? suggestFieldName(words, draft.indexes, taken) : 'field'));
-  const [type, setType] = useState<FieldType>(() => (sample ? guessType(sample) : 'text'));
-  const [notes, setNotes] = useState(() => suggestNotes(label, page));
-  const [target, setTarget] = useState('');
+  const [name, setName] = useState(() => draft.suggestion?.name ?? (draft.indexes.length > 0 ? suggestFieldName(words, draft.indexes, taken) : 'field'));
+  const [type, setType] = useState<FieldType>(() => draft.suggestion?.type ?? (sample ? guessType(sample) : 'text'));
+  const [notes, setNotes] = useState(() => draft.suggestion?.notes ?? suggestNotes(label, page));
+  const [target, setTarget] = useState<TemplateField | null>(null);
+  const targetIndex = target ? fields.indexOf(target) : -1;
   function nameKey(value: string) {
     return toFieldName(value).replaceAll('_', '');
   }
@@ -457,7 +467,10 @@ function AddFieldCard({
 
   const cleaned = toFieldName(name);
   const duplicate = taken.some((n) => n.toLowerCase() === cleaned);
-  const problem = target ? null : !cleaned ? 'Give the field a name.' : duplicate ? 'The template already has a field with this name.' : null;
+  let problem = null;
+  if (target && targetIndex < 0) problem = 'The field changed. Choose where to apply this region again.';
+  if (!target && !cleaned) problem = 'Give the field a name.';
+  if (!target && duplicate) problem = 'The template already has a field with this name.';
 
   // Under the picked text, flipped to the left edge when the text is on the right half so the card stays on the page.
   const onRight = draft.box.x > 0.5;
@@ -471,62 +484,64 @@ function AddFieldCard({
       className="pdf-card"
       style={style}
       data-testid="pdf-add-card"
-      aria-label="Add as a new field"
+      aria-label="Use this region"
       onSubmit={(e) => {
         e.preventDefault();
+        if (problem) return;
         const source = { page, ...draft.box };
-        if (target) onUpdateRegion(Number(target), source);
-        else if (!problem) onAdd({ name: cleaned, type, notes: notes.trim() || null, source });
+        if (target) onUpdateRegion(targetIndex, source);
+        else onAdd({ name: cleaned, type, notes: notes.trim() || null, source });
       }}
     >
       <div className="pdf-card-title">Use this region</div>
-      {sample ? <div className="pdf-card-sample" data-testid="pdf-add-sample">{sample}</div> : <div className="pdf-card-sample muted">The area you drew</div>}
-      {taken.length > 0 && (
+      {sample ? <div className="pdf-card-sample" data-testid="pdf-add-sample">{sample}</div> : <div className="pdf-card-sample muted">{draft.suggestion ? 'Suggested region' : 'The area you drew'}</div>}
+      {(taken.length > 0 || target) && (
         <label className="pdf-card-field">
           <span className="pdf-picker-label">Apply to</span>
-          <select value={target} onChange={(e) => setTarget(e.target.value)}>
+          <select value={target ? targetIndex : ''} onChange={(e) => setTarget(e.target.value === '' ? null : fields[Number(e.target.value)])}>
             <option value="">New field</option>
+            {target && targetIndex < 0 && <option value={-1} disabled>Choose a field again</option>}
             {taken.map((field, index) => <option key={index} value={index}>{field || `Unnamed field ${index + 1}`}</option>)}
           </select>
         </label>
       )}
       {!target && (
-      <>
-      {related.length > 0 && (
-        <label className="pdf-card-field">
-          <span className="pdf-picker-label">Related template fields</span>
-          <select value={related.some((field) => field.name === name) ? name : ''} onChange={(e) => {
-            const suggestion = related.find((field) => field.name === e.target.value);
-            if (suggestion) {
-              setName(suggestion.name);
-              setType(suggestion.type);
-            }
-          }}>
-            <option value="" disabled>Choose a suggestion</option>
-            {related.map((field) => <option key={field.name} value={field.name}>{field.name}</option>)}
-          </select>
-        </label>
+        <>
+          {related.length > 0 && (
+            <label className="pdf-card-field">
+              <span className="pdf-picker-label">Related template fields</span>
+              <select value={related.some((field) => field.name === name) ? name : ''} onChange={(e) => {
+                const suggestion = related.find((field) => field.name === e.target.value);
+                if (suggestion) {
+                  setName(suggestion.name);
+                  setType(suggestion.type);
+                }
+              }}>
+                <option value="" disabled>Choose a suggestion</option>
+                {related.map((field) => <option key={field.name} value={field.name}>{field.name}</option>)}
+              </select>
+            </label>
+          )}
+          <label className="pdf-card-field">
+            <span className="pdf-picker-label">Field name</span>
+            <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} aria-label="Field name" autoFocus />
+          </label>
+          <label className="pdf-card-field">
+            <span className="pdf-picker-label">Type</span>
+            <select value={type} onChange={(e) => setType(e.target.value as FieldType)} aria-label="Field type">
+              {PICKER_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="pdf-card-field">
+            <span className="pdf-picker-label">Where to find it (helps the reader)</span>
+            <input className="text-input" value={notes} onChange={(e) => setNotes(e.target.value)} aria-label="Where to find it" />
+          </label>
+        </>
       )}
-      <label className="pdf-card-field">
-        <span className="pdf-picker-label">Field name</span>
-        <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} aria-label="Field name" autoFocus />
-      </label>
-      <label className="pdf-card-field">
-        <span className="pdf-picker-label">Type</span>
-        <select value={type} onChange={(e) => setType(e.target.value as FieldType)} aria-label="Field type">
-          {PICKER_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      </>
-      )}
-      <label className="pdf-card-field">
-        <span className="pdf-picker-label">Where to find it (helps the reader)</span>
-        <input className="text-input" value={notes} onChange={(e) => setNotes(e.target.value)} aria-label="Where to find it" />
-      </label>
       {problem && (
         <div className="pdf-card-problem" role="alert">
           {problem}
