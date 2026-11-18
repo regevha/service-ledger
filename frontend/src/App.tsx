@@ -311,7 +311,6 @@ export default function App() {
             instrumentsLoading={instrumentsLoading}
             onOpenReport={(reportId) => navigate('reports', reportId)}
             onOpenInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
-            onNewReport={() => selectView('new')}
             onOpenReports={() => selectView('reports')}
             onOpenInstruments={() => selectView('instruments')}
             onAsk={(filters) => {

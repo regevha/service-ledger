@@ -18,8 +18,8 @@ function formatDay(iso: string): string {
 }
 
 /**
- * The Home screen, where the app opens: a box to ask about the reports in plain words, a place to drop new
- * reports (anywhere on the page), four figures that say how the work stands, and the two short lists a person
+ * The Home screen, where the app opens: a place to drop new reports (anywhere on the page), a box to ask
+ * about reports in plain words, four figures that say how the work stands, and the two short lists a person
  * acts on, the reports waiting for a check and the instruments whose maintenance is overdue or close.
  * Everything here is read from the same data the other screens show; nothing is stored on this screen.
  */
@@ -28,7 +28,6 @@ export function HomeScreen({
   instrumentsLoading,
   onOpenReport,
   onOpenInstrument,
-  onNewReport,
   onOpenReports,
   onOpenInstruments,
   onAsk,
@@ -38,7 +37,6 @@ export function HomeScreen({
   instrumentsLoading: boolean;
   onOpenReport: (reportId: string) => void;
   onOpenInstrument: (instrumentId: string) => void;
-  onNewReport: () => void;
   onOpenReports: () => void;
   onOpenInstruments: () => void;
   /** The filters a typed request turned into; the app opens Reports with them. */
@@ -118,16 +116,6 @@ export function HomeScreen({
 
       {error && <LoadError message={error} onRetry={() => void load()} />}
 
-      <div className="home-ask" data-testid="home-ask">
-        <AskReportsBox
-          onApply={onAsk}
-          showUnderstood={false}
-          label="Ask about your reports"
-          placeholder="PM reports on the FACSAria III in September"
-          submitLabel="Show reports"
-        />
-      </div>
-
       <div
         className={`home-add${dragging ? ' dragging' : ''}`}
         data-testid="home-drop"
@@ -137,17 +125,12 @@ export function HomeScreen({
           +
         </span>
         <span className="home-add-text">
-          <strong>Drop service reports anywhere on this page</strong>
-          <small>PDFs or photos, one or many. Each one becomes its own report that you confirm.</small>
+          <strong>Upload service reports</strong>
+          <small>Choose PDFs or page photos, or drop them anywhere on this page.</small>
         </span>
-        <div className="home-add-actions">
-          <button type="button" className="btn" data-testid="home-choose-files" onClick={() => fileInput.current?.click()}>
-            Choose files
-          </button>
-          <button type="button" className="btn primary" data-testid="home-new-report" onClick={onNewReport}>
-            Add one by hand
-          </button>
-        </div>
+        <button type="button" className="btn primary" data-testid="home-choose-files" onClick={() => fileInput.current?.click()}>
+          Choose files
+        </button>
         <input
           ref={fileInput}
           type="file"
@@ -161,6 +144,16 @@ export function HomeScreen({
             e.target.value = '';
             if (files.length > 0) onFiles(files);
           }}
+        />
+      </div>
+
+      <div className="home-ask" data-testid="home-ask">
+        <AskReportsBox
+          onApply={onAsk}
+          showUnderstood={false}
+          label="Ask about your reports"
+          placeholder="Maintenance reports for the FACSAria III in September"
+          submitLabel="Show reports"
         />
       </div>
 

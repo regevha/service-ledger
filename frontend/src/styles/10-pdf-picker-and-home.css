@@ -666,7 +666,7 @@ button.ask-chip {
   cursor: pointer;
 }
 
-/* Home: the ask box, the drop box with its two buttons, and a note under each figure. */
+/* Home: the upload box, the ask box, and a note under each figure. */
 .home-ask {
   max-width: 100%;
 }
@@ -688,11 +688,6 @@ button.ask-chip {
   gap: 2px;
   flex: 1 1 260px;
   min-width: 0;
-}
-.home-add-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 .home-tile-note {
   color: var(--text-faint);
@@ -829,7 +824,7 @@ button.ask-chip {
   min-height: 32px;
   font-size: 0.85rem;
 }
-/* On Home the ask box is the first thing: a roomy field, and the examples sit under it. */
+/* Home has a roomy Ask field with examples underneath. */
 .home-ask .ask-box {
   margin-bottom: 0;
 }

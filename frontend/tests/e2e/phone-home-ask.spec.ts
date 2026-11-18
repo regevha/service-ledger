@@ -29,13 +29,13 @@ test.describe('Home and the ask box on a phone', { tag: '@phone' }, () => {
     await noSideScroll(page);
     // The Ask box is not on the page on a phone: the magnifier in the top bar opens it.
     await expect(page.getByTestId('ask-input')).toHaveCount(0);
-    for (const control of [page.getByTestId('ask-open'), page.getByTestId('home-choose-files'), page.getByTestId('home-new-report')]) {
+    for (const control of [page.getByTestId('ask-open'), page.getByTestId('home-choose-files'), page.getByTestId('tab-new')]) {
       const box = (await control.boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(43.5);
     }
   });
 
-  test('Home: tapping Review opens that report, and Add one by hand opens New report', async ({ page, request }) => {
+  test('Home: tapping Review opens that report, and the New report tab opens intake', async ({ page, request }) => {
     await seedReport(request, { model: 'LSRFortessa', reportType: 'repair', technician: `ph-tap-${Date.now()}` });
     await page.goto('/#/home');
     await page.getByTestId('home-waiting-row').first().getByRole('button', { name: 'Review' }).tap();
@@ -43,7 +43,7 @@ test.describe('Home and the ask box on a phone', { tag: '@phone' }, () => {
 
     await page.getByTestId('masthead-home').tap(); // the name in the top bar leads back to Home
     await expect(page.getByTestId('home-screen')).toBeVisible();
-    await page.getByTestId('home-new-report').tap();
+    await page.getByTestId('tab-new').tap();
     await expect(page.getByTestId('tab-new')).toHaveAttribute('aria-current', 'page');
   });
 
