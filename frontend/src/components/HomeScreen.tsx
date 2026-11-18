@@ -4,6 +4,7 @@ import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { dueText, finalizedNote, instrumentLabel, keptAsReadPercent, maintenanceItems, MIN_FIELDS_FOR_PERCENT, waitingAge, waitingReports } from '../home';
 import { AskReportsBox } from './AskReportsBox';
 import { LoadError } from './LoadError';
+import { formatIsoDay } from '../isoDay';
 
 // How many waiting reports and upcoming services the lists show before pointing at the full screens.
 const SHOWN = 6;
@@ -14,7 +15,7 @@ interface Loaded {
 }
 
 function formatDay(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return formatIsoDay(iso);
 }
 
 /**
@@ -26,6 +27,7 @@ function formatDay(iso: string): string {
 export function HomeScreen({
   instruments,
   instrumentsLoading,
+  instrumentsError,
   onOpenReport,
   onOpenInstrument,
   onNewReport,
@@ -36,6 +38,7 @@ export function HomeScreen({
 }: {
   instruments: Instrument[];
   instrumentsLoading: boolean;
+  instrumentsError: string | null;
   onOpenReport: (reportId: string) => void;
   onOpenInstrument: (instrumentId: string) => void;
   onNewReport: () => void;
@@ -137,15 +140,15 @@ export function HomeScreen({
           +
         </span>
         <span className="home-add-text">
-          <strong>Drop service reports anywhere on this page</strong>
-          <small>PDFs or photos, one or many. Each one becomes its own report that you confirm.</small>
+          <strong>Add service reports</strong>
+          <small>Choose PDFs or photos, or drop them anywhere on this page. Review each report before finalizing.</small>
         </span>
         <div className="home-add-actions">
-          <button type="button" className="btn" data-testid="home-choose-files" onClick={() => fileInput.current?.click()}>
+          <button type="button" className="btn primary" data-testid="home-choose-files" onClick={() => fileInput.current?.click()}>
             Choose files
           </button>
-          <button type="button" className="btn primary" data-testid="home-new-report" onClick={onNewReport}>
-            Add one by hand
+          <button type="button" className="btn" data-testid="home-new-report" onClick={onNewReport}>
+            Start a report
           </button>
         </div>
         <input
@@ -167,21 +170,23 @@ export function HomeScreen({
       <div className="home-tiles" aria-label="Summary">
         <div className={`stat-tile home-tile${data && data.summary.waiting.count > 0 ? ' attention' : ''}`} data-testid="home-tile-review">
           <span className="stat-value">{data ? data.summary.waiting.count : '–'}</span>
-          <span className="stat-label">Waiting for you</span>
+          <span className="stat-label">Reports awaiting review</span>
           <span className="home-tile-note">
             {data === null
               ? ' '
               : data.summary.waiting.count === 0
                 ? 'Nothing is waiting for review'
-                : `Oldest has waited ${waitingAge(data.summary.waiting.oldest_created_at, today) ?? 'a while'}`}
+                : `Oldest uploaded: ${waitingAge(data.summary.waiting.oldest_created_at, today) === 'today' ? 'today' : `${waitingAge(data.summary.waiting.oldest_created_at, today) ?? 'a while'} ago`}`}
           </span>
         </div>
-        <div className={`stat-tile home-tile${overdue > 0 ? ' attention' : ''}`} data-testid="home-tile-overdue">
-          <span className="stat-value">{instrumentsLoading ? '–' : overdue}</span>
+        <div className={`stat-tile home-tile${!instrumentsError && overdue > 0 ? ' attention' : ''}`} data-testid="home-tile-overdue">
+          <span className="stat-value">{instrumentsLoading || instrumentsError ? '–' : overdue}</span>
           <span className="stat-label">Instruments overdue for maintenance</span>
           <span className="home-tile-note">
             {instrumentsLoading
               ? ' '
+              : instrumentsError
+                ? 'Could not load instruments'
               : instruments.length === 0
                 ? 'Add instruments to track their service'
                 : overdue > 0
@@ -266,12 +271,13 @@ export function HomeScreen({
             </button>
           </div>
           {instrumentsLoading && <div className="home-empty">Loading…</div>}
-          {!instrumentsLoading && maintenance.length === 0 && (
+          {!instrumentsLoading && instrumentsError && <div className="home-empty">Could not load instruments. Open Instruments to try again.</div>}
+          {!instrumentsLoading && !instrumentsError && maintenance.length === 0 && (
             <div className="home-empty" data-testid="home-maintenance-empty">
-              No instrument is overdue or due soon.
+              {instruments.length === 0 ? 'Add instruments to track upcoming maintenance.' : 'No instruments are overdue or due soon.'}
             </div>
           )}
-          {maintenance.length > 0 && (
+          {!instrumentsError && maintenance.length > 0 && (
             <ul className="home-list" data-testid="home-maintenance">
               {maintenance.slice(0, SHOWN).map((m) => (
                 <li key={m.id}>
@@ -286,7 +292,7 @@ export function HomeScreen({
               ))}
             </ul>
           )}
-          {maintenance.length > SHOWN && (
+          {!instrumentsError && maintenance.length > SHOWN && (
             <div className="home-more">
               {maintenance.length - SHOWN} more.{' '}
               <button type="button" className="link-button" onClick={onOpenInstruments}>

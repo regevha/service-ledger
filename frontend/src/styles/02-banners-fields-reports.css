@@ -209,6 +209,7 @@
 .object-array-row > * {
   min-width: 0;
 }
+.leaf-readonly { display: block; overflow-wrap: anywhere; white-space: normal; padding: 0.5rem; }
 .object-array-row input,
 .object-array-row textarea {
   min-width: 0;

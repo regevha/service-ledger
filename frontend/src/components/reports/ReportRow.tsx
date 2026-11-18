@@ -1,6 +1,7 @@
 import type { ReportListItem } from '../../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../../labels';
 import { isUnread } from './grouping';
+import { formatIsoDay } from '../../isoDay';
 
 /** One report in the list: instrument, type, lab manager, date, status and the matching excerpt of a search. */
 export function ReportRow({ r, onOpen }: { r: ReportListItem; onOpen: () => void }) {
@@ -16,8 +17,8 @@ export function ReportRow({ r, onOpen }: { r: ReportListItem; onOpen: () => void
       <span data-label="Report type">{r.report_type ? REPORT_TYPE_LABEL[r.report_type] : '—'}</span>
       <span data-label="Lab manager" data-empty={r.technician_name ? undefined : ''}>{r.technician_name ?? '—'}</span>
       <span data-label="Report date">
-        {r.report_date ??
-          (isUnread(r) ? <span className="muted">uploaded {r.created_at.slice(0, 10)}</span> : '—')}
+        {r.report_date ? formatIsoDay(r.report_date) :
+          (isUnread(r) ? <span className="muted">uploaded {formatIsoDay(r.created_at.slice(0, 10))}</span> : '—')}
       </span>
       <span data-label="Status">
         <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>

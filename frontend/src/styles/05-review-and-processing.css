@@ -305,7 +305,7 @@
   color: var(--text-muted);
 }
 
-/* ---------- Date input (always YYYY-MM-DD) ---------- */
+/* ---------- Date input ---------- */
 
 .date-input {
   position: relative;

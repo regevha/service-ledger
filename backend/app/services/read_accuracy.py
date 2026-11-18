@@ -44,7 +44,7 @@ def _band(confidence: object) -> str | None:
     return name
 
 
-def _latest_reads(db: Session, report_ids: list[uuid.UUID]) -> dict[uuid.UUID, models.ExtractionJob]:
+def _latest_reads(db: Session, report_ids: list[uuid.UUID], kind: models.ExtractionJobKind = models.ExtractionJobKind.extract) -> dict[uuid.UUID, models.ExtractionJob]:
     """The latest succeeded extract job of each report (the one whose reading became `original_fields`)."""
     if not report_ids:
         return {}
@@ -53,7 +53,7 @@ def _latest_reads(db: Session, report_ids: list[uuid.UUID]) -> dict[uuid.UUID, m
         .join(models.ExtractionJob, models.ExtractionJob.attachment_id == models.Attachment.id)
         .where(
             models.Attachment.report_id.in_(report_ids),
-            models.ExtractionJob.kind == models.ExtractionJobKind.extract,
+            models.ExtractionJob.kind == kind,
             models.ExtractionJob.status == models.ExtractionJobStatus.succeeded,
         )
         .order_by(models.ExtractionJob.completed_at.asc())
@@ -149,10 +149,30 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
     by_kind: dict[str, dict] = {"structured": {"fields": 0, "unchanged": 0}, "free_text": {"fields": 0, "unchanged": 0}}
     from_reread = 0
     latest = _latest_reads(db, [r.id for r in rows])
+    classification_counts = {"automatic_kept": 0, "needed_attention": 0, "unknown": 0}
+    decisions = []
     tr = {"accepted": 0, "unchanged": 0}
     tr_edits: list[schemas.TranslationEditOut] = []
 
     for report in rows:
+        history = report.classification_history or []
+        result = history[-1] if history else None
+        if not isinstance(result, dict) or not report.template:
+            classification_counts["unknown"] += 1
+        else:
+            final_type = report.template.report_type.value
+            changed = result.get("model_type") != final_type
+            required = result.get("type_choice_required")
+            if required is None or not result.get("model_type"):
+                classification_counts["unknown"] += 1
+            elif required or changed:
+                classification_counts["needed_attention"] += 1
+            else:
+                classification_counts["automatic_kept"] += 1
+            decisions.append({"report_id": str(report.id), "model_type": result.get("model_type"),
+                              "confirmed_type": final_type, "type_choice_required": required,
+                              "changed": changed, "confirmation": result.get("confirmation"),
+                              "attempts": history})
         original = report.original_fields or {}
         kept = report.extracted_fields or {}
         translation = _translation_of(report)
@@ -248,6 +268,7 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
     return schemas.ReadAccuracyOut(
         days=days,
         goal=GOAL,
+        classification=schemas.ClassificationAccuracyOut(**classification_counts, decisions=decisions),
         fields=total["fields"],
         unchanged=total["unchanged"],
         reports=total["reports"],

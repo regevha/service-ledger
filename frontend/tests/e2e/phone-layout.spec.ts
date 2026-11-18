@@ -83,10 +83,10 @@ test.describe('a finalized report on a phone', { tag: '@phone' }, () => {
     await page.goto(`/#/reports/${reportId}`);
     await expect(page.locator('[data-testid="field-list"][data-read-only="true"]').first()).toBeVisible({ timeout: TIMEOUT.ui });
 
-    // The browser's own date box stays invisible, so only the app's YYYY-MM-DD text shows.
+    // The browser's own date box stays invisible, so only the app's day-first text shows.
     const native = page.locator('.date-input-native').first();
     expect(await native.evaluate((el) => getComputedStyle(el).opacity)).toBe('0');
-    await expect(page.locator('.date-input input[type="text"]').first()).toHaveValue('2026-09-08');
+    await expect(page.locator('.date-input input[type="text"]').first()).toHaveValue('08/09/2026');
 
     // Nothing is cut off: the box is as tall as its text.
     const box = page.locator('[data-testid="field-list"][data-read-only="true"] textarea').first();

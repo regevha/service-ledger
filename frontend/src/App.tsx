@@ -75,11 +75,13 @@ export default function App() {
   const [intakeKey, setIntakeKey] = useState(0);
   // Once the several-files screen has been opened it stays mounted (hidden), so its list survives checking a report.
   const [batchOpened, setBatchOpened] = useState(false);
+  const [batchCount, setBatchCount] = useState(0);
   // Files dropped on Home, waiting for the several-files screen to take them (a new nonce is a new drop).
-  const [incomingFiles, setIncomingFiles] = useState<{ files: File[]; nonce: number } | null>(null);
-  const openBatchWith = (files: File[]) => {
-    setIncomingFiles((prev) => ({ files, nonce: (prev?.nonce ?? 0) + 1 }));
-    navigate('batch');
+  const [incomingFiles, setIncomingFiles] = useState<{ files: File[]; nonce: number; technician?: string } | null>(null);
+  const openBatchWith = (files: File[], technician?: string) => {
+    setIncomingFiles((prev) => ({ files, technician, nonce: (prev?.nonce ?? 0) + 1 }));
+    setBatchOpened(true);
+    navigate('new');
   };
   // Filters a plain-words request on Home turned into, waiting for the Reports screen to start with them.
   const [homeFilters, setHomeFilters] = useState<ReportFilters | null>(null);
@@ -292,8 +294,8 @@ export default function App() {
                 setTemplateRequest(request);
                 navigate('templates', '', { force: true });
               }}
-              onOpenBatch={() => navigate('batch')}
               onBatchFiles={openBatchWith}
+              batchActive={batchCount > 0}
               onOpenReport={(reportId) => navigate('reports', reportId)}
               onViewInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
               onCancel={() => setIntakeKey((k) => k + 1)}
@@ -301,14 +303,15 @@ export default function App() {
           </div>
         )}
         {(view === 'batch' || batchOpened) && (
-          <div hidden={view !== 'batch'}>
-            <BatchIntake active={view === 'batch'} incoming={incomingFiles} onOpenReport={(reportId) => navigate('reports', reportId)} onBack={() => navigate('new')} />
+          <div hidden={view !== 'batch' && view !== 'new'}>
+            <BatchIntake active={view === 'batch' || view === 'new'} incoming={incomingFiles} embedded={view === 'new'} onCountChange={setBatchCount} onOpenReport={(reportId) => navigate('reports', reportId)} onBack={() => navigate('new')} />
           </div>
         )}
         {view === 'home' && (
           <HomeScreen
             instruments={instruments}
             instrumentsLoading={instrumentsLoading}
+            instrumentsError={instrumentsError}
             onOpenReport={(reportId) => navigate('reports', reportId)}
             onOpenInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
             onNewReport={() => selectView('new')}

@@ -51,6 +51,7 @@ export function IntakeFlow({
   onCreateTemplate,
   onOpenBatch,
   onBatchFiles,
+  batchActive = false,
   templateCreated,
 }: {
   instruments: Instrument[];
@@ -71,7 +72,8 @@ export function IntakeFlow({
   /** Opens the several-files screen; without it the intake screen shows no link to it. */
   onOpenBatch?: () => void;
   /** Two or more PDFs were chosen or dropped on the intake screen: open the several-files screen with them. */
-  onBatchFiles?: (files: File[]) => void;
+  onBatchFiles?: (files: File[], technician?: string) => void;
+  batchActive?: boolean;
   /** Set when a template was just saved for a request made here; `nonce` changes on every save. */
   templateCreated?: { template: ReportTemplate; nonce: number } | null;
 }) {
@@ -209,7 +211,8 @@ export function IntakeFlow({
           setFiles={setFiles}
           onStart={() => void handleStart()}
           onOpenBatch={onOpenBatch}
-          onBatchFiles={onBatchFiles}
+          onBatchFiles={onBatchFiles ? (chosen) => onBatchFiles(chosen, technicianName) : undefined}
+          batchActive={batchActive}
         />
       )}
 

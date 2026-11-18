@@ -136,7 +136,8 @@ export function ReportFilterBar<F extends BarFilters>({
 
   return (
     <>
-      <div className="filters-summary">{toggle}</div>
+      <div className="filters-summary">{toggle}{hasFilters && <ClearFiltersButton onClick={clearAll} />}</div>
+      {summary.length > 0 && <p className="filters-active" aria-live="polite">Active: {summary.join(' · ')}</p>}
       <SavedFilters
         filters={filters as ReportFilters}
         onApply={(applied) => {
@@ -189,7 +190,6 @@ export function ReportFilterBar<F extends BarFilters>({
 
         {extra}
 
-        {hasFilters && <ClearFiltersButton onClick={clearAll} />}
       </div>
 
       {searchTooShort && <div className="muted search-hint">Type at least {MIN_SEARCH_LENGTH} characters to search.</div>}

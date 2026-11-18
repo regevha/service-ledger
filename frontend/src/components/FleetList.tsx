@@ -184,7 +184,7 @@ export function FleetList({
         </button>
       )}
       <div className="fleet-legend">
-        <span>Bar: labor hours</span>
+        <span>Bar: repair / maintenance labor hours</span>
       </div>
     </aside>
   );

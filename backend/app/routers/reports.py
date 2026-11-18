@@ -374,6 +374,10 @@ def confirm_template(report_id: uuid.UUID, payload: schemas.TemplateConfirmation
         raise HTTPException(422, "instrument_id or template_id does not exist")
 
     template_changed = report.template_id != payload.template_id
+    history = list(report.classification_history or [])
+    if history:
+        history[-1] = {**history[-1], "confirmed_type": template.report_type.value, "confirmation": "manual"}
+        report.classification_history = history
     report.instrument_id = payload.instrument_id
     report.template_id = payload.template_id
     report.status = models.ReportStatus.classified

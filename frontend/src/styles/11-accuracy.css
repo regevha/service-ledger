@@ -134,6 +134,9 @@
   text-align: left;
   font-family: var(--font-ui);
 }
+.acc-section { min-width: 0; }
+.acc-table { table-layout: fixed; width: 100%; }
+.acc-table td:not(.num) { overflow-wrap: anywhere; white-space: normal; }
 .acc-table th.num,
 .acc-table td.num {
   text-align: right;

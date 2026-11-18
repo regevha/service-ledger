@@ -37,21 +37,21 @@ test('the extracted service date is shown on review, can be corrected, and is sa
   const dateInput = page.locator('#review-report-date');
   await expect(dateInput).toBeVisible({ timeout: TIMEOUT.flow });
   // Stub extraction always reads some date within the past year.
-  await expect(dateInput).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
+  await expect(dateInput).toHaveValue(/^\d{2}\/\d{2}\/\d{4}$/);
   // The suite runs without an API key, so the badge says "placeholder" rather
   // than showing a percentage that nothing measured, and a notice says why.
   await expect(page.locator('.field', { has: dateInput }).locator('.badge')).toContainText('placeholder');
   await expect(page.locator('#placeholder-notice')).toBeVisible();
 
-  await dateInput.fill('2025-03-14');
+  await dateInput.fill('14/03/2025');
   await finalizeFromReview(page);
   await expect(page.locator('.success-panel')).toBeVisible({ timeout: TIMEOUT.ui });
 
   // The corrected date is what's stored — and the date filter finds it.
   await page.getByTestId('tab-reports').click();
-  await page.locator('input[aria-label="From date"]').fill('2025-03-14');
-  await page.locator('input[aria-label="To date"]').fill('2025-03-14');
+  await page.locator('input[aria-label="From date"]').fill('14/03/2025');
+  await page.locator('input[aria-label="To date"]').fill('14/03/2025');
   const row = page.getByTestId('report-row').filter({ hasText: technician });
   await expect(row).toBeVisible();
-  await expect(row).toContainText('2025-03-14');
+  await expect(row).toContainText('14/03/2025');
 });

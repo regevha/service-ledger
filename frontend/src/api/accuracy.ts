@@ -73,6 +73,7 @@ export interface TranslationEdit {
 export interface ReadAccuracy {
   days: number | null;
   goal: number;
+  classification: { automatic_kept: number; needed_attention: number; unknown: number; decisions: { report_id: string; model_type: string | null; confirmed_type: string; type_choice_required: boolean | null; changed: boolean; confirmation: string }[] };
   fields: number;
   unchanged: number;
   reports: number;

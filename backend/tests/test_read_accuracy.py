@@ -53,6 +53,31 @@ def test_empty_database(client):
     assert body["weeks"] == [] and body["corrections"] == []
 
 
+def test_classification_is_separate_from_fields(client):
+    with TestSessionLocal() as db:
+        template = _template(db)
+        report = _finalized(db, {"a": "1"}, {"a": "1"}, template=template)
+        report.classification_history = [{"model_type": "installation_upgrade", "type_choice_required": True, "confirmed_type": "repair", "confirmation": "manual"}]
+        attachment = models.Attachment(report_id=report.id, file_path="classification.pdf", file_type="application/pdf")
+        db.add(attachment)
+        db.flush()
+        db.add(models.ExtractionJob(
+            attachment_id=attachment.id, kind=models.ExtractionJobKind.classify,
+            status=models.ExtractionJobStatus.succeeded, completed_at=_now(),
+            classification={"resolved_instrument_id": None, "resolved_template_id": None},
+        ))
+        _finalized(db, {"a": "1"}, {"a": "1"}, template=template)
+        db.commit()
+    body = client.get("/analytics/read-accuracy").json()
+    assert (body["unchanged"], body["fields"]) == (2, 2)
+    classification = body["classification"]
+    assert (classification["automatic_kept"], classification["needed_attention"], classification["unknown"]) == (0, 1, 1)
+    decision = classification["decisions"][0]
+    assert decision["model_type"] == "installation_upgrade"
+    assert decision["confirmed_type"] == "repair"
+    assert decision["type_choice_required"] is True and decision["changed"] is True
+
+
 def test_counts_fields_reports_and_lists_corrections(client):
     with TestSessionLocal() as db:
         t = _template(db)

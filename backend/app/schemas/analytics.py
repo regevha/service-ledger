@@ -302,12 +302,20 @@ class TranslationAccuracyOut(BaseModel):
     edits: list[TranslationEditOut]
 
 
+class ClassificationAccuracyOut(BaseModel):
+    automatic_kept: int
+    needed_attention: int
+    unknown: int
+    decisions: list[dict] = []
+
+
 class ReadAccuracyOut(BaseModel):
     """How much of the reading people approved without an edit, over reports finalized in the last `days` days
     (null: all of them). `goal` is the share of fields to reach (0.99)."""
 
     days: int | None
     goal: float
+    classification: ClassificationAccuracyOut
     fields: int
     unchanged: int
     reports: int

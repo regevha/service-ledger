@@ -233,6 +233,7 @@ export function ReportsListScreen({
 
       <div className="reports-layout">
       <aside className="reports-filters" aria-label="Filters">
+      <div className="reports-filters-heading"><h2>Search &amp; filters</h2><p>Ask a question or narrow the report list below.</p></div>
       <AskReportsBox
         onApply={(next) => {
           setFilters(next);

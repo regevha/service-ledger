@@ -20,15 +20,20 @@ export function BatchIntake({
   incoming,
   onOpenReport,
   onBack,
+  embedded = false,
+  onCountChange,
 }: {
   /** Whether this screen is the one showing. It stays mounted while the person checks a report, so the list is kept. */
   active: boolean;
   /** Files handed over from Home. Each new nonce adds its files to the list (nothing is read until the person starts it). */
-  incoming?: { files: File[]; nonce: number } | null;
+  incoming?: { files: File[]; nonce: number; technician?: string } | null;
   onOpenReport: (reportId: string) => void;
   onBack: () => void;
+  embedded?: boolean;
+  onCountChange?: (count: number) => void;
 }) {
   const [items, setItems] = useState<BatchItem[]>([]);
+  useEffect(() => { onCountChange?.(items.length); }, [items.length, onCountChange]);
   const [technician, setTechnician] = useState('');
   const [running, setRunning] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -44,6 +49,7 @@ export function BatchIntake({
   useEffect(() => {
     if (incoming && incoming.nonce !== handledNonce.current) {
       handledNonce.current = incoming.nonce;
+      if (incoming.technician) setTechnician((current) => current || incoming.technician || '');
       add(incoming.files);
     }
   });
@@ -118,7 +124,7 @@ export function BatchIntake({
 
   return (
     <div className="batch" data-testid="batch-screen">
-      <div className="batch-head">
+      {!embedded && <div className="batch-head">
         <div>
           <h1 className="batch-title">Several PDFs</h1>
           <p className="batch-sub">Each file is read on its own. You check and approve each one on its report screen.</p>
@@ -126,9 +132,9 @@ export function BatchIntake({
         <button type="button" className="btn" onClick={onBack}>
           Back to New report
         </button>
-      </div>
+      </div>}
 
-      <label
+      {!embedded && <label
         className="batch-drop"
         data-testid="batch-drop"
         onDragOver={(e) => e.preventDefault()}
@@ -150,7 +156,8 @@ export function BatchIntake({
             e.target.value = '';
           }}
         />
-      </label>
+      </label>}
+      {embedded && items.length > 0 && <h2 className="batch-title">Files to read</h2>}
       {problem && (
         <div className="banner banner-warn" role="status">
           {problem}

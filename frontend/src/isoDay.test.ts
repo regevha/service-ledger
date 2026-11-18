@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { isIsoDay } from './isoDay';
+import { formatIsoDay, isIsoDay, parseDisplayDay } from './isoDay';
+
+describe('day-first dates', () => {
+  it('round-trips calendar dates without timezone conversion', () => {
+    expect(formatIsoDay('2026-08-13')).toBe('13/08/2026');
+    expect(parseDisplayDay('13/08/2026')).toBe('2026-08-13');
+    expect(parseDisplayDay('29/02/2024')).toBe('2024-02-29');
+  });
+  it('rejects incomplete or impossible dates', () => {
+    for (const value of ['29/02/2025', '31/04/2026', '13/08/', '2026-08-13', '']) {
+      expect(parseDisplayDay(value)).toBeNull();
+    }
+  });
+});
 
 describe('isIsoDay', () => {
   it('accepts real calendar days', () => {

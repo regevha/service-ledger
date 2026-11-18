@@ -98,6 +98,16 @@ def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
         # status on an already-finalized report.
         _fail_job(db, job, "Report was finalized after this job was submitted — classification discarded.")
         return
+    history = list(report.classification_history or [])
+    history.append({
+        "job_id": str(job.id),
+        "model_type": result.report_type.value,
+        "confidence": result.report_type.confidence,
+        "type_choice_required": result.report_type.confidence < settings.classification_confidence_threshold,
+        "confirmed_type": None,
+        "confirmation": "automatic" if result.resolved_template_id and result.resolved_instrument_id else "pending",
+    })
+    report.classification_history = history
     if result.resolved_instrument_id and result.resolved_template_id:
         # Confident on both — resolve automatically and move straight toward
         # extraction (§4: "the system resolves the matching template

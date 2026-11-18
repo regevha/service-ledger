@@ -1,5 +1,7 @@
 # ServiceLedger hardening plan (docs/PLAN.md)
 
+**Work in progress:** See [the 2026-11-18 working snapshot](WIP-2026-11-18.md) for separately prepared work, outstanding checks and next steps. It does not change the formal statuses in this plan.
+
 Baseline: `main` @ 97be7fc (2026-11-12). Audit baseline: `main` @ 560f3fe (2026-11-14, after PR #310). Sources: the user's remediation plan (phases 1-4, "closed when" checks), the user's final decisions of 2026-11-12, the project-manager's status audit, re-checked against the code by the architect, and the evidence audit of 2026-11-14 (column "Audit (2026-11-14)" in every table; see "What is really left").
 
 ## Goal

@@ -397,7 +397,7 @@ export function AnalyticsScreen() {
               <div className="stat-row">
                 <div className="stat-tile">
                   <span className="stat-value">{formatHours(data.total_labor_hours)}</span>
-                  <span className="stat-label">Total labor hours</span>
+                  <span className="stat-label">Repair / maintenance labor hours</span>
                 </div>
                 <div className="stat-tile">
                   <span className="stat-value">{Number(totalUnitsReplaced.toFixed(2))}</span>

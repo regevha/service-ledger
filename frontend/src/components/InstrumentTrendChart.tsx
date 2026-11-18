@@ -102,9 +102,7 @@ export function formatValue(value: number, unit: string | null): string {
 
 export function formatDate(iso: string | null): string {
   if (!iso) return '—';
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return formatIsoDay(iso);
 }
 
 /**
@@ -483,3 +481,4 @@ export function InstrumentTrendSection({
     </div>
   );
 }
+import { formatIsoDay } from '../isoDay';

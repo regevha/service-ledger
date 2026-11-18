@@ -90,20 +90,20 @@ test('the date range keeps the visits inside it, the end dates included', async 
   await page.getByLabel('Lab manager', { exact: true }).fill(mine);
   await expect(countText(page)).toContainText('2 reports');
 
-  await page.getByLabel('From date').fill('2025-02-01');
+  await page.getByLabel('From date').fill('01/02/2025');
   await expect(link(page)).toHaveAttribute('href', /date_from=2025-02-01/);
   await expect(countText(page)).toContainText('1 report ');
   expect((await downloadCsv(page, link(page))).rows.map((r) => r.id)).toEqual([mar.reportId]);
 
   await page.getByLabel('From date').fill('');
-  await page.getByLabel('To date').fill('2025-02-28');
+  await page.getByLabel('To date').fill('28/02/2025');
   await expect(link(page)).toHaveAttribute('href', /date_to=2025-02-28/);
   await expect(link(page)).not.toHaveAttribute('href', /date_from/);
   expect((await downloadCsv(page, link(page))).rows.map((r) => r.id)).toEqual([jan.reportId]);
 
   // A range that starts and ends on the two visit dates holds both.
-  await page.getByLabel('From date').fill('2025-01-10');
-  await page.getByLabel('To date').fill('2025-03-10');
+  await page.getByLabel('From date').fill('10/01/2025');
+  await page.getByLabel('To date').fill('10/03/2025');
   await expect(link(page)).toHaveAttribute('href', /date_from=2025-01-10.*date_to=2025-03-10|date_to=2025-03-10.*date_from=2025-01-10/);
   expect((await downloadCsv(page, link(page))).rows.map((r) => r.id).sort()).toEqual([jan.reportId, mar.reportId].sort());
 });

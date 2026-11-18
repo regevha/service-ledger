@@ -31,7 +31,7 @@ function describeDuplicate(d: ReportDuplicate): string {
   const article = /^[aeiou]/i.test(d.status) ? 'an' : 'a';
   const type = d.report_type ? `${REPORT_TYPE_LABEL[d.report_type].toLowerCase()} ` : '';
   const who = d.technician_name ? ` by ${d.technician_name}` : '';
-  return `${article} ${d.status} ${type}report${who} from ${d.report_date ?? d.created_at.slice(0, 10)}`;
+  return `${article} ${d.status} ${type}report${who} from ${formatIsoDay(d.report_date ?? d.created_at.slice(0, 10))}`;
 }
 
 /**
@@ -287,7 +287,7 @@ export function ReportDetailScreen({
           title={`${REPORT_TYPE_LABEL[template.report_type]}${instrument ? ` · ${instrument.name}` : ''}`}
           titleMeta={
             <>
-              {`${report.report_date ?? 'No report date'} · ${STATUS_LABEL[report.status]}`}
+              {`${report.report_date ? formatIsoDay(report.report_date) : 'No report date'} · ${STATUS_LABEL[report.status]}`}
               {instrument && phone && (
                 <>
                   {' · '}
@@ -330,3 +330,4 @@ export function ReportDetailScreen({
     </div>
   );
 }
+import { formatIsoDay } from '../isoDay';

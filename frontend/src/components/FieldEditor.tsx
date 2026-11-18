@@ -86,6 +86,7 @@ function NumberInput({ value, onChange, label }: { value: unknown; onChange: (v:
 
 function LeafInput({ value, type, onChange, label }: { value: unknown; type: string; onChange: (v: unknown) => void; label?: string }) {
   const outer = useContext(FieldLabelContext);
+  const readOnly = useContext(ReadOnlyContext);
   const name = label ?? outer;
   if (type === 'boolean') {
     return (
@@ -101,6 +102,7 @@ function LeafInput({ value, type, onChange, label }: { value: unknown; type: str
   if (type === 'date') {
     return <DateInput value={typeof value === 'string' ? value : ''} onChange={onChange} ariaLabel={name} />;
   }
+  if (readOnly) return <span className="leaf-readonly">{typeof value === 'string' && value ? value : '—'}</span>;
   // Part names, part numbers and lot numbers: the phone keyboard must not capitalise or "correct" them.
   return (
     <input

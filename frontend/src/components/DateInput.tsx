@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react';
-import { isIsoDay } from '../isoDay';
+import { formatIsoDay, isIsoDay, parseDisplayDay } from '../isoDay';
 
 /**
- * A date field that always reads YYYY-MM-DD, like every table in the app, whatever the browser's
- * own locale does to a native date box (mm/dd/yyyy in some, dd.mm.yyyy in others). The text can be
+ * A day-first date field, independent of the browser's locale. The text can be
  * typed or pasted; the calendar button opens the browser's own picker. A half-typed or impossible
  * date is not passed on: `onChange` only hears about a whole valid day, or '' when the box is emptied.
  */
@@ -21,19 +20,22 @@ export function DateInput({
   className?: string;
 }) {
   // What is being typed; follows `value` whenever the outside changes it.
-  const [draft, setDraft] = useState(value);
+  const [draft, setDraft] = useState(formatIsoDay(value));
   const [seen, setSeen] = useState(value);
   if (value !== seen) {
     setSeen(value);
-    setDraft(value);
+    setDraft(formatIsoDay(value));
   }
   const picker = useRef<HTMLInputElement>(null);
-  const invalid = draft !== '' && !isIsoDay(draft);
+  const invalid = draft !== '' && !parseDisplayDay(draft);
 
   function type(text: string) {
     setDraft(text);
     if (text === '') onChange('');
-    else if (isIsoDay(text)) onChange(text);
+    else {
+      const iso = parseDisplayDay(text);
+      if (iso) onChange(iso);
+    }
   }
 
   function openPicker() {
@@ -52,7 +54,7 @@ export function DateInput({
         id={id}
         type="text"
         inputMode="numeric"
-        placeholder="YYYY-MM-DD"
+        placeholder="DD/MM/YYYY"
         maxLength={10}
         aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
@@ -60,7 +62,7 @@ export function DateInput({
         onChange={(e) => type(e.target.value.trim())}
         onBlur={() => {
           // Leaving a half-typed date puts back the last good one rather than leaving text that was never used.
-          if (invalid) setDraft(value);
+          if (invalid) setDraft(formatIsoDay(value));
         }}
       />
       <button type="button" className="date-input-pick" aria-label="Open calendar" onClick={openPicker}>
@@ -78,7 +80,7 @@ export function DateInput({
         aria-hidden="true"
         value={isIsoDay(value) ? value : ''}
         onChange={(e) => {
-          if (e.target.value) type(e.target.value);
+          if (isIsoDay(e.target.value)) type(formatIsoDay(e.target.value));
         }}
       />
     </span>

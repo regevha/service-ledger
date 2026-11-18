@@ -207,25 +207,25 @@ test.describe('phone cards say what each value is', () => {
   });
 });
 
-test.describe('dates read YYYY-MM-DD everywhere', () => {
-  test('the report filters take and show ISO dates; half-typed dates are not applied', async ({ page, request }) => {
+test.describe('date inputs use day-first format', () => {
+  test('the report filters take and show day-first dates; half-typed dates are not applied', async ({ page, request }) => {
     await aReportToLookAt(request);
     await page.goto('/#/reports');
     await expect(page.getByTestId('report-row').first()).toBeVisible();
     const from = page.getByLabel('From date', { exact: true });
-    await expect(from).toHaveAttribute('placeholder', 'YYYY-MM-DD');
+    await expect(from).toHaveAttribute('placeholder', 'DD/MM/YYYY');
 
     // Typing is not applied until it is a whole, real day.
-    await from.fill('2025-03');
+    await from.fill('14/03');
     await expect(from).toHaveAttribute('aria-invalid', 'true');
-    await from.fill('2025-02-30');
+    await from.fill('30/02/2025');
     await expect(from).toHaveAttribute('aria-invalid', 'true');
     // Leaving it puts back the last good value (empty), so nothing stale is left in the box.
     await from.blur();
     await expect(from).toHaveValue('');
     await expect(from).not.toHaveAttribute('aria-invalid', 'true');
 
-    await from.fill('2090-01-01');
+    await from.fill('01/01/2090');
     await expect(from).not.toHaveAttribute('aria-invalid', 'true');
     await expect(page.getByTestId('report-row')).toHaveCount(0);
     await from.fill('');
@@ -244,15 +244,15 @@ test.describe('dates read YYYY-MM-DD everywhere', () => {
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
     });
-    await expect(box.locator('input[type="text"]')).toHaveValue('2031-04-05');
+    await expect(box.locator('input[type="text"]')).toHaveValue('05/04/2031');
     await expect(box.getByRole('button', { name: /calendar/i })).toBeVisible();
   });
 
-  test('the service date on the review screen is ISO too', async ({ page }) => {
+  test('the service date on the review screen is day-first too', async ({ page }) => {
     await page.goto('/#/new');
     await page.locator('input[type="file"]').setInputFiles({ name: 'confident-scan.pdf', mimeType: 'application/pdf', buffer: uniquePdf('%PDF-1.4 datefmt') });
     await page.click('button:has-text("Upload & classify")');
     await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
-    await expect(page.locator('#review-report-date')).toHaveAttribute('placeholder', 'YYYY-MM-DD');
+    await expect(page.locator('#review-report-date')).toHaveAttribute('placeholder', 'DD/MM/YYYY');
   });
 });

@@ -44,8 +44,8 @@ test('the filters narrow the whole Analytics page and can be cleared', async ({ 
   const basis = page.getByTestId('analytics-basis');
 
   // A date range around 2001 isolates this test's two reports.
-  await filters.getByLabel('From date').fill('2001-01-01');
-  await filters.getByLabel('To date').fill('2001-12-31');
+  await filters.getByLabel('From date').fill('01/01/2001');
+  await filters.getByLabel('To date').fill('31/12/2001');
   await expect(basis).toContainText('Based on 2 finalized reports matching the filters');
   await expect(part(repairPart)).toBeVisible();
   await expect(part(pmPart)).toBeVisible();
@@ -72,9 +72,9 @@ test('the filters narrow the whole Analytics page and can be cleared', async ({ 
   await expect(page.locator('.labor-bar', { hasText: 'FACSAria III' }).first()).toBeVisible();
 
   // Dates the wrong way round are explained instead of sent to the server.
-  await filters.getByLabel('From date').fill('2002-01-01');
+  await filters.getByLabel('From date').fill('01/01/2002');
   await expect(page.getByText('The "from" date is after the "to" date.')).toBeVisible();
-  await filters.getByLabel('From date').fill('2001-01-01');
+  await filters.getByLabel('From date').fill('01/01/2001');
   await expect(part(repairPart)).toBeVisible();
 
   // Clear filters puts everything back.
@@ -98,7 +98,7 @@ test('the model comparison follows the filters too', async ({ page, request }) =
   const filters = page.getByTestId('analytics-filters');
   const table = page.locator('#model-comparison .compare-table');
 
-  await filters.getByLabel('From date').fill('2090-01-01');
+  await filters.getByLabel('From date').fill('01/01/2090');
   await expect(page.getByText('No finalized reports match these filters.')).toBeVisible();
   // Units stay listed, every one at zero reports.
   const counts = table.locator('tbody tr td:nth-child(3)');

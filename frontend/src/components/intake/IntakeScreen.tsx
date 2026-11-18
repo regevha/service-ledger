@@ -10,6 +10,7 @@ export function IntakeScreen({
   onStart,
   onOpenBatch,
   onBatchFiles,
+  batchActive = false,
 }: {
   technicianName: string;
   setTechnicianName: (v: string) => void;
@@ -19,6 +20,7 @@ export function IntakeScreen({
   onOpenBatch?: () => void;
   /** Two or more PDFs were chosen or dropped: hand them to the batch screen. */
   onBatchFiles?: (files: File[]) => void;
+  batchActive?: boolean;
 }) {
   const file = files[0] ?? null;
   const chosenLabel = files.length > 1 ? `${files.length} photos — one report` : file?.name;
@@ -44,9 +46,9 @@ export function IntakeScreen({
         <h2 className="intake-heading">Add a service report</h2>
         {/* The button sits at the top on every screen size, so it is in view without scrolling.
             It stays disabled until a file is chosen. */}
-        <button className="btn primary intake-head-cta" disabled={!file} onClick={onStart}>
+        {!batchActive && <button className="btn primary intake-head-cta" disabled={!file} onClick={onStart}>
           Upload &amp; classify
-        </button>
+        </button>}
       </div>
 
       <label
@@ -72,9 +74,11 @@ export function IntakeScreen({
           e.preventDefault();
           setDragging(false);
           const files = Array.from(e.dataTransfer.files);
+          if (batchActive && onBatchFiles) { onBatchFiles(files); return; }
           const route = onBatchFiles ? chooseIntakeRoute(files) : null;
           if (onBatchFiles && route?.kind === 'batch') {
             setDropError(null);
+            setFiles([]);
             onBatchFiles(files);
             return;
           }
@@ -86,7 +90,7 @@ export function IntakeScreen({
       >
         <div className="icon">📄</div>
         <div className="primary">
-          {dragging ? 'Drop the file here' : file ? chosenLabel : phone ? 'Take a photo or choose a file' : 'Click to choose a scan or PDF, or drop it here'}
+          {dragging ? 'Drop the file here' : batchActive ? 'Add more files' : file ? chosenLabel : phone ? 'Take a photo or choose a file' : 'Click to choose a scan or PDF, or drop it here'}
         </div>
         {onBatchFiles && !dragging && !file && <div className="secondary">Several PDFs? Each becomes its own report.</div>}
         <input
@@ -101,6 +105,12 @@ export function IntakeScreen({
           onChange={(e) => {
             setDropError(null);
             const picked = Array.from(e.target.files ?? []);
+            if (batchActive && onBatchFiles && picked.length > 0) {
+              cameraMode.current = false;
+              onBatchFiles(picked);
+              e.target.value = '';
+              return;
+            }
             if (cameraMode.current) {
               cameraMode.current = false;
               addPhotos(picked);
@@ -109,6 +119,7 @@ export function IntakeScreen({
             }
             const route = onBatchFiles && picked.length > 1 ? chooseIntakeRoute(picked) : null;
             if (onBatchFiles && route?.kind === 'batch') {
+              setFiles([]);
               onBatchFiles(picked);
               e.target.value = '';
               return;
@@ -154,7 +165,7 @@ export function IntakeScreen({
         </div>
       )}
 
-      <div className="intake-name">
+      {!batchActive && <div className="intake-name">
         <label htmlFor="intake-name">
           Your name <span className="intake-name-optional">(optional)</span>
         </label>
@@ -166,20 +177,19 @@ export function IntakeScreen({
           value={technicianName}
           onChange={(e) => setTechnicianName(e.target.value)}
         />
-      </div>
+      </div>}
 
       <div className="intake-info">
-        <p className="intake-subheading">Upload the scan or photos. We read the instrument and visit type, then you check the details.</p>
+        <p className="intake-subheading">{batchActive ? 'Each added file becomes a separate report.' : 'Upload one PDF or several page photos per report (PNG, JPEG, GIF or WebP). Multiple PDFs become separate reports.'}</p>
         {onOpenBatch && (
           <p className="intake-batch-link">
-            Have a pile of PDFs? Drop them all here, or{' '}
+            For multiple PDFs, you can also{' '}
             <button type="button" className="link-button" data-testid="open-batch" onClick={onOpenBatch}>
               open the several-files screen
             </button>
             .
           </p>
         )}
-        <p className="hint-text">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one PDF, or several photos of the pages, per report (several PDFs: each becomes its own report); any instrument, any report type</p>
         <aside className="next-card" data-testid="intake-next-card" aria-label="What happens next">
           <div className="next-card-title">What happens next</div>
           <ol>

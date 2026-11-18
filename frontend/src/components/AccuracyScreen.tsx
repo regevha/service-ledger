@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getReadAccuracy, type ReadAccuracy } from '../api';
 import { fieldLabel } from '../fieldLabels';
+import { formatIsoDay } from '../isoDay';
 
 const PERIODS: { days: number | null; label: string }[] = [
   { days: 30, label: '30 days' },
@@ -44,7 +45,7 @@ function Bar({ share, goal }: { share: number | null; goal: number }) {
 
 function dayText(iso: string | null): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return formatIsoDay(iso);
 }
 
 /**
@@ -73,6 +74,8 @@ export function AccuracyScreen() {
   }, [days]);
 
   function choosePeriod(next: number | null) {
+    if (next === days) return;
+    setData(null);
     setError(null);
     setDays(next);
   }
@@ -94,7 +97,7 @@ export function AccuracyScreen() {
         <div>
           <h2 className="admin-title">Reading accuracy</h2>
           <p className="admin-lead">
-            How much of each new report was approved without a change to what was read. Written descriptions ignore case, spacing and punctuation;
+            How much extracted content was approved without a change to what was read. Classification is measured separately below. Written descriptions ignore case, spacing and punctuation;
             everything else must match exactly. The goal is {formatPct(goal)} of fields, so that a report only needs a check and an Approve.
           </p>
         </div>
@@ -143,7 +146,7 @@ export function AccuracyScreen() {
             </div>
             <div className="stat-tile" data-testid="acc-reports">
               <span className="stat-value">{formatPct(reportShare)}</span>
-              <span className="stat-label">Reports approved with no edit</span>
+              <span className="stat-label">Reports with no extracted field edits</span>
               <span className="home-tile-note">
                 {data.reports_untouched} of {data.reports} reports
               </span>
@@ -154,6 +157,20 @@ export function AccuracyScreen() {
               <span className="home-tile-note">{data.translations.accepted ? `${data.translations.unchanged} of ${data.translations.accepted} Hebrew reports` : 'No translated reports in this period'}</span>
             </div>
           </div>
+
+          <section className="acc-section" aria-labelledby="acc-classification-title" data-testid="acc-classification">
+            <h3 id="acc-classification-title">Classification</h3>
+            <p className="hint-text">Automatic classification kept: {data.classification.automatic_kept} of {data.classification.automatic_kept + data.classification.needed_attention} reports with a recorded result ({formatPct(pct(data.classification.automatic_kept, data.classification.automatic_kept + data.classification.needed_attention))}).</p>
+            <p className="hint-text">{data.classification.needed_attention} required a report type choice or the type changed; {data.classification.unknown} have no recorded decision. Counts use the latest attempt and final report type.</p>
+            <table className="trend-table acc-table">
+              <thead><tr><th>Report</th><th>Model type</th><th>Choice required</th><th>Final type</th><th>Changed</th></tr></thead>
+              <tbody>{data.classification.decisions.map((d) => <tr key={d.report_id}>
+                <td><a href={`#/reports/${d.report_id}`}>View report</a></td><td>{d.model_type ?? 'Unknown'}</td>
+                <td>{d.type_choice_required == null ? 'Unknown' : d.type_choice_required ? 'Yes' : 'No'}</td>
+                <td>{d.confirmed_type}</td><td>{d.changed ? 'Yes' : 'No'}</td>
+              </tr>)}</tbody>
+            </table>
+          </section>
 
           {data.from_reread > 0 && (
             <p className="hint-text" data-testid="acc-from-reread">
@@ -172,7 +189,7 @@ export function AccuracyScreen() {
                     <th scope="col" className="acc-bar-col">
                       <span className="sr-only">Bar, with the goal marked</span>
                     </th>
-                    <th scope="col" className="num">Reports with no edit</th>
+                    <th scope="col" className="num">Reports with no field edits</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -180,7 +197,7 @@ export function AccuracyScreen() {
                     const share = pct(w.unchanged, w.fields);
                     return (
                       <tr key={w.week_start}>
-                        <td>{new Date(`${w.week_start}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                        <td>{formatIsoDay(w.week_start)}</td>
                         <td className="num">
                           {formatPct(share)} <span className="acc-muted">({w.fields})</span>
                         </td>
