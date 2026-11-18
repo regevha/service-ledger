@@ -170,7 +170,7 @@ class Attachment(Base):
     # visit recorded twice. NULL for attachments that predate this column.
     content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     # The work-order number Claude read off the document at classify time, in
-    # the normalized form services/duplicates.py compares ("04587090" for
+    # the normalized form services/duplicates.py compares ("91000001" for
     # "WO-91000001"): the same visit scanned twice as two different files has
     # different bytes but the same work order. NULL until classified.
     work_order_number: Mapped[str | None] = mapped_column(String, nullable=True, index=True)

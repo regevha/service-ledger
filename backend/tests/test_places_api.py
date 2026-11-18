@@ -117,8 +117,8 @@ def test_delete_refuses_places_in_use_and_says_what(client):
 
 def test_merge_rooms_moves_instruments_and_updates_text(client):
     _unit(client, "Q12", location="Room 101")
-    _unit(client, "Q13", location="205")
-    a, b = _find(client, "room", "Room 101", "Zeta Univ"), _find(client, "room", "205", "Zeta Univ")
+    _unit(client, "Q13", location="101")
+    a, b = _find(client, "room", "Room 101", "Zeta Univ"), _find(client, "room", "101", "Zeta Univ")
     r = client.post(f"/places/{b['id']}/merge", json={"into_id": a["id"]})
     assert r.status_code == 200 and r.json() == {"moved_instruments": 1, "moved_places": 0, "into": "Room 101"}
     assert _inst(client, "Q13")["location"] == "Room 101"

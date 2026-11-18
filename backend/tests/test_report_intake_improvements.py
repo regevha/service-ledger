@@ -48,10 +48,10 @@ def test_report_type_from_task_code(printed, expected):
 @pytest.mark.parametrize(
     ("printed", "expected"),
     [
-        ("WO-91000001", "04587090"),
-        ("wo 04587090", "04587090"),
-        ("04587090", "04587090"),
-        (" WO04587090 ", "04587090"),
+        ("WO-91000001", "91000001"),
+        ("wo 91000001", "91000001"),
+        ("91000001", "91000001"),
+        (" WO91000001 ", "91000001"),
         ("N/A", None),
         ("", None),
         ("WO", None),
@@ -195,10 +195,10 @@ def test_the_same_work_order_in_a_different_file_is_flagged_at_classify(client, 
     first_result = _classify(client, run_worker, first["id"])
     assert first_result["work_order_number"] == "WO-91000001"
     assert first_result["duplicate_report_ids"] == []
-    assert db_session.get(models.Attachment, first["id"]).work_order_number == "04587090"
+    assert db_session.get(models.Attachment, first["id"]).work_order_number == "91000001"
 
     # A re-scan: different bytes, different file name, same work order.
-    rescan = _upload(client, second_report, "rescan wo04587090.pdf", PDF + b" rescanned")
+    rescan = _upload(client, second_report, "rescan wo91000001.pdf", PDF + b" rescanned")
     assert rescan["duplicate_report_ids"] == []  # bytes differ — only classify can tell
     result = _classify(client, run_worker, rescan["id"])
     assert result["duplicate_report_ids"] == [first_report]

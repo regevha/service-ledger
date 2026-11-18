@@ -148,7 +148,7 @@ def test_places_listing_flags_look_alike_institutions_and_rooms(db_session, fact
     db_session.add_all(
         [
             _unit("P1", institution="Alpha University", location="Room 101"),
-            _unit("P2", institution="Alpha", location="205"),
+            _unit("P2", institution="Alpha", location="101"),
         ]
     )
     db_session.commit()
@@ -159,7 +159,7 @@ def test_places_listing_flags_look_alike_institutions_and_rooms(db_session, fact
     assert "Institute names that may be the same place (nothing was merged):" in out
     assert "  - Alpha  |  Alpha University" in out
     assert "Room names that may be the same place (nothing was merged):" in out
-    assert "  - 205  |  Room 101" in out
+    assert "  - 101  |  Room 101" in out
 
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")  # runpy: the module was already imported above

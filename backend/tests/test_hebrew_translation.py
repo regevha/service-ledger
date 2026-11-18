@@ -107,7 +107,7 @@ def test_identifier_check_reports_the_ones_missing_from_the_translation():
 def test_identifiers_from_a_visual_order_text_layer_are_not_reported_missing():
     # The Omega Distribution text layer (visual order) gives these reordered; the English
     # has them as printed on the form. Found in the live run of 2026-10-15.
-    layer = "90006BE 90002B-BC 006240R26SC 000030R23SR 100C"
+    layer = "90006BE 90002B-BC 900001R99SC 900002R99SR 100C"
     english = "Device BE90006, product BC-B90002, call SC99R900001, SR99R900002, Room C100"
     check = identifier_check([], english, original_text=layer)
     assert check == {"checked": 5, "missing": []}
@@ -122,7 +122,7 @@ def test_a_different_identifier_is_still_reported_missing_from_a_visual_order_la
 def test_identifiers_the_model_listed_in_reversed_order_are_not_reported_missing():
     # Live run of 2026-10-16: the model copied these into its own list from the
     # visual-order text layer, while its English has them as printed.
-    listed = ["90006BE", "90002B-BC", "000030R23SR"]
+    listed = ["90006BE", "90002B-BC", "900002R99SR"]
     english = "Device BE90006, product BC-B90002, contract SR99R900002"
     check = identifier_check(listed, english)
     assert check == {"checked": 3, "missing": []}
@@ -724,7 +724,7 @@ def test_barcode_text_with_an_extra_leading_letter_is_not_reported_missing():
 
 
 def test_barcode_echo_also_works_for_a_visual_order_remainder():
-    check = identifier_check(["Q006240R26SC"], "Report number SC99R900001")
+    check = identifier_check(["Q900001R99SC"], "Report number SC99R900001")
     assert check["missing"] == []
 
 
