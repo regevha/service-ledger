@@ -35,7 +35,6 @@ from .filters import (  # noqa: F401
 from .fleet import _place_rollups, compute_fleet_analytics  # noqa: F401
 from .trends import TREND_MAP_TYPES, TRENDABLE_TYPES, trend_points, trendable_fields
 from .values import (  # noqa: F401
-    _LABOR_TRACKING_REPORT_TYPES,
     _as_number,
     _labor_hours_of,
 )
