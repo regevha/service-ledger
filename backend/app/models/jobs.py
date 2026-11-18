@@ -110,7 +110,7 @@ class Translation(Base):
     # [{"page": 2, "reason": "..."}]. A person can ask for them to be included.
     ignored_pages: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     included_pages: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
-    # {"checked": n, "missing": ["Y1033"]}: identifiers (serials, order and part
+    # {"checked": n, "missing": ["Y9004"]}: identifiers (serials, order and part
     # numbers) listed for the document that do not appear verbatim in the text.
     identifier_check: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     # Things the model could not read.

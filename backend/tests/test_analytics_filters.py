@@ -12,8 +12,8 @@ from datetime import date
 
 from app.models import Instrument, Report, ReportStatus, ReportTemplate, ReportType
 
-FORTESSA = "R647794E6092"
-ARIA = "P648282B3003"
+FORTESSA = "R900002A0092"
+ARIA = "P900001A0003"
 
 
 def _unit(db, serial):
@@ -150,7 +150,7 @@ def test_dates_the_wrong_way_round_and_bad_values_are_refused_on_every_endpoint(
 # ---------- the same-model comparison and its trend ----------
 
 
-def _second_fortessa(client, serial="R647794E6099"):
+def _second_fortessa(client, serial="R900002A0099"):
     resp = client.post(
         "/instruments",
         json={"name": "Fortessa B", "model": "LSRFortessa", "manufacturer": "TestCo", "serial_number": serial},
@@ -175,7 +175,7 @@ def test_the_comparison_follows_the_type_and_date_filters_and_keeps_every_unit(c
     fortessa = _comparison_unit(repair, "LSRFortessa", FORTESSA)
     assert fortessa["finalized_report_count"] == 1 and fortessa["total_labor_hours"] == 2.0
     # The second unit has no matching reports, but it is still there, at zero.
-    assert _comparison_unit(repair, "LSRFortessa", "R647794E6099")["finalized_report_count"] == 0
+    assert _comparison_unit(repair, "LSRFortessa", "R900002A0099")["finalized_report_count"] == 0
 
     early = client.get("/analytics/models", params={"date_to": "2026-02-28"}).json()
     assert _comparison_unit(early, "LSRFortessa", FORTESSA)["finalized_report_count"] == 2  # Jan repair, Feb installation
@@ -191,7 +191,7 @@ def test_the_instrument_filter_leaves_only_that_unit_in_the_comparison(client, d
     assert [u["serial_number"] for u in body[0]["units"]] == [FORTESSA]
 
     other_only = client.get("/analytics/models", params={"instrument_id": other}).json()
-    assert [u["serial_number"] for u in other_only[0]["units"]] == ["R647794E6099"]
+    assert [u["serial_number"] for u in other_only[0]["units"]] == ["R900002A0099"]
     assert other_only[0]["units"][0]["finalized_report_count"] == 0
 
 

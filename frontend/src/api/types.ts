@@ -32,9 +32,9 @@ export interface Instrument {
   /** The model record this instrument belongs to (see InstrumentModel); the model filters use it. */
   model_id?: string | null;
   manufacturer: string | null;
-  /** The local seller / service company when it is not the maker (e.g. "Rhenium"). */
+  /** The local seller / service company when it is not the maker (e.g. "Omega Distribution"). */
   distributor: string | null;
-  /** The university or company the unit belongs to (e.g. "Bar-Ilan University"). */
+  /** The university or company the unit belongs to (e.g. "Alpha University"). */
   institution: string | null;
   serial_number: string;
   location: string | null;

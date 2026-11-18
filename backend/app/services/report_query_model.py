@@ -169,7 +169,7 @@ def _system_prompt(model_names: list[str], place_names: list[str], field_names: 
         "into date_from and date_to (inclusive, YYYY-MM-DD). Use only one of the two for 'since' or 'before'.\n"
         "Instrument models (copy one name exactly, or leave empty; choose the one whose name contains the word the question uses, such as 'Aria' for FACSAria III):\n"
         f"{names}\n"
-        "Places (copy one name exactly, or leave empty; a short form such as 'Bar-Ilan' means the full name in the list):\n"
+        "Places (copy one name exactly, or leave empty; a short form such as 'Alpha' means the full name in the list):\n"
         f"{places}\n"
         "Number fields (a condition on one of these is field, op and value; copy one name exactly, or leave empty; the words that name the field never go in text; "
         "if no name in the list fits, the whole request goes in not_supported, for example 'tubing length above 3', and text stays empty):\n"
@@ -211,7 +211,7 @@ def _model_id(name: str, known: Known) -> tuple[str, str] | None:
 
 
 def _place_id(name: str, known: Known) -> tuple[str, str] | None:
-    """A place by its full name, or by a short form that fits exactly one place ("Bar-Ilan" for "Bar-Ilan University")."""
+    """A place by its full name, or by a short form that fits exactly one place ("Alpha" for "Alpha University")."""
     key = re.sub(r"[^a-z0-9]+", "", name.lower())
     if not key:
         return None

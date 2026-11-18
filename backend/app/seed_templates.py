@@ -156,7 +156,7 @@ INSTALL_UPGRADE_FIELDS = [
 # notes below describe the accepted English.
 # ---------------------------------------------------------------------------
 
-# Cytek Aurora, almog diagnostic form (call 2046): a Hebrew form with a service
+# Cytek Aurora, sigma diagnostics form (call 2046): a Hebrew form with a service
 # description, notes, a parts table (Cytek part numbers start N7-), a customer
 # order number, and travel and work numbers with no unit. The QC printout
 # pages that follow it are ignored by the scan. The customer found travel
@@ -196,7 +196,7 @@ _CYTEK_COMMON = [
 CYTEK_AURORA_INSTALL_FIELDS = [dict(f) for f in _CYTEK_COMMON]
 CYTEK_AURORA_PM_FIELDS = [dict(f) for f in _CYTEK_COMMON]
 
-# CytoFLEX S, Rhenium form (SC26R006240): a one-page repair report with a fault
+# CytoFLEX S, Omega Distribution form (SC99R900001): a one-page repair report with a fault
 # description, a free-text repair description, a work table in clock time
 # (HH:MM), no parts table, and a customer
 # approval block that is often blank. Travel is empty on purpose.

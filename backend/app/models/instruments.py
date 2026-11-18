@@ -108,7 +108,7 @@ class Place(Base):
     instruments' institution and room text, and every instrument links to one, but
     nothing reads it yet. Names are stored with spaces collapsed; a name is unique
     (ignoring case) among places of the same kind under the same parent.
-    Near-duplicates ("Bar Ilan" / "Bar-Ilan University") are never merged by guess."""
+    Near-duplicates ("Alpha" / "Alpha University") are never merged by guess."""
 
     __tablename__ = "places"
 
@@ -160,7 +160,7 @@ class Instrument(Base):
     )
     manufacturer_record: Mapped["Manufacturer | None"] = relationship()
     # Free text: the company that sells and services this unit locally when that
-    # is not the maker ("Rhenium", "almog diagnostic"); NULL when there is none or
+    # is not the maker ("Omega Distribution", "sigma diagnostics"); NULL when there is none or
     # it is not recorded. Optional, unlike the manufacturer.
     distributor: Mapped[str | None] = mapped_column(String, nullable=True)
     serial_number: Mapped[str] = mapped_column(String, nullable=False, unique=True)

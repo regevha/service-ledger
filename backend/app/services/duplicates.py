@@ -29,7 +29,7 @@ from app.models import Attachment, Report, ReportStatus
 
 def normalize_work_order(value: object) -> str | None:
     """A work-order number as stored and compared: upper-case letters and
-    digits only, without a leading "WO" ("WO-04587090" -> "04587090"). None
+    digits only, without a leading "WO" ("WO-91000001" -> "04587090"). None
     for anything that cannot be a work-order number (empty, "N/A", too short,
     no digits) — an unreadable value must never match another unreadable one."""
     if not isinstance(value, str):

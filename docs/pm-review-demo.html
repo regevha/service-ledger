@@ -200,7 +200,7 @@
     <div class="subbar">
       <div>
         <h1>Preventive Maintenance Report</h1>
-        <div class="meta">FACSDiscover S8 · S/N MP6651580000057 · Work Order WO-04271950 · extracted from a real BD Care service report</div>
+        <div class="meta">FACSDiscover S8 · S/N MP9000030000057 · Work Order WO-91000003 · extracted from a real BD Care service report</div>
       </div>
       <div class="actions">
         <button class="btn ghost" onclick="resetDemo()">Reset demo</button>
@@ -210,14 +210,14 @@
 
     <div class="layout">
       <div class="pane pane-left">
-        <div class="pane-title">Source excerpts (Work Order WO-04271950)</div>
+        <div class="pane-title">Source excerpts (Work Order WO-91000003)</div>
 
         <div class="privacy-note"><b>Not shown here:</b> the customer name, account, address and phone number printed on the real form. Per the extraction design (§4/§10 of the spec), contact and contract details are never requested by the prompt in the first place, and each field's stored <code style="font-family:var(--font-mono);">source_snippet</code> is cropped tightly around that field — not the surrounding text. This document is a good example: its own Subject line runs the visit description and the contract number together on one line (see field 1, below).</div>
 
         <div class="quote">
           <div class="qlabel"><span class="badge-mini" style="background:var(--good);">1</span> Service Requested / Reported Symptom</div>
           <div class="qtext">"Subject: 11 Month Recurring. Description: 11 Month Recurring"</div>
-          <div class="qtext" style="margin-top:4px; color: var(--text-faint); font-size:0.76rem;">The form's own line actually reads "11 Month Recurring / <span style="text-decoration:line-through;">SMX0457374</span>" in both Subject and Description — that trailing contract number sits right next to the relevant text, but it's exactly the kind of detail §10 says must never land in <code style="font-family:var(--font-mono);">extracted_fields</code>. Cropped from both the field value and the snippet.</div>
+          <div class="qtext" style="margin-top:4px; color: var(--text-faint); font-size:0.76rem;">The form's own line actually reads "11 Month Recurring / <span style="text-decoration:line-through;">SMX9000001</span>" in both Subject and Description — that trailing contract number sits right next to the relevant text, but it's exactly the kind of detail §10 says must never land in <code style="font-family:var(--font-mono);">extracted_fields</code>. Cropped from both the field value and the snippet.</div>
         </div>
 
         <div class="quote">
@@ -251,7 +251,7 @@
               <span class="tag good">91% confident</span>
             </div>
             <input type="text" value="11 Month Recurring">
-            <div class="field-note">The form's contract number (SMX0457374), printed on the same line, is excluded — see the note on the left.</div>
+            <div class="field-note">The form's contract number (SMX9000001), printed on the same line, is excluded — see the note on the left.</div>
           </div>
 
           <div class="field ok">

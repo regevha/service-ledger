@@ -78,7 +78,7 @@ class InstrumentCreate(BaseModel):
     manufacturer: str
     # Optional: the local seller / service company when it is not the maker.
     distributor: str | None = None
-    # Optional: the university or company the unit belongs to ("Bar-Ilan University").
+    # Optional: the university or company the unit belongs to ("Alpha University").
     institution: str | None = None
     serial_number: str
     location: str | None = None

@@ -48,7 +48,7 @@ def test_the_live_call_types_a_t107_report_from_its_task_code(tmp_path, monkeypa
         "report_type_confidence": 0.4,
         "task_code": "T107",
         "task_code_confidence": 0.96,
-        "work_order_number": "WO-04482628",
+        "work_order_number": "WO-91000005",
     }
 
     class _Messages:
@@ -98,7 +98,7 @@ def test_a_confident_t107_report_resolves_extracts_and_finalizes(client, run_wor
             ClassificationGuess(value="FACSDiscover S8", confidence=0.97),
             ClassificationGuess(value="installation_upgrade", confidence=0.96),
             None,
-            "WO-04482628",
+            "WO-91000005",
             "task_code",
         ),
     )

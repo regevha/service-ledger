@@ -16,12 +16,12 @@ Everything runs on the deterministic stub reader (no API key, same result every 
 - **Files to upload** (in `frontend/tests/e2e/fixtures/`): `confident-scan.pdf` and `sample-work-order.pdf`. **Renaming is not enough.** The app refuses a file whose bytes it has already read (409, "This exact file is already on file"), so every copy needs one different byte at the end. From the fixtures folder:
   ```
   cp sample-work-order.pdf sample-work-order-2.pdf   && printf '\n%%2\n' >> sample-work-order-2.pdf
-  cp confident-scan.pdf scan_R647794E6093.pdf        && printf '\n%%3\n' >> scan_R647794E6093.pdf
+  cp confident-scan.pdf scan_R900002A0093.pdf        && printf '\n%%3\n' >> scan_R900002A0093.pdf
   cp confident-scan.pdf hebrew-visit.pdf             && printf '\n%%4\n' >> hebrew-visit.pdf
   cp confident-scan.pdf othermaker-ZZ1234.pdf        && printf '\n%%5\n' >> othermaker-ZZ1234.pdf
   echo "just notes" > notes.txt
   ```
-  The names matter, because the stub reads them: the serial in `scan_R647794E6093.pdf` (Part 3), "hebrew" in `hebrew-visit.pdf` gets the translation fixture, and "othermaker-" in `othermaker-ZZ1234.pdf` is read as another company's instrument that is not in the fleet (Part 7).
+  The names matter, because the stub reads them: the serial in `scan_R900002A0093.pdf` (Part 3), "hebrew" in `hebrew-visit.pdf` gets the translation fixture, and "othermaker-" in `othermaker-ZZ1234.pdf` is read as another company's instrument that is not in the fleet (Part 7).
 - **Reset between runs.** The instruments and templates you add stay in the database, and a second unit of a model changes how later uploads behave.
 
 The seeded fleet has five instruments: FACSAria III, LSRFortessa, FACSDiscover S8, Cytek Aurora and CytoFLEX S.
@@ -54,9 +54,9 @@ A real ambiguity, handled honestly instead of guessed past.
 ## Part 3: Upload checks and serial matching (3 min)
 
 1. Upload `notes.txt`. A red banner says "Unsupported file type. Upload a PDF or a PNG, JPEG, GIF or WebP image." The type comes from the file's first bytes, not its name. Limits are 20 MB for a PDF and 5 MB for an image. Click **Try again**.
-2. **Instruments** → **+ New instrument**: name "LSRFortessa Annex", model LSRFortessa, serial `R647794E6093`, manufacturer BD → **Create instrument**. There are now two LSRFortessas.
+2. **Instruments** → **+ New instrument**: name "LSRFortessa Annex", model LSRFortessa, serial `R900002A0093`, manufacturer BD → **Create instrument**. There are now two LSRFortessas.
 3. Upload `sample-work-order.pdf` again: it is refused, "This exact file is already on file and has been read" (a good moment to say the app never reads the same bytes twice). Now upload `sample-work-order-2.pdf`, the same form with one byte changed. The instrument row says **Select instrument…** and **Confirm & continue** stays disabled until you choose. *Say:* "The model alone no longer says which machine, so it will not guess."
-4. Start another report and upload `scan_R647794E6093.pdf`. It goes straight to review with a blue banner: "Matched to LSRFortessa (R647794E6093) by the serial number on the document."
+4. Start another report and upload `scan_R900002A0093.pdf`. It goes straight to review with a blue banner: "Matched to LSRFortessa (R900002A0093) by the serial number on the document."
 5. Finalize it. You will find it under the Annex unit in Part 4.
 
 *Say:* "Serials are compared ignoring case and punctuation. A serial that belongs to a different model is flagged as a conflict, never auto-resolved."

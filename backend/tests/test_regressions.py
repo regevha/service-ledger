@@ -344,7 +344,7 @@ def test_stub_sample_detection_uses_the_uploaded_file_name_only():
     from app.services.claude_client import is_sample_document
 
     # The spec's sample work order, by number or by the dedicated fixture's name.
-    assert is_sample_document("storage/attachments/ab12/cd34_WO-04587090_sample.pdf")
+    assert is_sample_document("storage/attachments/ab12/cd34_WO-91000001_sample.pdf")
     assert is_sample_document("storage/attachments/ab12/cd34_sample-work-order.pdf")
     # A real BD file is *titled* "Work Order Service Report" — that must not be
     # enough, or a FACSDiscover S8 PM gets the LSRFortessa repair data.

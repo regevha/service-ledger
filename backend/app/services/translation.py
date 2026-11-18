@@ -60,9 +60,9 @@ STUB_TRANSLATION = """Service report No. 2046 (stub translation)
 
 Date: 13.08.2026
 Customer: Example University
-Instrument: Example Analyzer, S.N Y1033
+Instrument: Example Analyzer, S.N Y9004
 Service description: System upgrade, annual preventive maintenance
-Parts replaced: 1 x Upgrade kit (P/N N7-97566)
+Parts replaced: 1 x Upgrade kit (P/N N7-90001)
 Work: 20   Travel: 6
 Notes: Performed with a representative of the manufacturer.
 Engineer signature: signed. Customer signature: blank."""
@@ -151,16 +151,16 @@ _RUN = re.compile(r"[A-Za-z]+|[0-9]+")
 def _groups(token: str) -> tuple[str, ...]:
     """The letter and digit runs of an identifier, in sorted order. A Hebrew
     text layer is stored in visual order, so a Latin identifier next to Hebrew
-    comes out with its runs reordered (BE50173 as 50173BE, BC-B96621 as
-    96621B-BC, C767 as 767C); comparing the runs ignoring order sees through
+    comes out with its runs reordered (BE90006 as 90006BE, BC-B90002 as
+    90002B-BC, C100 as 100C); comparing the runs ignoring order sees through
     that without accepting a different identifier."""
     return tuple(sorted(_RUN.findall(token)))
 
 
 def _is_barcode_echo(candidate: str, translated_groups: set[tuple[str, ...]]) -> bool:
     """The text a form prints under its barcode is the identifier with one extra
-    leading letter (the Rhenium report number SC26R006240 is printed as
-    *QSC26R006240*; the live run of 2026-10-17 listed the barcode text as an
+    leading letter (the Omega Distribution report number SC99R900001 is printed as
+    *QSC99R900001*; the live run of 2026-10-17 listed the barcode text as an
     identifier and flagged it missing). A candidate that is a translated
     identifier plus exactly one leading letter is that echo, not a lost
     identifier. Short remainders are left to the normal check, so an ordinary
@@ -181,7 +181,7 @@ def identifier_check(listed: list[str], translated_text: str, original_text: str
     letter and digit runs in a different order than the form prints them: the
     text layer of a Hebrew document is in visual order, and a live run (2026-10-16)
     showed the model copying identifiers into its own list from that layer
-    (50173BE for BE50173). So an identifier counts as present when it appears
+    (90006BE for BE90006). So an identifier counts as present when it appears
     verbatim, or when the translation has an identifier with the same letter and
     digit runs in any order (see `_groups`). A different identifier is still
     flagged."""
@@ -212,7 +212,7 @@ def _stub_translate(attachment: Attachment, include_pages: list[int]) -> Transla
     text = STUB_TRANSLATION
     for p in sorted(set(include_pages)):
         text += f"\n\n[Page {p} included at the reviewer's request: stub text]"
-    return TranslationResult("he", 0.8, text, ignored, ["2046", "Y1033", "N7-97566"], [], reader="stub")
+    return TranslationResult("he", 0.8, text, ignored, ["2046", "Y9004", "N7-90001"], [], reader="stub")
 
 
 def _live_translate(attachment: Attachment, include_pages: list[int]) -> TranslationResult:

@@ -39,7 +39,7 @@ test('instrument detail page: reached from the reports filter, shows history, an
     model: 'FACSAria III',
     // The seeded unit, by serial: a model alone can match another FACSAria III
     // another spec added, and this test asserts this unit's own serial below.
-    serial: 'P648282B3003',
+    serial: 'P900001A0003',
     reportType: 'repair',
     technician,
     extractedFields: { labor_hours: 2, fault_category: 'electronics' },
@@ -60,7 +60,7 @@ test('instrument detail page: reached from the reports filter, shows history, an
   // name — always the page's first .section-title — needs .first() here.
   await expect(page.locator('.section-title').first()).toContainText('FACSAria III');
   await expect(page.locator('.instrument-meta')).toContainText('FACSAria III');
-  await expect(page.locator('.instrument-meta')).toContainText('P648282B3003');
+  await expect(page.locator('.instrument-meta')).toContainText('P900001A0003');
   await expect(page.locator('.status-pill.instrument-status-active')).toContainText('Active');
 
   const reportsOnFile = page.locator('.stat-tile').first().locator('.stat-value');
@@ -81,7 +81,7 @@ test('instrument detail page: reached from the reports filter, shows history, an
   await expect(page.locator('button:has-text("View instrument: FACSAria III")')).toBeVisible();
 
   await page.click('button:has-text("← Back to reports")');
-  await expect(page.locator('.instrument-meta')).toContainText('P648282B3003');
+  await expect(page.locator('.instrument-meta')).toContainText('P900001A0003');
   await expect(page.locator('.instrument-report-row-body', { hasText: technician })).toBeVisible();
 
   // One more "back" from the instrument page returns to the top-level list.

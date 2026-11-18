@@ -1,8 +1,8 @@
 """Catch a mistyped copy of the instrument's serial number in extracted text.
 
 Why: a BD Work Order Service Report is free text in places. The S8 software
-upgrade report has the Subject line "... S8 S/N R6651580000057" while the
-instrument's serial, printed in the Installed Product box, is MP6651580000057.
+upgrade report has the Subject line "... S8 S/N R9000030000057" while the
+instrument's serial, printed in the Installed Product box, is MP9000030000057.
 Extraction copies the Subject line into `service_description`, so a wrong serial
 ended up in the stored report on every live run of that document. The instrument
 is already known by the time extraction runs (it was matched or chosen first),
@@ -74,7 +74,7 @@ def correct_serial_typos(extracted_fields: dict, serial: str) -> list[SerialFix]
             word = match.group(0)
             normalized = _normalize(word)
             if (
-                normalized in wanted  # the serial itself, or a correct part of it ("MP 6651580000057")
+                normalized in wanted  # the serial itself, or a correct part of it ("MP 9000030000057")
                 or not any(ch.isdigit() for ch in normalized)
                 or _edit_distance(normalized, wanted, limit) > limit
             ):

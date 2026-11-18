@@ -8,7 +8,7 @@ import { instrumentAskOf } from '../instrumentAsk';
 import { useInstrumentAsk } from '../instrumentAskContext';
 import { listen, PROBLEM_TEXT, speechSupported, type VoiceProblem } from '../speech';
 
-const EXAMPLES = ['repairs of the FACSAria III last month', 'waiting for review', 'maintenance in 2025 at Bar-Ilan University'];
+const EXAMPLES = ['repairs of the FACSAria III last month', 'waiting for review', 'maintenance in 2025 at Alpha University'];
 
 /**
  * One text box above the filters: "repairs of the FACSAria III last month". The server turns the sentence into the

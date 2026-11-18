@@ -88,7 +88,7 @@ test('editing the English shows durations in decimal hours and accepting continu
   // Not edited yet: the plain accept button.
   await expect(page.locator('button:has-text("Accept & continue")')).toBeVisible();
 
-  await box.fill('Work\n1 | 22/09/26 | Rhenium work hours | 12:00 | 13:25 | 01:25\nTravel: 6');
+  await box.fill('Work\n1 | 22/09/26 | Omega Distribution work hours | 12:00 | 13:25 | 01:25\nTravel: 6');
   await expect(page.locator('#translation-durations')).toContainText('01:25 = 1.42 h');
   await expect(page.locator('#translation-durations')).not.toContainText('12:00');
 
@@ -117,13 +117,13 @@ test('an instrument that is not in the fleet is added on the spot and the docume
   await expect(panel).toBeVisible({ timeout: TIMEOUT.flow });
   await expect(panel).toContainText('not in your fleet');
   await expect(page.locator('#read-model')).toContainText('not in your fleet');
-  await expect(page.locator('#read-issuer')).toContainText('almog diagnostic');
+  await expect(page.locator('#read-issuer')).toContainText('sigma diagnostics');
   await expect(page.locator('#report-type-note')).toContainText('Preventive maintenance');
 
   // Filled in from the document.
   await expect(panel.locator('input[aria-label="Instrument model"]')).toHaveValue('Cytek Aurora');
   await expect(panel.locator('input[aria-label="Instrument manufacturer"]')).toHaveValue('Cytek Biosciences');
-  await expect(panel.locator('input[aria-label="Instrument distributor"]')).toHaveValue('almog diagnostic');
+  await expect(panel.locator('input[aria-label="Instrument distributor"]')).toHaveValue('sigma diagnostics');
   await expect(panel.locator('input[aria-label="Instrument serial number"]')).toHaveValue(serial);
 
   // Needs a name and a kind; the name starts as the model.
@@ -141,7 +141,7 @@ test('an instrument that is not in the fleet is added on the spot and the docume
   // The new instrument is in the fleet list with its distributor.
   await page.getByTestId('tab-instruments').click();
   const row = page.getByTestId('instrument-row').filter({ hasText: `E2E-Aurora-${serial}` });
-  await expect(row).toContainText('almog diagnostic');
+  await expect(row).toContainText('sigma diagnostics');
 });
 
 test('a document that is not Hebrew goes straight to classification', async ({ page }) => {

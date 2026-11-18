@@ -37,7 +37,7 @@ def _guess(value, confidence=0.97):
 
 @pytest.mark.parametrize("printed", ["A47291", "a47291", " A-47291 ", "A 47 291", "a.47291"])
 def test_match_serial_ignores_case_spacing_and_punctuation(printed):
-    fleet = _fleet(("FACSAria III", "A47291"), ("LSRFortessa", "R647794E6092"))
+    fleet = _fleet(("FACSAria III", "A47291"), ("LSRFortessa", "R900002A0092"))
     assert match_serial(_guess(printed), fleet) is fleet[0]
 
 
@@ -59,15 +59,15 @@ def test_a_missing_or_not_applicable_serial_is_not_a_read(answer):
 
 
 def test_a_serial_read_carries_its_confidence_and_a_bad_confidence_means_unsure():
-    read = _parse_serial_read({"instrument_serial": " MP6651580000057 ", "instrument_serial_confidence": 0.91}, "x.pdf")
-    assert (read.value, read.confidence) == ("MP6651580000057", 0.91)
+    read = _parse_serial_read({"instrument_serial": " MP9000030000057 ", "instrument_serial_confidence": 0.91}, "x.pdf")
+    assert (read.value, read.confidence) == ("MP9000030000057", 0.91)
     unsure = _parse_serial_read({"instrument_serial": "A47291", "instrument_serial_confidence": "high"}, "x.pdf")
     assert unsure.confidence == 0.0
     assert _parse_serial_read({"instrument_serial": "A47291", "instrument_serial_confidence": 7}, "x.pdf").confidence == 1.0
 
 
 def test_the_stub_reads_a_serial_only_from_the_file_name():
-    fleet = _fleet(("FACSAria III", "A47291"), ("LSRFortessa", "R647794E6092"))
+    fleet = _fleet(("FACSAria III", "A47291"), ("LSRFortessa", "R900002A0092"))
     assert _stub_serial_read("storage/ab/cd_scan_a47291_final.pdf", fleet).value == "A47291"
     assert _stub_serial_read("storage/ab/cd_scan.pdf", fleet) is None
     # The directory part (random uuids) never counts.
@@ -117,8 +117,8 @@ def test_a_serial_picks_the_right_unit_when_a_model_has_several(client, run_work
     assert report["instrument_id"] == second
     assert report["template_id"] is not None  # resolved straight through
 
-    first = _instrument_id(client, "P648282B3003")
-    report2, result2 = _classify(client, run_worker, monkeypatch, serial="p-648282b3003")
+    first = _instrument_id(client, "P900001A0003")
+    report2, result2 = _classify(client, run_worker, monkeypatch, serial="p-900001a0003")
     assert result2["resolved_instrument_id"] == first
     assert report2["instrument_id"] == first
 
@@ -142,7 +142,7 @@ def test_a_confidently_read_serial_that_is_not_in_the_fleet_is_not_auto_resolved
     assert result["instrument_serial"]["value"] == "ZZ-0001"
     assert result["resolved_instrument_id"] is None
     assert report["instrument_id"] is None
-    assert result["suggested_instrument_id"] == _instrument_id(client, "P648282B3003")
+    assert result["suggested_instrument_id"] == _instrument_id(client, "P900001A0003")
 
     # Two Arias: nothing says which, so nothing is suggested either.
     _add_second_aria(client)
@@ -156,18 +156,18 @@ def test_an_unsure_unmatched_serial_still_falls_back_to_the_model(client, run_wo
     # A serial read at low confidence may just be a misread, so the model alone still decides.
     report, result = _classify(client, run_worker, monkeypatch, serial="ZZ-0001", serial_confidence=0.3)
     assert result["serial_match"] == "not_found"
-    assert result["resolved_instrument_id"] == _instrument_id(client, "P648282B3003")
+    assert result["resolved_instrument_id"] == _instrument_id(client, "P900001A0003")
 
 
 def test_a_serial_that_contradicts_the_model_is_not_auto_resolved(client, run_worker, monkeypatch):
     # The document's model line says Fortessa; its serial belongs to the Aria.
-    report, result = _classify(client, run_worker, monkeypatch, model="LSRFortessa", serial="P648282B3003")
+    report, result = _classify(client, run_worker, monkeypatch, model="LSRFortessa", serial="P900001A0003")
 
     assert result["serial_match"] == "model_conflict"
     assert result["resolved_instrument_id"] is None
     assert report["instrument_id"] is None
     # ...but the unit the serial points at is offered as the starting choice.
-    assert result["suggested_instrument_id"] == _instrument_id(client, "P648282B3003")
+    assert result["suggested_instrument_id"] == _instrument_id(client, "P900001A0003")
 
 
 def test_an_unsure_serial_read_is_only_a_suggestion(client, run_worker, monkeypatch):
@@ -216,7 +216,7 @@ def test_the_live_call_asks_for_the_serial_and_returns_it(tmp_path, monkeypatch)
                             "instrument_confidence": 0.95,
                             "report_type": "preventive_maintenance",
                             "report_type_confidence": 0.9,
-                            "instrument_serial": "MP6651580000057",
+                            "instrument_serial": "MP9000030000057",
                             "instrument_serial_confidence": 0.93,
                         },
                     )
@@ -228,7 +228,7 @@ def test_the_live_call_asks_for_the_serial_and_returns_it(tmp_path, monkeypatch)
 
     serial = classification._live_classify(None, SimpleNamespace(file_path=str(scan)), _fleet(("FACSDiscover S8", "S80019"))).serial
 
-    assert (serial.value, serial.confidence) == ("MP6651580000057", 0.93)
+    assert (serial.value, serial.confidence) == ("MP9000030000057", 0.93)
     sent = client.messages.calls[0]
     schema = sent["tools"][0]["input_schema"]
     assert {"instrument_serial", "instrument_serial_confidence"} <= set(schema["required"])

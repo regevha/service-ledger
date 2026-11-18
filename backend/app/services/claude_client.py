@@ -34,7 +34,7 @@ from app.services.errors import LiveClaudeError
 settings = get_settings()
 
 # The real BD Care EU Work Order Service Report used throughout the spec
-# (Case 03191457 / WO-04587090) — both classify() and extract() special-case
+# (Case 03191457 / WO-91000001) — both classify() and extract() special-case
 # the attachment, in stub mode, so a demo run against that one document
 # reproduces its documented behavior exactly rather than a generic stub guess.
 #
@@ -44,7 +44,7 @@ settings = get_settings()
 # merely says "Work Order" (every BD service report is titled that, e.g.
 # "BD_EU_Work_Order_Service_Report_Label_v3_S8_10-2-26.pdf") and made the
 # stub answer with the LSRFortessa repair data for a FACSDiscover S8 PM.
-SAMPLE_MARKERS = ("wo-04587090", "sample-work-order")
+SAMPLE_MARKERS = ("wo-91000001", "sample-work-order")
 
 
 def is_sample_document(file_path: str) -> bool:

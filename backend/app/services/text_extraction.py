@@ -94,8 +94,8 @@ def _heading_line(text: str, label: str) -> str | None:
 
 def _clean_line(value: str) -> str:
     """Keep the contract and serial out of a Subject or Description line, as the
-    live prompt does: "11 Month Recurring / SMX0457374" -> "11 Month Recurring",
-    "Stream is unstable - ARIA III S/N P648282B3003" -> "Stream is unstable"."""
+    live prompt does: "11 Month Recurring / SMX9000001" -> "11 Month Recurring",
+    "Stream is unstable - ARIA III S/N P900001A0003" -> "Stream is unstable"."""
     value = re.sub(r"\s*-?\s*[A-Za-z0-9 ]*S/N\s+\S+$", "", value)
     value = re.sub(r"\s*/\s*SMX\d+$", "", value)
     return value.strip(" -")

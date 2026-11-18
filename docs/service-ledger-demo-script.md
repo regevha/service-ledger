@@ -25,7 +25,7 @@ Everything in this walkthrough runs against a deterministic stub classifier/extr
 - **Trend chart data seeded ahead of time**, so Part 8 doesn't depend on live uploads mid-demo: `python -m app.seed_trend_demo` — 5 synthetic FACSAria III preventive-maintenance reports, two months apart.
 - **Optional:** `python -m app.seed_demo_reports` — 3 more finalized reports (real extraction results) so the Reports tab isn't showing only what you upload live.
 - **Two fixture files ready to upload**, both already in the repo at `frontend/tests/e2e/fixtures/`: `confident-scan.pdf` (Part 1) and `sample-work-order.pdf` (Part 2 — the centerpiece).
-- **Two more files for Part 3**, made from the first: a copy of `confident-scan.pdf` renamed `scan_R647794E6093.pdf`, and any text file (e.g. `notes.txt`). In stub mode the "reader" finds a serial number when the uploaded file's *name* contains one (the real app reads it off the page), so renaming the file is how you choose what the scan "says."
+- **Two more files for Part 3**, made from the first: a copy of `confident-scan.pdf` renamed `scan_R900002A0093.pdf`, and any text file (e.g. `notes.txt`). In stub mode the "reader" finds a serial number when the uploaded file's *name* contains one (the real app reads it off the page), so renaming the file is how you choose what the scan "says."
 - **Reset before a run** if you've demoed before: the instrument added in Part 3 (and edited in Part 7) stays in the database, and a second unit of a model changes how the later uploads behave.
 
 ## Part 1: New report, the fast path
@@ -76,13 +76,13 @@ Two things that keep the pipeline honest *before* a model is ever asked: refusin
 
 **Serial matching (about three minutes)**
 
-3. Go to **Instruments** → **+ New instrument**: name "LSRFortessa — Annex", model **LSRFortessa**, serial **`R647794E6093`** → **Create instrument**. The fleet now has two LSRFortessas.
+3. Go to **Instruments** → **+ New instrument**: name "LSRFortessa — Annex", model **LSRFortessa**, serial **`R900002A0093`** → **Create instrument**. The fleet now has two LSRFortessas.
 4. Back on **New report**, upload **`sample-work-order.pdf`** again and click **Upload & classify**.
    - The instrument row now shows **Select instrument…** instead of a pre-selected unit, and **Confirm & continue** stays disabled until you choose one.
    - *Say:* "Same document as Part 2, but the model alone no longer says which machine this is — there are two. The system won't pick one for you. Before serial matching it silently chose whichever sorted first."
    - Choose a unit and continue (or just move on; you don't need to finalize this one).
-5. Start another report and upload **`scan_R647794E6093.pdf`**.
-6. It goes straight to the review screen with a blue banner: "Matched to LSRFortessa (R647794E6093) by the serial number on the document." No manual step, even though the model has two units.
+5. Start another report and upload **`scan_R900002A0093.pdf`**.
+6. It goes straight to the review screen with a blue banner: "Matched to LSRFortessa (R900002A0093) by the serial number on the document." No manual step, even though the model has two units.
    - *Say:* "Classification now reads the printed serial number as well, normalizes it — case and punctuation don't matter — and matches it to the fleet. A confident match picks the unit. If the serial matches a machine of a *different* model than the form says, it's flagged as a conflict and never auto-resolved. If the serial isn't in the fleet, or was read with low confidence, it falls back to the old rule: one unit of the model is chosen for you, several leave the choice to you — and the banner tells you which happened."
 7. Finalize, then open **Reports** and filter by that instrument to show the report belongs to the Annex unit, not the original.
 
@@ -90,7 +90,7 @@ Two things that keep the pipeline honest *before* a model is ever asked: refusin
 
 ## Part 3b: Real reports without a key, task codes and duplicates
 
-What the app does with a real BD work order when there is no API key. About five minutes; needs the real PDFs and the seeded real fleet (`python -m app.seed_instruments`: Aria `P648282B3003`, Fortessa `R647794E6092`, S8 `MP6651580000057`).
+What the app does with a real BD work order when there is no API key. About five minutes; needs the real PDFs and the seeded real fleet (`python -m app.seed_instruments`: Aria `P900001A0003`, Fortessa `R900002A0092`, S8 `MP9000030000057`).
 
 1. In a terminal, from `backend/`, run `python -m scripts.read_report` on two or three of the real PDFs. It needs no database and no network, and prints model, serial, task code with the report type it implies, and work order for each file, then groups probable duplicates.
    - *Say:* "This is the reader the app uses when there is no key. It reads the text layer of the PDF, not an image, so scans with no text layer still fall back to the old stub."
@@ -101,7 +101,7 @@ What the app does with a real BD work order when there is no API key. About five
    - *Say:* "A duplicate is the same file bytes, or the same work-order number. It warns and never refuses, because a re-scan of the same visit is a legitimate thing to upload."
 5. Upload the 2021 Fortessa report after the 2024 one. Same unit, different visits, so no warning.
 
-6. Optional, to show the model and serial as two separate reads: rename the sample work order to `sample-work-order-P648282B3003.pdf` and upload it. The model row says LSRFortessa, the serial row says P648282B3003 and notes that it belongs to a different model, and the **Instrument** row turns amber ("check this"). Two fields disagree, and the lab manager decides.
+6. Optional, to show the model and serial as two separate reads: rename the sample work order to `sample-work-order-P900001A0003.pdf` and upload it. The model row says LSRFortessa, the serial row says P900001A0003 and notes that it belongs to a different model, and the **Instrument** row turns amber ("check this"). Two fields disagree, and the lab manager decides.
    - *Say:* "The model and the serial are separate reads, so when they contradict each other you see it, instead of one dropdown label hiding the problem."
 
 **Be straight about the limit:** without a key the badges say what happened ("read from document text", "from task code", "not found", "placeholder") instead of a percentage, and the field values on the review screen are placeholders from the stub, not read from the document. Only model, serial, task code, report type and work order are really read. The visit date and the template fields need the live model.

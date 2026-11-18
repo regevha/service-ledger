@@ -108,10 +108,10 @@ def test_places_listing_of_an_empty_database(factory, capsys):
 
 
 def test_places_listing_shows_each_kind_with_its_parent_and_counts(db_session, factory, capsys):
-    db_session.add(_unit("P1", institution="Bar-Ilan University", location="Room 205"))
-    db_session.add(_unit("P2", institution="Bar-Ilan University"))
+    db_session.add(_unit("P1", institution="Alpha University", location="Room 101"))
+    db_session.add(_unit("P2", institution="Alpha University"))
     db_session.commit()
-    institution = db_session.query(models.Place).filter_by(kind="institution", name="Bar-Ilan University").one()
+    institution = db_session.query(models.Place).filter_by(kind="institution", name="Alpha University").one()
     faculty = models.Place(kind="faculty", name="Life Sciences", parent_id=institution.id)
     db_session.add(faculty)
     db_session.commit()
@@ -123,9 +123,9 @@ def test_places_listing_shows_each_kind_with_its_parent_and_counts(db_session, f
     out = capsys.readouterr().out
 
     assert "4 places; 0 instruments with no place" in out
-    assert "\ninstitutes\n  Bar-Ilan University: 1 instrument(s) pointing directly here" in out
-    assert "\nbuildings\n  Life Sciences in Bar-Ilan University: 0 instrument(s) pointing directly here" in out
-    assert "  Room 205 in Bar-Ilan University: 1 instrument(s) pointing directly here" in out
+    assert "\ninstitutes\n  Alpha University: 1 instrument(s) pointing directly here" in out
+    assert "\nbuildings\n  Life Sciences in Alpha University: 0 instrument(s) pointing directly here" in out
+    assert "  Room 101 in Alpha University: 1 instrument(s) pointing directly here" in out
     assert "  Room 7 in Life Sciences: 0 instrument(s) pointing directly here" in out
     # Kinds are listed in a fixed order.
     assert out.index("institutes") < out.index("buildings") < out.index("rooms")
@@ -147,8 +147,8 @@ def test_places_listing_names_the_instruments_with_no_place(db_session, factory,
 def test_places_listing_flags_look_alike_institutions_and_rooms(db_session, factory, capsys):
     db_session.add_all(
         [
-            _unit("P1", institution="Bar-Ilan University", location="Room 205"),
-            _unit("P2", institution="Bar Ilan", location="205"),
+            _unit("P1", institution="Alpha University", location="Room 101"),
+            _unit("P2", institution="Alpha", location="205"),
         ]
     )
     db_session.commit()
@@ -157,14 +157,14 @@ def test_places_listing_flags_look_alike_institutions_and_rooms(db_session, fact
     out = capsys.readouterr().out
 
     assert "Institute names that may be the same place (nothing was merged):" in out
-    assert "  - Bar Ilan  |  Bar-Ilan University" in out
+    assert "  - Alpha  |  Alpha University" in out
     assert "Room names that may be the same place (nothing was merged):" in out
-    assert "  - 205  |  Room 205" in out
+    assert "  - 205  |  Room 101" in out
 
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")  # runpy: the module was already imported above
 def test_places_listing_runs_as_a_module(db_session, factory, capsys):
-    db_session.add(_unit("P1", institution="Weizmann Institute"))
+    db_session.add(_unit("P1", institution="Beta Institute"))
     db_session.commit()
     runpy.run_module("app.tools.list_places", run_name="__main__")
-    assert "Weizmann Institute" in capsys.readouterr().out
+    assert "Beta Institute" in capsys.readouterr().out

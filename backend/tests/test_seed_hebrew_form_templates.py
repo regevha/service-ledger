@@ -25,7 +25,7 @@ def _field(template, name):
 
 
 def test_the_cytek_aurora_has_its_own_install_and_pm_templates(seeded):
-    unit = _unit(seeded, "Y1033")
+    unit = _unit(seeded, "Y9004")
     for report_type in (ReportType.installation_upgrade, ReportType.preventive_maintenance):
         template = _resolve(seeded, unit, report_type)
         assert template.model == "Cytek Aurora"
@@ -33,7 +33,7 @@ def test_the_cytek_aurora_has_its_own_install_and_pm_templates(seeded):
 
 
 def test_the_cytek_form_has_no_travel_field_and_reads_unmarked_numbers_as_hours(seeded):
-    unit = _unit(seeded, "Y1033")
+    unit = _unit(seeded, "Y9004")
     template = _resolve(seeded, unit, ReportType.installation_upgrade)
     assert not any("travel" in n for n in _names(template))
     labor = _field(template, "labor_hours")
@@ -41,7 +41,7 @@ def test_the_cytek_form_has_no_travel_field_and_reads_unmarked_numbers_as_hours(
 
 
 def test_the_cytoflex_has_its_own_repair_template_that_converts_clock_time(seeded):
-    unit = _unit(seeded, "102579")
+    unit = _unit(seeded, "900005")
     template = _resolve(seeded, unit, ReportType.repair)
     assert template.model == "CytoFLEX S"
     assert not {"service_contract_level", "service_contract_number", "customer_signature_present"} & set(_names(template))
@@ -50,8 +50,8 @@ def test_the_cytoflex_has_its_own_repair_template_that_converts_clock_time(seede
 
 
 def test_other_report_types_for_these_models_fall_back_to_the_shared_rows(seeded):
-    cytek = _unit(seeded, "Y1033")
-    cyto = _unit(seeded, "102579")
+    cytek = _unit(seeded, "Y9004")
+    cyto = _unit(seeded, "900005")
     for unit, report_type in [
         (cytek, ReportType.repair),
         (cyto, ReportType.preventive_maintenance),
@@ -62,7 +62,7 @@ def test_other_report_types_for_these_models_fall_back_to_the_shared_rows(seeded
 
 
 def test_the_bd_models_keep_their_shared_templates(seeded):
-    for serial, report_type in [("R647794E6092", ReportType.repair), ("P648282B3003", ReportType.installation_upgrade)]:
+    for serial, report_type in [("R900002A0092", ReportType.repair), ("P900001A0003", ReportType.installation_upgrade)]:
         unit = _unit(seeded, serial)
         assert _resolve(seeded, unit, report_type).model is None
 

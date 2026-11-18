@@ -57,7 +57,7 @@ def test_editing_the_model_text_relinks_and_keeps_the_old_record(client, db_sess
 def test_editing_other_fields_keeps_the_link(client, db_session):
     created = client.post("/instruments", json=_payload("S1")).json()
     before = _mine(db_session)[0].model_id
-    client.patch(f"/instruments/{created['id']}", json={"institution": "Bar-Ilan University"})
+    client.patch(f"/instruments/{created['id']}", json={"institution": "Alpha University"})
     db_session.expire_all()
     assert _mine(db_session)[0].model_id == before
     assert len(_records(db_session)) == 1

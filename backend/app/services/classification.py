@@ -278,7 +278,7 @@ def _stub_serial_read(file_path: str, instruments: list[Instrument]) -> Classifi
 
 def _stub_work_order(file_path: str) -> str | None:
     """The stub "reads" a work-order number only when the uploaded file's own
-    name contains one (e.g. scan_WO-04587090.pdf), mirroring _stub_serial_read,
+    name contains one (e.g. scan_WO-91000001.pdf), mirroring _stub_serial_read,
     so duplicate detection can be exercised by choosing a file name."""
     name = file_path.replace("\\", "/").rsplit("/", 1)[-1]
     match = re.search(r"WO[-_ ]?\d{5,}", name, re.IGNORECASE)
@@ -374,7 +374,7 @@ def _has_readable_text(attachment: Attachment) -> bool:
 
 
 # A file whose name contains this is "read" in stub mode as another company's
-# form (the Cytek sample): while no fleet instrument has serial Y1033 the
+# form (the Cytek sample): while no fleet instrument has serial Y9004 the
 # instrument is not in the fleet; once one does, it is a confident match. This
 # lets the add-the-instrument-and-retry path run end to end without a model.
 STUB_OTHER_MAKER_MARKER = "othermaker"
@@ -391,7 +391,7 @@ def _stub_other_maker(attachment: Attachment, instruments: list[Instrument]) -> 
     stub_serial = named.group(1).upper() if named else _STUB_OTHER_MAKER_SERIAL
     known = next((i for i in instruments if i.serial_number == stub_serial), None)
     common = dict(
-        issuer="almog diagnostic",
+        issuer="sigma diagnostics",
         detected_manufacturer="Cytek Biosciences",
         detected_model="Cytek Aurora",
     )

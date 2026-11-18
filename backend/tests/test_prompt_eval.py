@@ -40,12 +40,12 @@ def test_classify_answers_are_scored(tmp_path, monkeypatch):
     monkeypatch.setattr(classification, "_get_client", lambda: _fake_client({
         "instrument_model": "FACSAria III", "instrument_confidence": 0.95,
         "report_type": "repair", "report_type_confidence": 0.9,
-        "instrument_serial": "P648282B3003", "instrument_serial_confidence": 0.9,
-        "task_code": "T113", "task_code_confidence": 0.95, "work_order_number": "WO-04215114",
+        "instrument_serial": "P900001A0003", "instrument_serial_confidence": 0.9,
+        "task_code": "T113", "task_code_confidence": 0.95, "work_order_number": "WO-91000007",
     }))
     path = _case(tmp_path, {"classify": {
         "instrument_model": "FACSAria III", "report_type": "repair",
-        "serial": "p648282b3003", "work_order": "WO-04215115"}})
+        "serial": "p900001a0003", "work_order": "WO-91000010"}})
     checks, _ = prompt_eval.run_case(path, dry_run=False)
     result = {name: ok for name, ok, _, _ in checks}
     assert result == {"classify.instrument_model": True, "classify.report_type": True,

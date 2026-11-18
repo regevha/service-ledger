@@ -101,11 +101,11 @@ def test_model_never_overrules_what_the_rules_found(monkeypatch):
 
 def test_request_sends_the_question_and_model_and_place_names_but_no_serials(monkeypatch):
     fake = use(monkeypatch, FakeClient({"text": "pmt"}))
-    ask("reports mentioning a PMT at Hadassah serial P69200123")
+    ask("reports mentioning a PMT at Gamma serial P69200123")
     (call,) = fake.calls
     sent = repr(call)
     assert "FACSAria III" in sent and "LSRFortessa" in sent
-    assert "Hadassah" in call["system"][0]["text"] and "Bar-Ilan University" in call["system"][0]["text"]
+    assert "Gamma" in call["system"][0]["text"] and "Alpha University" in call["system"][0]["text"]
     # Serial numbers from the database are never listed; one the person typed is only in their own question.
     assert "R1-0412" not in sent and "P69200123" not in call["system"][0]["text"]
     assert call["model"] == m.settings.anthropic_search_model
@@ -116,14 +116,14 @@ def test_request_sends_the_question_and_model_and_place_names_but_no_serials(mon
 
 def test_request_tells_the_model_what_the_rules_already_understood(monkeypatch):
     fake = use(monkeypatch, FakeClient({"text": "", "not_supported": []}))
-    ask("repairs at Bar-Ilan University involving the laser")
+    ask("repairs at Alpha University involving the laser")
     content = fake.calls[0]["messages"][0]["content"]
-    assert "Already understood" in content and "Repair" in content and "Place: Bar-Ilan University" in content
+    assert "Already understood" in content and "Repair" in content and "Place: Alpha University" in content
 
 
 def test_a_place_or_model_name_is_not_taken_as_a_technician(monkeypatch):
-    use(monkeypatch, FakeClient({"technician": "Hadassah", "text": ""}))
-    assert "technician" not in ask("something about hadassah, more words").filters
+    use(monkeypatch, FakeClient({"technician": "Gamma", "text": ""}))
+    assert "technician" not in ask("something about gamma, more words").filters
     use(monkeypatch, FakeClient({"technician": "Aurora", "text": ""}))
     assert "technician" not in ask("hello there general").filters
     use(monkeypatch, FakeClient({"technician": "Dana Levi", "text": ""}))
@@ -131,10 +131,10 @@ def test_a_place_or_model_name_is_not_taken_as_a_technician(monkeypatch):
 
 
 def test_a_short_place_name_is_mapped_to_the_full_one(monkeypatch):
-    use(monkeypatch, FakeClient({"place": "Bar-Ilan", "text": ""}))
-    out = ask("what happened at the Bar-Ilan lab")
-    assert out.filters["place_id"] == "p-bar" and {"key": "place_id", "label": "Place: Bar-Ilan University"} in out.understood
-    use(monkeypatch, FakeClient({"place": "Hadassah", "text": ""}))
+    use(monkeypatch, FakeClient({"place": "Alpha", "text": ""}))
+    out = ask("what happened at the Alpha lab")
+    assert out.filters["place_id"] == "p-bar" and {"key": "place_id", "label": "Place: Alpha University"} in out.understood
+    use(monkeypatch, FakeClient({"place": "Gamma", "text": ""}))
     assert ask("hello there general").filters["place_id"] == "p-had"
 
 
@@ -142,11 +142,11 @@ def test_unknown_or_ambiguous_places_are_dropped_and_rules_win(monkeypatch):
     use(monkeypatch, FakeClient({"place": "Hogwarts", "text": ""}))
     assert "place_id" not in ask("hello there general").filters
     use(monkeypatch, FakeClient({"place": "Hospital", "text": ""}))
-    two = Known(models=[], places=[("a", "Hadassah Hospital"), ("b", "Sheba Hospital")])
+    two = Known(models=[], places=[("a", "Gamma Hospital"), ("b", "Epsilon Hospital")])
     out = m.parse("hello there general", two, TODAY)
     assert "place_id" not in out.filters  # "hospital" fits two places: not guessed
-    use(monkeypatch, FakeClient({"place": "Hadassah", "text": ""}))
-    assert ask("repairs at Bar-Ilan University hello").filters["place_id"] == "p-bar"  # the rules' place stays
+    use(monkeypatch, FakeClient({"place": "Gamma", "text": ""}))
+    assert ask("repairs at Alpha University hello").filters["place_id"] == "p-bar"  # the rules' place stays
 
 
 def test_short_timeout_and_no_retry(monkeypatch):
