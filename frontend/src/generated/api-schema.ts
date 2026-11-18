@@ -841,6 +841,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/uploads/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inspect Upload */
+        post: operations["inspect_upload_uploads_inspect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/uploads/compose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compose Upload */
+        post: operations["compose_upload_uploads_compose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{report_id}/attachments": {
         parameters: {
             query?: never;
@@ -1437,6 +1471,18 @@ export interface components {
              * @default []
              */
             duplicate_report_ids: string[];
+        };
+        /** Body_compose_upload_uploads_compose_post */
+        Body_compose_upload_uploads_compose_post: {
+            /** Files */
+            files: string[];
+            /** Selection */
+            selection: string;
+        };
+        /** Body_inspect_upload_uploads_inspect_post */
+        Body_inspect_upload_uploads_inspect_post: {
+            /** File */
+            file: string;
         };
         /** Body_upload_attachment_reports__report_id__attachments_post */
         Body_upload_attachment_reports__report_id__attachments_post: {
@@ -4937,6 +4983,72 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inspect_upload_uploads_inspect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_inspect_upload_uploads_inspect_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compose_upload_uploads_compose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_compose_upload_uploads_compose_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

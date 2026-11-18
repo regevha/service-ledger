@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getReport } from '../api';
-import { ACCEPTED_TYPES } from '../uploadFiles';
+import { UploadGrouping } from './UploadGrouping';
+import { ACCEPTED_TYPES, isGroupableFile, isPdfFile, isSupportedFile } from '../uploadFiles';
 import { runItem } from '../batchRun';
 import { STATE_LABEL, WORKING_STATES, runPool, stateForReportStatus, summarize, type BatchItem } from '../batchState';
 import { REPORT_TYPE_LABEL } from '../labels';
@@ -29,11 +30,13 @@ export function BatchIntake({
   onBack: () => void;
 }) {
   const [items, setItems] = useState<BatchItem[]>([]);
+  const [grouping, setGrouping] = useState<{ id: number; files: File[]; replace: number[] } | null>(null);
   const [technician, setTechnician] = useState('');
   const [running, setRunning] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
   const nextId = useRef(1);
+  const nextGroupingId = useRef(1);
   const itemsRef = useRef<BatchItem[]>([]);
   useEffect(() => {
     itemsRef.current = items;
@@ -42,9 +45,9 @@ export function BatchIntake({
   // Files dropped on Home arrive here; each drop (a new nonce) is added once.
   const handledNonce = useRef(0);
   useEffect(() => {
-    if (incoming && incoming.nonce !== handledNonce.current) {
+    if (incoming && !running && !grouping && incoming.nonce !== handledNonce.current) {
       handledNonce.current = incoming.nonce;
-      add(incoming.files);
+      selectFiles(incoming.files);
     }
   });
 
@@ -52,22 +55,38 @@ export function BatchIntake({
     setItems((current) => current.map((i) => (i.id === id ? { ...i, ...change } : i)));
   }, []);
 
-  function add(list: FileList | File[]) {
+  function selectFiles(list: FileList | File[]) {
+    const supplied = Array.from(list);
+    const files = supplied.filter(isSupportedFile);
+    if (files.length > 1 && files.every(isGroupableFile) && files.some((file) => !isPdfFile(file))) {
+      if (files.length > MAX_FILES) {
+        setProblem(`Choose up to ${MAX_FILES} files at a time.`);
+        return;
+      }
+      const skipped = supplied.length - files.length;
+      setProblem(skipped ? `${skipped} unsupported ${skipped === 1 ? "file was" : "files were"} left out.` : null);
+      setGrouping({ id: nextGroupingId.current++, files, replace: [] });
+    } else {
+      add(supplied);
+    }
+  }
+
+  function add(list: FileList | File[], replace: number[] = []) {
     const files = Array.from(list);
-    const accepted = files.filter((f) => ACCEPTED_TYPES.includes(f.type) || (!f.type && /\.(pdf|png|jpe?g|gif|webp)$/i.test(f.name)));
+    const accepted = files.filter(isSupportedFile);
     const skipped = files.length - accepted.length;
-    const room = MAX_FILES - items.length;
+    const room = MAX_FILES - items.length + replace.length;
     const taken = accepted.slice(0, Math.max(room, 0));
     const notes: string[] = [];
     if (skipped > 0) notes.push(`${skipped} ${skipped === 1 ? 'file is' : 'files are'} not a PDF or an image and was left out.`);
     if (accepted.length > taken.length) notes.push(`A batch holds ${MAX_FILES} files; the rest were left out.`);
     setProblem(notes.length > 0 ? notes.join(' ') : null);
-    setItems((current) => [...current, ...taken.map((file) => ({ id: nextId.current++, file, state: 'queued' as const }))]);
+    setItems((current) => [...current.filter((item) => !replace.includes(item.id)), ...taken.map((file) => ({ id: nextId.current++, file, state: 'queued' as const }))]);
   }
 
   async function start(only?: BatchItem[]) {
     const queue = only ?? itemsRef.current.filter((i) => i.state === 'queued');
-    if (queue.length === 0) return;
+    if (queue.length === 0 || running || grouping) return;
     const controller = new AbortController();
     abort.current = controller;
     setRunning(true);
@@ -120,8 +139,8 @@ export function BatchIntake({
     <div className="batch" data-testid="batch-screen">
       <div className="batch-head">
         <div>
-          <h1 className="batch-title">Several PDFs</h1>
-          <p className="batch-sub">Each file is read on its own. You check and approve each one on its report screen.</p>
+          <h1 className="batch-title">Several reports</h1>
+          <p className="batch-sub">Group pages as needed, then read each report and review its fields.</p>
         </div>
         <button type="button" className="btn" onClick={onBack}>
           Back to New report
@@ -134,19 +153,20 @@ export function BatchIntake({
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          add(e.dataTransfer.files);
+          if (!grouping && !running) selectFiles(e.dataTransfer.files);
         }}
       >
-        <strong>Drop PDFs here, or choose them</strong>
-        <span>Up to {MAX_FILES} files. Each one becomes its own report.</span>
+        <strong>Drop PDFs or photos here, or choose files</strong>
+        <span>Up to {MAX_FILES} files. Arrange pages before reading when needed.</span>
         <input
           type="file"
           multiple
           accept={ACCEPTED_TYPES.join(',')}
           data-testid="batch-input"
+          disabled={grouping !== null || running}
           aria-label="Choose files"
           onChange={(e) => {
-            if (e.target.files) add(e.target.files);
+            if (e.target.files) selectFiles(e.target.files);
             e.target.value = '';
           }}
         />
@@ -157,6 +177,18 @@ export function BatchIntake({
         </div>
       )}
 
+      {grouping && (
+        <UploadGrouping key={grouping.id} files={grouping.files} queueCapacity={MAX_FILES - items.length + grouping.replace.length} onCancel={() => setGrouping(null)} onConfirm={(ready) => {
+          add(ready, grouping.replace);
+          setGrouping(null);
+        }} />
+      )}
+      {!grouping && items.some((item) => item.state === 'queued') && !running && (
+        <button type="button" className="btn" onClick={() => {
+          const waiting = items.filter((item) => item.state === 'queued');
+          setGrouping({ id: nextGroupingId.current++, files: waiting.map((item) => item.file), replace: waiting.map((item) => item.id) });
+        }}>Arrange queued pages</button>
+      )}
       {items.length > 0 && (
         <>
           <div className="batch-bar">
@@ -171,7 +203,7 @@ export function BatchIntake({
               <input value={technician} onChange={(e) => setTechnician(e.target.value)} disabled={running} aria-label="Technician name" placeholder="Optional" />
             </label>
             <div className="batch-actions">
-              {idle && (
+              {idle && !grouping && (
                 <button type="button" className="btn primary" data-testid="batch-start" onClick={() => void start()}>
                   Read {items.filter((i) => i.state === 'queued').length} {items.filter((i) => i.state === 'queued').length === 1 ? 'file' : 'files'}
                 </button>
@@ -220,12 +252,12 @@ export function BatchIntake({
                     </button>
                   )}
                   {item.state === 'failed' && (
-                    <button type="button" className="btn small" onClick={() => retry(item)} disabled={running}>
+                    <button type="button" className="btn small" disabled={running || grouping !== null} onClick={() => retry(item)}>
                       Try again
                     </button>
                   )}
                   {(item.state === 'queued' || item.state === 'failed' || item.state === 'attention' || item.state === 'duplicate') && (
-                    <button type="button" className="btn small" aria-label={`Remove ${item.file.name}`} onClick={() => remove(item.id)}>
+                    <button type="button" className="btn small" aria-label={`Remove ${item.file.name}`} disabled={grouping !== null} onClick={() => remove(item.id)}>
                       Remove
                     </button>
                   )}

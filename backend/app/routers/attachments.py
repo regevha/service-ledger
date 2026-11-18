@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from sqlalchemy.orm import Session
 
@@ -39,6 +39,7 @@ from app.services.job_limits import CANCELLED_UNSENT, enforce_job_limits
 from app.services.page_text import PDFIUM_LOCK, count_pdf_pages, page_words
 from app.services.text_reader import extract_text, read_work_order
 from app.services.translation import translation_gate
+from app.services.upload_grouping import compose, load_source, source_page_count
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,17 @@ MAX_RENDER_PIXELS = 25_000_000
 
 router = APIRouter(tags=["attachments"])
 settings = get_settings()
+
+@router.post("/uploads/inspect")
+async def inspect_upload(file: UploadFile) -> dict[str, int]:
+    data, media = await load_source(file)
+    return {"page_count": source_page_count(data, media)}
+
+
+@router.post("/uploads/compose", response_class=Response)
+async def compose_upload(files: list[UploadFile] = File(), selection: str = Form()) -> Response:
+    return Response(await compose(files, selection), media_type=PDF)
+
 
 
 @router.post(

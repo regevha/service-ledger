@@ -73,24 +73,15 @@ test('several photos go up as one PDF and become one report', async ({ page }) =
     { name: 'page3.png', mimeType: 'image/png', buffer: await png(page, 800, 1000, '#ddd') },
   ];
   await page.getByTestId('intake-file-input').setInputFiles(files);
-  await expect(page.locator('.dropzone .primary')).toHaveText('3 photos — one report');
+  await expect(page.getByRole('group', { name: 'Report 1 · 3 pages' })).toBeVisible();
+  await page.getByRole('button', { name: 'Queue 1 report' }).click();
   const { seen, done } = await captureUpload(page);
-  await page.click('button:has-text("Upload & classify")');
+  await page.getByTestId('batch-start').click();
   const response = await done;
   expect(response.status()).toBe(201);
   const body = seen.body.toString('latin1');
   expect(body).toContain('filename="page1-and-2-more.pdf"');
   expect(body).toContain('%PDF-1.4');
   expect(body).toContain('/Count 3');
-  await expect(page.locator('[data-testid="field-list"], .section-title:has-text("Detected from the document")').first()).toBeVisible({ timeout: TIMEOUT.flow });
-});
-
-test('photos mixed with a PDF are refused with the reason', async ({ page }) => {
-  await page.goto('/#/new');
-  await page.getByTestId('intake-file-input').setInputFiles([
-    { name: 'a.png', mimeType: 'image/png', buffer: await png(page, 50, 50, '#fff') },
-    { name: 'b.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') },
-  ]);
-  await expect(page.getByRole('alert')).toContainText('Drop one PDF');
-  await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeDisabled();
+  await expect(page.getByTestId('batch-row')).toHaveCount(1);
 });

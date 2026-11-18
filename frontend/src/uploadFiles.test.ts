@@ -44,7 +44,7 @@ describe('chooseIntakeRoute', () => {
   });
   it('refuses an HTML report together with other files', () => {
     const html = { name: 'report.html', type: 'text/html' };
-    for (const files of [[html, html], [html, pdf('a.pdf')], [html, img('b.jpg')]]) {
+    for (const files of [[html, html], [html, pdf('a.pdf')], [html, img('b.jpg')], [html, pdf('a.pdf'), pdf('b.pdf')]]) {
       const r = chooseIntakeRoute(files);
       expect(r.kind === 'problem' && r.message).toContain('HTML report on its own');
     }

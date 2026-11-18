@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ACCEPTED_TYPES, chooseIntakeRoute, dropProblem } from '../../uploadFiles';
+import { ACCEPTED_TYPES, chooseIntakeRoute, dropProblem, isGroupableFile } from '../../uploadFiles';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 export function IntakeScreen({
@@ -73,7 +73,7 @@ export function IntakeScreen({
           setDragging(false);
           const files = Array.from(e.dataTransfer.files);
           const route = onBatchFiles ? chooseIntakeRoute(files) : null;
-          if (onBatchFiles && route?.kind === 'batch') {
+          if (onBatchFiles && files.length > 1 && files.every(isGroupableFile)) {
             setDropError(null);
             onBatchFiles(files);
             return;
@@ -108,7 +108,7 @@ export function IntakeScreen({
               return;
             }
             const route = onBatchFiles && picked.length > 1 ? chooseIntakeRoute(picked) : null;
-            if (onBatchFiles && route?.kind === 'batch') {
+            if (onBatchFiles && picked.length > 1 && picked.every(isGroupableFile)) {
               onBatchFiles(picked);
               e.target.value = '';
               return;

@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { test, expect } from './coverage';
 
 // Several PDFs chosen or dropped on the New report screen go to the batch screen, as on Home.
@@ -37,40 +38,31 @@ test('one PDF keeps the single-report flow', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeEnabled();
 });
 
-test('two PDFs with a photo are refused, and the screen stays on New report (#326)', async ({ page }) => {
+const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X4VQAAAAASUVORK5CYII=';
+
+test('mixed intake can correct a suggested split, reorder, and queue the result', async ({ page }) => {
   await page.goto('/#/new');
   await page.getByTestId('intake-file-input').setInputFiles([
-    pdf('mix-a.pdf'),
-    pdf('mix-b.pdf'),
-    { name: 'mix-c.png', mimeType: 'image/png', buffer: Buffer.from('x') },
+    { name: 'page-photo.png', mimeType: 'image/png', buffer: Buffer.from(PIXEL, 'base64') },
+    fileURLToPath(new URL('./fixtures/synthetic-confident-scan.pdf', import.meta.url)),
   ]);
-  await expect(page.getByRole('alert')).toContainText('Upload the PDFs and the photos separately');
-  await expect(page).toHaveURL(/#\/new/);
-  await expect(page.getByTestId('batch-screen')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeDisabled();
+  await expect(page.getByRole('heading', { name: 'Group pages into reports' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Queue 2 reports' })).toBeEnabled();
+  await page.getByRole('combobox', { name: 'Move page 1 of report 2' }).selectOption({ label: 'Report 1' });
+  const group = page.getByRole('group', { name: 'Report 1 · 2 pages' });
+  await group.getByRole('button', { name: 'Move up' }).last().click();
+  await expect(group.getByRole('listitem').first()).toContainText('synthetic-confident-scan.pdf');
+  await page.getByRole('button', { name: 'Queue 1 report' }).click();
+  await expect(page.getByTestId('batch-row')).toHaveCount(1);
+  await expect(page.getByTestId('batch-row')).toContainText('synthetic-confident-scan-grouped.pdf');
 });
 
-test('two PDFs and a photo dropped together are refused too', async ({ page }) => {
-  await page.goto('/#/new');
-  const dt = await page.evaluateHandle(() => {
-    const d = new DataTransfer();
-    d.items.add(new File(['%PDF-1.4'], 'drop-mix-a.pdf', { type: 'application/pdf' }));
-    d.items.add(new File(['%PDF-1.4'], 'drop-mix-b.pdf', { type: 'application/pdf' }));
-    d.items.add(new File(['x'], 'drop-mix-c.png', { type: 'image/png' }));
-    return d;
-  });
-  await page.locator('.dropzone').dispatchEvent('drop', { dataTransfer: dt });
-  await expect(page.getByRole('alert')).toContainText('Upload the PDFs and the photos separately');
-  await expect(page).toHaveURL(/#\/new/);
-  await expect(page.getByTestId('batch-screen')).toHaveCount(0);
-});
-
-test('one PDF with photos is refused and the message says what to do', async ({ page }) => {
-  await page.goto('/#/new');
-  await page.getByTestId('intake-file-input').setInputFiles([
-    { name: 'a.png', mimeType: 'image/png', buffer: Buffer.from('x') },
-    pdf('b.pdf'),
+test('Home opens the same grouping preview for mixed files', async ({ page }) => {
+  await page.goto('/#/');
+  await page.getByTestId('home-file-input').setInputFiles([
+    fileURLToPath(new URL('./fixtures/synthetic-confident-scan.pdf', import.meta.url)),
+    { name: 'page-photo.png', mimeType: 'image/png', buffer: Buffer.from(PIXEL, 'base64') },
   ]);
-  await expect(page.getByRole('alert')).toContainText('choose only PDFs');
-  await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeDisabled();
+  await expect(page.getByRole('heading', { name: 'Group pages into reports' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Queue 2 reports' })).toBeEnabled();
 });

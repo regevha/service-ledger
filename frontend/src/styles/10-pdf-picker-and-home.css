@@ -519,6 +519,18 @@
   }
 }
 
+
+.upload-grouping { margin: var(--space-4) 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); }
+.upload-grouping h2 { margin: 0 0 var(--space-2); }
+.upload-grouping fieldset { min-width: 0; margin: 0 0 var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.upload-grouping legend { font-weight: 600; }
+.upload-grouping ol { padding-inline-start: var(--space-5); }
+.upload-grouping li { margin-block: var(--space-3); overflow-wrap: anywhere; }
+.grouping-actions, .grouping-page-name, .grouping-append { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.grouping-actions { margin-block: var(--space-2); }
+.grouping-page-name img { width: 48px; height: 56px; object-fit: contain; border: 1px solid var(--border); }
+.grouping-append input { max-width: 100%; }
+
 /* ---------- Ask in plain words ---------- */
 .ask-box {
   display: flex;
