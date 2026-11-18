@@ -612,3 +612,61 @@
     min-width: 44px;
   }
 }
+
+/* Phone: Templates rows as two-line cards, like Models, Places and Makers. Line 1 is the report type
+   with its buttons; line 2 runs the model, field count and report count side by side. The instrument
+   type (shown next to the model on a wide screen) is on the Edit screen, so it is left out here. */
+@media (max-width: 620px) {
+  .template-row-body.template-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 12px;
+    padding: 8px 14px;
+  }
+  .template-row-body.template-card::after {
+    content: '';
+    order: 2;
+    flex: 0 0 100%;
+    height: 0;
+  }
+  .template-row-body.template-card > span[data-label='Report type'] {
+    order: 0;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .template-row-body.template-card > .template-row-actions {
+    order: 1;
+    flex: 0 0 auto;
+  }
+  .template-row-body.template-card > span:not([data-label='Report type']):not(.template-row-actions) {
+    order: 3;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    text-align: left;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+  .template-row-body.template-card > span[data-label]::before {
+    display: none;
+  }
+  .template-row-body.template-card > span[data-label='Fields']::before,
+  .template-row-body.template-card > span[data-label='Reports']::before {
+    display: inline;
+    font-size: inherit;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    margin: 0;
+  }
+  .template-row-body.template-card > span[data-label='Fields']::before {
+    content: 'Fields: ';
+  }
+  .template-row-body.template-card > span[data-label='Reports']::before {
+    content: 'Reports: ';
+  }
+  .template-row-body.template-card > span[data-label='Model'] small {
+    display: none;
+  }
+}

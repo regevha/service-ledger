@@ -198,7 +198,7 @@ export function TemplateManagerScreen({
             <span>Actions</span>
           </div>
           {templates.map((tpl) => (
-            <div className="template-row template-row-body" data-testid="template-row" key={tpl.id}>
+            <div className="template-row template-row-body template-card" data-testid="template-row" key={tpl.id}>
               <span data-label="Report type">{REPORT_TYPE_LABEL[tpl.report_type]}</span>
               <span data-label="Model">
                 {tpl.model ?? '(any model)'}
