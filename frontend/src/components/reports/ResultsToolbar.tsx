@@ -5,6 +5,7 @@ import type { GroupMode } from './grouping';
 export function ResultsToolbar({
   count,
   searching,
+  finalizedSearch,
   query,
   sort,
   groupMode,
@@ -12,6 +13,7 @@ export function ResultsToolbar({
 }: {
   count: number;
   searching: boolean;
+  finalizedSearch: boolean;
   query: string | undefined;
   sort: SortState | null;
   groupMode: GroupMode;
@@ -21,7 +23,7 @@ export function ResultsToolbar({
     <div className="table-toolbar">
       <span className="table-toolbar-count" data-testid="result-count">
         {searching
-          ? `${count} finalized report${count === 1 ? '' : 's'} match “${query}” · ${
+          ? `${count} ${finalizedSearch ? 'finalized ' : ''}report${count === 1 ? '' : 's'} match “${query}” · ${
               sort ? `sorted by ${SORT_LABEL[sort.key].toLowerCase()}` : 'best match first'
             }`
           : `${count} report${count === 1 ? '' : 's'}${

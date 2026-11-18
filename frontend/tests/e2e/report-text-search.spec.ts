@@ -4,13 +4,13 @@ import { TIMEOUT } from './timeouts';
 import { seedReport } from './helpers/api';
 import { openReports } from './helpers/ui';
 
-// Free-text search on the Reports list: finalized reports only, excerpts under
-// each result, matched words highlighted when a result is opened.
+// Reports text search defaults to finalized reports. Matching text appears
+// in each result and is highlighted when a result is opened.
 //
 // Like reports-search.spec.ts, every report carries a unique marker word and
 // assertions look for that marker among the rows, never absolute counts.
 
-/** A repair report on a Fortessa with the given text, finalized or left extracted (a draft-like state). */
+/** A repair report on a Fortessa with the given text, finalized or left pending review. */
 async function seedTextReport(
   request: APIRequestContext,
   opts: { technician: string; workPerformed: string; finalize: boolean }
@@ -25,7 +25,7 @@ async function seedTextReport(
   return reportId;
 }
 
-test('search finds finalized reports with an excerpt, skips drafts, and highlights on open', async ({ page, request }) => {
+test('text search includes pending reports only when selected and highlights matches on open', async ({ page, request }) => {
   const stamp = Date.now();
   const word = `zyxwv${stamp}`;
   const technician = `E2E-Search-Tech-${stamp}`;
@@ -63,6 +63,20 @@ test('search finds finalized reports with an excerpt, skips drafts, and highligh
   await expect(page.locator('input[aria-label="Search reports"]')).toHaveValue(word);
   await expect(page.getByTestId('report-row')).toHaveCount(1);
   expect(hitId).toBeTruthy();
+
+  const includePending = page.getByRole('checkbox', { name: 'Include reports awaiting review' });
+  await expect(includePending).not.toBeChecked();
+  await includePending.check();
+  await expect(rows).toHaveCount(2);
+  await expect(page.getByTestId('result-count')).toContainText('2 reports match');
+  const pending = rows.filter({ hasText: `${technician}-draft` });
+  await expect(pending.locator('[data-label="Status"]')).toHaveText('In review');
+  await page.getByLabel('Status', { exact: true }).selectOption('in_review');
+  await expect(rows).toHaveCount(1);
+  await expect(pending).toBeVisible();
+  await includePending.uncheck();
+  await expect(page.getByTestId('empty-hint')).toContainText('Search covers finalized reports only');
+  await page.getByLabel('Status', { exact: true }).selectOption('');
 
   // The lab manager's name is not searched.
   await page.fill('input[aria-label="Search reports"]', technician);

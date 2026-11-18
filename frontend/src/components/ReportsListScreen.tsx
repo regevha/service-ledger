@@ -212,7 +212,6 @@ export function ReportsListScreen({
   const searching = Boolean(filters.q);
   // Best match first only means something for a search; otherwise the newest report leads.
   const shown = sort || searching ? sortReports(items, sort) : defaultOrder(items);
-  // Search covers finalized reports only, so another status filter can only be empty.
   const renderRow = (r: ReportListItem) => (
     <ReportRow
       key={r.id}
@@ -225,7 +224,9 @@ export function ReportsListScreen({
   // to the rows inside each group (the groups keep their order), so it works with either grouping.
   const grouped = groupMode !== 'none' && !searching;
   const groups = grouped ? (groupMode === 'model' ? groupByModel : groupByInstrument)(sort ? sortReports(items, sort) : defaultOrder(items), instruments) : [];
-  const statusBlocksSearch = searching && Boolean(filters.status) && filters.status !== 'finalized';
+  const finalizedSearch = !filters.include_pending || Boolean(filters.number_field);
+  const statusBlocksSearch = searching && finalizedSearch && Boolean(filters.status) && filters.status !== 'finalized';
+  const pendingStatus = filters.status === 'extracted' || filters.status === 'in_review';
 
   return (
     <div className="section">
@@ -270,9 +271,13 @@ export function ReportsListScreen({
       ) : items.length === 0 ? (
         <div className="empty-hint" data-testid="empty-hint">
           {statusBlocksSearch
-            ? 'Search covers finalized reports only. Set the status filter to Finalized or clear it.'
+            ? filters.include_pending
+              ? 'Numeric conditions apply to finalized reports only. Set the status filter to Finalized or clear it.'
+              : pendingStatus
+                ? 'Search covers finalized reports only. Select “Include reports awaiting review” to search this status.'
+                : 'Search covers finalized reports only. Set the status filter to Finalized or clear it.'
             : searching
-              ? `No finalized reports contain “${filters.q}” with these filters.`
+              ? `No ${finalizedSearch ? 'finalized reports' : 'reports'} contain “${filters.q}” with these filters.`
               : 'No reports match these filters.'}
         </div>
       ) : (
@@ -280,6 +285,7 @@ export function ReportsListScreen({
           <ResultsToolbar
             count={items.length}
             searching={searching}
+            finalizedSearch={finalizedSearch}
             query={filters.q}
             sort={sort}
             groupMode={groupMode}

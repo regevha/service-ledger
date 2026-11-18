@@ -65,7 +65,7 @@ A real ambiguity, handled honestly instead of guessed past.
 
 1. **Reports** tab. Click column headers to sort (instrument, type, lab manager, report date, status); a second click reverses, a third clears. Open a report and come back: the sort stays.
 2. Filters: instrument, report type, status, from/to dates, lab manager. They all narrow together. Pick the Annex instrument to show the report from Part 3.
-3. **Search report text**: type a word from a finalized report (for example "valve" or a part name). Results come best match first, with an excerpt, and the matched words are highlighted when you open the report. Say that search covers **finalized reports only**: choosing another status with a search shows a message, not a silent empty list.
+3. **Search report text**. Type a word from a finalized report (for example "valve" or a part name). Results come best match first, with an excerpt, and the matched words are highlighted when you open the report. Text search defaults to finalized reports. Select **Include reports awaiting review** to add Extracted and In review results. The status filter can narrow those results further.
 4. **Save this filter**: set a combination (or just a search word), click **Save this filter**, give it a name. The picker shows "1 of 5". Clear the filters, pick the saved one, and everything comes back. Mention the limit of five and that a filter whose instrument was deleted is marked as stale.
 5. Open a finalized report: the button is **Save corrections**, not "Save & finalize". **Download PDF** produces a formatted report. Back on the list, **Export CSV** exports exactly the filtered rows on screen.
 

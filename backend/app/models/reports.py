@@ -91,15 +91,14 @@ class Report(Base):
 
     __tablename__ = "reports"
     __table_args__ = (
-        # Free-text search covers finalized reports only, so the full-text index
-        # does too. The expression must stay identical to
-        # services/report_search.TSVECTOR_SQL (and the migration's), or the
-        # search query silently stops using it.
+        # The full-text index covers the statuses eligible for text search.
+        # Keep its expression and predicate in sync with services/report_search
+        # and the migration so the query can use it.
         Index(
             "ix_reports_search_tsv",
             text("to_tsvector('simple', coalesce(search_text, ''))"),
             postgresql_using="gin",
-            postgresql_where=text("status = 'finalized'"),
+            postgresql_where=text("status IN ('extracted', 'in_review', 'finalized')"),
         ),
     )
 

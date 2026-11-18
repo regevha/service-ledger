@@ -50,6 +50,7 @@ def _filtered_reports_query(
     status: models.ReportStatus | None,
     technician: str | None,
     q: str | None = None,
+    include_pending: bool = False,
     number_field: str | None = None,
     number_op: str | None = None,
     number_value: float | None = None,
@@ -71,6 +72,7 @@ def _filtered_reports_query(
         status=status,
         technician=technician,
         q=q,
+        include_pending=include_pending,
         number_field=number_field,
         number_op=number_op,
         number_value=number_value,
@@ -89,6 +91,9 @@ def create_report(payload: schemas.ReportCreate, db: Session = Depends(get_db)):
 
 
 MAX_PAGE_SIZE = 500
+INCLUDE_PENDING_TEXT_DESCRIPTION = (
+    "With q, also search extracted and in-review reports. Numeric conditions still require finalized reports."
+)
 
 
 def _page(query, limit: int | None, offset: int):
@@ -110,6 +115,7 @@ def search_reports(
     status: models.ReportStatus | None = None,
     technician: str | None = None,
     q: str | None = None,
+    include_pending: bool = Query(False, description=INCLUDE_PENDING_TEXT_DESCRIPTION),
     number_field: str | None = Query(None, description="With number_op and number_value: only reports whose number in this field passes (finalized only)"),
     number_op: str | None = Query(None, description="gt, gte, lt, lte or eq"),
     number_value: float | None = Query(None, description="The number to compare with"),
@@ -133,9 +139,9 @@ def search_reports(
 
     `q` is free-text search (services/report_search.py): word-based, all words
     required, "quoted phrases" and -excluded words understood. It covers
-    finalized reports only, so with a status filter other than finalized the
-    answer is empty. Results are ranked best match first, and each row carries
-    a short excerpt around the match.
+    finalized reports by default. Set `include_pending` to also search
+    extracted and in-review reports, subject to the status filter. Results
+    are ranked best match first, and each row carries an excerpt around the match.
 
     `limit` and `offset` page the answer; the header `X-Total-Count` always carries how many
     reports match in all, so a screen can show "40 of 1,203". Without `limit` every match is
@@ -153,6 +159,7 @@ def search_reports(
         status=status,
         technician=technician,
         q=q,
+        include_pending=include_pending,
         number_field=number_field,
         number_op=number_op,
         number_value=number_value,
@@ -205,6 +212,7 @@ def export_reports(
     status: models.ReportStatus | None = None,
     technician: str | None = None,
     q: str | None = None,
+    include_pending: bool = Query(False, description=INCLUDE_PENDING_TEXT_DESCRIPTION),
     number_field: str | None = Query(None, description="As on GET /reports"),
     number_op: str | None = Query(None, description="As on GET /reports"),
     number_value: float | None = Query(None, description="As on GET /reports"),
@@ -229,6 +237,7 @@ def export_reports(
         status=status,
         technician=technician,
         q=_search_text_param(q),
+        include_pending=include_pending,
         number_field=number_field,
         number_op=number_op,
         number_value=number_value,

@@ -130,6 +130,17 @@
 .reports-layout {
   display: block;
 }
+.reports-filters .include-pending-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+}
+.reports-filters .include-pending-search input {
+  width: auto;
+  flex: none;
+  margin: 0;
+}
 @media (min-width: 1000px) {
   .reports-layout {
     display: grid;
@@ -154,7 +165,7 @@
     margin-bottom: 0;
   }
   .reports-filters .filter-row select,
-  .reports-filters .filter-row input,
+  .reports-filters .filter-row input:not([type='checkbox']),
   .reports-filters .filter-row .date-input,
   .reports-filters .search-box {
     width: 100%;

@@ -130,10 +130,10 @@ export function conditionsOf(search: KeptSearch): ReportSearchPart[] {
 
 /** This search without one condition, or null when that was the last one (then nothing is left to keep). */
 export function withoutCondition(search: KeptSearch, key: string): KeptSearch | null {
-  const filters: Record<string, string> = { ...criteriaOf(search.filters) };
+  const filters = { ...criteriaOf(search.filters) };
   for (const filter of filtersOfCondition(key)) delete filters[filter];
-  if (!hasCriteria(filters as ReportFilters)) return null;
-  return { text: search.text, filters: filters as ReportFilters, understood: search.understood.filter((part) => part.key !== key) };
+  if (!hasCriteria(filters)) return null;
+  return { text: search.text, filters, understood: search.understood.filter((part) => part.key !== key) };
 }
 
 function isParts(value: unknown): value is ReportSearchPart[] {

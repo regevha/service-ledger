@@ -7,7 +7,11 @@ import type { BarFilters, ModelOption } from './filterSummary';
 
 /** The filter bar's own controls, one per filter. Moved out of ReportFilterBar unchanged. */
 
-export function SearchBox({ value: searchInput, onChange: setSearchInput }: { value: string; onChange: (value: string) => void }) {
+export function SearchBox({
+  value: searchInput,
+  onChange: setSearchInput,
+  includePending,
+}: { value: string; onChange: (value: string) => void; includePending?: boolean }) {
   return (
     <span className="search-box">
       <input
@@ -16,7 +20,7 @@ export function SearchBox({ value: searchInput, onChange: setSearchInput }: { va
         placeholder="Search report text…"
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
-        title='Finds finalized reports containing all the words. Use "quotes" for an exact phrase and a minus sign to leave a word out. Numbers are not searched.'
+        title={`Searches ${includePending ? 'finalized reports and reports awaiting review' : 'finalized reports'}. Use "quotes" for an exact phrase and a minus sign to leave a word out. Numbers are not searched.`}
       />
       {searchInput && (
         <button type="button" className="btn small" aria-label="Clear search" onClick={() => setSearchInput('')}>

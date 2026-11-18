@@ -2,6 +2,8 @@
 finalized reports only, ranked by best match, with excerpts."""
 from __future__ import annotations
 
+import csv
+import io
 import itertools
 import re
 
@@ -102,6 +104,50 @@ def test_only_finalized_reports_are_returned(client, db_session):
     ):
         _make(db_session, status=status, fields=words)
     assert _search(client, "bubble") == [str(final.id)]
+
+
+def test_pending_text_search_is_opt_in_and_intersects_status_for_list_and_export(client, db_session):
+    fields = {"fault_description": "bubble in the sheath line", "labor_hours": 5}
+    reports = {status.value: _make(db_session, status=status, fields=fields) for status in models.ReportStatus}
+    for include_pending, status, expected in (
+        (False, None, {"finalized"}),
+        (True, None, {"extracted", "in_review", "finalized"}),
+        (True, "extracted", {"extracted"}),
+        (True, "in_review", {"in_review"}),
+        (True, "finalized", {"finalized"}),
+        (True, "draft", set()),
+        (True, "classified", set()),
+    ):
+        params = {"q": "bubble", "include_pending": str(include_pending).lower()}
+        if status:
+            params["status"] = status
+        expected_rows = {(str(reports[s].id), s) for s in expected}
+        page = client.get("/reports", params=params)
+        assert page.status_code == 200
+        assert int(page.headers["X-Total-Count"]) == len(expected_rows)
+        assert {(row["id"], row["status"]) for row in page.json()} == expected_rows
+        assert all(row["snippet"] for row in page.json())
+        export = client.get("/reports/export", params=params)
+        assert export.status_code == 200
+        rows = csv.DictReader(io.StringIO(export.text))
+        assert {(row["id"], row["status"]) for row in rows} == expected_rows
+
+    assert set(_ids(client, include_pending="true")) == {str(report.id) for report in reports.values()}
+    numeric = {"number_field": "labor_hours", "number_op": "gt", "number_value": 4}
+    assert _search(client, "bubble", include_pending="true", **numeric) == [str(reports["finalized"].id)]
+    analytics = client.get("/analytics/fleet", params={"q": "bubble", "include_pending": "true", "status": "in_review"})
+    assert analytics.status_code == 200
+    assert analytics.json()["total_labor_hours"] == 0
+
+
+def test_saved_search_keeps_pending_opt_in_only_with_text(client):
+    criteria = {"q": "bubble", "include_pending": True}
+    response = client.post("/saved-report-filters", json={"name": "Bubbles awaiting review", "filters": criteria})
+    assert response.status_code == 201
+    assert client.get("/saved-report-filters").json()["items"][0]["filters"] == criteria
+
+    response = client.post("/saved-report-filters", json={"name": "Review alone", "filters": {"include_pending": True}})
+    assert response.status_code == 422
 
 
 def test_a_report_leaves_search_when_it_is_no_longer_finalized_and_returns_when_finalized_again(client, db_session):

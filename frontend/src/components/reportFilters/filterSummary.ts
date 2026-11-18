@@ -42,6 +42,7 @@ export function summarizeFilters({
           : '';
   const summary = [
     filters.q ? `“${filters.q}”` : '',
+    filters.include_pending ? 'Include reports awaiting review' : '',
     ...summaryExtra,
     place ? placeLabel(place) : '',
     model ? model.name : '',

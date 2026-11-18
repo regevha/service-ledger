@@ -39,8 +39,10 @@ export interface ReportFilters {
   date_from?: string;
   date_to?: string;
   technician?: string;
-  /** Free-text search over finalized reports (two or more characters). */
+  /** Free-text search (two or more characters), finalized reports by default. */
   q?: string;
+  /** Also search extracted and in-review reports when q is set. */
+  include_pending?: boolean;
   /** A condition on a number in the report (finalized only): the field, gt/gte/lt/lte/eq, and the number. All three or none. */
   number_field?: string;
   number_op?: string;
@@ -53,7 +55,7 @@ export interface ReportFilters {
 function reportsQuery(filters: ReportFilters, extra: Record<string, string> = {}): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
-    if (value) params.set(key, value);
+    if (value) params.set(key, String(value));
   }
   for (const [key, value] of Object.entries(extra)) params.set(key, value);
   const qs = params.toString();
@@ -96,12 +98,7 @@ export async function countReports(filters: ReportFilters = {}): Promise<number>
 // Same filter shape as listReports, so exporting always matches the current
 // on-screen search (§7/§9 — the backend keeps both endpoints' filters in sync).
 export function reportsExportUrl(filters: ReportFilters = {}): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) {
-    if (value) params.set(key, value);
-  }
-  const qs = params.toString();
-  return `${API_BASE}/reports/export${qs ? `?${qs}` : ''}`;
+  return `${API_BASE}/reports/export${reportsQuery(filters)}`;
 }
 
 export function confirmTemplate(reportId: string, instrumentId: string, templateId: string): Promise<Report> {

@@ -1,4 +1,4 @@
-"""Free-text search over finalized reports (proposal-report-search.md).
+"""Free-text search over finalized reports and, by request, reports awaiting review.
 
 What is searchable, per the 2026-10-14 decisions: the text-type fields of the
 report's template (and the text columns of its tables), plus the instrument's
@@ -8,8 +8,8 @@ model and serial number. Not searchable: numbers, booleans, dates, dropdown
 `Report.search_text` holds those values joined by newlines. It is kept up to
 date by one `before_flush` listener (registered at the bottom of this module),
 so every write path — field edits, the worker, template or instrument edits —
-refreshes it without each router having to remember to. The query only ever
-returns finalized reports; a partial GIN index covers exactly that set.
+refreshes it without each router having to remember to. A partial GIN index
+covers extracted, in-review and finalized reports.
 """
 from __future__ import annotations
 
@@ -113,6 +113,12 @@ def match_expressions(q: str):
 
 def finalized_only():
     return models.Report.status == models.ReportStatus.finalized
+
+
+def including_pending():
+    return models.Report.status.in_(
+        (models.ReportStatus.extracted, models.ReportStatus.in_review, models.ReportStatus.finalized)
+    )
 
 
 # ---------- Excerpts ----------

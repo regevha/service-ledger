@@ -20,7 +20,7 @@ from app.schemas.instrument_models import InstrumentModelDetailOut, ModelReliabi
 # that after finding that "Save this filter" did nothing with only a search word).
 # The instrument model (`model_id`) joined on 2026-10-27 with the model filter.
 # The place (`place_id`) joined with the places plan, step 3.
-SAVED_FILTER_KEYS = ("instrument_id", "model_id", "place_id", "report_type", "status", "date_from", "date_to", "technician", "q", "number_field", "number_op", "number_value")
+SAVED_FILTER_KEYS = ("instrument_id", "model_id", "place_id", "report_type", "status", "date_from", "date_to", "technician", "q", "include_pending", "number_field", "number_op", "number_value")
 
 
 class SavedFilterCriteria(BaseModel):
@@ -40,6 +40,7 @@ class SavedFilterCriteria(BaseModel):
     technician: str | None = None
     # Free-text search, kept as typed (trimmed). Same rules as GET /reports?q=.
     q: str | None = None
+    include_pending: bool | None = None
     # A condition on a number in the report's fields ("laser delay above 29"): all three or none.
     number_field: str | None = None
     number_op: str | None = None
@@ -65,6 +66,8 @@ class SavedFilterCriteria(BaseModel):
         problem = field_condition_error(self.number_field, self.number_op, self.number_value)
         if problem:
             raise ValueError(problem)
+        if not self.q or not self.include_pending:
+            self.include_pending = None
         if all(getattr(self, k) is None for k in SAVED_FILTER_KEYS):
             raise ValueError("Set at least one filter before saving")
         if self.date_from and self.date_to and self.date_from > self.date_to:

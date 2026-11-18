@@ -83,16 +83,16 @@ def apply_report_filters(
     status: models.ReportStatus | None = None,
     technician: str | None = None,
     q: str | None = None,
+    include_pending: bool = False,
     number_field: str | None = None,
     number_op: str | None = None,
     number_value: float | None = None,
 ) -> Query:
     """Narrow a query on Report. `model_id` keeps the reports of every instrument of that model
     record (instrument_models.id); with `instrument_id` too, both must hold. `technician` is a
-    case-insensitive partial match (ILIKE); `q` is the word-based free-text search, which covers
-    finalized reports only (services/report_search.py), so combined with another status it is
-    simply empty. `number_field`, `number_op` and `number_value` together are a condition on a number in the report's fields
-    ("laser delay above 29"); like `q` it covers finalized reports only (values still being checked can change)."""
+    case-insensitive partial match (ILIKE). `q` searches finalized reports by default.
+    `include_pending` adds extracted and in-review reports to the text search, subject to
+    the status filter. Numeric field conditions always require finalized values."""
     if instrument_id:
         query = query.filter(models.Report.instrument_id == instrument_id)
     if model_id:
@@ -113,7 +113,8 @@ def apply_report_filters(
         query = query.filter(models.Report.technician_name.ilike(f"%{technician}%"))
     if q:
         match, _rank = report_search.match_expressions(q)
-        query = query.filter(report_search.finalized_only(), match)
+        eligible = report_search.including_pending() if include_pending else report_search.finalized_only()
+        query = query.filter(eligible, match)
     if number_field and number_op in FIELD_OPS and number_value is not None:
         query = query.filter(report_search.finalized_only(), field_condition(number_field, number_op, number_value))
     return query

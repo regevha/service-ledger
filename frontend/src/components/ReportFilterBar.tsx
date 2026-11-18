@@ -139,6 +139,7 @@ export function ReportFilterBar<F extends BarFilters>({
       <div className="filters-summary">{toggle}</div>
       <SavedFilters
         filters={filters as ReportFilters}
+        allowPending={!analytics}
         onApply={(applied) => {
           setFilters(applied as unknown as F);
           setTechnicianInput(applied.technician ?? '');
@@ -148,7 +149,20 @@ export function ReportFilterBar<F extends BarFilters>({
       />
 
       <div className="filter-row" data-testid={testId}>
-        <SearchBox value={searchInput} onChange={setSearchInput} />
+        <SearchBox value={searchInput} onChange={setSearchInput} includePending={filters.include_pending} />
+        {!analytics && (
+          <label className="include-pending-search">
+            <input
+              type="checkbox"
+              checked={filters.include_pending === true}
+              onChange={(e) => {
+                const includePending = e.target.checked;
+                setFilters((f) => ({ ...f, include_pending: includePending || undefined }));
+              }}
+            />
+            Include reports awaiting review
+          </label>
+        )}
 
         {leading}
 

@@ -529,9 +529,9 @@ export interface paths {
          *
          *     `q` is free-text search (services/report_search.py): word-based, all words
          *     required, "quoted phrases" and -excluded words understood. It covers
-         *     finalized reports only, so with a status filter other than finalized the
-         *     answer is empty. Results are ranked best match first, and each row carries
-         *     a short excerpt around the match.
+         *     finalized reports by default. Set `include_pending` to also search
+         *     extracted and in-review reports, subject to the status filter. Results
+         *     are ranked best match first, and each row carries an excerpt around the match.
          *
          *     `limit` and `offset` page the answer; the header `X-Total-Count` always carries how many
          *     reports match in all, so a screen can show "40 of 1,203". Without `limit` every match is
@@ -2795,6 +2795,8 @@ export interface components {
             technician?: string | null;
             /** Q */
             q?: string | null;
+            /** Include Pending */
+            include_pending?: boolean | null;
             /** Number Field */
             number_field?: string | null;
             /** Number Op */
@@ -4350,6 +4352,8 @@ export interface operations {
                 status?: components["schemas"]["ReportStatus"] | null;
                 technician?: string | null;
                 q?: string | null;
+                /** @description With q, also search extracted and in-review reports. Numeric conditions still require finalized reports. */
+                include_pending?: boolean;
                 /** @description With number_op and number_value: only reports whose number in this field passes (finalized only) */
                 number_field?: string | null;
                 /** @description gt, gte, lt, lte or eq */
@@ -4465,6 +4469,8 @@ export interface operations {
                 status?: components["schemas"]["ReportStatus"] | null;
                 technician?: string | null;
                 q?: string | null;
+                /** @description With q, also search extracted and in-review reports. Numeric conditions still require finalized reports. */
+                include_pending?: boolean;
                 /** @description As on GET /reports */
                 number_field?: string | null;
                 /** @description As on GET /reports */

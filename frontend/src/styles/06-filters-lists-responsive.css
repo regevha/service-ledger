@@ -133,7 +133,7 @@
 /* Filters: one control per line, full width, on a phone. */
 @media (max-width: 620px) {
   .filter-row select,
-  .filter-row input,
+  .filter-row input:not([type='checkbox']),
   .filter-row .date-input {
     width: 100%;
     flex: 1 1 100%;

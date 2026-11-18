@@ -17,13 +17,15 @@ function criteria(f: ReportFilters): ReportFilters {
     const v = f[k];
     if (v) (out as Record<string, string>)[k] = v;
   }
+  if (out.q && f.include_pending) out.include_pending = true;
   return out;
 }
 
 /** What was actually applied: the saved criteria, minus an instrument, model or place that no longer exists. */
-function withoutGone(saved: SavedFilter): ReportFilters {
+function applicableCriteria(saved: SavedFilter, allowPending: boolean): ReportFilters {
   const next = { ...saved.filters };
   for (const key of saved.stale_keys ?? []) delete next[key];
+  if (!allowPending) delete next.include_pending;
   return next;
 }
 
@@ -44,7 +46,7 @@ const GONE_NOTICE: Record<'instrument_id' | 'model_id' | 'place_id', string> = {
 function sameCriteria(a: ReportFilters, b: ReportFilters): boolean {
   const ca = criteria(a);
   const cb = criteria(b);
-  return KEYS.every((k) => (ca[k] ?? '') === (cb[k] ?? ''));
+  return ca.include_pending === cb.include_pending && KEYS.every((k) => (ca[k] ?? '') === (cb[k] ?? ''));
 }
 
 // The "Saved filters" controls on the Reports list: pick one of the shared
@@ -53,9 +55,11 @@ function sameCriteria(a: ReportFilters, b: ReportFilters): boolean {
 // loads through the ordinary GET /reports, so there is one filtering path.
 export function SavedFilters({
   filters,
+  allowPending,
   onApply,
 }: {
   filters: ReportFilters;
+  allowPending: boolean;
   /** Replace the list's filters with these. */
   onApply: (filters: ReportFilters) => void;
 }) {
@@ -88,7 +92,7 @@ export function SavedFilters({
   const full = items.length >= cap;
   // Edited since it was applied. A stale filter is compared without its
   // dropped instrument, model or place, since that is what was actually applied.
-  const changed = active ? !sameCriteria(filters, withoutGone(active)) : false;
+  const changed = active ? !sameCriteria(filters, applicableCriteria(active, allowPending)) : false;
 
   function apply(id: string) {
     setError(null);
@@ -99,7 +103,7 @@ export function SavedFilters({
     const chosen = items.find((i) => i.id === id);
     if (!chosen) return;
     if (chosen.stale) setNotice((chosen.stale_keys ?? []).map((k) => GONE_NOTICE[k]).join(' '));
-    onApply(withoutGone(chosen));
+    onApply(applicableCriteria(chosen, allowPending));
   }
 
   async function save() {
