@@ -100,6 +100,8 @@ test.describe('intake flow', () => {
     await expect(panel).toBeVisible();
     await expect(panel.getByTestId('intake-working-file')).toContainText('.pdf');
     await expect(panel).toContainText(/\d+s/);
+    await expect(panel.getByText('Scan uploaded', { exact: true })).toHaveCount(0);
+    await expect(panel.getByTestId('intake-working-scan')).toHaveCount(0);
     await expect(panel.getByRole('button', { name: 'Cancel' })).toBeVisible();
 
     await panel.getByRole('button', { name: 'Cancel' }).click();
@@ -109,6 +111,32 @@ test.describe('intake flow', () => {
     await abandonedUpload;
     await page.waitForLoadState('networkidle');
     await expect(page.getByTestId('intake-dropzone')).toBeVisible();
+    await expect(page.getByTestId('intake-working')).toHaveCount(0);
+  });
+
+  test('while reading: the stored scan is visible before the result arrives', async ({ page }) => {
+    let releasePoll!: () => void;
+    const holdPoll = new Promise<void>((resolve) => { releasePoll = resolve; });
+    await page.route('**/extraction-jobs/*', async (route) => {
+      await holdPoll;
+      await route.continue();
+    });
+    await page.goto('/#/new');
+    await page.getByTestId('intake-file-input').setInputFiles(uniqueFixture(FIXTURE));
+    await page.click('button:has-text("Upload & classify")');
+
+    try {
+      const panel = page.getByTestId('intake-working');
+      await expect(panel.getByText('Scan uploaded', { exact: true })).toBeVisible();
+      const preview = panel.getByRole('complementary', { name: 'Original scan' });
+      await expect(preview.getByRole('link', { name: 'View original scan' })).toHaveAttribute('href', /\/attachments\/[^/]+\/file\?inline=1$/);
+      const firstPage = preview.getByRole('img', { name: /Scan page 1 of/ });
+      await expect(firstPage).toBeVisible();
+      await expect.poll(() => firstPage.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    } finally {
+      releasePoll();
+    }
+    await expect(page.getByTestId('field-list')).toBeVisible({ timeout: TIMEOUT.flow });
     await expect(page.getByTestId('intake-working')).toHaveCount(0);
   });
 

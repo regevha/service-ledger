@@ -70,19 +70,34 @@
   border-bottom: none;
 }
 
-/* Reading the scan: a centred card with a larger spinner. */
-.section.working-panel {
-  justify-content: center;
-  padding: 56px 24px;
+/* Keep the reading status beside the scan when both can fit. */
+.intake-working-layout {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
 }
-.section.working-panel .spinner {
-  width: 40px;
-  height: 40px;
-  border-width: 5px;
+.intake-working-status {
+  align-items: flex-start;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
 }
-.section.working-panel .working-text {
+.intake-working-status [role='status'] {
   font-size: var(--text-lg);
   font-weight: 600;
+  color: var(--text);
+}
+.intake-working-scan {
+  min-width: 0;
+}
+.intake-working-scan .scan-pane {
+  max-height: 60vh;
+}
+@media (min-width: 900px) {
+  .intake-working-layout.with-scan {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  }
 }
 
 /* Status pills above the Reports list: one tap narrows the list to a status; the number is how many there are. */

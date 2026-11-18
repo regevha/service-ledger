@@ -217,6 +217,7 @@ export function IntakeFlow({
         <WorkingPanel
           label={phase.label}
           fileName={file?.name}
+          attachmentId={attachmentId ?? undefined}
           slow={liveClaude}
           onCancel={() => void handleCancel()}
         />

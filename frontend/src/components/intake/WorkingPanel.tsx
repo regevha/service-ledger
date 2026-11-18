@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
+import { attachmentFileUrl } from '../../api';
+import { ScanPages } from '../ScanPages';
 
 export function WorkingPanel({
   label,
   fileName,
+  attachmentId,
   slow,
   onCancel,
 }: {
   label: string;
   fileName?: string;
+  attachmentId?: string;
   /** True when a live model is reading the scan, which takes a while. */
   slow: boolean;
   onCancel?: () => void;
@@ -19,27 +23,37 @@ export function WorkingPanel({
     return () => clearInterval(timer);
   }, []);
   return (
-    <div className="section working-panel" data-testid="intake-working">
-      <div className="spinner" />
-      <div className="working-text">
-        <div>{label}</div>
-        <div className="working-detail">
-          {fileName && <span className="working-file" data-testid="intake-working-file">{fileName}</span>}
-          <span>{seconds}s</span>
+    <div className={`section intake-working-layout${attachmentId ? ' with-scan' : ''}`} data-testid="intake-working">
+      <div className="working-panel intake-working-status">
+        <div className="spinner" aria-hidden="true" />
+        <div className="working-text">
+          <div role="status">{label}</div>
+          <div className="working-detail">
+            {fileName && <span className="working-file" data-testid="intake-working-file">{fileName}</span>}
+            <span>{seconds}s</span>
+          </div>
+          {slow && seconds >= 90 && <div className="working-detail">Still working. This is taking longer than usual.</div>}
+          <ul className="working-steps" aria-label="Progress">
+            <li className={attachmentId ? 'done' : 'now'} aria-current={attachmentId ? undefined : 'step'}>
+              {attachmentId ? 'Scan uploaded' : 'Upload scan'}
+            </li>
+            <li className={attachmentId ? 'now' : undefined} aria-current={attachmentId ? 'step' : undefined}>Read the report</li>
+            <li>You check the result</li>
+          </ul>
+          {onCancel && (
+            <button type="button" className="btn small" data-testid="intake-cancel" onClick={onCancel}>
+              Cancel
+            </button>
+          )}
         </div>
-        {slow && seconds < 90 && <div className="working-detail">Reading a scan usually takes 10–60 seconds; a translated one takes longer.</div>}
-        {slow && seconds >= 90 && <div className="working-detail">Still working — this one is taking longer than usual.</div>}
-        <ul className="working-steps" aria-label="Progress">
-          <li className="done">Scan uploaded</li>
-          <li className="now">{label.replace(/[….]+$/, '')}</li>
-          <li>You check the result</li>
-        </ul>
-        <div className="working-detail">You can leave this tab; the report keeps reading in the background.</div>
       </div>
-      {onCancel && (
-        <button type="button" className="btn small" data-testid="intake-cancel" onClick={onCancel}>
-          Cancel
-        </button>
+      {attachmentId && (
+        <aside className="intake-working-scan" aria-label="Original scan" data-testid="intake-working-scan">
+          <a className="link-button" href={attachmentFileUrl(attachmentId, { inline: true })} target="_blank" rel="noreferrer">
+            View original scan
+          </a>
+          <ScanPages key={attachmentId} attachmentId={attachmentId} />
+        </aside>
       )}
     </div>
   );
