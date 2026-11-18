@@ -1,4 +1,4 @@
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { test, expect } from './coverage';
 
 // Several PDFs chosen or dropped on the New report screen go to the batch screen, as on Home.
@@ -38,13 +38,14 @@ test('one PDF keeps the single-report flow', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeEnabled();
 });
 
-const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X4VQAAAAASUVORK5CYII=';
+const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAFklEQVR4nGP8//8/A27AhEeOYeRKAwCl4wMRx3ocVQAAAABJRU5ErkJggg==';
+const sample = () => ({ name: 'synthetic-confident-scan.pdf', mimeType: 'application/pdf', buffer: readFileSync(new URL('./fixtures/synthetic-confident-scan.pdf', import.meta.url)) });
 
 test('mixed intake can correct a suggested split, reorder, and queue the result', async ({ page }) => {
   await page.goto('/#/new');
   await page.getByTestId('intake-file-input').setInputFiles([
     { name: 'page-photo.png', mimeType: 'image/png', buffer: Buffer.from(PIXEL, 'base64') },
-    fileURLToPath(new URL('./fixtures/synthetic-confident-scan.pdf', import.meta.url)),
+    sample(),
   ]);
   await expect(page.getByRole('heading', { name: 'Group pages into reports' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Queue 2 reports' })).toBeEnabled();
@@ -60,7 +61,7 @@ test('mixed intake can correct a suggested split, reorder, and queue the result'
 test('Home opens the same grouping preview for mixed files', async ({ page }) => {
   await page.goto('/#/');
   await page.getByTestId('home-file-input').setInputFiles([
-    fileURLToPath(new URL('./fixtures/synthetic-confident-scan.pdf', import.meta.url)),
+    sample(),
     { name: 'page-photo.png', mimeType: 'image/png', buffer: Buffer.from(PIXEL, 'base64') },
   ]);
   await expect(page.getByRole('heading', { name: 'Group pages into reports' })).toBeVisible();
