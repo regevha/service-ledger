@@ -38,7 +38,14 @@ These captures show commit `71919f9` running against an isolated database with s
 
 ## Separate feature work
 
-Six local branches cover reading progress and scan visibility, review checks and extraction confidence, text search for reports awaiting review, mixed PDF and photo grouping, further UI polish, and a visual template editor. Some UI changes overlap with this WIP snapshot.
+These six local branches are separate from the published product snapshot. The descriptions reflect code and tests inspected on those branches. The screenshots above show the published snapshot.
+
+- **Reading progress and scan visibility.** After upload, the original scan stays visible beside the status panel. The panel reflects the stage reported by the worker so the reviewer can follow the work while looking at the document. Validate the stage transitions with a synthetic report and live processing.
+- **Review continuity and extraction confidence.** The review screen preserves the reader’s confidence for extracted fields and the reviewer’s explicit “Mark as checked” choices. Saving a correction keeps the reviewer on the same screen instead of treating an edit as a completed check. Verify saving and reopening a report with a mix of checked and unchecked fields.
+- **Search reports awaiting review.** Text search defaults to finalized reports. Selecting “Include reports awaiting review” also brings in matching reports still in review. Opening a result highlights matching text. Verify default and opt-in results, including their interaction with the status filter.
+- **Mixed PDFs and photos.** A mixed selection opens a page grouping screen. The user can preview and reorder pages, move them to another report, or start a new report. Each confirmed group enters the queue as one report. The published queue handles multiple PDFs as separate reports. Verify group assembly and processing through review.
+- **Home, search, and metrics polish.** The upload action moves ahead of search on Home, search and filter controls get clearer labels, and accuracy wording clarifies what reviewers kept as read. The published snapshot already has some Home and filter changes. Compare the two versions and choose which layout and wording to keep.
+- **Visual template editor.** A template author can open an attached report, mark where fields appear on the page, and request draft field suggestions. They can run the configured reader on that document and inspect the values before saving the template. Verify the draft workflow and extraction results on synthetic documents.
 
 ## What remains before merge
 
