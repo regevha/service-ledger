@@ -23,7 +23,7 @@ from app.services.claude_client import call_claude_tool
 from app.services.errors import ClassificationError
 from app.trace import bound_job
 
-PDF_BYTES = b"%PDF-1.4 SECRET-DOCUMENT-BODY customer Acme serial R647794E6092"
+PDF_BYTES = b"%PDF-1.4 SECRET-DOCUMENT-BODY customer Acme serial R900002A0092"
 KEY = "sk-ant-api03-SECRETKEYVALUE1234567890"
 PROMPT_MARK = "UNIQUE-PROMPT-MARKER-7731"
 SCHEMA_MARK = "unique_schema_property_5520"

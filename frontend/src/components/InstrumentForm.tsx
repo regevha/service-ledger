@@ -266,7 +266,7 @@ export function InstrumentFormScreen({
           Institute
           <SuggestInput
             className="text-input"
-            placeholder="e.g. Bar-Ilan University (optional)"
+            placeholder="e.g. Alpha University (optional)"
             value={institution}
             onChange={setInstitution}
             options={knownPlaces.filter((p) => p.kind === 'institution').map((p) => p.name)}
@@ -287,7 +287,7 @@ export function InstrumentFormScreen({
           <input
             type="text"
             className="text-input"
-            placeholder="e.g. Rhenium (optional)"
+            placeholder="e.g. Omega Distribution (optional)"
             value={distributor}
             onChange={(e) => setDistributor(e.target.value)}
           />

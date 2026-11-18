@@ -64,7 +64,7 @@ def extract_text(data: bytes, max_pages: int = MAX_PAGES) -> str:
         return ""
 
 
-# "WORK ORDER NUMBER: WO-03424229" on a service report. WO-… anywhere else is
+# "WORK ORDER NUMBER: WO-91000002" on a service report. WO-… anywhere else is
 # a fallback (a form that names the work order in a free-text field).
 _WORK_ORDER_LABELLED = re.compile(r"WORK ORDER NUMBER:?\s*(WO-\d{5,})", re.IGNORECASE)
 _WORK_ORDER_ANY = re.compile(r"(?<![A-Za-z])(WO-\d{5,})")
@@ -81,11 +81,11 @@ _TASK_CODE_DESCRIBED = re.compile(
     r"(?<![A-Za-z0-9])(T\d{3})(?=\s+(?:Repair|Preventive|Preventative|Install|Calibrat))", re.IGNORECASE
 )
 
-# "647794E6 - LSRFortessa SO": the Installed Product line. Parts tables use the
+# "900002A0 - LSRFortessa SO": the Installed Product line. Parts tables use the
 # same "<number> - <name>" shape, so a line only counts when its name is one of
 # the fleet's models.
 # No guard before the code: pypdf can glue the previous label to it
-# ("N/A665158 - FACSDiscover S8"), and a code always starts with a digit.
+# ("N/A900003 - FACSDiscover S8"), and a code always starts with a digit.
 _PRODUCT_LINE = re.compile(r"([0-9][0-9A-Z]{4,9})\s+-\s+([^\n]+)")
 
 
@@ -120,7 +120,7 @@ def _model_key(model: str) -> str:
 
 
 def read_work_order(text: str) -> str | None:
-    """The work-order number as printed ("WO-03424229"), or None."""
+    """The work-order number as printed ("WO-91000002"), or None."""
     match = _WORK_ORDER_LABELLED.search(text)
     if match is None and _WORK_ORDER_WORDS.search(text):
         match = _WORK_ORDER_ANY.search(text)
@@ -144,8 +144,8 @@ def read_identifiers(text: str, models: list[str]) -> TextRead:
         if found is None:
             continue
         product_code, model = line.group(1), found
-        # The serial number embeds the product code ("R647794E6092",
-        # "MP6651580000057"): the first such token after the product line. A
+        # The serial number embeds the product code ("R900002A0092",
+        # "MP9000030000057"): the first such token after the product line. A
         # token equal to the code itself is the product line, not a serial.
         token = re.compile(rf"(?<![A-Za-z0-9])([A-Z]{{0,3}}{re.escape(product_code)}[0-9A-Z]+)(?![A-Za-z0-9])")
         serial_match = token.search(text, line.end())

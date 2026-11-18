@@ -48,10 +48,10 @@ def test_report_type_from_task_code(printed, expected):
 @pytest.mark.parametrize(
     ("printed", "expected"),
     [
-        ("WO-04587090", "04587090"),
-        ("wo 04587090", "04587090"),
-        ("04587090", "04587090"),
-        (" WO04587090 ", "04587090"),
+        ("WO-91000001", "91000001"),
+        ("wo 91000001", "91000001"),
+        ("91000001", "91000001"),
+        (" WO91000001 ", "91000001"),
         ("N/A", None),
         ("", None),
         ("WO", None),
@@ -131,11 +131,11 @@ def test_without_a_usable_task_code_the_models_guess_stands(tmp_path, monkeypatc
 
 
 def test_the_live_call_asks_for_the_task_code_and_work_order(tmp_path, monkeypatch):
-    read, client = _live(tmp_path, monkeypatch, work_order_number=" WO-04587090 ")
+    read, client = _live(tmp_path, monkeypatch, work_order_number=" WO-91000001 ")
     sent = client.messages.calls[0]
     assert {"task_code", "task_code_confidence", "work_order_number"} <= set(sent["tools"][0]["input_schema"]["required"])
     assert "task_code" in sent["messages"][0]["content"][-1]["text"]
-    assert read.work_order_number == "WO-04587090"
+    assert read.work_order_number == "WO-91000001"
 
 
 @pytest.mark.parametrize("answered", ["", "   ", None, 7])
@@ -191,14 +191,14 @@ def test_different_bytes_and_re_attaching_to_the_same_report_are_not_flagged(cli
 
 def test_the_same_work_order_in_a_different_file_is_flagged_at_classify(client, run_worker, db_session):
     first_report, second_report = _new_report(client), _new_report(client)
-    first = _upload(client, first_report, "visit_WO-04587090.pdf")
+    first = _upload(client, first_report, "visit_WO-91000001.pdf")
     first_result = _classify(client, run_worker, first["id"])
-    assert first_result["work_order_number"] == "WO-04587090"
+    assert first_result["work_order_number"] == "WO-91000001"
     assert first_result["duplicate_report_ids"] == []
-    assert db_session.get(models.Attachment, first["id"]).work_order_number == "04587090"
+    assert db_session.get(models.Attachment, first["id"]).work_order_number == "91000001"
 
     # A re-scan: different bytes, different file name, same work order.
-    rescan = _upload(client, second_report, "rescan wo04587090.pdf", PDF + b" rescanned")
+    rescan = _upload(client, second_report, "rescan wo91000001.pdf", PDF + b" rescanned")
     assert rescan["duplicate_report_ids"] == []  # bytes differ — only classify can tell
     result = _classify(client, run_worker, rescan["id"])
     assert result["duplicate_report_ids"] == [first_report]
@@ -216,6 +216,6 @@ def test_a_document_with_no_work_order_is_never_a_work_order_duplicate(client, r
 
 
 def test_reclassifying_the_same_attachment_does_not_flag_itself(client, run_worker):
-    attachment = _upload(client, _new_report(client), "visit_WO-04587090.pdf")
+    attachment = _upload(client, _new_report(client), "visit_WO-91000001.pdf")
     _classify(client, run_worker, attachment["id"])
     assert _classify(client, run_worker, attachment["id"])["duplicate_report_ids"] == []

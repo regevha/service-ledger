@@ -98,7 +98,7 @@ function PlaceForm({
             type="text"
             className="text-input"
             value={name}
-            placeholder={kind === 'institution' ? 'e.g. Bar-Ilan University' : kind === 'faculty' ? 'e.g. Life Sciences Building' : 'e.g. Room 205'}
+            placeholder={kind === 'institution' ? 'e.g. Alpha University' : kind === 'faculty' ? 'e.g. Life Sciences Building' : 'e.g. Room 101'}
             onChange={(e) => setName(e.target.value)}
           />
         </label>

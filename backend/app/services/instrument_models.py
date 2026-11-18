@@ -29,7 +29,7 @@ def near_duplicates(names: list[str], *, contains: bool = False) -> list[list[st
     """Groups of two or more distinct names that probably mean the same model
     (equal once case, spaces and punctuation are ignored, or very similar).
     With `contains`, a name that is wholly inside another (at least 3 characters:
-    "205" in "Room 205", "Bar Ilan" in "Bar-Ilan University") also counts, which
+    "101" in "Room 101", "Alpha" in "Alpha University") also counts, which
     suits places."""
     distinct = sorted(set(names))
     parent = {n: n for n in distinct}

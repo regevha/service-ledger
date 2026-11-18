@@ -1,7 +1,7 @@
 """Near-miss copies of the instrument's serial in extracted text are replaced
 with the real serial (services/serial_check.py). Born from the FACSDiscover S8
-software upgrade report: its Subject line says "S/N R6651580000057" while the
-instrument is MP6651580000057, and the wrong serial was stored on every live run
+software upgrade report: its Subject line says "S/N R9000030000057" while the
+instrument is MP9000030000057, and the wrong serial was stored on every live run
 (2026-10-10, 10-15, 10-19)."""
 from __future__ import annotations
 
@@ -9,31 +9,31 @@ import pytest
 
 from app.services.serial_check import correct_serial_typos
 
-S8 = "MP6651580000057"
+S8 = "MP9000030000057"
 
 
 def test_the_s8_subject_line_is_corrected():
-    fields = {"service_description": "Software upgrade from 6.2 to 6.3 - S8 S/N R6651580000057"}
+    fields = {"service_description": "Software upgrade from 6.2 to 6.3 - S8 S/N R9000030000057"}
     fixes = correct_serial_typos(fields, S8)
     assert fields["service_description"] == f"Software upgrade from 6.2 to 6.3 - S8 S/N {S8}"
-    assert [(f.field, f.found) for f in fixes] == [("service_description", "R6651580000057")]
+    assert [(f.field, f.found) for f in fixes] == [("service_description", "R9000030000057")]
 
 
 def test_the_correct_serial_is_left_alone_in_any_case_or_punctuation():
-    fields = {"a": f"S/N {S8}", "b": "mp-6651580000057", "c": "MP 6651580000057"}
+    fields = {"a": f"S/N {S8}", "b": "mp-9000030000057", "c": "MP 9000030000057"}
     assert correct_serial_typos(fields, S8) == []
     assert fields["a"] == f"S/N {S8}"
-    assert fields["b"] == "mp-6651580000057"
+    assert fields["b"] == "mp-9000030000057"
 
 
 @pytest.mark.parametrize(
     "text",
     [
-        "Work order WO-04482628 closed",  # unrelated identifier
-        "Contract SMX0457374",  # contract number
+        "Work order WO-91000005 closed",  # unrelated identifier
+        "Contract SMX9000001",  # contract number
         "Part 644651 replaced",  # short number
         "Tool T-4240-003-01 checked",  # part-like
-        "Serial MP6651580000999 on the other unit",  # three digits away: a different machine
+        "Serial MP9000030000999 on the other unit",  # three digits away: a different machine
         "Software 6.2 to 6.3",
     ],
 )
@@ -46,19 +46,19 @@ def test_other_identifiers_are_never_touched(text):
 def test_only_text_values_are_changed():
     fields = {
         "labor_hours": 8,
-        "parts_used": [{"part": "R6651580000057"}],
+        "parts_used": [{"part": "R9000030000057"}],
         "signed": True,
         "note": None,
-        "service_description": "S/N R6651580000057",
+        "service_description": "S/N R9000030000057",
     }
     correct_serial_typos(fields, S8)
-    assert fields["parts_used"] == [{"part": "R6651580000057"}]
+    assert fields["parts_used"] == [{"part": "R9000030000057"}]
     assert fields["labor_hours"] == 8
     assert fields["service_description"] == f"S/N {S8}"
 
 
 def test_every_occurrence_in_every_field_is_fixed_and_reported():
-    fields = {"a": "R6651580000057 and again R6651580000057", "b": "MP6651580000058"}
+    fields = {"a": "R9000030000057 and again R9000030000057", "b": "MP9000030000058"}
     fixes = correct_serial_typos(fields, S8)
     assert fields["a"] == f"{S8} and again {S8}"
     assert fields["b"] == S8
@@ -67,9 +67,9 @@ def test_every_occurrence_in_every_field_is_fixed_and_reported():
 
 def test_distance_allowed_depends_on_serial_length():
     # Twelve characters: two edits allowed.
-    fields = {"t": "R647794E6099 and P647794E6092"}
-    correct_serial_typos(fields, "R647794E6092")
-    assert fields["t"] == "R647794E6092 and P647794E6092".replace("P647794E6092", "R647794E6092")
+    fields = {"t": "R900002A0099 and P900002A0092"}
+    correct_serial_typos(fields, "R900002A0092")
+    assert fields["t"] == "R900002A0092 and P900002A0092".replace("P900002A0092", "R900002A0092")
     # Eight or nine characters: one edit only.
     fields = {"t": "AB123456 AB123499"}
     correct_serial_typos(fields, "AB123457")
@@ -78,7 +78,7 @@ def test_distance_allowed_depends_on_serial_length():
 
 @pytest.mark.parametrize(
     "short, text",
-    [("Y1033", "Y10334 Y1033XX"), ("102579", "1025790X 1025798"), ("AB12345", "AB123456 XAB12345")],
+    [("Y9004", "Y90044 Y9004XX"), ("900005", "9000050X 9000058"), ("AB12345", "AB123456 XAB12345")],
 )
 def test_short_serials_are_never_matched_loosely(short, text):
     """Under eight characters a near-miss is too likely to be a different
@@ -97,11 +97,11 @@ def test_a_word_without_digits_is_never_replaced():
 
 
 def test_a_correct_part_of_the_serial_is_not_a_typo():
-    # "MP 6651580000057": the number half alone is two edits from the serial,
-    # and replacing it would give "MP MP6651580000057".
-    fields = {"t": "S/N MP 6651580000057"}
+    # "MP 9000030000057": the number half alone is two edits from the serial,
+    # and replacing it would give "MP MP9000030000057".
+    fields = {"t": "S/N MP 9000030000057"}
     assert correct_serial_typos(fields, S8) == []
-    assert fields["t"] == "S/N MP 6651580000057"
+    assert fields["t"] == "S/N MP 9000030000057"
 
 
 # ---------- through the worker ----------

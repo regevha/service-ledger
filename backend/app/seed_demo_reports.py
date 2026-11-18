@@ -52,7 +52,7 @@ settings = get_settings()
 
 DEMO_REPORTS = [
     {
-        "technician_name": "Demo - FACSAria III repair (WO-01873748)",
+        "technician_name": "Demo - FACSAria III repair (WO-91000004)",
         "instrument_model": "FACSAria III",
         "report_type": "repair",
         "classification": {
@@ -60,7 +60,7 @@ DEMO_REPORTS = [
             "report_type": {"value": "repair", "confidence": 0.95},
         },
         "extracted_fields": {
-            "fault_description": "Air bubble in bleach line in ARIA III 648282B3 S/N P648282B3003",
+            "fault_description": "Air bubble in bleach line in ARIA III 900001A0 S/N P900001A0003",
             "root_cause": "Cracked connector",
             "work_performed": (
                 "Replaced quick connector on the wet cart. Connector was slightly cracked. Checked the "
@@ -83,7 +83,7 @@ DEMO_REPORTS = [
         },
     },
     {
-        "technician_name": "Demo - LSRFortessa preventive maintenance (WO-04482967)",
+        "technician_name": "Demo - LSRFortessa preventive maintenance (WO-91000006)",
         "instrument_model": "LSRFortessa",
         "report_type": "preventive_maintenance",
         "classification": {
@@ -118,7 +118,7 @@ DEMO_REPORTS = [
         },
     },
     {
-        "technician_name": "Demo - FACSDiscover S8 preventive maintenance (WO-04271950)",
+        "technician_name": "Demo - FACSDiscover S8 preventive maintenance (WO-91000003)",
         "instrument_model": "FACSDiscover S8",
         "report_type": "preventive_maintenance",
         "classification": {

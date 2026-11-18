@@ -30,12 +30,12 @@ function textPdf(lines: string[]): Buffer {
 
 test('a serial that is not registered offers the add-instrument panel, pre-filled', async ({ page, request }) => {
   const stamp = String(Date.now()).slice(-8);
-  const serial = `R647794E6${stamp}`; // BD serials embed the product code
+  const serial = `R900002A0${stamp}`; // BD serials embed the product code
   const pdf = textPdf([
     'Service Report',
     `CASE NUMBER : 0${stamp}      WORK ORDER NUMBER: WO-${stamp}`,
     'ACCOUNT   INSTRUMENT LOCATION   SYSTEM   INSTALLED PRODUCT',
-    'N/A647794E6 - LSRFortessa SO',
+    'N/A900002A0 - LSRFortessa SO',
     'Serial/Lot Number:',
     serial,
     'WORK ORDER DETAILS',
@@ -69,13 +69,13 @@ test('a serial that is not registered offers the add-instrument panel, pre-fille
 
 test('the add-instrument panel takes an institute and a room, creating a new institute like the Instruments tab does', async ({ page, request }) => {
   const stamp = String(Date.now()).slice(-8);
-  const serial = `R647794E6${stamp}`;
+  const serial = `R900002A0${stamp}`;
   const institute = `E2E Intake Institute ${stamp}`;
   const pdf = textPdf([
     'Service Report',
     `CASE NUMBER : 0${stamp}      WORK ORDER NUMBER: WO-${stamp}`,
     'ACCOUNT   INSTRUMENT LOCATION   SYSTEM   INSTALLED PRODUCT',
-    'N/A647794E6 - LSRFortessa SO',
+    'N/A900002A0 - LSRFortessa SO',
     'Serial/Lot Number:',
     serial,
     'WORK ORDER DETAILS',

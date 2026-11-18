@@ -65,9 +65,9 @@ def _translation_input(**overrides) -> dict:
     data = {
         "source_language": "he",
         "hebrew_share": 0.7,
-        "translated_text": "Report 2046 | S.N Y1033 | Order 4010348 | 13.08.2026",
+        "translated_text": "Report 2046 | S.N Y9004 | Order 4010348 | 13.08.2026",
         "ignored_pages": [{"page": 2, "reason": "Daily QC report"}, {"page": 3, "reason": "Daily QC report"}],
-        "identifiers": ["2046", "Y1033", "4010348", "13.08.2026"],
+        "identifiers": ["2046", "Y9004", "4010348", "13.08.2026"],
         "notes": [],
     }
     data.update(overrides)
@@ -93,45 +93,45 @@ def test_hebrew_share_counts_letters_only():
 
 
 def test_identifiers_are_tokens_with_digits():
-    found = identifiers_in("Report SC26R006240 for BE50173, call 22/09/26 of Cytek Aurora, hello")
-    assert "SC26R006240" in found and "BE50173" in found
+    found = identifiers_in("Report SC99R900001 for BE90006, call 22/09/26 of Cytek Aurora, hello")
+    assert "SC99R900001" in found and "BE90006" in found
     assert "hello" not in found and "Cytek" not in found
 
 
 def test_identifier_check_reports_the_ones_missing_from_the_translation():
-    check = identifier_check(["Y1033", "N7-97566"], "S.N Y1033 only", original_text="BE50173")
+    check = identifier_check(["Y9004", "N7-90001"], "S.N Y9004 only", original_text="BE90006")
     assert check["checked"] == 3
-    assert check["missing"] == ["N7-97566", "BE50173"]
+    assert check["missing"] == ["N7-90001", "BE90006"]
 
 
 def test_identifiers_from_a_visual_order_text_layer_are_not_reported_missing():
-    # The Rhenium text layer (visual order) gives these reordered; the English
+    # The Omega Distribution text layer (visual order) gives these reordered; the English
     # has them as printed on the form. Found in the live run of 2026-10-15.
-    layer = "50173BE 96621B-BC 006240R26SC 000030R23SR 767C"
-    english = "Device BE50173, product BC-B96621, call SC26R006240, SR23R000030, room C767"
+    layer = "90006BE 90002B-BC 900001R99SC 900002R99SR 100C"
+    english = "Device BE90006, product BC-B90002, call SC99R900001, SR99R900002, Room C100"
     check = identifier_check([], english, original_text=layer)
     assert check == {"checked": 5, "missing": []}
 
 
 def test_a_different_identifier_is_still_reported_missing_from_a_visual_order_layer():
     # Same letters, different digits: not a reordering, so it is flagged.
-    check = identifier_check([], "Device BE50174", original_text="50173BE")
-    assert check["missing"] == ["50173BE"]
+    check = identifier_check([], "Device BE90007", original_text="90006BE")
+    assert check["missing"] == ["90006BE"]
 
 
 def test_identifiers_the_model_listed_in_reversed_order_are_not_reported_missing():
     # Live run of 2026-10-16: the model copied these into its own list from the
     # visual-order text layer, while its English has them as printed.
-    listed = ["50173BE", "96621B-BC", "000030R23SR"]
-    english = "Device BE50173, product BC-B96621, contract SR23R000030"
+    listed = ["90006BE", "90002B-BC", "900002R99SR"]
+    english = "Device BE90006, product BC-B90002, contract SR99R900002"
     check = identifier_check(listed, english)
     assert check == {"checked": 3, "missing": []}
 
 
 def test_a_listed_identifier_that_differs_is_still_reported_missing():
     # Same letters, different digits: a real difference, not a reordering.
-    check = identifier_check(["50173BE", "Y1033"], "Device BE50174, S.N Y1033")
-    assert check["missing"] == ["50173BE"]
+    check = identifier_check(["90006BE", "Y9004"], "Device BE90007, S.N Y9004")
+    assert check["missing"] == ["90006BE"]
 
 
 def test_the_translation_prompt_asks_for_identifiers_as_printed_and_for_signature_state():
@@ -186,11 +186,11 @@ def test_accepting_unlocks_classification_and_keeps_both_texts(client, run_worke
     _translate(client, run_worker, att)
     tid = _current(client, att)["id"]
 
-    accepted = client.post(f"/translations/{tid}/accept", json={"accepted_text": "Edited English text, S.N Y1033"})
+    accepted = client.post(f"/translations/{tid}/accept", json={"accepted_text": "Edited English text, S.N Y9004"})
     assert accepted.status_code == 200
     body = accepted.json()
     assert body["status"] == "accepted"
-    assert body["accepted_text"] == "Edited English text, S.N Y1033"
+    assert body["accepted_text"] == "Edited English text, S.N Y9004"
     assert body["model_text"] != body["accepted_text"]  # the model's text is kept as it was
     assert body["accepted_at"] is not None
 
@@ -372,7 +372,7 @@ def test_live_translation_sends_the_page_and_ignores_qc_pages(client, run_worker
 
 
 def test_live_translation_flags_identifiers_that_did_not_survive(client, run_worker, live):
-    text = "Report 2046 | S.N Y1033"  # the order number and the date are gone
+    text = "Report 2046 | S.N Y9004"  # the order number and the date are gone
     fake = _FakeClient(_tool_use(_translation_input(translated_text=text)))
     live.setattr(translation, "_get_client", lambda: fake)
     att = _upload(client, "cytek_report.pdf")["attachment"]["id"]
@@ -468,13 +468,13 @@ def test_classification_and_extraction_read_the_accepted_english(client, run_wor
     att = ids["attachment"]["id"]
     _translate(client, run_worker, att)
     tid = _current(client, att)["id"]
-    client.post(f"/translations/{tid}/accept", json={"accepted_text": "Accepted English: S.N Y1033"})
+    client.post(f"/translations/{tid}/accept", json={"accepted_text": "Accepted English: S.N Y9004"})
 
     assert client.post(f"/attachments/{att}/classify").status_code == 202
     run_worker()
     sent = classify_client.messages.calls[0]["messages"][0]["content"]
     assert sent[0]["type"] == "text"  # not the original document
-    assert "Accepted English: S.N Y1033" in sent[0]["text"]
+    assert "Accepted English: S.N Y9004" in sent[0]["text"]
     assert "<document>" in sent[0]["text"]
 
     # Extraction too.
@@ -533,12 +533,12 @@ def test_an_instrument_not_in_the_fleet_is_not_forced_into_the_nearest_model(cli
             "instrument_confidence": 0.9,
             "report_type": "installation_upgrade",
             "report_type_confidence": 0.9,
-            "instrument_serial": "Y1033",
+            "instrument_serial": "Y9004",
             "instrument_serial_confidence": 0.95,
             "task_code": "",
             "task_code_confidence": 0,
             "work_order_number": "2046",
-            "issuer": "almog diagnostic",
+            "issuer": "sigma diagnostics",
             "detected_manufacturer": "Cytek Biosciences",
             "detected_model": "Cytek Aurora",
             "report_type_note": "also an annual preventive maintenance visit",
@@ -551,14 +551,14 @@ def test_an_instrument_not_in_the_fleet_is_not_forced_into_the_nearest_model(cli
     assert result["detected_model"] == "Cytek Aurora"
     assert result["instrument"]["confidence"] == 0.0  # a placeholder, so the technician picks
     assert result["resolved_template_id"] is None and result["resolved_instrument_id"] is None
-    assert result["issuer"] == "almog diagnostic"
+    assert result["issuer"] == "sigma diagnostics"
     # The sentinel is offered to the model as a choice.
     tool = fake.messages.calls[0]["tools"][0]
     assert "(not in the fleet)" in tool["input_schema"]["properties"]["instrument_model"]["enum"]
     assert "never pick the nearest model" in fake.messages.calls[0]["messages"][0]["content"][1]["text"]
 
     report = client.get(f"/reports/{ids['report']['id']}").json()
-    assert report["issuer"] == "almog diagnostic"
+    assert report["issuer"] == "sigma diagnostics"
     assert report["report_type_note"] == "also an annual preventive maintenance visit"
 
 
@@ -601,8 +601,8 @@ def test_invisible_characters_in_a_read_are_dropped(client, run_worker, live):
 
 
 def test_the_prompt_does_not_call_a_device_number_the_serial(client, run_worker, live):
-    # On the Rhenium form the "device number" BE50173 is the model code and the
-    # "serial number" 102579 is the serial (confirmed by the project owner).
+    # On the Omega Distribution form the "device number" BE90006 is the model code and the
+    # "serial number" 900005 is the serial (confirmed by the project owner).
     _, _, fake = _classify_live(
         client,
         run_worker,
@@ -612,7 +612,7 @@ def test_the_prompt_does_not_call_a_device_number_the_serial(client, run_worker,
             "instrument_confidence": 0.9,
             "report_type": "repair",
             "report_type_confidence": 0.9,
-            "instrument_serial": "102579",
+            "instrument_serial": "900005",
             "instrument_serial_confidence": 0.9,
         },
     )
@@ -635,7 +635,7 @@ def test_the_prompt_does_not_call_a_customer_order_number_the_work_order(client,
             "instrument_confidence": 0.9,
             "report_type": "installation_upgrade",
             "report_type_confidence": 0.7,
-            "instrument_serial": "Y1033",
+            "instrument_serial": "Y9004",
             "instrument_serial_confidence": 0.9,
             "work_order_number": "2046",
         },
@@ -657,7 +657,7 @@ def test_the_prompt_reads_the_service_call_as_the_work_order_not_the_order_numbe
             "instrument_confidence": 0.9,
             "report_type": "installation_upgrade",
             "report_type_confidence": 0.8,
-            "instrument_serial": "Y1033",
+            "instrument_serial": "Y9004",
             "instrument_serial_confidence": 0.9,
             "work_order_number": "2046",
         },
@@ -676,7 +676,7 @@ def test_stub_other_maker_file_is_not_in_the_fleet_until_it_is_added(client, run
     run_worker()
     first = client.get(f"/extraction-jobs/{job['id']}").json()["classification"]
     assert first["maker_in_fleet"] is False and first["instrument"]["confidence"] == 0.0
-    assert first["detected_model"] == "Cytek Aurora" and first["issuer"] == "almog diagnostic"
+    assert first["detected_model"] == "Cytek Aurora" and first["issuer"] == "sigma diagnostics"
     assert first["resolved_instrument_id"] is None
 
     added = client.post(
@@ -686,7 +686,7 @@ def test_stub_other_maker_file_is_not_in_the_fleet_until_it_is_added(client, run
             "instrument_type": "flow_cytometer",
             "model": "Cytek Aurora",
             "manufacturer": "Cytek Biosciences",
-            "distributor": "almog diagnostic",
+            "distributor": "sigma diagnostics",
             "serial_number": "ZZ0000",
         },
     )
@@ -715,36 +715,36 @@ def test_stub_other_maker_serial_can_come_from_the_file_name(client, run_worker)
 
 
 def test_barcode_text_with_an_extra_leading_letter_is_not_reported_missing():
-    # Live run of 2026-10-17: the Rhenium form prints its report number
-    # SC26R006240 under the barcode as *QSC26R006240*, and the model listed
+    # Live run of 2026-10-17: the Omega Distribution form prints its report number
+    # SC99R900001 under the barcode as *QSC99R900001*, and the model listed
     # the barcode text as an identifier.
-    english = "Report number SC26R006240, device BE50173"
-    check = identifier_check(["SC26R006240", "QSC26R006240", "BE50173"], english)
+    english = "Report number SC99R900001, device BE90006"
+    check = identifier_check(["SC99R900001", "QSC99R900001", "BE90006"], english)
     assert check == {"checked": 3, "missing": []}
 
 
 def test_barcode_echo_also_works_for_a_visual_order_remainder():
-    check = identifier_check(["Q006240R26SC"], "Report number SC26R006240")
+    check = identifier_check(["Q900001R99SC"], "Report number SC99R900001")
     assert check["missing"] == []
 
 
 @pytest.mark.parametrize(
     "listed",
     [
-        "QSC26R006241",  # different digits
-        "QQSC26R006240",  # two extra letters
-        "7SC26R006240",  # a digit, not a letter, in front
-        "SC26R006240X",  # trailing, not leading
+        "QSC99R900002",  # different digits
+        "QQSC99R900001",  # two extra letters
+        "7SC99R900001",  # a digit, not a letter, in front
+        "SC99R900001X",  # trailing, not leading
     ],
 )
 def test_other_variants_of_a_translated_identifier_are_still_reported_missing(listed):
-    check = identifier_check([listed], "Report number SC26R006240")
+    check = identifier_check([listed], "Report number SC99R900001")
     assert check["missing"] == [listed]
 
 
 def test_a_short_remainder_is_never_excused_as_a_barcode_echo():
-    check = identifier_check(["XY1033"], "Serial Y1033")
-    assert check["missing"] == ["XY1033"]
+    check = identifier_check(["XY9004"], "Serial Y9004")
+    assert check["missing"] == ["XY9004"]
 
 
 def test_the_translation_prompt_says_to_list_a_barcode_identifier_once():

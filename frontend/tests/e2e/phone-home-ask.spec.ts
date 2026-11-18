@@ -65,7 +65,7 @@ test.describe('Home and the ask box on a phone', { tag: '@phone' }, () => {
   test('Reports: on a phone the conditions are on the line at the top, inside the screen, and a tapped example fills them', async ({ page }) => {
     await page.goto('/#/reports');
     const sheet = await openAskSheet(page);
-    await sheet.getByRole('button', { name: 'maintenance in 2025 at Bar-Ilan University' }).tap();
+    await sheet.getByRole('button', { name: 'maintenance in 2025 at Alpha University' }).tap();
     await expect(page.getByTestId('ask-sheet')).toHaveCount(0); // a question that set something closes the sheet
     // The Ask box does not repeat the chips on a phone; the one line at the top is where they are.
     const line = page.getByTestId('active-search');

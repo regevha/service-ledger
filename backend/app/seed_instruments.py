@@ -1,11 +1,14 @@
 """Seeds the fixed fleet in scope for MVP (spec §1): three BD instruments, plus
-the Cytek Aurora and CytoFLEX S from the Hebrew service reports.
+the Cytek Aurora and CytoFLEX S (both shaped on the Hebrew service reports; every
+serial, institution and distributor name here is invented).
 
 Serial numbers match the ones already used across the architecture spec's
 demos (new-report-demo.html, repair-review-demo.html) so a technician poking
 at both the backend and the earlier UI mockups sees the same fleet.
 """
 from __future__ import annotations
+
+import hashlib
 
 from sqlalchemy.orm import Session
 
@@ -15,12 +18,12 @@ from app.services.instrument_types import ensure_default_types
 from app.services.manufacturers import ensure_default_makers
 
 INSTRUMENTS = [
-    {"name": "FACSAria III", "model": "FACSAria III", "manufacturer": "BD", "serial_number": "P648282B3003", "institution": "Demo Institution", "location": "Core Lab"},
+    {"name": "FACSAria III", "model": "FACSAria III", "manufacturer": "BD", "serial_number": "P900001A0003", "institution": "Demo Institution", "location": "Core Lab"},
     {
         "name": "LSRFortessa",
         "model": "LSRFortessa",
         "manufacturer": "BD",
-        "serial_number": "R647794E6092",
+        "serial_number": "R900002A0092",
         "institution": "Demo Institution",
         "location": "Core Lab",
     },
@@ -28,7 +31,7 @@ INSTRUMENTS = [
         "name": "FACSDiscover S8",
         "model": "FACSDiscover S8",
         "manufacturer": "BD",
-        "serial_number": "MP6651580000057",
+        "serial_number": "MP9000030000057",
         "institution": "Demo Institution",
         "location": "Core Lab",
     },
@@ -40,40 +43,59 @@ INSTRUMENTS = [
         "name": "Cytek Aurora",
         "model": "Cytek Aurora",
         "manufacturer": "Cytek Biosciences",
-        "distributor": "almog diagnostic",
-        "serial_number": "Y1033",
-        "institution": "Bar-Ilan University",
-        "location": "Room 205",
+        "distributor": "sigma diagnostics",
+        "serial_number": "Y9004",
+        "institution": "Alpha University",
+        "location": "Room 101",
     },
     {
         "name": "CytoFLEX S",
         "model": "CytoFLEX S",
         "manufacturer": "Beckman Coulter",
-        "distributor": "Rhenium",
-        "serial_number": "102579",
-        "institution": "Bar-Ilan University",
-        "location": "Room C767",
+        "distributor": "Omega Distribution",
+        "serial_number": "900005",
+        "institution": "Alpha University",
+        "location": "Room C100",
     },
 ]
 
-# The first versions of this seed used made-up serials for the Aria and the S8.
+# The first versions of this seed used other serials for the instruments below.
 # A database seeded back then still has them: seed() renames those rows to the
-# real serials in place (same row, so its reports stay attached) rather than
+# current serials in place (same row, so its reports stay attached) rather than
 # adding second units of each model next to them — two units of one model stop
 # a document being assigned by model alone (services/classification.py).
-LEGACY_DEMO_SERIALS = {"A47291": "P648282B3003", "S80019": "MP6651580000057"}
+LEGACY_DEMO_SERIALS = {"A47291": "P900001A0003", "S80019": "MP9000030000057"}
+
+# Later versions seeded the serials printed on real forms. The seed now uses
+# invented ones, so a database seeded with the earlier values is moved the same
+# way. The old values are kept only as SHA-256 hashes (this repository is public):
+# the SHA-256 of the old serial maps to its replacement.
+REPLACED_SERIAL_HASHES = {
+    "6ba29d2a6f0a3fdf0428d74f41eb2b70dc53f1c1411813be4bf7db06f3783a12": "P900001A0003",
+    "4b510c43c63c80c9d85656021997f0080aab789a03cc564e69af3170a70e57ff": "R900002A0092",
+    "7163c5bf4b310770dd6769b947ab74e2d6e6952b10436c03b48247a4ebe942de": "MP9000030000057",
+    "5ad48941b3f7a4babe6a6d2cba044cf80d93123e28af13db142be9ab5bb68feb": "Y9004",
+    "fb9896ba0def8900c0c3f8b194c35ea6f40f7f00d448440f0cd811edf4871b73": "900005",
+}
+
+
+def _rename_serial(db: Session, row: Instrument, new: str) -> None:
+    if db.query(Instrument).filter(Instrument.serial_number == new).one_or_none() is not None:
+        # The new unit was already added by hand: leave both rather than
+        # merge two rows that may each have their own reports.
+        return
+    row.serial_number = new
 
 
 def _migrate_legacy_serials(db: Session) -> None:
     for old, new in LEGACY_DEMO_SERIALS.items():
         legacy = db.query(Instrument).filter(Instrument.serial_number == old).one_or_none()
-        if legacy is None:
-            continue
-        if db.query(Instrument).filter(Instrument.serial_number == new).one_or_none() is not None:
-            # The real unit was already added by hand: leave both rather than
-            # merge two rows that may each have their own reports.
-            continue
-        legacy.serial_number = new
+        if legacy is not None:
+            _rename_serial(db, legacy, new)
+    for row in db.query(Instrument).all():
+        new = REPLACED_SERIAL_HASHES.get(hashlib.sha256((row.serial_number or "").encode()).hexdigest())
+        if new is not None:
+            _rename_serial(db, row, new)
     db.flush()
 
 

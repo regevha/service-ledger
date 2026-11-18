@@ -13,8 +13,8 @@ from datetime import date
 
 from app.models import Instrument, Report, ReportStatus, ReportTemplate, ReportType
 
-FORTESSA = "R647794E6092"
-ARIA = "P648282B3003"
+FORTESSA = "R900002A0092"
+ARIA = "P900001A0003"
 
 
 def _unit(db, serial):

@@ -374,12 +374,12 @@ def test_distributor_is_optional_trimmed_and_returned(client):
 
     made = client.post(
         "/instruments",
-        json={"name": "With Dist", "model": "D2", "manufacturer": "Beckman Coulter", "serial_number": "DIST-0002", "distributor": "  Rhenium "},
+        json={"name": "With Dist", "model": "D2", "manufacturer": "Beckman Coulter", "serial_number": "DIST-0002", "distributor": "  Omega Distribution "},
     ).json()
-    assert made["distributor"] == "Rhenium"  # trimmed
-    assert client.get(f"/instruments/{made['id']}").json()["distributor"] == "Rhenium"
+    assert made["distributor"] == "Omega Distribution"  # trimmed
+    assert client.get(f"/instruments/{made['id']}").json()["distributor"] == "Omega Distribution"
     listed = {i["serial_number"]: i for i in client.get("/instruments").json()}
-    assert listed["DIST-0002"]["distributor"] == "Rhenium"
+    assert listed["DIST-0002"]["distributor"] == "Omega Distribution"
     assert listed["DIST-0001"]["distributor"] is None
 
 
@@ -396,13 +396,13 @@ def test_update_distributor_sets_changes_and_clears_it(client):
         "/instruments", json={"name": "Edit Dist", "model": "D4", "manufacturer": "Cytek", "serial_number": "DIST-0004", "institution": "Test University", "location": "Room 2"}
     ).json()
 
-    assert client.patch(f"/instruments/{created['id']}", json={"distributor": "almog diagnostic"}).json()["distributor"] == "almog diagnostic"
+    assert client.patch(f"/instruments/{created['id']}", json={"distributor": "sigma diagnostics"}).json()["distributor"] == "sigma diagnostics"
     # Other edits leave it alone, and so does a distributor edit leave the maker alone.
     after = client.patch(f"/instruments/{created['id']}", json={"location": "Room 3"}).json()
-    assert after["distributor"] == "almog diagnostic" and after["manufacturer"] == "Cytek Biosciences"
-    assert client.patch(f"/instruments/{created['id']}", json={"distributor": "Rhenium"}).json()["distributor"] == "Rhenium"
+    assert after["distributor"] == "sigma diagnostics" and after["manufacturer"] == "Cytek Biosciences"
+    assert client.patch(f"/instruments/{created['id']}", json={"distributor": "Omega Distribution"}).json()["distributor"] == "Omega Distribution"
     assert client.patch(f"/instruments/{created['id']}", json={"distributor": None}).json()["distributor"] is None
-    client.patch(f"/instruments/{created['id']}", json={"distributor": "Rhenium"})
+    client.patch(f"/instruments/{created['id']}", json={"distributor": "Omega Distribution"})
     assert client.patch(f"/instruments/{created['id']}", json={"distributor": " "}).json()["distributor"] is None
 
 
@@ -417,17 +417,17 @@ def test_institution_is_optional_trimmed_returned_and_editable(client):
 
     made = client.post(
         "/instruments",
-        json={"name": "With Inst", "model": "I2", "manufacturer": "BD", "serial_number": "INST-0002", "institution": "  Bar-Ilan University "},
+        json={"name": "With Inst", "model": "I2", "manufacturer": "BD", "serial_number": "INST-0002", "institution": "  Alpha University "},
     ).json()
-    assert made["institution"] == "Bar-Ilan University"
-    assert client.get(f"/instruments/{made['id']}").json()["institution"] == "Bar-Ilan University"
+    assert made["institution"] == "Alpha University"
+    assert client.get(f"/instruments/{made['id']}").json()["institution"] == "Alpha University"
     listed = {i["serial_number"]: i for i in client.get("/instruments").json()}
-    assert listed["INST-0002"]["institution"] == "Bar-Ilan University"
+    assert listed["INST-0002"]["institution"] == "Alpha University"
     assert listed["INST-0001"]["institution"] is None
 
     # Edits: set, leave alone on other edits, blank clears it.
-    assert client.patch(f"/instruments/{plain['id']}", json={"institution": "Tel Aviv University"}).json()["institution"] == "Tel Aviv University"
-    assert client.patch(f"/instruments/{plain['id']}", json={"location": "Room 9"}).json()["institution"] == "Tel Aviv University"
+    assert client.patch(f"/instruments/{plain['id']}", json={"institution": "Delta University"}).json()["institution"] == "Delta University"
+    assert client.patch(f"/instruments/{plain['id']}", json={"location": "Room 9"}).json()["institution"] == "Delta University"
     # A room needs an institution, so the institution can only be cleared with the room.
     assert client.patch(f"/instruments/{plain['id']}", json={"institution": "  "}).status_code == 422
     cleared = client.patch(f"/instruments/{plain['id']}", json={"institution": "  ", "location": None}).json()

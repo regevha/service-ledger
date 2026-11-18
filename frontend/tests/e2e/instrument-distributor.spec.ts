@@ -1,7 +1,7 @@
 import { test, expect } from './coverage';
 
 // The optional Distributor field on an instrument (the local seller / service
-// company when it is not the maker, e.g. Rhenium): optional on create, shown
+// company when it is not the maker, e.g. Omega Distribution): optional on create, shown
 // in the Instruments list and on the instrument's detail page, editable and
 // clearable. Unique name and serial because the suite shares one database.
 
@@ -34,11 +34,11 @@ test('distributor is optional, shown in the list and detail page, edited and cle
   await label('Name').fill(withName);
   await label('Model').fill(model);
   await expect(label('Manufacturer')).toHaveValue('Acme Optics'); // follows the model
-  await label('Distributor').fill('  Rhenium ');
+  await label('Distributor').fill('  Omega Distribution ');
   await label('Serial number').fill(withSerial);
   await page.click('button:has-text("Create instrument")');
   const row = page.getByTestId('instrument-row').filter({ hasText: withName });
-  await expect(row.locator('span').nth(2)).toHaveText('Rhenium');
+  await expect(row.locator('span').nth(2)).toHaveText('Omega Distribution');
 
   // Detail page (reached through the Reports tab's instrument filter).
   await page.getByTestId('tab-reports').click();
@@ -46,19 +46,19 @@ test('distributor is optional, shown in the list and detail page, edited and cle
   const value = (await select.locator('option', { hasText: withSerial }).getAttribute('value')) ?? '';
   await select.selectOption({ value });
   await page.click('button:has-text("View instrument details")');
-  await expect(page.locator('.instrument-meta')).toContainText('Distributor: Rhenium');
+  await expect(page.locator('.instrument-meta')).toContainText('Distributor: Omega Distribution');
 
   // Edit it, then clear it.
   await page.getByTestId('tab-instruments').click();
   await row.locator('button:has-text("Edit")').click();
-  await expect(label('Distributor')).toHaveValue('Rhenium');
-  await label('Distributor').fill('almog diagnostic');
+  await expect(label('Distributor')).toHaveValue('Omega Distribution');
+  await label('Distributor').fill('sigma diagnostics');
   await page.click('button:has-text("Save changes")');
-  await expect(row).toContainText('almog diagnostic');
+  await expect(row).toContainText('sigma diagnostics');
 
   await row.locator('button:has-text("Edit")').click();
   await label('Distributor').fill('');
   await page.click('button:has-text("Save changes")');
-  await expect(row).not.toContainText('almog diagnostic');
+  await expect(row).not.toContainText('sigma diagnostics');
   await expect(row.locator('span').nth(2)).toHaveText('—');
 });

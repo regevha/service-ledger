@@ -8,7 +8,7 @@ from datetime import date
 from app.models import Instrument, Report, ReportStatus, ReportTemplate, ReportType
 
 
-def _second_fortessa(client, serial="R647794E6099"):
+def _second_fortessa(client, serial="R900002A0099"):
     resp = client.post(
         "/instruments",
         json={"name": "Fortessa B", "model": "LSRFortessa", "manufacturer": "TestCo", "serial_number": serial},

@@ -243,7 +243,7 @@ now backed by a real API:
    (`matched` / `not_found` / `model_conflict` / `not_read`) and
    `suggested_instrument_id` (pre-selected on the confirm screen). In stub
    mode the "reader" finds a serial when the uploaded file's name contains a
-   fleet serial (e.g. `scan_P648282B3003.pdf`).
+   fleet serial (e.g. `scan_P900001A0003.pdf`).
 4. `PATCH /reports/{id}/template` — manual confirm/override (always
    available, not just for the low-confidence case — this is also how an
    incorrect confident guess gets corrected, discarding any prior
@@ -267,7 +267,7 @@ now backed by a real API:
    asks first. To keep an instrument's history instead, set it to Retired.
 
 The stub's `classify()` special-cases any filename containing
-`WO-04587090`, `sample`, or `work_order`/`work-order` to reproduce the real
+`WO-91000001`, `sample`, or `work_order`/`work-order` to reproduce the real
 BD Care EU Work Order Service Report's actual asymmetry from spec §4:
 instrument confidence lands at 0.96, report-type confidence at 0.58 — below
 threshold, forcing the manual-fallback branch — and `extract()` returns that
@@ -414,7 +414,7 @@ Two things worth knowing if you touch this code:
 - **The privacy prompt is not just the product-spec wording.** Beyond
   keeping customer contact/billing/contract details out of field values
   (§4/§10), a live run against the real FACSAria III repair document showed
-  the technician's own sign-off ("... . By Shachar on 18/04/2021", a
+  the technician's own sign-off ("... . By Dana on 18/04/2021", a
   pattern this fleet's quote logs use) leaking into `fault_description` —
   the same class of gap already caught once by hand in the demo HTML pages,
   now caught again by an actual API call and fixed by naming that pattern
@@ -497,7 +497,7 @@ back. What actually proves it, in increasing order of certainty:
    same file.** `_stub_classify`/`_stub_extract` are pure functions of the
    attachment's file path — call them directly (no API, no cost) on the same
    file and compare. For the real sample document (any filename containing
-   `WO-04587090`/`sample`/`work_order`), the stub *always* returns report-type
+   `WO-91000001`/`sample`/`work_order`), the stub *always* returns report-type
    confidence 0.58 (deliberately below the 0.85 threshold, forcing the
    manual-confirm branch — see above) and *always* returns the same two fixed
    sentences for `fault_description`/`work_performed`. A live run against

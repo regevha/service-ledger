@@ -162,7 +162,7 @@ export function AddInstrumentPanel({
           <SuggestInput
             className="text-input"
             value={institute}
-            placeholder="e.g. Bar-Ilan University"
+            placeholder="e.g. Alpha University"
             onChange={setInstitute}
             aria-label="Instrument institute"
             options={knownPlaces.filter((p) => p.kind === 'institution').map((p) => p.name)}

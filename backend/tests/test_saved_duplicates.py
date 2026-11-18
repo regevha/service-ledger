@@ -47,13 +47,13 @@ def test_a_report_with_no_scan_has_no_duplicates(client, db_session):
 
 def test_the_same_work_order_on_the_same_instrument_is_flagged_from_both_sides(client, db_session):
     inst = _instrument(db_session, "DUP-1")
-    first = _report(db_session, instrument=inst, work_order="04587090", technician="First")
-    second = _report(db_session, instrument=inst, work_order="04587090", technician="Second")
+    first = _report(db_session, instrument=inst, work_order="91000001", technician="First")
+    second = _report(db_session, instrument=inst, work_order="91000001", technician="Second")
 
     from_second = _duplicates(client, second)
     assert [d["id"] for d in from_second] == [str(first.id)]
     assert from_second[0]["reason"] == "same_work_order"
-    assert from_second[0]["work_order_number"] == "04587090"
+    assert from_second[0]["work_order_number"] == "91000001"
     assert from_second[0]["status"] == "finalized" and from_second[0]["technician_name"] == "First"
     assert from_second[0]["instrument_serial_number"] == "DUP-1"  # list-item shape, ready to open
 
@@ -62,23 +62,23 @@ def test_the_same_work_order_on_the_same_instrument_is_flagged_from_both_sides(c
 
 def test_the_same_work_order_on_a_different_instrument_is_not_flagged(client, db_session):
     a, b = _instrument(db_session, "DUP-A"), _instrument(db_session, "DUP-B")  # same model, other serial
-    one = _report(db_session, instrument=a, work_order="04587090")
-    _report(db_session, instrument=b, work_order="04587090")
+    one = _report(db_session, instrument=a, work_order="91000001")
+    _report(db_session, instrument=b, work_order="91000001")
 
     assert _duplicates(client, one) == []
 
 
 def test_a_report_with_no_instrument_yet_is_not_matched_on_work_order(client, db_session):
     inst = _instrument(db_session, "DUP-2")
-    _report(db_session, instrument=inst, work_order="04587090")
-    draft = _report(db_session, instrument=None, work_order="04587090", status=ReportStatus.draft)
+    _report(db_session, instrument=inst, work_order="91000001")
+    draft = _report(db_session, instrument=None, work_order="91000001", status=ReportStatus.draft)
 
     assert _duplicates(client, draft) == []
 
 
 def test_different_work_orders_on_the_same_instrument_are_fine(client, db_session):
     inst = _instrument(db_session, "DUP-3")
-    one = _report(db_session, instrument=inst, work_order="04587090")
+    one = _report(db_session, instrument=inst, work_order="91000001")
     _report(db_session, instrument=inst, work_order="04587091")
 
     assert _duplicates(client, one) == []
@@ -87,9 +87,9 @@ def test_different_work_orders_on_the_same_instrument_are_fine(client, db_sessio
 def test_identical_file_is_flagged_even_on_another_instrument_and_wins_over_work_order(client, db_session):
     a, b = _instrument(db_session, "DUP-4"), _instrument(db_session, "DUP-5")
     sha = hashlib.sha256(b"same bytes").hexdigest()
-    one = _report(db_session, instrument=a, work_order="04587090", sha=sha)
-    other = _report(db_session, instrument=b, work_order="04587090", sha=sha)
-    inst_a = _report(db_session, instrument=a, work_order="04587090")  # same instrument + work order, different file
+    one = _report(db_session, instrument=a, work_order="91000001", sha=sha)
+    other = _report(db_session, instrument=b, work_order="91000001", sha=sha)
+    inst_a = _report(db_session, instrument=a, work_order="91000001")  # same instrument + work order, different file
 
     found = {d["id"]: d["reason"] for d in _duplicates(client, one)}
 
@@ -98,10 +98,10 @@ def test_identical_file_is_flagged_even_on_another_instrument_and_wins_over_work
 
 def test_a_report_with_several_matching_scans_is_listed_once(client, db_session):
     inst = _instrument(db_session, "DUP-6")
-    one = _report(db_session, instrument=inst, work_order="04587090")
-    other = _report(db_session, instrument=inst, work_order="04587090")
+    one = _report(db_session, instrument=inst, work_order="91000001")
+    other = _report(db_session, instrument=inst, work_order="91000001")
     db_session.add(Attachment(report_id=other.id, file_path="/nonexistent/extra.pdf", file_type="application/pdf",
-                              work_order_number="04587090"))
+                              work_order_number="91000001"))
     db_session.commit()
 
     assert [d["id"] for d in _duplicates(client, one)] == [str(other.id)]
@@ -109,8 +109,8 @@ def test_a_report_with_several_matching_scans_is_listed_once(client, db_session)
 
 def test_the_indicator_follows_deletion(client, db_session):
     inst = _instrument(db_session, "DUP-7")
-    one = _report(db_session, instrument=inst, work_order="04587090")
-    two = _report(db_session, instrument=inst, work_order="04587090")
+    one = _report(db_session, instrument=inst, work_order="91000001")
+    two = _report(db_session, instrument=inst, work_order="91000001")
     assert len(_duplicates(client, one)) == 1
 
     assert client.delete(f"/reports/{two.id}", params={"force": "true"}).status_code == 204

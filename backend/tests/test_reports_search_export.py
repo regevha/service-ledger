@@ -77,7 +77,7 @@ def test_search_filters_by_report_type_and_status_and_date_range(client, seeded)
     # Denormalized display fields (§7) resolved from the relationships, not raw ids.
     by_id = {r["id"]: r for r in all_reports}
     assert by_id[str(repair.id)]["instrument_model"] == "LSRFortessa"
-    assert by_id[str(repair.id)]["instrument_serial_number"] == "R647794E6092"
+    assert by_id[str(repair.id)]["instrument_serial_number"] == "R900002A0092"
     assert by_id[str(repair.id)]["report_type"] == "repair"
 
     by_type = client.get("/reports", params={"report_type": "installation_upgrade"}).json()

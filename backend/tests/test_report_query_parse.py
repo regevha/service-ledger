@@ -10,7 +10,7 @@ from app.services.report_query_parse import Known, parse_search
 TODAY = date(2026, 11, 7)
 KNOWN = Known(
     models=[("m-aria", "FACSAria III"), ("m-fort", "LSRFortessa"), ("m-aur", "Cytek Aurora")],
-    places=[("p-bar", "Bar-Ilan University")],
+    places=[("p-bar", "Alpha University")],
     instruments=[("i-1", "FACSAria III", "P69200123")],
 )
 
@@ -31,7 +31,7 @@ def test_model_matches_without_spaces_or_case():
 
 
 def test_serial_place_and_status():
-    p = run("finalized reports for P69200123 at Bar-Ilan University")
+    p = run("finalized reports for P69200123 at Alpha University")
     assert p.filters == {"status": "finalized", "instrument_id": "i-1", "place_id": "p-bar"}
 
 
@@ -124,7 +124,7 @@ def test_endpoint(client):
 
 FIELDS = Known(
     models=[("m-aria", "FACSAria III")],
-    places=[("p-bar", "Bar-Ilan University")],
+    places=[("p-bar", "Alpha University")],
     fields=["laser_delay", "laser_power", "labor_hours", "baseline_cv_percent"],
 )
 
@@ -163,7 +163,7 @@ def test_a_unit_at_the_end_of_a_field_name_can_be_left_out():
 
 
 def test_a_condition_goes_with_the_other_filters_and_its_number_is_not_read_as_a_year():
-    p = run_fields("repairs at Bar-Ilan University where the laser delay is over 2025")
+    p = run_fields("repairs at Alpha University where the laser delay is over 2025")
     assert p.filters == {"place_id": "p-bar", "report_type": "repair", "number_field": "laser_delay", "number_op": "gt", "number_value": "2025"}
     assert "date_from" not in p.filters
 
@@ -198,7 +198,7 @@ def test_instruments_by_repair_count_are_read_from_plain_words(text, op, count):
 
 
 def test_a_repair_count_keeps_dates_model_and_place_and_says_what_it_left_out():
-    p = run_fields("instruments at Bar-Ilan University with more than 2 repairs in 2025")
+    p = run_fields("instruments at Alpha University with more than 2 repairs in 2025")
     assert p.filters == {"place_id": "p-bar", "date_from": "2025-01-01", "date_to": "2025-12-31", "repairs_op": "gt", "repairs_count": "2"}
     p = run_fields("instruments with more than 2 repairs signed off")
     assert "status" not in p.filters and p.filters["repairs_op"] == "gt"

@@ -57,7 +57,7 @@ test('the confirm screen shows the model and the serial as separate fields', asy
   await page.getByTestId('tab-new').click();
   // The sample work order reads as an LSRFortessa; this serial is the FACSAria III's.
   await page.locator('input[type="file"]').setInputFiles({
-    name: 'sample-work-order-P648282B3003.pdf',
+    name: 'sample-work-order-P900001A0003.pdf',
     mimeType: 'application/pdf',
     buffer: uniquePdf('%PDF-1.4 x'),
   });
@@ -65,7 +65,7 @@ test('the confirm screen shows the model and the serial as separate fields', asy
   await page.waitForSelector('.class-row', { timeout: TIMEOUT.flow });
 
   await expect(page.locator('#read-model')).toContainText('LSRFortessa');
-  await expect(page.locator('#read-serial')).toContainText('P648282B3003');
+  await expect(page.locator('#read-serial')).toContainText('P900001A0003');
   await expect(page.locator('#read-serial .badge')).toHaveText('demo value');
   await expect(page.locator('#read-serial')).toContainText('different model');
 });

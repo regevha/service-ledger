@@ -234,11 +234,11 @@ def test_reports_that_add_no_hours_are_counted_so_the_page_can_say_so(client, se
 
 def test_the_instrument_rollup_carries_the_institution(client, seeded):
     inst = seeded.query(Instrument).filter(Instrument.model == "FACSAria III").one()
-    inst.institution = "Bar-Ilan University"
+    inst.institution = "Alpha University"
     seeded.commit()
     body = client.get("/analytics/fleet").json()
     by_model = {row["model"]: row for row in body["labor_hours_by_instrument"]}
-    assert by_model["FACSAria III"]["institution"] == "Bar-Ilan University"
+    assert by_model["FACSAria III"]["institution"] == "Alpha University"
     assert by_model["LSRFortessa"]["institution"] == "Demo Institution"  # as seeded
 
 

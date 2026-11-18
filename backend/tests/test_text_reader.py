@@ -5,7 +5,7 @@ duplicate detection at upload.
 The PDFs here are synthetic, built with reportlab, but laid out the way real
 BD reports extract with pypdf — including the quirks that broke the first
 version of the parser: a label glued to its value ("Work Order Task CodeT113"),
-the previous label glued to the product line ("N/A665158 - ..."), a
+the previous label glued to the product line ("N/A900003 - ..."), a
 configuration string sitting beside a "Serial/Lot Number" label, a part
 number that looks like a task code, and a fillable form whose content lives in
 form fields rather than page text.
@@ -39,8 +39,8 @@ def service_report(
     *,
     work_order="WO-90000001",
     task="T113 Repair / Troubleshooting Visit",
-    product="647794E6 - LSRFortessa SO",
-    serial="R647794E6092",
+    product="900002A0 - LSRFortessa SO",
+    serial="R900002A0092",
 ) -> list[str]:
     return [
         "Service Report",
@@ -71,8 +71,8 @@ def test_extract_text_reads_a_text_pdf():
 
 
 def test_extract_text_includes_the_values_of_fillable_form_fields():
-    pdf = make_pdf(["Product Intervention Report Form"], fields={"instrument": "648282B3 - ARIA III ACDU 6B/3R/3V"})
-    assert "648282B3 - ARIA III ACDU 6B/3R/3V" in extract_text(pdf)
+    pdf = make_pdf(["Product Intervention Report Form"], fields={"instrument": "900001A0 - ARIA III ACDU 6B/3R/3V"})
+    assert "900001A0 - ARIA III ACDU 6B/3R/3V" in extract_text(pdf)
 
 
 def test_extract_text_stops_after_the_first_pages():
@@ -92,26 +92,26 @@ def test_extract_text_stops_after_the_first_pages():
 def test_a_service_report_is_read_completely():
     read = read_identifiers(extract_text(make_pdf(service_report())), MODELS)
     assert (read.model, read.serial, read.task_code, read.work_order_number) == (
-        "LSRFortessa", "R647794E6092", "T113", "WO-90000001",
+        "LSRFortessa", "R900002A0092", "T113", "WO-90000001",
     )
-    assert read.product_code == "647794E6" and read.in_bd_format
+    assert read.product_code == "900002A0" and read.in_bd_format
 
 
 def test_the_serial_is_the_token_that_contains_the_product_code_not_the_config_string_or_free_text():
     # Free text names a look-alike serial after the real one; the first token
     # after the Installed Product line wins.
     read = read_identifiers(
-        extract_text(make_pdf(service_report(product="665158 - FACSDiscover S8", serial="MP6651580000099"))), MODELS
+        extract_text(make_pdf(service_report(product="900003 - FACSDiscover S8", serial="MP9000030000099"))), MODELS
     )
-    assert (read.model, read.serial) == ("FACSDiscover S8", "MP6651580000099")
+    assert (read.model, read.serial) == ("FACSDiscover S8", "MP9000030000099")
 
 
 @pytest.mark.parametrize(
     ("product", "model"),
     [
-        ("647794E6 - LSRFortessa SO", "LSRFortessa"),
-        ("648282B3 - ARIA III ACDU 6B/3R/3V", "FACSAria III"),  # BD drops the FACS prefix
-        ("665158 - FACSDiscover S8", "FACSDiscover S8"),
+        ("900002A0 - LSRFortessa SO", "LSRFortessa"),
+        ("900001A0 - ARIA III ACDU 6B/3R/3V", "FACSAria III"),  # BD drops the FACS prefix
+        ("900003 - FACSDiscover S8", "FACSDiscover S8"),
     ],
 )
 def test_models_are_matched_the_way_bd_prints_them(product, model):
@@ -119,7 +119,7 @@ def test_models_are_matched_the_way_bd_prints_them(product, model):
 
 
 def test_the_longest_model_name_wins_over_a_prefix_of_it():
-    assert read_identifiers("648282B3 - ARIA III ACDU", ["FACSAria II", "FACSAria III"]).model == "FACSAria III"
+    assert read_identifiers("900001A0 - ARIA III ACDU", ["FACSAria II", "FACSAria III"]).model == "FACSAria III"
 
 
 @pytest.mark.parametrize(
@@ -147,10 +147,10 @@ def test_a_bd_document_for_an_unknown_model_is_bd_format_but_has_no_model():
 
 
 def test_an_installed_product_outside_the_fleet_is_kept_with_its_serial():
-    text = extract_text(make_pdf(service_report(product="665158 - FACSDiscover S8", serial="MP6651580000099")))
+    text = extract_text(make_pdf(service_report(product="900003 - FACSDiscover S8", serial="MP9000030000099")))
     read = read_identifiers(text, ["FACSAria III", "LSRFortessa", "CytoFLEX S"])  # the S8 was deleted
     assert read.model is None and read.unlisted_model == "FACSDiscover S8"
-    assert read.serial == "MP6651580000099" and read.in_bd_format
+    assert read.serial == "MP9000030000099" and read.in_bd_format
 
 
 def test_text_that_is_not_a_service_document_is_not_in_bd_format():
@@ -160,8 +160,8 @@ def test_text_that_is_not_a_service_document_is_not_in_bd_format():
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("WORK ORDER NUMBER: WO-03424229", "WO-03424229"),
-        ("WORK ORDER NUMBER:WO-03424229", "WO-03424229"),
+        ("WORK ORDER NUMBER: WO-91000002", "WO-91000002"),
+        ("WORK ORDER NUMBER:WO-91000002", "WO-91000002"),
         ("Work order raised: see wo-0342 and WO-12345678 in notes", "WO-12345678"),
         # A bare WO-... number counts only when the document also says "work order": another
         # maker's part or asset number must not be taken for one.
@@ -207,7 +207,7 @@ def test_a_real_looking_report_is_classified_from_its_own_text(client, run_worke
     assert result["instrument"] == {"value": "LSRFortessa", "confidence": 0.95}
     assert result["report_type"] == {"value": "repair", "confidence": 0.95}
     assert result["report_type_source"] == "task_code"
-    assert result["instrument_serial"]["value"] == "R647794E6092" and result["serial_match"] == "matched"
+    assert result["instrument_serial"]["value"] == "R900002A0092" and result["serial_match"] == "matched"
     assert result["work_order_number"] == "WO-90000001"
     # Confident on everything, so straight through, with no model involved.
     assert result["resolved_template_id"] and result["resolved_instrument_id"]
@@ -240,9 +240,9 @@ def test_an_unknown_instrument_model_goes_to_the_manual_pick(client, run_worker)
 
 
 def test_a_serial_not_in_the_fleet_is_reported_not_guessed(client, run_worker):
-    pdf = make_pdf(service_report(product="665158 - FACSDiscover S8", serial="MP6651580000099"))
+    pdf = make_pdf(service_report(product="900003 - FACSDiscover S8", serial="MP9000030000099"))
     result = _classify(client, run_worker, _upload(client, pdf)["id"])
-    assert result["instrument_serial"]["value"] == "MP6651580000099" and result["serial_match"] == "not_found"
+    assert result["instrument_serial"]["value"] == "MP9000030000099" and result["serial_match"] == "not_found"
     # Only one S8 in the fleet, but the document names a different serial: not auto-resolved,
     # the S8 is only suggested (the technician confirms, or adds the new instrument).
     assert result["resolved_instrument_id"] is None
@@ -253,7 +253,7 @@ def test_a_report_for_a_deleted_model_offers_to_add_it_instead_of_passing_for_an
     s8 = next(i for i in client.get("/instruments").json() if i["model"] == "FACSDiscover S8")
     assert client.delete(f"/instruments/{s8['id']}").status_code == 204
 
-    pdf = make_pdf(service_report(product="665158 - FACSDiscover S8", serial="MP6651580000057"))
+    pdf = make_pdf(service_report(product="900003 - FACSDiscover S8", serial="MP9000030000057"))
     result = _classify(client, run_worker, _upload(client, pdf)["id"])
 
     # Not read as one of the remaining models (the zero-confidence placeholder is
@@ -261,7 +261,7 @@ def test_a_report_for_a_deleted_model_offers_to_add_it_instead_of_passing_for_an
     # what the page says already filled in.
     assert result["maker_in_fleet"] is False
     assert result["detected_model"] == "FACSDiscover S8" and result["detected_manufacturer"] == "BD"
-    assert result["instrument_serial"]["value"] == "MP6651580000057"
+    assert result["instrument_serial"]["value"] == "MP9000030000057"
     assert result["instrument"]["confidence"] == 0.0
     assert result["resolved_instrument_id"] is None and result["resolved_template_id"] is None
     # The placeholder model is not a suggestion: no remaining unit is pre-selected.
@@ -280,11 +280,11 @@ def test_live_mode_also_offers_to_add_a_model_not_in_the_fleet_without_asking_cl
     s8 = next(i for i in client.get("/instruments").json() if i["model"] == "FACSDiscover S8")
     assert client.delete(f"/instruments/{s8['id']}").status_code == 204
 
-    pdf = make_pdf(service_report(product="665158 - FACSDiscover S8", serial="MP6651580000057"))
+    pdf = make_pdf(service_report(product="900003 - FACSDiscover S8", serial="MP9000030000057"))
     result = _classify(client, run_worker, _upload(client, pdf)["id"])
 
     assert result["reader"] == "text_layer" and result["maker_in_fleet"] is False
-    assert result["detected_model"] == "FACSDiscover S8" and result["instrument_serial"]["value"] == "MP6651580000057"
+    assert result["detected_model"] == "FACSDiscover S8" and result["instrument_serial"]["value"] == "MP9000030000057"
     assert result["suggested_instrument_id"] is None and result["resolved_instrument_id"] is None
 
 
@@ -326,7 +326,7 @@ def test_a_different_visit_to_the_same_instrument_is_not_a_duplicate(client):
 
 
 def test_a_form_with_no_work_order_is_never_matched_by_one(client):
-    form = make_pdf(["Product Intervention Report Form"], fields={"instrument": "648282B3 - ARIA III ACDU 6B/3R/3V"})
+    form = make_pdf(["Product Intervention Report Form"], fields={"instrument": "900001A0 - ARIA III ACDU 6B/3R/3V"})
     _upload(client, make_pdf(service_report()), "report.pdf")
     assert _upload(client, form, "form.pdf")["duplicate_report_ids"] == []
 

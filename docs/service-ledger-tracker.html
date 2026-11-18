@@ -138,12 +138,12 @@
 (function(){
   var STATE = [
     { id: "sec-evidence", title: "Document evidence — BD Care service reports", items: [
-      { id: "doc-lsr-repair-1", done: true, text: "LSRFortessa repair · WO-04587090", meta: "The first real document — grounded the repair template (v0.9)" },
-      { id: "doc-lsr-repair-2", done: true, text: "LSRFortessa repair · WO-04565227", meta: "Second repair case — confirmed no schema drift" },
-      { id: "doc-aria-repair", done: true, text: "FACSAria III repair · WO-01873748", meta: "Confirmed repair on a second instrument model" },
-      { id: "doc-s8-repair", done: true, text: "FACSDiscover S8 repair · WO-04220290", meta: "Confirmed repair across all three models — no schema changes needed" },
-      { id: "doc-lsr-pm", done: true, text: "LSRFortessa PM · WO-04482967", meta: "Drove the preventive_maintenance redesign (v0.12)" },
-      { id: "doc-s8-pm", done: true, text: "FACSDiscover S8 PM · WO-04271950", meta: "Confirmed the redesigned PM template on a second model" },
+      { id: "doc-lsr-repair-1", done: true, text: "LSRFortessa repair · WO-91000001", meta: "The first real document — grounded the repair template (v0.9)" },
+      { id: "doc-lsr-repair-2", done: true, text: "LSRFortessa repair · WO-91000008", meta: "Second repair case — confirmed no schema drift" },
+      { id: "doc-aria-repair", done: true, text: "FACSAria III repair · WO-91000004", meta: "Confirmed repair on a second instrument model" },
+      { id: "doc-s8-repair", done: true, text: "FACSDiscover S8 repair · WO-91000009", meta: "Confirmed repair across all three models — no schema changes needed" },
+      { id: "doc-lsr-pm", done: true, text: "LSRFortessa PM · WO-91000006", meta: "Drove the preventive_maintenance redesign (v0.12)" },
+      { id: "doc-s8-pm", done: true, text: "FACSDiscover S8 PM · WO-91000003", meta: "Confirmed the redesigned PM template on a second model" },
       { id: "doc-aria-pm", done: false, text: "FACSAria III PM report", meta: "Last model needed to fully close preventive_maintenance (§12)" }
     ]},
     { id: "sec-spec", title: "Architecture spec — SL-ARCH-001", items: [
@@ -169,7 +169,7 @@
       { id: "be-install-upgrade", done: true, text: "installation_upgrade report type", meta: "Enum migration e5f1b2c8d903, shared template, five templates in total" },
       { id: "be-duplicates", done: true, text: "Duplicate detection", meta: "SHA-256 of the file plus normalized work-order number; warns only, never blocks; intake banner (services/duplicates.py, migration d4e8a1b7c902)" },
       { id: "be-no-key-reader", done: true, text: "Read reports without an API key", meta: "services/text_reader.py reads the PDF text layer (pypdf); python -m scripts.read_report lists fields and groups duplicates. Confidences are fixed constants and the extraction stub is still fabricated" },
-      { id: "be-real-fleet", done: true, text: "Seed holds the real instrument serials", meta: "Aria P648282B3003, Fortessa R647794E6092, S8 MP6651580000057; legacy demo rows migrated on seed" },
+      { id: "be-real-fleet", done: true, text: "Seed holds the real instrument serials", meta: "Aria P900001A0003, Fortessa R900002A0092, S8 MP9000030000057; legacy demo rows migrated on seed" },
       { id: "be-live-test", done: false, text: "Run the live Claude test on the five real reports", meta: "Waiting on an API key; compare with the Service Report Test Set ground truth and check task_code and work_order_number come back filled" },
       { id: "be-ci", done: true, text: "CI workflow", meta: ".github/workflows/test.yml — both suites against a fresh postgres:16 service container on every push/PR" },
       { id: "be-status-reports-bug", done: false, text: "Investigate: reports said to disappear after an instrument status round-trip (active → maintenance → active)", meta: "Not yet reproduced — a scripted UI pass against a clean DB (Instruments tab edit → Reports tab filter, and the instrument detail page) showed the report staying visible throughout, and neither the report query nor the instrument PATCH handler filters on instrument status. Next step: reproduce from a freshly reset dev DB and capture the GET /reports network response at the moment it's missing." }

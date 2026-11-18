@@ -335,7 +335,7 @@ def _live_extract(attachment: Attachment, template: ReportTemplate) -> Extractio
 
 
 # Real values from the BD Care EU Work Order Service Report used throughout
-# the spec (Case 03191457 / WO-04587090, LSRFortessa S/N R647794E6092),
+# the spec (Case 03191457 / WO-91000001, LSRFortessa S/N R900002A0092),
 # already surfaced in repair-review-demo.html.
 _SAMPLE_REPAIR_VALUES = {
     "fault_description": "No see events",

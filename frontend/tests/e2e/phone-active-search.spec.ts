@@ -18,7 +18,7 @@ async function askByTap(page: Page, text: string) {
 test.describe('The search line on a phone', { tag: '@phone' }, () => {
   test('chips and Clear are thumb-sized and inside the screen, and nothing scrolls sideways', async ({ page }) => {
     await page.goto('/#/reports');
-    await askByTap(page, 'maintenance in 2025 at Bar-Ilan University');
+    await askByTap(page, 'maintenance in 2025 at Alpha University');
     const width = page.viewportSize()!.width;
     const chips = page.getByTestId('active-search-chip');
     expect(await chips.count()).toBeGreaterThanOrEqual(2);

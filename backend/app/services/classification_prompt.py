@@ -11,8 +11,8 @@ independently — they are not the same call. The document content is untrusted 
 
 
 _CLASSIFY_BODY = """1. Which instrument model this document is for. Look for the "Installed Product" or \
-"System" field, which prints a code and model name (e.g. "648282B3 - ARIA III ACDU \
-6B/3R/3V" is a FACSAria III; "665158 - FACSDiscover S8 ..." is a FACSDiscover S8). \
+"System" field, which prints a code and model name (e.g. "900001A0 - ARIA III ACDU \
+6B/3R/3V" is a FACSAria III; "900003 - FACSDiscover S8 ..." is a FACSDiscover S8). \
 Only choose from the allowed options. Always fill `instrument_model` with one of them, \
 even when `detected_model` says the same thing: both are required.
 
@@ -36,7 +36,7 @@ exactly; never guess or complete a character you cannot read — give a lower co
 instead. If the Installed Product has no serial number, or it is printed as N/A, return \
 an empty string with confidence 0.
 
-4. The work-order number, exactly as printed (e.g. "WO-04587090"), in \
+4. The work-order number, exactly as printed (e.g. "WO-91000001"), in \
 `work_order_number`; an empty string if the document shows none. On a form from \
 another company this is the number of the service call or service report itself \
 (labelled for example "service call", "call number" or "report number"). The \

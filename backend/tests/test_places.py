@@ -21,15 +21,15 @@ def _places(db_session, institution_like="Zeta"):
 
 
 def test_clean_collapses_spaces_and_blanks():
-    assert clean("  Room   205 ") == "Room 205" and clean("   ") is None and clean(None) is None
+    assert clean("  Room   101 ") == "Room 101" and clean("   ") is None and clean(None) is None
 
 
 def test_room_and_institution_create_a_room_under_the_institution(client, db_session):
-    assert client.post("/instruments", json=_payload("P1", institution="Zeta University", location="Room 205")).status_code == 201
+    assert client.post("/instruments", json=_payload("P1", institution="Zeta University", location="Room 101")).status_code == 201
     unit = _mine(db_session, "P1")
-    assert unit.place.kind == "room" and unit.place.name == "Room 205"
+    assert unit.place.kind == "room" and unit.place.name == "Room 101"
     assert unit.place.parent.kind == "institution" and unit.place.parent.name == "Zeta University"
-    assert unit.institution == "Zeta University" and unit.location == "Room 205"  # read back from the place
+    assert unit.institution == "Zeta University" and unit.location == "Room 101"  # read back from the place
 
 
 def test_institution_alone_links_to_the_institution(client, db_session):
@@ -50,16 +50,16 @@ def test_no_place_text_means_no_link(client, db_session):
 
 
 def test_same_place_typed_with_other_case_or_spacing_is_one_record(client, db_session):
-    client.post("/instruments", json=_payload("P5", institution="Zeta University", location="Room 205"))
-    client.post("/instruments", json=_payload("P6", institution="  zeta   university ", location="room 205"))
+    client.post("/instruments", json=_payload("P5", institution="Zeta University", location="Room 101"))
+    client.post("/instruments", json=_payload("P6", institution="  zeta   university ", location="room 101"))
     a, b = _mine(db_session, "P5"), _mine(db_session, "P6")
     assert a.place_id == b.place_id
     assert len([p for p in _places(db_session) if p.kind == "institution"]) == 1
 
 
 def test_different_spellings_stay_separate_places(client, db_session):
-    client.post("/instruments", json=_payload("P7", institution="Zeta University", location="Room 205"))
-    client.post("/instruments", json=_payload("P8", institution="Zeta University", location="205"))
+    client.post("/instruments", json=_payload("P7", institution="Zeta University", location="Room 101"))
+    client.post("/instruments", json=_payload("P8", institution="Zeta University", location="101"))
     assert _mine(db_session, "P7").place_id != _mine(db_session, "P8").place_id
 
 
@@ -125,9 +125,9 @@ def test_text_of_walks_up_the_tree():
 def test_places_near_duplicates_include_names_inside_each_other():
     from app.services.instrument_models import near_duplicates
 
-    assert near_duplicates(["Room 205", "205", "C767"], contains=True) == [["205", "Room 205"]]
-    assert near_duplicates(["Bar Ilan", "Bar-Ilan University", "MIT"], contains=True) == [["Bar Ilan", "Bar-Ilan University"]]
-    assert near_duplicates(["Room 205", "205"]) == []  # models keep the stricter rule
+    assert near_duplicates(["Room 101", "101", "C100"], contains=True) == [["101", "Room 101"]]
+    assert near_duplicates(["Alpha", "Alpha University", "MIT"], contains=True) == [["Alpha", "Alpha University"]]
+    assert near_duplicates(["Room 101", "101"]) == []  # models keep the stricter rule
 
 
 def test_the_text_columns_are_gone_and_text_follows_the_place(client, db_session):

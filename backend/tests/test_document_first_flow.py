@@ -80,7 +80,7 @@ def test_uncertain_report_type_falls_back_to_manual_pick_then_finalizes(client, 
 
     upload = client.post(
         "/reports/{}/attachments".format(report["id"]),
-        files={"file": ("WO-04587090_sample.pdf", b"%PDF-1.4 fake work order scan", "application/pdf")},
+        files={"file": ("WO-91000001_sample.pdf", b"%PDF-1.4 fake work order scan", "application/pdf")},
     )
     attachment = upload.json()
 

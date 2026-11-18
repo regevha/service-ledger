@@ -188,7 +188,7 @@ identifies a unit, and changing their option text would only churn labels.
 Covered by `instrument-manufacturer.spec.ts`.
 
 **Distributor** is optional free text: the local seller / service company when it
-is not the maker (for example Rhenium or almog diagnostic). A column in the
+is not the maker (for example Omega Distribution or sigma diagnostics). A column in the
 list, a field on the create/edit form (blank or cleared means none), and
 "Distributor: …" at the end of the detail page's header line. Like the
 manufacturer, it is not in the model pickers or Analytics. Covered by

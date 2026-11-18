@@ -9,7 +9,7 @@ import { seedReport } from './helpers/api';
 // history rows, Cancel while editing a finalized report, and how a read-only report looks.
 
 const PHONE = { width: 412, height: 915 };
-const LONG_NAME = 'Demo - FACSAria III preventive maintenance with a rather long title (WO-04271950)';
+const LONG_NAME = 'Demo - FACSAria III preventive maintenance with a rather long title (WO-91000003)';
 
 async function seed(request: APIRequestContext): Promise<{ reportId: string; instrumentId: string }> {
   const model = await createNumericModel(request, 'E2E-PhoneBugs');
