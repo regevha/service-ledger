@@ -1,6 +1,7 @@
 """Small number helpers shared by the fleet roll-up and the model comparison."""
 from __future__ import annotations
 
+
 def _as_number(value: object) -> float | None:
     # bool is a subclass of int in Python — isinstance(True, int) is True —
     # so it's excluded explicitly rather than let a stray boolean field
