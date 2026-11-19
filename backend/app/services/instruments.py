@@ -45,7 +45,13 @@ def create_instrument(db: Session, payload: schemas.InstrumentCreate) -> models.
 
 
 def list_instruments(db: Session) -> list[models.Instrument]:
-    instruments = db.query(models.Instrument).options(joinedload(models.Instrument.model_record)).order_by(models.Instrument.name).all()
+    instruments = (
+        db.query(models.Instrument)
+        .filter(models.Instrument.is_sample.is_(False))
+        .options(joinedload(models.Instrument.model_record))
+        .order_by(models.Instrument.name)
+        .all()
+    )
     annotate(db, instruments)
     return instruments
 

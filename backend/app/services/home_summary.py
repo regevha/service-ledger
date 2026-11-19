@@ -35,6 +35,7 @@ def read_accuracy(db: Session, today: date) -> schemas.HomeReadAccuracyOut:
             models.Report.status == models.ReportStatus.finalized,
             models.Report.finalized_at >= since,
             models.Report.original_fields.is_not(None),
+            models.Report.is_sample.is_(False),
         )
     ).all()
     reports = fields = unchanged = 0
@@ -58,7 +59,7 @@ def home_summary(db: Session, today: date) -> schemas.HomeSummaryOut:
     waiting_statuses = (models.ReportStatus.extracted, models.ReportStatus.in_review)
     count, oldest = db.execute(
         select(func.count(models.Report.id), func.min(models.Report.created_at)).where(
-            models.Report.status.in_(waiting_statuses)
+            models.Report.status.in_(waiting_statuses), models.Report.is_sample.is_(False)
         )
     ).one()
 
@@ -69,6 +70,7 @@ def home_summary(db: Session, today: date) -> schemas.HomeSummaryOut:
         stmt = select(func.count(models.Report.id)).where(
             models.Report.status == models.ReportStatus.finalized,
             models.Report.finalized_at >= _start_of(start),
+            models.Report.is_sample.is_(False),
         )
         if end is not None:
             stmt = stmt.where(models.Report.finalized_at < _start_of(end))

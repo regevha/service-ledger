@@ -404,6 +404,8 @@ def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db))
     attachment = db.get(models.Attachment, attachment_id)
     if not attachment:
         raise HTTPException(404, "Attachment not found")
+    if attachment.report.is_sample:
+        raise HTTPException(409, "This is the sample report: it is not read again. Upload one of your own scans to try the reading.")
     if attachment.report.status == models.ReportStatus.finalized:
         # Without this, classifying an attachment on an already-finalized
         # report lets _run_classify_job (app/worker.py) silently overwrite
@@ -451,6 +453,8 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
     if not attachment:
         raise HTTPException(404, "Attachment not found")
     report = attachment.report
+    if report.is_sample:
+        raise HTTPException(409, "This is the sample report: it is not read again. Upload one of your own scans to try the reading.")
     if not report.template_id or not report.instrument_id:
         raise HTTPException(
             409, "Report has no resolved instrument/template yet — classify the attachment and confirm a template first (§4)."

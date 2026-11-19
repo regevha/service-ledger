@@ -44,7 +44,7 @@ def instrument_repair_counts(
         date_to=date_to,
     ).group_by(models.Report.instrument_id)
     counts = {instrument_id: n for instrument_id, n in counted}
-    return [{"instrument_id": i.id, "repairs": counts.get(i.id, 0)} for i in db.query(models.Instrument).all()]
+    return [{"instrument_id": i.id, "repairs": counts.get(i.id, 0)} for i in db.query(models.Instrument).filter(models.Instrument.is_sample.is_(False)).all()]
 
 
 @router.get("/instruments/{instrument_id}", response_model=schemas.InstrumentOut)

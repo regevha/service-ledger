@@ -63,6 +63,8 @@ class ReportOut(BaseModel):
     report_date: date | None
     created_at: datetime
     finalized_at: datetime | None
+    # True for the first-run sample report (services/samples.py): a demo, not part of the ledger.
+    is_sample: bool = False
     # The report screen's "view original scan" link (§4/§9 gap noticed while
     # testing the demo build — GET /reports/{id} previously carried no way
     # back to the attachment that produced it) reads off this list rather
@@ -70,6 +72,13 @@ class ReportOut(BaseModel):
     # ReportOut already loads the ORM row this hangs off of for free via the
     # existing Report.attachments relationship.
     attachments: list[AttachmentOut] = []
+
+
+class SampleReportOut(ReportOut):
+    """The first-run sample report plus what the reading was sure of, so the review screen can flag fields
+    the way it does after a real extraction (POST /sample-report)."""
+
+    field_confidences: dict = {}
 
 
 class SnippetPiece(BaseModel):

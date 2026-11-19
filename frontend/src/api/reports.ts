@@ -1,10 +1,20 @@
 import { API_BASE, apiFetch, apiFetchWithHeaders } from './http';
-import type { Report, ReportListItem, ReportStatus, ReportType } from './types';
+import type { Report, ReportListItem, ReportStatus, ReportType, SampleReport } from './types';
 
 // ---------- Reports ----------
 
 export function createReport(payload: { technician_name?: string | null }): Promise<Report> {
   return apiFetch('/reports', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+/** Opens the first-run sample report (made on the first call; the same one afterwards). No Claude call. */
+export function openSampleReport(): Promise<SampleReport> {
+  return apiFetch('/sample-report', { method: 'POST' });
+}
+
+/** Removes the sample report with its demo instrument and place. Fine when there is none. */
+export function deleteSampleReport(): Promise<void> {
+  return apiFetch('/sample-report', { method: 'DELETE' });
 }
 
 export function getReport(reportId: string): Promise<Report> {

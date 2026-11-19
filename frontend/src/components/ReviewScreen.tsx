@@ -74,7 +74,7 @@ export function ReviewScreen({
   // "placeholder" and a notice asks the technician to fill everything in.
   placeholderValues?: boolean;
   onChange: (name: string, value: unknown) => void;
-  onSave: () => void;
+  onSave?: () => void;
   // Undefined hides the finalize button entirely — used when browsing an
   // existing report whose status doesn't allow finalizing (§9: only
   // extracted/in_review can finalize; the backend 409s otherwise, so the

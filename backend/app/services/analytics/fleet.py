@@ -164,7 +164,7 @@ def _place_rollups(
     instrument sits under: its institution, its faculty (when its room is in
     one) and its room. An instrument counts at each level above its own place;
     one with no place counts nowhere. Only places with an instrument are listed."""
-    places = {p.id: p for p in db.query(models.Place).all()}
+    places = {p.id: p for p in db.query(models.Place).filter(models.Place.is_sample.is_(False)).all()}
     rows: dict[uuid.UUID, schemas.PlaceRollupOut] = {}
     for instrument in instruments:
         node = places.get(instrument.place_id) if instrument.place_id else None

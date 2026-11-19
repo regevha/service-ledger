@@ -739,3 +739,26 @@ textarea {
   color: var(--text-muted);
   font-size: 0.9rem;
 }
+
+/* First-run sample (docs/features/first-run-sample/): the button under the upload box and the banner on the review screen. */
+.sample-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 14px 0 4px;
+}
+.sample-offer .banner {
+  flex-basis: 100%;
+  margin: 0;
+}
+.sample-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.sample-banner-error {
+  flex-basis: 100%;
+}

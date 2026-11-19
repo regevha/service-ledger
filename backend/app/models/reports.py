@@ -4,6 +4,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     Date,
     DateTime,
     Enum,
@@ -140,6 +141,9 @@ class Report(Base):
     next_service_due: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     report_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    # The first-run sample (services/samples.py). A sample report is a demo for a new user: it is left out of
+    # every list, count and export of real data, and it can never be finalized.
+    is_sample: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

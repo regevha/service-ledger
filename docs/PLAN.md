@@ -305,3 +305,11 @@ Agents propose API and data-model changes here. The lead accepts or rejects them
 | ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
 |---|---|---|---|---|---|---|
 | SL-78 | frontend-dev | Dark-mode `--input-border` meets WCAG 1.4.11 (3:1). Issue #314. | Both dark definitions in `index.css` change from #7280a0 to #7b88a6 (3.50:1 on `--surface` #2c3448, 3.005:1 on `--surface-2` #353e54); light #7d889f unchanged; frontend checks green; a look at inputs at rest and on hover in system and manual dark mode in the running app. | see `docs/tasks/SL-78.yml` | none | in-review |
+
+## First-run sample (2026-11-20)
+
+Brief and plan: `docs/features/first-run-sample/`.
+
+| ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
+|---|---|---|---|---|---|---|
+| SL-79 | lead | Sample report, demo instrument, sample exclusions, delete, button and banner. | AC-01 to AC-05 in `docs/features/first-run-sample/PRODUCT.md`; a test per exclusion; Alembic up/down/up; real-app smoke in stub mode. | see `docs/tasks/SL-79.yml` | none | in-review |

@@ -1,6 +1,9 @@
 import { useEffect, useReducer, useState } from 'react';
 import { PromptReview } from './PromptReview';
-import { attachmentFileUrl, reportPdfUrl, type Instrument, type ReportTemplate } from '../api';
+import {
+  attachmentFileUrl, countReports, deleteSampleReport, getReportTemplate, openSampleReport, reportPdfUrl,
+  type Instrument, type ReportTemplate,
+} from '../api';
 import { REPORT_TYPE_LABEL } from '../labels';
 import type { TemplateRequest } from '../templateRequest';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
@@ -105,7 +108,10 @@ export function IntakeFlow({
     failPhase: (...args) => steps.failPhase(...args),
     runClassification: (...args) => steps.runClassification(...args),
   });
-  const dirty = phase.name === 'review' && savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
+  // The sample report is never saved, so nothing typed into it is unsaved work.
+  const isSample = report?.is_sample === true;
+  const dirty =
+    phase.name === 'review' && !isSample && savedSnapshot !== null && reviewSnapshot(fields, reportDate) !== savedSnapshot;
   useUnsavedChangesGuard(dirty);
   const confirmLeave = useConfirmLeave();
 
@@ -116,6 +122,49 @@ export function IntakeFlow({
     pickInstrumentId, setPickInstrumentId, pickReportType, setPickReportType, unitChosen, setUnitChosen, serialNotice, setSerialNotice,
     duplicates, noteDuplicates, clearDuplicates,
   } = useIntakeSelection();
+
+  // The sample button shows only while the ledger has no finalized report (a sample never counts as one).
+  const [ledgerEmpty, setLedgerEmpty] = useState(false);
+  const [sampleBusy, setSampleBusy] = useState(false);
+  const [sampleError, setSampleError] = useState<string | null>(null);
+  useEffect(() => {
+    if (phase.name !== 'intake') return;
+    let live = true;
+    countReports({ status: 'finalized' })
+      .then((n) => live && setLedgerEmpty(n === 0))
+      .catch(() => live && setLedgerEmpty(false));
+    return () => {
+      live = false;
+    };
+  }, [phase.name]);
+
+  // Opens the stored sample on the review screen: no upload, no wait, no Claude call.
+  async function handleOpenSample() {
+    setSampleBusy(true);
+    setSampleError(null);
+    try {
+      const sample = await openSampleReport();
+      const tpl = await getReportTemplate(sample.template_id ?? '');
+      setTemplate(tpl);
+      setAttachmentId(sample.attachments[0]?.id ?? null);
+      loadExtraction(sample, sample.field_confidences, 0);
+      dispatchPhase({ type: 'show', name: 'review' });
+    } catch (err) {
+      setSampleError(err instanceof Error ? err.message : 'The sample report could not be opened.');
+    } finally {
+      setSampleBusy(false);
+    }
+  }
+
+  async function handleDeleteSample() {
+    try {
+      await deleteSampleReport();
+    } catch (err) {
+      setSampleError(err instanceof Error ? err.message : 'The sample report could not be deleted.');
+      return;
+    }
+    resetToIntake();
+  }
 
   // Back to the upload screen with the name kept and no file chosen.
   function chooseAnotherFile() {
@@ -210,6 +259,9 @@ export function IntakeFlow({
           onStart={() => void handleStart()}
           onOpenBatch={onOpenBatch}
           onBatchFiles={onBatchFiles}
+          onOpenSample={ledgerEmpty ? () => void handleOpenSample() : undefined}
+          sampleBusy={sampleBusy}
+          sampleError={sampleError}
         />
       )}
 
@@ -267,6 +319,18 @@ export function IntakeFlow({
         onCreateTemplate={requestTemplate}
       />
 
+      {phase.name === 'review' && template && isSample && (
+        <div className="banner banner-info sample-banner" data-testid="sample-banner" role="status">
+          <span>
+            <strong>Sample report.</strong> Not part of your ledger.
+          </span>
+          <button type="button" className="btn" data-testid="delete-sample" onClick={() => void handleDeleteSample()}>
+            Delete
+          </button>
+          {sampleError && <span className="sample-banner-error">{sampleError}</span>}
+        </div>
+      )}
+
       {phase.name === 'review' && template && (
         <ReviewScreen
           template={template}
@@ -275,20 +339,21 @@ export function IntakeFlow({
           onReportDateChange={setReportDate}
           fieldConfidences={fieldConfidences}
           fieldConfidenceThreshold={fieldConfidenceThreshold}
-          placeholderValues={!liveClaude}
+          // The sample is a stored result, never a stub placeholder, whatever mode the server runs in.
+          placeholderValues={!liveClaude && !isSample}
           onChange={(name, value) => setFields((prev) => ({ ...prev, [name]: value }))}
-          onSave={() => void handleSaveFields(false)}
-          onFinalize={() => void handleSaveFields(true)}
+          onSave={isSample ? undefined : () => void handleSaveFields(false)}
+          onFinalize={isSample ? undefined : () => void handleSaveFields(true)}
           originalScanUrl={attachmentId ? attachmentFileUrl(attachmentId) : undefined}
           scanInlineUrl={attachmentId ? attachmentFileUrl(attachmentId, { inline: true }) : undefined}
           scanAttachmentId={attachmentId ?? undefined}
           pdfUrl={report ? reportPdfUrl(report.id) : undefined}
-          extractionSeconds={extractionSeconds}
+          extractionSeconds={isSample ? null : extractionSeconds}
           busy={saving}
           saveError={saveError?.message ?? null}
-          instrumentLine={reviewInstrumentLine}
-          onChangeInstrument={classification ? backToClassification : undefined}
-          onBack={classification ? backToClassification : undefined}
+          instrumentLine={isSample ? 'Demo cell sorter · DEMO-0001 · sample' : reviewInstrumentLine}
+          onChangeInstrument={classification && !isSample ? backToClassification : undefined}
+          onBack={classification && !isSample ? backToClassification : undefined}
           onRetrySave={saveError ? () => void handleSaveFields(saveError.finalize) : undefined}
         />
       )}

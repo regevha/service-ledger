@@ -158,7 +158,14 @@ export interface Report {
   report_date: string | null;
   created_at: string;
   finalized_at: string | null;
+  /** True for the first-run sample report: a demo that is not part of the ledger and cannot be finalized. */
+  is_sample?: boolean;
   attachments: Attachment[];
+}
+
+/** POST /sample-report: the sample plus what the reading was sure of, so the review screen can flag fields. */
+export interface SampleReport extends Report {
+  field_confidences: Record<string, number>;
 }
 
 // Denormalized shape GET /reports (filtered search) returns — distinct from

@@ -61,6 +61,7 @@ def last_maintenance_dates(db: Session, ids: list[uuid.UUID]) -> dict[uuid.UUID,
         .filter(
             models.Report.instrument_id.in_(ids),
             models.Report.status == models.ReportStatus.finalized,
+            models.Report.is_sample.is_(False),
             models.ReportTemplate.report_type == models.ReportType.preventive_maintenance,
         )
         .group_by(models.Report.instrument_id)

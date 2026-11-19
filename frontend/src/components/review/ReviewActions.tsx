@@ -17,7 +17,8 @@ export function ReviewActions({
   onNext: () => void;
   onAskEdit?: () => void;
   onCancelEdit?: () => void;
-  onSave: () => void;
+  /** Left out when there is nothing to save (the sample report): the button is not shown. */
+  onSave?: () => void;
   onRequestFinalize?: () => void;
 }) {
   return (
@@ -58,9 +59,11 @@ export function ReviewActions({
                 Cancel
               </button>
             )}
-            <button className="btn" onClick={onSave} disabled={busy !== null}>
-              {busy === 'save' ? 'Saving…' : 'Save corrections'}
-            </button>
+            {onSave && (
+              <button className="btn" onClick={onSave} disabled={busy !== null}>
+                {busy === 'save' ? 'Saving…' : 'Save corrections'}
+              </button>
+            )}
             {onRequestFinalize && (
               <button className="btn primary" onClick={onRequestFinalize} disabled={busy !== null}>
                 {busy === 'finalize' ? 'Finalizing…' : <>Save &amp; finalize report</>}

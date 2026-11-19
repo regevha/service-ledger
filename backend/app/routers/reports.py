@@ -184,9 +184,9 @@ def parse_report_search(payload: schemas.ReportSearchParseIn, db: Session = Depe
     from app.services.report_query_parse import Known  # noqa: PLC0415
 
     known = Known(
-        models=[(str(m.id), m.name) for m in db.query(models.InstrumentModel).all()],
-        places=[(str(p.id), p.name) for p in db.query(models.Place).all()],
-        instruments=[(str(i.id), i.model, i.serial_number) for i in db.query(models.Instrument).all()],
+        models=[(str(m.id), m.name) for m in db.query(models.InstrumentModel).filter(models.InstrumentModel.is_sample.is_(False)).all()],
+        places=[(str(p.id), p.name) for p in db.query(models.Place).filter(models.Place.is_sample.is_(False)).all()],
+        instruments=[(str(i.id), i.model, i.serial_number) for i in db.query(models.Instrument).filter(models.Instrument.is_sample.is_(False)).all()],
         fields=report_filters.numeric_field_names(db),
     )
     parsed = parse_search(payload.text, known, date.today(), db)
@@ -440,6 +440,8 @@ def finalize_report(report_id: uuid.UUID, db: Session = Depends(get_db)):
     report = db.get(models.Report, report_id)
     if not report:
         raise HTTPException(404, "Report not found")
+    if report.is_sample:
+        raise HTTPException(409, "This is the sample report: it is not part of your ledger and cannot be finalized. Delete it, or upload one of your own.")
     if report.status == models.ReportStatus.finalized:
         # Finalizing twice (a retry after the reply was lost, a double click) is not an error and
         # changes nothing: the report keeps the time it was first finalized.
