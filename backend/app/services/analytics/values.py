@@ -1,13 +1,6 @@
 """Small number helpers shared by the fleet roll-up and the model comparison."""
 from __future__ import annotations
 
-from app import models
-
-# The report types that carry labor_hours/components_replaced
-# fields (seed_templates.py). Installation/upgrade reports are left out
-# rather than appearing as an always-zero row.
-_LABOR_TRACKING_REPORT_TYPES = (models.ReportType.repair, models.ReportType.preventive_maintenance)
-
 
 def _as_number(value: object) -> float | None:
     # bool is a subclass of int in Python — isinstance(True, int) is True —

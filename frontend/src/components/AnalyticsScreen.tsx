@@ -24,9 +24,7 @@ import { FleetList, GROUPS, fleetRows, type FleetSelection, type GroupBy } from 
 
 /**
  * Fleet-wide roll-ups (GET /analytics/fleet) — most-replaced parts, labor
- * hours by instrument and by fault category, and pass/fail rates for repair
- * and preventive_maintenance reports. See backend/app/services/analytics.py
- * for exactly how each number is derived; this component only renders what
+ * hours by instrument and by repair fault category. The backend computes each total; this component only renders what
  * that endpoint already computed, no client-side aggregation.
  *
  * Bar charts here are hand-rolled flex/width bars rather than a charting
@@ -110,7 +108,7 @@ function LaborHoursByInstrumentChart({ rows, withoutHours }: { rows: InstrumentR
   return (
     <>
       <p className="chart-note">
-        Hours recorded on repair and preventive maintenance reports, added up per instrument.
+        Hours recorded across all matching report types, added up per instrument.
       </p>
       {!anyHours && (
         <div className="empty-hint">
@@ -120,7 +118,7 @@ function LaborHoursByInstrumentChart({ rows, withoutHours }: { rows: InstrumentR
       <LaborHoursChart rows={rows} />
       {withoutHours > 0 && (
         <p className="chart-note">
-          {withoutHours} repair or preventive maintenance report{withoutHours === 1 ? ' was' : 's were'} not counted:
+          {withoutHours} report{withoutHours === 1 ? ' was' : 's were'} not counted:
           no number in the labor field, or no instrument on the report.
         </p>
       )}
@@ -405,7 +403,7 @@ export function AnalyticsScreen() {
                 </div>
                 <div className="stat-tile">
                   <span className="stat-value">{totalReports}</span>
-                  <span className="stat-label">Repair/PM reports counted</span>
+                  <span className="stat-label">Reports with hours counted</span>
                 </div>
               </div>
 

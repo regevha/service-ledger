@@ -83,6 +83,7 @@ def test_two_units_of_the_same_model_are_compared_side_by_side(client, db_sessio
     }, when=date(2026, 1, 5))
     _make_report(db_session, a, ReportType.repair, {"labor_hours": 2.5}, when=date(2026, 3, 1))
     _make_report(db_session, b, ReportType.preventive_maintenance, {"labor_hours": 6})
+    _make_report(db_session, b, ReportType.installation_upgrade, {"Labour time": "20"})
     # Not finalized: must not count anywhere.
     _make_report(db_session, b, ReportType.repair, {"labor_hours": 99}, status=ReportStatus.extracted)
 
@@ -97,7 +98,8 @@ def test_two_units_of_the_same_model_are_compared_side_by_side(client, db_sessio
     assert ua["last_report_date"] == "2026-03-01"
 
     ub = _unit(body, "LSRFortessa", b.serial_number)
-    assert ub["finalized_report_count"] == 1 and ub["total_labor_hours"] == 6
+    assert ub["finalized_report_count"] == 2 and ub["total_labor_hours"] == 26
+    assert ub["labor_report_count"] == 2
 
 
 def test_units_of_different_models_are_never_mixed(client, db_session):

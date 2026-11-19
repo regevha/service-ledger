@@ -10,7 +10,7 @@ from app.models import report_chronological_order
 
 from .filters import AnalyticsFilters, _apply_filters, _apply_unit_filters
 from .trends import trend_points, trendable_fields
-from .values import _LABOR_TRACKING_REPORT_TYPES, _as_number
+from .values import _as_number, _labor_hours_of
 
 
 def _finalized_reports_by_instrument(
@@ -43,9 +43,9 @@ def _unit_comparison(instrument: models.Instrument, reports: list[models.Report]
                 qty = _as_number(entry.get("qty"))
                 if qty is not None:
                     parts_qty += qty
-        if report.template is None or report.template.report_type not in _LABOR_TRACKING_REPORT_TYPES:
+        if report.template is None:
             continue
-        hours = _as_number(fields.get("labor_hours"))
+        hours = _labor_hours_of(fields)
         if hours is not None:
             labor_hours += hours
             labor_reports += 1

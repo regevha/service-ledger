@@ -9,7 +9,7 @@ from app import models, schemas
 from app.services.field_values import as_choice_list
 
 from .filters import AnalyticsFilters, _apply_filters, _apply_unit_filters
-from .values import _LABOR_TRACKING_REPORT_TYPES, _as_number, _labor_hours_of
+from .values import _as_number, _labor_hours_of
 
 
 def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None) -> schemas.FleetAnalyticsOut:
@@ -28,7 +28,7 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
     # Every report that matched the filters (finalized unless the status filter says otherwise),
     # whatever its type, per instrument.
     report_count_by_instrument: dict[uuid.UUID, int] = {}
-    # Finalized repair/PM reports that added nothing to the hours: no hours recorded, or no instrument.
+    # Matching reports that added nothing to the hours: no hours recorded, or no instrument.
     reports_without_hours = 0
     labor_by_fault_category: dict[str, float] = {}
 
@@ -69,22 +69,21 @@ def compute_fleet_analytics(db: Session, filters: AnalyticsFilters | None = None
             if qty is not None:
                 bucket["total_qty"] += qty
 
-        if report_type in _LABOR_TRACKING_REPORT_TYPES:
-            labor_hours = _labor_hours_of(fields)
-            if labor_hours is None or report.instrument_id is None:
-                reports_without_hours += 1
-            if labor_hours is not None:
-                if report.instrument_id is not None:
-                    labor_by_instrument[report.instrument_id] = labor_by_instrument.get(report.instrument_id, 0.0) + labor_hours
-                    reports_by_instrument[report.instrument_id] = reports_by_instrument.get(report.instrument_id, 0) + 1
-                if report_type is models.ReportType.repair:
-                    # A repair can have several categories; its hours are shared
-                    # equally between them so the chart still adds up to the total.
-                    categories = as_choice_list(fields.get("fault_category"))
-                    for category in categories:
-                        labor_by_fault_category[category] = (
-                            labor_by_fault_category.get(category, 0.0) + labor_hours / len(categories)
-                        )
+        labor_hours = _labor_hours_of(fields)
+        if labor_hours is None or report.instrument_id is None:
+            reports_without_hours += 1
+        if labor_hours is not None:
+            if report.instrument_id is not None:
+                labor_by_instrument[report.instrument_id] = labor_by_instrument.get(report.instrument_id, 0.0) + labor_hours
+                reports_by_instrument[report.instrument_id] = reports_by_instrument.get(report.instrument_id, 0) + 1
+            if report_type is models.ReportType.repair:
+                # A repair can have several categories; its hours are shared
+                # equally between them to avoid counting those hours twice.
+                categories = as_choice_list(fields.get("fault_category"))
+                for category in categories:
+                    labor_by_fault_category[category] = (
+                        labor_by_fault_category.get(category, 0.0) + labor_hours / len(categories)
+                    )
 
     instrument_query = db.query(models.Instrument).order_by(models.Instrument.name)
     instruments = _apply_unit_filters(instrument_query, filters).all()

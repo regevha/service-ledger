@@ -43,8 +43,7 @@ class InstrumentRollupOut(BaseModel):
     model: str
     institution: str | None = None
     serial_number: str
-    # Finalized repair/preventive_maintenance reports with a numeric
-    # labor_hours value; other report types never carry labor_hours
+    # Matching reports with a numeric labor-hours value for this instrument.
     # (seed_templates.py), so they never contribute here.
     report_count: int
     total_labor_hours: float
@@ -102,7 +101,7 @@ class FleetAnalyticsOut(BaseModel):
     parts_replaced: list[PartUsageOut]
     total_labor_hours: float
     labor_hours_by_instrument: list[InstrumentRollupOut]
-    # Finalized repair/preventive_maintenance reports that added no hours above: no
+    # Matching reports that added no hours above: no
     # number in the labor field, or no instrument on the report. The page says so.
     reports_without_labor_hours: int = 0
     report_counts_by_instrument: list[ReportCountByInstrumentOut] = []
@@ -160,7 +159,7 @@ class UnitComparisonOut(BaseModel):
     # All finalized reports for the unit, any type.
     finalized_report_count: int
     last_report_date: date | None
-    # Finalized repair/preventive_maintenance reports with a numeric labor_hours.
+    # Matching reports with a numeric labor-hours value for this instrument.
     labor_report_count: int
     total_labor_hours: float
     # Sum of qty over every components_replaced row on the unit's reports.
