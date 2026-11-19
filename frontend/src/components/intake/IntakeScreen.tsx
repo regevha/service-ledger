@@ -10,6 +10,9 @@ export function IntakeScreen({
   onStart,
   onOpenBatch,
   onBatchFiles,
+  onOpenSample,
+  sampleBusy = false,
+  sampleError = null,
 }: {
   technicianName: string;
   setTechnicianName: (v: string) => void;
@@ -19,6 +22,10 @@ export function IntakeScreen({
   onOpenBatch?: () => void;
   /** Two or more PDFs were chosen or dropped: hand them to the batch screen. */
   onBatchFiles?: (files: File[]) => void;
+  /** Open the sample report. Given only while the ledger has no finalized report, which is when the button shows. */
+  onOpenSample?: () => void;
+  sampleBusy?: boolean;
+  sampleError?: string | null;
 }) {
   const file = files[0] ?? null;
   const chosenLabel = files.length > 1 ? `${files.length} photos — one report` : file?.name;
@@ -122,6 +129,19 @@ export function IntakeScreen({
           }}
         />
       </label>
+      {onOpenSample && (
+        <div className="sample-offer" data-testid="sample-offer">
+          <button type="button" className="btn primary" data-testid="try-sample" onClick={onOpenSample} disabled={sampleBusy}>
+            {sampleBusy ? 'Opening the sample…' : 'Try with a sample report'}
+          </button>
+          <span className="hint-text">No scan at hand? See a form turned into checked fields, without uploading anything.</span>
+          {sampleError && (
+            <div className="banner banner-warn" role="alert" data-testid="sample-error">
+              {sampleError}
+            </div>
+          )}
+        </div>
+      )}
       {phone && (
         <div className="phone-pick" data-testid="intake-phone-pick">
           <button

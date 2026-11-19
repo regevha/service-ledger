@@ -489,7 +489,7 @@ def _stub_classify(
 
 
 def classify(db: Session, attachment: Attachment) -> ClassificationResult:
-    instruments = db.query(Instrument).order_by(Instrument.serial_number).all()
+    instruments = db.query(Instrument).filter(Instrument.is_sample.is_(False)).order_by(Instrument.serial_number).all()
     if not instruments:
         # A ClassificationError, not a RuntimeError: the worker records it as a
         # failed job with this message, which the intake screen shows. A bare

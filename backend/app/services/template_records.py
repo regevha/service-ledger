@@ -89,7 +89,7 @@ def template_usage(db: Session) -> list[schemas.TemplateUsageOut]:
     finalized = func.count().filter(models.Report.status == models.ReportStatus.finalized)
     rows = (
         db.query(models.Report.template_id, func.count(), finalized)
-        .filter(models.Report.template_id.is_not(None))
+        .filter(models.Report.template_id.is_not(None), models.Report.is_sample.is_(False))
         .group_by(models.Report.template_id)
         .all()
     )
@@ -233,7 +233,12 @@ def delete_template(db: Session, template_id: uuid.UUID) -> None:
     template = db.get(models.ReportTemplate, template_id)
     if not template:
         raise NotFoundError("Template not found")
-    in_use = db.query(models.Report).filter(models.Report.template_id == template_id).count()
+    # The first-run sample is a demo, not a report anyone made: it never blocks the delete, and goes with it.
+    in_use = db.query(models.Report).filter(models.Report.template_id == template_id, models.Report.is_sample.is_(False)).count()
+    if not in_use and db.query(models.Report).filter(models.Report.template_id == template_id).first():
+        from app.services.samples import remove_sample_data  # noqa: PLC0415
+
+        remove_sample_data(db)
     if in_use:
         # reports.template_id -> report_templates.id has no ondelete (models.py),
         # so it defaults to RESTRICT — without this check db.delete() would

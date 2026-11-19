@@ -7,42 +7,43 @@ depends_on: []
 migration: true
 files_touched:
   - backend/alembic/versions/0017_sample_flag.py
-  - backend/app/models/reports.py
-  - backend/app/models/instruments.py
-  - backend/app/services/samples.py
-  - backend/app/services/sample_data/**
-  - backend/app/routers/samples.py
   - backend/app/main.py
-  - backend/app/routers/reports.py
+  - backend/app/models/instruments.py
+  - backend/app/models/reports.py
   - backend/app/routers/attachments.py
   - backend/app/routers/instruments.py
-  - backend/app/routers/places.py
-  - backend/app/routers/home.py
-  - backend/app/schemas/**
-  - backend/app/services/report_filters.py
+  - backend/app/routers/reports.py
+  - backend/app/routers/samples.py
+  - backend/app/schemas/reports.py
+  - backend/app/services/analytics/filters.py
+  - backend/app/services/analytics/fleet.py
+  - backend/app/services/classification.py
   - backend/app/services/duplicates.py
   - backend/app/services/home_summary.py
-  - backend/app/services/maintenance.py
   - backend/app/services/instruments.py
-  - backend/app/services/places.py
+  - backend/app/services/maintenance.py
   - backend/app/services/model_records.py
-  - backend/app/services/model_reliability.py
+  - backend/app/services/places.py
+  - backend/app/services/read_accuracy.py
+  - backend/app/services/report_filters.py
+  - backend/app/services/samples.py
   - backend/app/services/template_records.py
-  - backend/app/services/classification.py
-  - backend/app/services/analytics/**
   - backend/tests/test_samples.py
-  - frontend/openapi.json
-  - frontend/src/generated/api-schema.ts
-  - frontend/src/api/**
-  - frontend/src/components/intake/**
+  - frontend/src/api/reports.ts
+  - frontend/src/api/types.ts
   - frontend/src/components/IntakeFlow.tsx
   - frontend/src/components/ReviewScreen.tsx
-  - frontend/src/components/review/**
-  - frontend/src/App.css
+  - frontend/src/components/intake/IntakeScreen.tsx
+  - frontend/src/components/review/ReviewActions.tsx
+  - frontend/src/generated/api-schema.ts
+  - frontend/src/styles/01-shell-forms-intake.css
   - frontend/tests/e2e/first-run-sample.spec.ts
-  - docs/features/first-run-sample/**
+  - docs/features/first-run-sample/PRODUCT.md
+  - docs/features/first-run-sample/PLAN.md
+  - docs/features/first-run-sample/API.md
+  - docs/features/first-run-sample/DATA_MODEL.md
   - docs/tasks/SL-79.yml
   - docs/tasks/SL-79.md
   - docs/PLAN.md
 acceptance: [AC-01, AC-02, AC-03, AC-04, AC-05]
-# Draft list: the lead trims it to the files actually changed before the PR. Brief: docs/features/first-run-sample/PRODUCT.md.
+# Brief: docs/features/first-run-sample/PRODUCT.md. The lead built this directly (token budget rule in CLAUDE.md).

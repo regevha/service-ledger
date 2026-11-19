@@ -52,7 +52,12 @@ _PAGE_REPORTS = 25
 
 
 def list_models(db: Session) -> list[schemas.InstrumentModelOut]:
-    records = db.query(models.InstrumentModel).order_by(func.lower(models.InstrumentModel.name)).all()
+    records = (
+        db.query(models.InstrumentModel)
+        .filter(models.InstrumentModel.is_sample.is_(False))
+        .order_by(func.lower(models.InstrumentModel.name))
+        .all()
+    )
     similar = _similar_map([r.name for r in records])
     return [_out(db, r, similar) for r in records]
 
@@ -100,7 +105,7 @@ def model_detail(db: Session, model_id: uuid.UUID) -> schemas.InstrumentModelDet
                 draft_count=len(own) - len(done),
             )
         )
-    base = _out(db, record, _similar_map([m.name for m in db.query(models.InstrumentModel).all()]))
+    base = _out(db, record, _similar_map([m.name for m in db.query(models.InstrumentModel).filter(models.InstrumentModel.is_sample.is_(False)).all()]))
     return schemas.InstrumentModelDetailOut(
         **base.model_dump(),
         units=unit_rows,

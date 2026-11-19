@@ -26,6 +26,7 @@ from app.routers import (
     places,
     report_templates,
     reports,
+    samples,
     saved_filters,
     translations,
 )
@@ -147,6 +148,7 @@ app.include_router(translations.router)
 app.include_router(analytics.router)
 app.include_router(home.router)
 app.include_router(accuracy.router)
+app.include_router(samples.router)
 
 
 @app.get("/health", tags=["meta"])

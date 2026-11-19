@@ -85,6 +85,7 @@ def find_read_copy(db: Session, content_sha256: str, exclude_report_id: uuid.UUI
         .filter(
             Attachment.content_sha256 == content_sha256,
             Report.id != exclude_report_id,
+            Report.is_sample.is_(False),
             Report.status.in_(_READ_STATUSES),
         )
         .order_by(Report.created_at.desc())
@@ -122,7 +123,7 @@ def find_saved_duplicates(db: Session, report: Report) -> list[tuple[Report, str
     rows = (
         db.query(Report, Attachment)
         .join(Attachment, Attachment.report_id == Report.id)
-        .filter(Report.id != report.id, or_(*conditions))
+        .filter(Report.id != report.id, Report.is_sample.is_(False), or_(*conditions))
         .order_by(Report.created_at, Report.id)
         .all()
     )

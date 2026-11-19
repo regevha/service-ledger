@@ -125,7 +125,11 @@ def phrase_changes(before: str, after: str, limit: int = 8) -> list[tuple[str, s
 def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAccuracyOut:
     stmt = (
         select(models.Report)
-        .where(models.Report.status == models.ReportStatus.finalized, models.Report.original_fields.is_not(None))
+        .where(
+            models.Report.status == models.ReportStatus.finalized,
+            models.Report.original_fields.is_not(None),
+            models.Report.is_sample.is_(False),
+        )
         .options(
             selectinload(models.Report.template),
             selectinload(models.Report.instrument),

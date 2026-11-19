@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Enum,
     ForeignKey,
@@ -92,6 +93,8 @@ class InstrumentModel(Base):
     instrument_type: Mapped[str] = mapped_column(String, nullable=False, default=DEFAULT_INSTRUMENT_TYPE_KEY)
     service_interval_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The first-run sample's demo model record (services/samples.py): left out of the models list.
+    is_sample: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -116,6 +119,9 @@ class Place(Base):
     kind: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("places.id"), nullable=True)
+    # The first-run sample's demo place / instrument (services/samples.py): left out of every list, count
+    # and fleet figure of real data.
+    is_sample: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # selectin: the room -> faculty -> institution chain is read for every
@@ -174,6 +180,9 @@ class Instrument(Base):
     status: Mapped[InstrumentStatus] = mapped_column(
         Enum(InstrumentStatus, name="instrument_status"), nullable=False, default=InstrumentStatus.active
     )
+    # The first-run sample's demo place / instrument (services/samples.py): left out of every list, count
+    # and fleet figure of real data.
+    is_sample: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # passive_deletes=True for the same reason as ReportTemplate.reports: without

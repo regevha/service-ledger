@@ -92,7 +92,9 @@ def apply_report_filters(
     case-insensitive partial match (ILIKE); `q` is the word-based free-text search, which covers
     finalized reports only (services/report_search.py), so combined with another status it is
     simply empty. `number_field`, `number_op` and `number_value` together are a condition on a number in the report's fields
-    ("laser delay above 29"); like `q` it covers finalized reports only (values still being checked can change)."""
+    ("laser delay above 29"); like `q` it covers finalized reports only (values still being checked can change).
+    The first-run sample report is never part of a result."""
+    query = query.filter(models.Report.is_sample.is_(False))
     if instrument_id:
         query = query.filter(models.Report.instrument_id == instrument_id)
     if model_id:

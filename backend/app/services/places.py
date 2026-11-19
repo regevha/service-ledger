@@ -190,11 +190,11 @@ def _out(
 
 
 def _all(db: Session) -> list[schemas.PlaceOut]:
-    places = db.query(models.Place).all()
+    places = db.query(models.Place).filter(models.Place.is_sample.is_(False)).all()
     by_id = {p.id: p for p in places}
     direct = dict(
         db.query(models.Instrument.place_id, func.count(models.Instrument.id))
-        .filter(models.Instrument.place_id.isnot(None))
+        .filter(models.Instrument.place_id.isnot(None), models.Instrument.is_sample.is_(False))
         .group_by(models.Instrument.place_id)
         .all()
     )

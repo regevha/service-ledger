@@ -48,7 +48,9 @@ class AnalyticsFilters:
 
 
 def _apply_unit_filters(query: Query, filters: AnalyticsFilters) -> Query:
-    """The filters that choose which instruments are listed (query on Instrument)."""
+    """The filters that choose which instruments are listed (query on Instrument). The first-run sample's
+    demo instrument is never listed."""
+    query = query.filter(models.Instrument.is_sample.is_(False))
     if filters.instrument_id:
         query = query.filter(models.Instrument.id == filters.instrument_id)
     if filters.model_id:

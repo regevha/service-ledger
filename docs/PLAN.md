@@ -312,4 +312,4 @@ Brief and plan: `docs/features/first-run-sample/`.
 
 | ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
 |---|---|---|---|---|---|---|
-| SL-79 | lead | Sample report, demo instrument, sample exclusions, delete, button and banner. | AC-01 to AC-05 in `docs/features/first-run-sample/PRODUCT.md`; a test per exclusion; Alembic up/down/up; real-app smoke in stub mode. | see `docs/tasks/SL-79.yml` | none | todo |
+| SL-79 | lead | Sample report, demo instrument, sample exclusions, delete, button and banner. | AC-01 to AC-05 in `docs/features/first-run-sample/PRODUCT.md`; a test per exclusion; Alembic up/down/up; real-app smoke in stub mode. | see `docs/tasks/SL-79.yml` | none | in-review |

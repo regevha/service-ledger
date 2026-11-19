@@ -1311,6 +1311,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sample-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Sample Report
+         * @description Opens the sample report, making it (with its demo instrument and place) when there is none yet. Asking
+         *     again returns the same one (200). Nothing is sent to Claude.
+         */
+        post: operations["open_sample_report_sample_report_post"];
+        /**
+         * Delete Sample Report
+         * @description Removes the sample report and everything made for it. 204 even when there is none.
+         */
+        delete: operations["delete_sample_report_sample_report_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -2662,6 +2687,11 @@ export interface components {
             /** Finalized At */
             finalized_at: string | null;
             /**
+             * Is Sample
+             * @default false
+             */
+            is_sample: boolean;
+            /**
              * Attachments
              * @default []
              */
@@ -2739,6 +2769,65 @@ export interface components {
          * @enum {string}
          */
         ReportType: "repair" | "preventive_maintenance" | "installation_upgrade";
+        /**
+         * SampleReportOut
+         * @description The first-run sample report plus what the reading was sure of, so the review screen can flag fields
+         *     the way it does after a real extraction (POST /sample-report).
+         */
+        SampleReportOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Instrument Id */
+            instrument_id: string | null;
+            /** Template Id */
+            template_id: string | null;
+            status: components["schemas"]["ReportStatus"];
+            /** Extracted Fields */
+            extracted_fields: {
+                [key: string]: unknown;
+            };
+            /** Technician Name */
+            technician_name: string | null;
+            /** Issuer */
+            issuer?: string | null;
+            /** Report Type Note */
+            report_type_note?: string | null;
+            /** Service Actions */
+            service_actions: string | null;
+            /** Parts Replaced */
+            parts_replaced: string | null;
+            /** Next Service Due */
+            next_service_due: string | null;
+            /** Report Date */
+            report_date: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finalized At */
+            finalized_at: string | null;
+            /**
+             * Is Sample
+             * @default false
+             */
+            is_sample: boolean;
+            /**
+             * Attachments
+             * @default []
+             */
+            attachments: components["schemas"]["AttachmentOut"][];
+            /**
+             * Field Confidences
+             * @default {}
+             */
+            field_confidences: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * SampleScanOut
          * @description GET /report-templates/sample-scans: a stored PDF the template editor can
@@ -5695,6 +5784,44 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    open_sample_report_sample_report_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleReportOut"];
+                };
+            };
+        };
+    };
+    delete_sample_report_sample_report_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
