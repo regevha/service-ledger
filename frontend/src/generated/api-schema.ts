@@ -1201,6 +1201,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/translation-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Translation Review Setting */
+        get: operations["get_translation_review_setting_admin_translation_review_get"];
+        /** Update Translation Review Setting */
+        put: operations["update_translation_review_setting_admin_translation_review_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/analytics/fleet": {
         parameters: {
             query?: never;
@@ -3127,10 +3145,15 @@ export interface components {
             /** Accepted At */
             accepted_at: string | null;
         };
+        /** TranslationReviewSetting */
+        TranslationReviewSetting: {
+            /** Show Translation Review */
+            show_translation_review: boolean;
+        };
         /**
          * TranslationStatus
-         * @description Life of one translation record. A person always reviews a translation
-         *     (`pending_review` -> `accepted`); `discarded` means the original is used as
+         * @description Life of one translation record. A translation can be reviewed before acceptance or used automatically.
+         *     `discarded` means the original is used as
          *     it is today; `superseded` is a replaced translation kept as history;
          *     `not_needed` records that the document was checked and is not Hebrew.
          * @enum {string}
@@ -5461,6 +5484,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TranslationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_translation_review_setting_admin_translation_review_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationReviewSetting"];
+                };
+            };
+        };
+    };
+    update_translation_review_setting_admin_translation_review_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TranslationReviewSetting"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationReviewSetting"];
                 };
             };
             /** @description Validation Error */

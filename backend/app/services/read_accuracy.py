@@ -201,7 +201,7 @@ def read_accuracy(db: Session, today: date, days: int | None) -> schemas.ReadAcc
                         translated=translation is not None,
                     )
                 )
-        if translation is not None:
+        if translation is not None and translation.accepted_at is not None:
             tr["accepted"] += 1
             model_text = translation.model_text or ""
             accepted = translation.accepted_text if translation.accepted_text is not None else model_text

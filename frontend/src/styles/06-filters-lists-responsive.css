@@ -324,7 +324,7 @@
   }
   .admin-nav {
     flex-direction: row;
-    overflow-x: auto;
+    flex-wrap: wrap;
   }
   .view-tabs {
     position: fixed;

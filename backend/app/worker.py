@@ -198,9 +198,12 @@ def _run_translate_job(db: Session, job: models.ExtractionJob) -> None:
                 original_text = extract_text(f.read())
         except OSError:
             pass
+        intake_settings = db.get(models.ReportIntakeSettings, 1)
+        skip_review = intake_settings is not None and not intake_settings.show_translation_review
         row = models.Translation(
             attachment_id=attachment.id,
-            status=models.TranslationStatus.pending_review,
+            status=models.TranslationStatus.accepted if skip_review else models.TranslationStatus.pending_review,
+            accepted_text=result.translated_text if skip_review else None,
             source_language=result.source_language,
             hebrew_share=result.hebrew_share,
             model_text=result.translated_text,
