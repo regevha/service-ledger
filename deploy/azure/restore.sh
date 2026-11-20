@@ -40,13 +40,14 @@ open_database
 APPS_STOPPED=0
 # shellcheck source=_apps.sh
 source "$HERE/_apps.sh"
+mapfile -t APPS < <(deployed_apps)
 start_apps() {
   if [[ "$APPS_STOPPED" == "1" ]]; then
     echo "== Starting the API and the worker"
-    for app in "api-$NAME" "worker-$NAME"; do
+    for app in "${APPS[@]}"; do
       app_action "$app" start || echo "   could not start $app; start it in the portal (the app's Overview page, Start)" >&2
     done
-    for app in "api-$NAME" "worker-$NAME"; do
+    for app in "${APPS[@]}"; do
       wait_app_status "$app" Running && echo "   $app running" || true
     done
   fi
@@ -56,13 +57,22 @@ trap cleanup EXIT
 
 echo "== Stopping the API and the worker"
 APPS_STOPPED=1
-for app in "api-$NAME" "worker-$NAME"; do
+for app in "${APPS[@]}"; do
   app_action "$app" stop
 done
-for app in "api-$NAME" "worker-$NAME"; do
+for app in "${APPS[@]}"; do
   wait_app_status "$app" Stopped || { echo "Not restoring while $app may still be running." >&2; exit 1; }
   echo "   $app stopped"
 done
+
+if az containerapp job show -g "$RG" -n "job-worker-$NAME" -o none 2>/dev/null; then
+  # WORKER_MODE=job: stop worker runs in progress. The scheduled run (every 15 minutes) can still fire
+  # during the restore; it waits on the restore's locks and then sees the restored data.
+  echo "== Stopping worker job runs in progress"
+  for job in "job-worker-$NAME" "job-sweep-$NAME"; do
+    az containerapp job stop -g "$RG" -n "$job" -o none 2>/dev/null || true
+  done
+fi
 
 echo "== Restoring the database (one transaction)"
 pg_restore --clean --if-exists --no-owner --no-privileges --single-transaction --exit-on-error \

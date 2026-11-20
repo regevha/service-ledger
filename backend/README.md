@@ -184,6 +184,12 @@ uvicorn app.main:app --reload
 # 202 immediately, but nothing ever picks it up: reports stay stuck in
 # "draft"/"classified" forever.
 python -m app.worker
+
+# Or, instead of a worker that polls forever, let the API start a short run each time a
+# job is queued (the run drains the queue, waits WORKER_IDLE_EXIT_SECONDS for more, exits):
+#   WORKER_TRIGGER=local uvicorn app.main:app --reload     # no separate worker terminal needed
+# `python -m app.worker --once` does one such run by hand. WORKER_TRIGGER=azure_job starts an
+# Azure Container Apps job instead (deploy/azure/README.md).
 ```
 
 Run the tests (against a separate `service_ledger_test` database — see
