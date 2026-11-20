@@ -19,7 +19,7 @@ def _template(db, model="FACSAria III"):
     return t
 
 
-def _finalized(db, original, kept, *, template=None, days_ago=0, translation=None):
+def _finalized(db, original, kept, *, template=None, days_ago=0, translation=None, translation_reviewed=True):
     r = models.Report(
         status=models.ReportStatus.finalized,
         finalized_at=_now() - timedelta(days=days_ago),
@@ -41,6 +41,7 @@ def _finalized(db, original, kept, *, template=None, days_ago=0, translation=Non
                 source_language="he",
                 model_text=model_text,
                 accepted_text=accepted,
+                accepted_at=_now() if translation_reviewed else None,
             )
         )
     db.commit()
@@ -84,10 +85,11 @@ def test_translated_reports_and_translation_edits(client):
     with TestSessionLocal() as db:
         _finalized(db, {"a": "1"}, {"a": "1"}, translation=("Laser direction checked", "Laser alignment checked"))
         _finalized(db, {"a": "1"}, {"a": "1"}, translation=("All good", None))
+        _finalized(db, {"a": "1"}, {"a": "1"}, translation=("Checked", "Checked"), translation_reviewed=False)
         _finalized(db, {"a": "1"}, {"a": "2"})
     body = client.get("/analytics/read-accuracy").json()
     sources = {s["source"]: s for s in body["by_source"]}
-    assert sources["translated"]["untouched"] == 2 and sources["original"]["untouched"] == 0
+    assert sources["translated"]["untouched"] == 3 and sources["original"]["untouched"] == 0
     assert (body["translations"]["accepted"], body["translations"]["unchanged"]) == (2, 1)
     [edit] = body["translations"]["edits"]
     assert edit["changes"] == [{"before": "Laser direction", "after": "Laser alignment"}]

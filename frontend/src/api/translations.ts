@@ -13,7 +13,7 @@ export interface Translation {
   hebrew_share: number | null;
   /** The model's English text. */
   model_text: string | null;
-  /** The text a person accepted (possibly edited). */
+  /** The text used after the review step, including any reviewer edits. */
   accepted_text: string | null;
   /** Pages left out as instrument QC printouts: [{page, reason}]. */
   ignored_pages: { page: number; reason: string }[];

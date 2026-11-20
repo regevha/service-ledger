@@ -5,9 +5,10 @@ import { useTheme } from '../theme';
 import { DateInput } from './DateInput';
 import { AccuracyScreen } from './AccuracyScreen';
 import { FieldAliasManagerScreen } from './FieldAliasManager';
+import { TranslationReviewSettings } from './TranslationReviewSettings';
 
-type Section = 'export' | 'aliases' | 'appearance' | 'accuracy';
-const SECTIONS: Section[] = ['aliases', 'appearance', 'accuracy'];
+type Section = 'export' | 'aliases' | 'appearance' | 'accuracy' | 'translation-review';
+const SECTIONS: Section[] = ['aliases', 'appearance', 'accuracy', 'translation-review'];
 
 /**
  * Admin: housekeeping that is not part of the daily flow. Data export (the CSV that used to sit on the
@@ -31,12 +32,17 @@ export function AdminScreen({ section, onSection, instruments }: { section: stri
         <button type="button" className={`admin-nav-item ${current === 'appearance' ? 'active' : ''}`} aria-current={current === 'appearance' ? 'page' : undefined} onClick={() => onSection('appearance')}>
           Appearance
         </button>
+        <button type="button" className={`admin-nav-item ${current === 'translation-review' ? 'active' : ''}`} aria-current={current === 'translation-review' ? 'page' : undefined} onClick={() => onSection('translation-review')}>
+          Translation review
+        </button>
       </nav>
       <div className="admin-body">
         {current === 'aliases' ? (
           <FieldAliasManagerScreen onBack={() => onSection('')} />
         ) : current === 'appearance' ? (
           <Appearance />
+        ) : current === 'translation-review' ? (
+          <TranslationReviewSettings />
         ) : current === 'accuracy' ? (
           <AccuracyScreen />
         ) : (
