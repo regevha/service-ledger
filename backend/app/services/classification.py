@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import re
 from collections import Counter
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy.orm import Session
 
@@ -42,6 +42,7 @@ from app.services.classification_reading import (  # noqa: F401  (moved; re-expo
     _clean,
     _normalize_serial,
     match_serial,
+    nothing_read,
     report_type_from_task_code,
     task_code_scheme,
 )
@@ -146,6 +147,10 @@ def _live_classify(
                 "detected_manufacturer": {"type": "string", "description": "The instrument's maker, or empty"},
                 "detected_model": {"type": "string", "description": "The instrument's model name as printed, or empty"},
                 "report_type_note": {"type": "string", "description": "The second report type, if any, or empty"},
+                "is_service_document": {
+                    "type": "boolean",
+                    "description": "False when the file is not an instrument service report or service form at all (a photo, a blank page, any other paper)",
+                },
             },
             "required": [
                 "instrument_model",
@@ -244,6 +249,7 @@ def _live_classify(
         maker_in_fleet,
         _text("report_type_note"),
         _text("detected_model"),
+        data.get("is_service_document") is not False,
     )
 
 
@@ -379,6 +385,9 @@ def _has_readable_text(attachment: Attachment) -> bool:
 # lets the add-the-instrument-and-retry path run end to end without a model.
 STUB_OTHER_MAKER_MARKER = "othermaker"
 _STUB_OTHER_MAKER_SERIAL = "ZZ0000"  # the serial when the file name gives none
+# A file whose name contains this is "read" in stub mode as something that is not a
+# service report at all, so the rejection path can run end to end without a model.
+STUB_NOT_A_REPORT_MARKER = "notareport"
 
 
 def _stub_other_maker(attachment: Attachment, instruments: list[Instrument]) -> DocumentRead | None:
@@ -390,7 +399,7 @@ def _stub_other_maker(attachment: Attachment, instruments: list[Instrument]) -> 
     named = re.search(r"othermaker[-_]([a-z0-9]+)", name)
     stub_serial = named.group(1).upper() if named else _STUB_OTHER_MAKER_SERIAL
     known = next((i for i in instruments if i.serial_number == stub_serial), None)
-    common = dict(
+    common: dict[str, Any] = dict(
         issuer="almog diagnostic",
         detected_manufacturer="Cytek Biosciences",
         detected_model="Cytek Aurora",
@@ -426,6 +435,17 @@ def _stub_other_maker(attachment: Attachment, instruments: list[Instrument]) -> 
 def _stub_classify(
     attachment: Attachment, instruments: list[Instrument]
 ) -> DocumentRead:
+    if STUB_NOT_A_REPORT_MARKER in source_name(attachment).lower():
+        return DocumentRead(
+            ClassificationGuess(value=instruments[0].model, confidence=0.0),
+            ClassificationGuess(value=ReportType.repair.value, confidence=0.0),
+            None,
+            None,
+            "none",
+            "stub",
+            maker_in_fleet=False,
+            is_service_document=False,
+        )
     other_maker = _stub_other_maker(attachment, instruments)
     if other_maker is not None:
         return other_maker
@@ -506,6 +526,9 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
     else:
         document = DocumentRead(*_stub_classify(attachment, instruments))
     instrument_guess, type_guess, serial_read = document.instrument, document.report_type, document.serial
+    # A file with nothing in it that ties it to a service visit is not a service
+    # report: the screens reject it instead of offering to add an instrument for it.
+    recognized = not nothing_read(document, settings.classification_confidence_threshold)
 
     resolved_template: ReportTemplate | None = None
     resolved_instrument_id = None
@@ -597,4 +620,5 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
         duplicate_report_ids=find_duplicate_report_ids(
             db, attachment, normalize_work_order(document.work_order_number)
         ),
+        recognized=recognized,
     )

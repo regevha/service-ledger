@@ -62,6 +62,10 @@ class ClassificationResult(BaseModel):
     # The instrument's model name as printed (for example "Cytek Aurora"), so
     # the intake screen can offer to add it to the fleet.
     detected_model: str | None = None
+    # False when nothing on the file ties it to a service visit (a photo, a blank
+    # page, some other paper): the screens reject it instead of asking the person
+    # to pick or add an instrument. True for every real report, read or not.
+    recognized: bool = True
     # Other reports that already hold this document — same file bytes or same
     # work-order number. Empty when none; the intake screen should warn, not block.
     duplicate_report_ids: list[uuid.UUID] = []

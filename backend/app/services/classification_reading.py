@@ -50,6 +50,28 @@ class DocumentRead(NamedTuple):
     # The instrument's model name as printed or as the model could tell it
     # (e.g. "Cytek Aurora"), so the screen can offer to add it to the fleet.
     detected_model: str | None = None
+    # False when the reader says the file is not a service report at all (a photo,
+    # a blank page, some other paper). Readers that do not judge this leave it True;
+    # `nothing_read` below is the check that does not depend on the reader.
+    is_service_document: bool = True
+
+
+def nothing_read(document: "DocumentRead", threshold: float) -> bool:
+    """True when the read found nothing that ties the file to a service visit: no
+    serial, work-order number, maker, model or issuer, and neither the instrument nor
+    the report type was read with confidence. A real report from an unknown model
+    always has at least a maker, model or serial, so it never lands here."""
+    if not document.is_service_document:
+        return True
+    return (
+        document.serial is None
+        and not document.work_order_number
+        and not document.detected_manufacturer
+        and not document.detected_model
+        and not document.issuer
+        and document.report_type.confidence < threshold
+        and (document.instrument.confidence < threshold or not document.maker_in_fleet)
+    )
 
 
 # What a printed task code says about the kind of visit. A task code is one maker's
