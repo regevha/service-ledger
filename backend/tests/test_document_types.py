@@ -40,7 +40,7 @@ PDF_BYTES = b"%PDF-1.4 x"
         (JPEG, "image/jpeg"),
         (GIF, "image/gif"),
         (WEBP, "image/webp"),
-        # HTML is accepted since SL-112, read as text and never served as a web page (test_html_reports.py).
+        # HTML is accepted since SL-115, read as text and never served as a web page (test_html_reports.py).
         (b"<html><script>alert(1)</script></html>", "text/html"),
         (b"plain prose that mentions <html> but does not start with markup", None),
         (b"PK\x03\x04 a zip or docx", None),

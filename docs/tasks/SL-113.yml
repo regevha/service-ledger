@@ -3,7 +3,7 @@ title: "PDF copy of HTML reports via headless Chromium"
 owner: lead
 branch: SL-113-html-pdf-copy
 wave: R1
-depends_on: [SL-112]
+depends_on: [SL-115]
 migration: false
 files_touched:
   - backend/app/services/html_pdf.py

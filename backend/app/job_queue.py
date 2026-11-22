@@ -4,17 +4,49 @@ left half done. Split out of app/worker.py (no code changed); worker.py imports
 these under the same names."""
 import logging
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.orm import Session
 
 from app import models
 from app.config import get_settings
-from app.db import SessionLocal
+from app.db import SessionLocal, engine
 
 logger = logging.getLogger("app.worker")
+
+
+# Postgres advisory lock key held by the one on-demand worker run that is draining the queue.
+_RUN_LOCK_KEY = 0x534C5752  # "SLWR"
+
+
+@contextmanager
+def run_lock(wait_seconds: float):
+    """Yield True when this process is now the only on-demand worker run, False when another
+    run holds the lock for the whole `wait_seconds`. The lock is tied to a dedicated database
+    connection, so it is released when the run ends or its process dies.
+
+    Waiting a few seconds, not giving up at once, matters: a run that has just found the queue
+    empty is about to exit and would miss a job queued a moment later. The run that was started
+    for that job waits here until the first one lets go, and then finds it. A run that gives up
+    after the wait is safe too: the holder is busy and looks at the queue again when it is done."""
+    with engine.connect() as conn:
+        deadline = time.monotonic() + max(wait_seconds, 0.0)
+        got = False
+        while True:
+            got = bool(conn.execute(text("SELECT pg_try_advisory_lock(:k)"), {"k": _RUN_LOCK_KEY}).scalar())
+            if got or time.monotonic() >= deadline:
+                break
+            time.sleep(0.25)
+        conn.commit()  # the lock is session-level; do not keep a transaction open around it
+        try:
+            yield got
+        finally:
+            if got:
+                conn.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _RUN_LOCK_KEY})
+                conn.commit()
 
 
 def _claim_next_job(db: Session) -> models.ExtractionJob | None:
