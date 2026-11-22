@@ -70,6 +70,11 @@ class Settings(BaseSettings):
     # API docs if either changes).
     max_pdf_upload_bytes: int = 20 * 1024 * 1024
     max_image_upload_bytes: int = 5 * 1024 * 1024
+    max_html_upload_bytes: int = 5 * 1024 * 1024
+    # Free keyword check on an HTML report's text before any model call
+    # (services/report_keywords.py). Starting values: tune them on real files.
+    report_keyword_min_score: int = 4
+    report_min_text_chars: int = 80
 
     # §4: fields below this confidence are flagged for mandatory review.
     field_confidence_threshold: float = 0.7

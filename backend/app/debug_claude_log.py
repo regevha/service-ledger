@@ -105,7 +105,11 @@ def _describe_request(request_kwargs: dict[str, Any], deep: bool) -> dict[str, A
                 source = block.get("source") or {}
                 size, digest = None, None
                 data = source.get("data")
-                if isinstance(data, str):
+                if isinstance(data, str) and source.get("type") == "text":
+                    # An HTML report goes as plain text, not base64.
+                    raw = data.encode("utf-8")
+                    size, digest = len(raw), hashlib.sha256(raw).hexdigest()
+                elif isinstance(data, str):
                     try:
                         raw = base64.b64decode(data)
                         size, digest = len(raw), hashlib.sha256(raw).hexdigest()
