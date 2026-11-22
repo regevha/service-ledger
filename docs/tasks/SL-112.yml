@@ -1,0 +1,23 @@
+id: SL-112
+title: "Stub-mode warning says what stub mode really does"
+owner: backend-dev
+branch: SL-112-stub-warning
+wave: R1
+depends_on: []
+migration: false
+files_touched:
+  - backend/app/config.py
+  - backend/tests/test_cors_and_stub_warning.py
+  - docs/tasks/SL-112.yml
+acceptance: [SL-112]
+# Why: the startup warning said classification and extraction both return invented demo values.
+# With STUB_EXTRACT_FROM_TEXT (default on, #109) extraction reads the PDF's text layer and invents
+# nothing; only classification is a stand-in.
+#
+# Change: `Settings.stub_mode_warning` names the real behaviour (classification stand-in, text-layer
+# extraction or, with STUB_EXTRACT_FROM_TEXT=false, invented values; Hebrew cannot be translated).
+#
+# Acceptance (testable):
+#   1. With stub_extract_from_text=True the warning mentions the text layer and not "invented".
+#   2. With stub_extract_from_text=False it says "invented demo values".
+#   3. `pytest tests/test_cors_and_stub_warning.py` and `ruff check` are green.
