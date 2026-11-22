@@ -15,6 +15,8 @@ files_touched:
   - backend/tests/test_page_words.py
   - backend/tests/test_scan_field_boxes.py
   - frontend/tests/e2e/error-states.spec.ts
+  - docs/service-ledger-spec.html
+  - docs/service-ledger-tdd.html
   - docs/tasks/SL-114.yml
 acceptance: [SL-114]
 # Why: proposal "HTML reports and rejecting non-report files at intake", pull request 2 of 4.
@@ -22,8 +24,8 @@ acceptance: [SL-114]
 # Change: at upload an image below MIN_IMAGE_LONG_SIDE x MIN_IMAGE_SHORT_SIDE (default 600 x 300), or above
 # MAX_IMAGE_PIXELS_TOTAL (100 million), is refused with a plain 422 message, before anything is stored or read.
 # When an image is sent to the model, one whose long side exceeds MAX_IMAGE_LONG_SIDE (2000) is shrunk, keeping its
-# proportions (JPEG stays JPEG, other types become PNG); the stored original is untouched. Header-only checks via
-# Pillow; a file Pillow cannot open is not judged. All limits are settings, validated at startup.
+# proportions (always a JPEG copy, flattened on white, EXIF orientation applied, never larger than the original: otherwise the original is sent); the stored original is untouched. Header-only checks via
+# Pillow (a forged header above Pillow's own bomb limit is refused too); a file Pillow cannot open is not judged. All limits are settings, validated at startup.
 # The existing upload byte caps are unchanged (images 5 MB, PDFs 20 MB).
 #
 # Acceptance (testable):

@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import io
 import logging
+import warnings
 
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, UnidentifiedImageError
 
 from app.config import get_settings
 
@@ -24,18 +25,26 @@ class ImageSizeError(Exception):
 
 
 def image_dimensions(data: bytes) -> tuple[int, int] | None:
-    """(width, height) from the header, or None when the bytes are not an image Pillow can open."""
+    """(width, height) from the header, or None when the bytes are not an image Pillow can open.
+    Raises Image.DecompressionBombError for an absurd size (Pillow refuses above about twice its own limit)."""
     try:
-        with Image.open(io.BytesIO(data)) as im:
-            return im.size
-    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", Image.DecompressionBombWarning)  # our own ceiling decides
+            with Image.open(io.BytesIO(data)) as im:
+                return im.size
+    except (UnidentifiedImageError, OSError, ValueError):
         return None
 
 
 def check_image_size(data: bytes) -> None:
     """Raise ImageSizeError when the image is below the minimum size or above the pixel ceiling."""
     s = get_settings()
-    size = image_dimensions(data)
+    try:
+        size = image_dimensions(data)
+    except Image.DecompressionBombError:
+        raise ImageSizeError(
+            "This image has far too many pixels to open safely. Reduce its resolution and upload it again."
+        ) from None
     if size is None:
         return
     width, height = size
@@ -43,7 +52,7 @@ def check_image_size(data: bytes) -> None:
     if width * height > s.max_image_pixels_total:
         raise ImageSizeError(
             f"This image is {width} x {height} pixels, which is too large to open safely "
-            f"(over {s.max_image_pixels_total // 1_000_000} million pixels). Reduce its resolution and upload it again."
+            f"(over {s.max_image_pixels_total:,} pixels). Reduce its resolution and upload it again."
         )
     if long_side < s.min_image_long_side or short_side < s.min_image_short_side:
         raise ImageSizeError(
@@ -52,26 +61,46 @@ def check_image_size(data: bytes) -> None:
         )
 
 
+_ORIENTATION = {
+    2: Image.Transpose.FLIP_LEFT_RIGHT, 3: Image.Transpose.ROTATE_180, 4: Image.Transpose.FLIP_TOP_BOTTOM,
+    5: Image.Transpose.TRANSPOSE, 6: Image.Transpose.ROTATE_270, 7: Image.Transpose.TRANSVERSE, 8: Image.Transpose.ROTATE_90,
+}
+
+
 def reading_copy(data: bytes, media_type: str) -> tuple[bytes, str]:
     """The bytes and media type to send to the model: the image itself, or when its long side exceeds the
-    reading size a shrunk copy with the same proportions (JPEG stays JPEG, everything else becomes PNG)."""
+    reading size a shrunk JPEG copy with the same proportions. The copy is never larger than the original:
+    if it would be, the original is sent. Shrinks first (JPEG decodes at reduced size) and fixes the EXIF
+    orientation after, so the large pixel buffer is never copied."""
     limit = get_settings().max_image_long_side
-    size = image_dimensions(data)
+    try:
+        size = image_dimensions(data)
+    except Image.DecompressionBombError:
+        return data, media_type
     if size is None or max(size) <= limit:
         return data, media_type
     try:
-        with Image.open(io.BytesIO(data)) as opened:
-            im: Image.Image = ImageOps.exif_transpose(opened) or opened
-            scale = limit / max(im.size)
-            new_size = (max(1, round(im.width * scale)), max(1, round(im.height * scale)))
-            small = im.convert("RGB" if media_type == "image/jpeg" else "RGBA" if im.mode in ("RGBA", "LA", "P") else "RGB")
-            small = small.resize(new_size, Image.Resampling.LANCZOS)
-            out = io.BytesIO()
-            if media_type == "image/jpeg":
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", Image.DecompressionBombWarning)
+            with Image.open(io.BytesIO(data)) as im:
+                orientation = im.getexif().get(0x0112, 1)
+                im.draft("RGB", (limit, limit))  # JPEG: decode at a reduced size (no effect on other formats)
+                im.thumbnail((limit, limit), Image.Resampling.LANCZOS, reducing_gap=2.0)
+                small: Image.Image = im
+                if small.mode in ("RGBA", "LA") or (small.mode == "P" and "transparency" in small.info):
+                    rgba = small.convert("RGBA")
+                    small = Image.new("RGB", rgba.size, "white")
+                    small.paste(rgba, mask=rgba.getchannel("A"))
+                elif small.mode != "RGB":
+                    small = small.convert("RGB")
+                if orientation in _ORIENTATION:
+                    small = small.transpose(_ORIENTATION[orientation])
+                out = io.BytesIO()
                 small.save(out, format="JPEG", quality=90)
-                return out.getvalue(), "image/jpeg"
-            small.save(out, format="PNG", optimize=True)
-            return out.getvalue(), "image/png"
     except (OSError, ValueError, Image.DecompressionBombError) as e:
         logger.warning("Could not shrink an oversized image, sending it as stored: %s", type(e).__name__)
         return data, media_type
+    copy = out.getvalue()
+    if len(copy) >= len(data):
+        return data, media_type
+    return copy, "image/jpeg"

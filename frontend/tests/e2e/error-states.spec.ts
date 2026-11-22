@@ -104,6 +104,7 @@ test('a tiny image is refused with its size and the minimum', async ({ page }) =
     'base64'
   );
   await page.goto('/#/new');
+  await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles({ name: 'icon.png', mimeType: 'image/png', buffer: png });
   await page.click('button:has-text("Upload & classify")');
   await expect(page.locator('[data-testid="intake-error"]')).toContainText('1 x 1 pixels', { timeout: TIMEOUT.ui });
