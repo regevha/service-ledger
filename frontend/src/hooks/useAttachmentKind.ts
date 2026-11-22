@@ -9,7 +9,7 @@ export function useAttachmentKind(attachmentId: string | undefined): 'pages' | '
     if (attachmentId) {
       getAttachmentPageCount(attachmentId)
         .then((r) => live && setKind(r.kind === 'text' ? 'text' : 'pages'))
-        .catch(() => undefined);
+        .catch(() => live && setKind('pages')); // unknown (the scan could not be read): keep the page view, as before
     }
     return () => {
       live = false;

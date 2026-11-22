@@ -23,6 +23,7 @@ files_touched:
   - frontend/src/components/ScanPages.tsx
   - frontend/src/components/intake/IntakeScreen.tsx
   - frontend/src/hooks/useAttachmentKind.ts
+  - frontend/tests/e2e/drag-drop.spec.ts
   - frontend/src/styles/05-review-and-processing.css
   - frontend/src/uploadFiles.ts
   - frontend/src/uploadFiles.test.ts
