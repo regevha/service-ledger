@@ -29,6 +29,18 @@ def test_stub_mode_has_a_warning_and_live_mode_does_not():
     assert _settings(use_live_claude=True).stub_mode_warning is None
 
 
+def test_stub_warning_describes_what_stub_extraction_really_does():
+    # The product default (the test suite switches it off in conftest, so it is set here): extraction
+    # reads the PDF's text layer, so the warning must not say values are invented.
+    text_mode = _settings(use_live_claude=False, stub_extract_from_text=True).stub_mode_warning
+    assert "text layer" in text_mode
+    assert "invented" not in text_mode
+    assert "Classification is a stand-in" in text_mode
+    # With the text reading off, extraction does invent values and the warning says so.
+    invented = _settings(use_live_claude=False, stub_extract_from_text=False).stub_mode_warning
+    assert "invented demo values" in invented
+
+
 def test_api_startup_logs_the_stub_warning(caplog):
     with caplog.at_level(logging.WARNING, logger="app.main"):
         with TestClient(app):
