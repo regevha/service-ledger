@@ -71,12 +71,22 @@ test('a file that is not a PDF or an image is refused with the reason', async ({
 });
 
 test('an image scan is accepted, not just a PDF', async ({ page }) => {
-  // A 1x1 PNG: enough for the upload check, which reads the file's own bytes.
-  const png = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-    'base64'
-  );
+  // A PNG drawn in the page, big enough to pass the minimum image size (the backend refuses thumbnails).
   await page.goto('/#/new');
+  const png = Buffer.from(
+    await page.evaluate(async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 600;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, 800, 600);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(40, 40, 300, 60);
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
+      return Array.from(new Uint8Array(await blob!.arrayBuffer()));
+    })
+  );
   await page.getByTestId('tab-new').click();
   await page.locator('input[type="file"]').setInputFiles({ name: 'scan.png', mimeType: 'image/png', buffer: png });
   await page.click('button:has-text("Upload & classify")');
@@ -85,4 +95,18 @@ test('an image scan is accepted, not just a PDF', async ({ page }) => {
   // review screen, depending on how many instruments share the guessed model).
   await page.waitForSelector('[data-testid="field-list"], .class-row', { timeout: TIMEOUT.flow });
   await expect(page.locator('[data-testid="intake-error"]')).toHaveCount(0);
+});
+
+test('a tiny image is refused with its size and the minimum', async ({ page }) => {
+  // A 1x1 PNG, like an icon or thumbnail uploaded by mistake.
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  await page.goto('/#/new');
+  await page.getByTestId('tab-new').click();
+  await page.locator('input[type="file"]').setInputFiles({ name: 'icon.png', mimeType: 'image/png', buffer: png });
+  await page.click('button:has-text("Upload & classify")');
+  await expect(page.locator('[data-testid="intake-error"]')).toContainText('1 x 1 pixels', { timeout: TIMEOUT.ui });
+  await expect(page.locator('[data-testid="intake-error"]')).toContainText('600 x 300');
 });
