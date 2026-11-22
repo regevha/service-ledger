@@ -53,3 +53,6 @@ export const MAINTENANCE_STATE_LABEL: Record<MaintenanceState, string> = {
   due_soon: 'Due soon',
   overdue: 'Overdue',
 };
+
+// Shown when a file turns out not to be a service report (a photo, a blank page, other paper).
+export const NOT_A_SERVICE_REPORT = "This doesn't look like a service report. Choose another file.";

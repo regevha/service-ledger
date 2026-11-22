@@ -1,0 +1,35 @@
+id: SL-79
+title: "Reject files that are not service reports at Classify"
+owner: lead
+branch: SL-79-reject-non-service-documents
+wave: R1
+depends_on: []
+migration: false
+files_touched:
+  - backend/app/services/classification.py
+  - backend/app/services/classification_reading.py
+  - backend/app/services/classification_prompt.py
+  - backend/app/schemas/extraction.py
+  - backend/tests/test_not_a_service_report.py
+  - frontend/src/api/types.ts
+  - frontend/src/labels.ts
+  - frontend/src/batchRun.ts
+  - frontend/src/components/intake/useIntakeSteps.ts
+  - frontend/tests/e2e/not-a-service-report.spec.ts
+  - docs/tasks/SL-79.yml
+acceptance: [SL-79]
+# Why: a non-report file (a photo, a blank page) read as "model not clear, report type not clear,
+# no serial" and Classify offered to add an unknown instrument for it, with Flow cytometer pre-filled.
+#
+# Change: the classification result gets `recognized` (false when the reader says the file is not a
+# service document, or when no serial, work order, maker, model or issuer was read and neither the
+# instrument nor the report type reached the confidence threshold). New Report rejects it with
+# "Choose another file" and deletes the draft; batch upload marks it "needs attention" and drops the
+# draft. A real report from an unknown model still reaches the add-instrument form (a maker, model
+# or serial was read). Stub mode: a file name containing "notareport" is read as not a service report.
+#
+# Acceptance (testable):
+#   1. backend/tests/test_not_a_service_report.py passes; the classification-related backend tests pass.
+#   2. e2e not-a-service-report.spec.ts: the message shows, no instrument form, no Confirm button, no
+#      draft report left, "Choose another file" returns to the upload screen.
+#   3. ruff clean; mypy error count not above backend/mypy-baseline.txt; tsc, oxlint, vitest green.

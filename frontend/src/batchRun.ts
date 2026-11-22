@@ -13,6 +13,7 @@ import {
   uploadAttachment,
   type ClassificationResult,
 } from './api';
+import { NOT_A_SERVICE_REPORT } from './labels';
 import { prepareUpload } from './imageUpload';
 import { stateForReportStatus, type BatchItem } from './batchState';
 
@@ -76,6 +77,11 @@ export async function runItem(
     const classified = await pollExtractionJob(classification.id, { signal });
     if (classified.status === 'failed') throw new ApiError(0, classified.error_message || 'Identifying the form failed.');
     const result = classified.classification as unknown as ClassificationResult;
+    if (result.recognized === false) {
+      await dropDraft();
+      update({ state: 'attention', message: NOT_A_SERVICE_REPORT });
+      return;
+    }
     if (!result.resolved_template_id || !result.resolved_instrument_id) {
       const guess = [result.instrument?.value, result.report_type?.value].filter(Boolean).join(' / ');
       await dropDraft();
