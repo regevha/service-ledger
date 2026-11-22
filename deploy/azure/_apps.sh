@@ -23,3 +23,8 @@ wait_app_status() {  # $1 app  $2 Stopped|Running; returns 1 if it is not reache
   echo "   $1 is '${status:-unknown}', not $2, after 5 minutes" >&2
   return 1
 }
+
+deployed_apps() {  # prints the apps that exist: the API, and the worker app unless the worker runs as jobs (WORKER_MODE=job)
+  echo "api-$NAME"
+  if az containerapp show -g "$RG" -n "worker-$NAME" -o none 2>/dev/null; then echo "worker-$NAME"; fi
+}

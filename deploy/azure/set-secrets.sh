@@ -26,27 +26,41 @@ case "$ACTION" in key|key-off|password) ;; *) echo "action must be key, key-off 
 RG="rg-$NAME"
 API="api-$NAME"; WORKER="worker-$NAME"
 az extension add --name containerapp --upgrade -y >/dev/null
-for app in "$API" "$WORKER"; do
-  az containerapp show -g "$RG" -n "$app" --query name -o tsv >/dev/null \
-    || { echo "$app not found in $RG. Run deploy.sh first." >&2; exit 1; }
-done
+az containerapp show -g "$RG" -n "$API" --query name -o tsv >/dev/null \
+  || { echo "$API not found in $RG. Run deploy.sh first." >&2; exit 1; }
+# The worker is an app (WORKER_MODE=app) or two jobs (WORKER_MODE=job).
+if az containerapp show -g "$RG" -n "$WORKER" -o none 2>/dev/null; then
+  WORKER_JOBS=()
+elif az containerapp job show -g "$RG" -n "job-worker-$NAME" -o none 2>/dev/null; then
+  WORKER_JOBS=("job-worker-$NAME" "job-sweep-$NAME"); WORKER=""
+else
+  echo "Neither $WORKER nor job-worker-$NAME found in $RG. Run deploy.sh first." >&2; exit 1
+fi
 STAMP="$(date -u +%Y%m%d%H%M%S)"   # a harmless env var that forces a new revision so secrets are re-read
 
 case "$ACTION" in
   key)
     if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then read -rs -p "Anthropic API key (hidden): " ANTHROPIC_API_KEY; echo; fi
     [[ -n "$ANTHROPIC_API_KEY" ]] || { echo "no key given" >&2; exit 1; }
-    for app in "$API" "$WORKER"; do
+    for app in "$API" ${WORKER:+"$WORKER"}; do
       az containerapp secret set -g "$RG" -n "$app" --secrets "anthropic-key=$ANTHROPIC_API_KEY" -o none
       az containerapp update -g "$RG" -n "$app" --set-env-vars USE_LIVE_CLAUDE=true SECRETS_CHANGED_AT="$STAMP" -o none
+    done
+    for job in "${WORKER_JOBS[@]}"; do
+      az containerapp job secret set -g "$RG" -n "$job" --secrets "anthropic-key=$ANTHROPIC_API_KEY" -o none
+      az containerapp job update -g "$RG" -n "$job" --set-env-vars USE_LIVE_CLAUDE=true -o none
     done
     unset ANTHROPIC_API_KEY
     echo "Live Claude is on. These are real, paid model calls. Check /config on the app address shows \"live_claude\": true."
     ;;
   key-off)
-    for app in "$API" "$WORKER"; do
+    for app in "$API" ${WORKER:+"$WORKER"}; do
       az containerapp secret set -g "$RG" -n "$app" --secrets "anthropic-key=unset" -o none
       az containerapp update -g "$RG" -n "$app" --set-env-vars USE_LIVE_CLAUDE=false SECRETS_CHANGED_AT="$STAMP" -o none
+    done
+    for job in "${WORKER_JOBS[@]}"; do
+      az containerapp job secret set -g "$RG" -n "$job" --secrets "anthropic-key=unset" -o none
+      az containerapp job update -g "$RG" -n "$job" --set-env-vars USE_LIVE_CLAUDE=false -o none
     done
     echo "Back to stub mode (no model calls). Revoke the old key in the Anthropic Console if you will not use it again."
     ;;

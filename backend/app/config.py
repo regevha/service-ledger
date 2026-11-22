@@ -6,8 +6,9 @@ codebase, so §4/§12's open questions have exactly one place to answer them.
 """
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -101,6 +102,27 @@ class Settings(BaseSettings):
     job_retention_days: int = 90  # D-4 / D-10
     worker_retention_interval_seconds: float = 3600.0
 
+    # On-demand worker (`python -m app.worker --once`): instead of one process polling
+    # forever, a run is started each time a job is queued, drains the queue, waits
+    # worker_idle_exit_seconds for more (a classify is usually followed by an extract within
+    # seconds, so this saves a cold start), and exits. Only one run works the queue at a
+    # time (a Postgres advisory lock); a second run waits up to worker_run_lock_wait_seconds
+    # for it, which closes the gap where the first run is just exiting as a job arrives.
+    worker_idle_exit_seconds: float = 30.0
+    worker_run_lock_wait_seconds: float = 10.0
+    # A run stops claiming jobs after this long (0 = no limit), so the platform's run timeout
+    # (1800 s for the Azure job) never cuts a job off half done. One job takes a few minutes at most.
+    worker_max_run_seconds: float = 1500.0
+    # What the API does after it queues a job. "none": nothing (the always-on worker polls).
+    # "local": start `python -m app.worker --once` as a child process (dev and demo).
+    # "azure_job": start the Azure Container Apps job named by azure_worker_job_id, using the
+    # app's managed identity. Calls closer together than worker_trigger_min_interval_seconds
+    # are merged: the run already started is alive for at least worker_idle_exit_seconds.
+    worker_trigger: Literal["none", "local", "azure_job"] = "none"
+    worker_trigger_min_interval_seconds: float = 3.0
+    # Full Azure resource id of the worker job, /subscriptions/<id>/resourceGroups/<rg>/providers/Microsoft.App/jobs/<name>.
+    azure_worker_job_id: str = ""
+
     # Debug aid: before each live Claude call the job stops and the intake screen
     # shows the exact prompt; the person presses Send or Cancel. Off by default.
     view_prompts: bool = False
@@ -149,6 +171,14 @@ class Settings(BaseSettings):
     translate_max_tokens: int = 16000
     translate_timeout_seconds: float = 240.0
 
+    @model_validator(mode="after")
+    def _idle_exit_covers_trigger_merging(self) -> "Settings":
+        # Triggers closer together than worker_trigger_min_interval_seconds are merged; that is only safe
+        # while a started run stays alive at least that long after its last job.
+        if self.worker_idle_exit_seconds < self.worker_trigger_min_interval_seconds:
+            raise ValueError("WORKER_IDLE_EXIT_SECONDS must be at least WORKER_TRIGGER_MIN_INTERVAL_SECONDS")
+        return self
+
     @property
     def cors_origins(self) -> list[str]:
         if not self.frontend_dist_dir:
@@ -158,13 +188,21 @@ class Settings(BaseSettings):
     @property
     def stub_mode_warning(self) -> str | None:
         """Said at startup by the API and the worker when no real model is used, so
-        invented demo values are not mistaken for a reading of the document."""
+        stand-in values are not mistaken for a reading of the document."""
         if self.use_live_claude:
             return None
+        if self.stub_extract_from_text:
+            extraction = (
+                "extraction reads only the PDF's own text layer (what it cannot read stays empty, "
+                "and a scan with no text layer fails)"
+            )
+        else:
+            extraction = "extraction returns invented demo values (STUB_EXTRACT_FROM_TEXT is off)"
         return (
-            "USE_LIVE_CLAUDE is off: documents are NOT read by the model. Classification and "
-            "extraction return invented demo values. Set USE_LIVE_CLAUDE=true (and ANTHROPIC_API_KEY) "
-            "for real use."
+            "USE_LIVE_CLAUDE is off: documents are NOT read by the model. Classification is a "
+            "stand-in that does not look at the content (the report type and instrument may be "
+            f"wrong), {extraction}, and Hebrew documents cannot be translated. Set "
+            "USE_LIVE_CLAUDE=true (and ANTHROPIC_API_KEY) for real use."
         )
 
     @property

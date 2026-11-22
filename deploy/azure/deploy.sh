@@ -22,6 +22,12 @@
 #   IMAGE_TAG=latest
 #   BUILD_IMAGE=1                  build the frontend (npm) and then the image in
 #                                  the registry from backend/Dockerfile
+#   WORKER_MODE=app|job            app (default): the worker is an always-on app that polls
+#                                  the job table. job: no always-on worker; the API starts a
+#                                  Container Apps job (python -m app.worker --once) each time
+#                                  a job is queued, and a scheduled job every 15 minutes picks
+#                                  up anything a failed start left behind. Billed only while it
+#                                  runs. Not yet run against real Azure.
 set -euo pipefail
 
 NAME="${1:?usage: deploy.sh <name>   (lowercase letters, digits, hyphens; 3-14 chars)}"
@@ -29,6 +35,8 @@ NAME="${1:?usage: deploy.sh <name>   (lowercase letters, digits, hyphens; 3-14 c
 
 LOCATION="${LOCATION:-westeurope}"
 INGRESS="${INGRESS:-internal}"
+WORKER_MODE="${WORKER_MODE:-app}"
+[[ "$WORKER_MODE" == "app" || "$WORKER_MODE" == "job" ]] || { echo "WORKER_MODE must be app or job" >&2; exit 1; }
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 RG="rg-$NAME"
 SUB_SHORT="$(az account show --query id -o tsv | tr -d '-' | cut -c1-6)"
@@ -41,6 +49,9 @@ PG_DB="service_ledger"
 SHARE="attachments"
 ENV_NAME="cae-$NAME"
 LAW="log-$NAME"
+SUB_ID="$(az account show --query id -o tsv)"
+WORKER_JOB="job-worker-$NAME"; SWEEP_JOB="job-sweep-$NAME"
+WORKER_JOB_ID="/subscriptions/$SUB_ID/resourceGroups/$RG/providers/Microsoft.App/jobs/$WORKER_JOB"
 
 # Re-running resumes a first deploy that stopped half way: steps whose resource
 # already exists are skipped. It never touches a deployment that is running
@@ -196,6 +207,49 @@ $5
 YAML
 }
 
+# The on-demand worker (WORKER_MODE=job): the same image and settings as the worker app, but a job
+# that runs `python -m app.worker --once` and exits. Two of them: one started by the API when a job is
+# queued, one on a schedule as the safety net. Volumes again need YAML.
+write_job_yaml() {  # $1 file  $2 container name  $3 trigger lines (yaml, indented 4 spaces)
+cat > "$1" <<YAML
+location: $LOCATION
+properties:
+  environmentId: $(az containerapp env show -g "$RG" -n "$ENV_NAME" --query id -o tsv)
+  configuration:
+$3
+    replicaTimeout: 1800
+    replicaRetryLimit: 0
+    registries:
+      - server: $ACR_SERVER
+        username: $ACR_USER
+        passwordSecretRef: acr-password
+    secrets:
+      - name: acr-password
+        value: "$ACR_PASS"
+      - name: database-url
+        value: "$DATABASE_URL"
+      - name: anthropic-key
+        value: "${ANTHROPIC_API_KEY:-unset}"
+  template:
+    containers:
+      - name: $2
+        image: $IMAGE
+        command: ["python","-m","app.worker","--once"]
+        resources: { cpu: 0.5, memory: 1Gi }
+        env:
+          - { name: DATABASE_URL, secretRef: database-url }
+          - { name: ANTHROPIC_API_KEY, secretRef: anthropic-key }
+          - { name: USE_LIVE_CLAUDE, value: "$LIVE" }
+          - { name: ATTACHMENT_STORAGE_DIR, value: /data/attachments }
+        volumeMounts:
+          - { volumeName: attachments, mountPath: /data }
+    volumes:
+      - name: attachments
+        storageType: AzureFile
+        storageName: attachments
+YAML
+}
+
 echo "== One-off migration job (alembic upgrade head)"
 if exists az containerapp job show -g "$RG" -n "job-migrate-$NAME"; then
   # It holds the old database password; recreating it is simpler than patching it, and it keeps no data.
@@ -224,18 +278,56 @@ if [[ "$STATUS" != "Succeeded" ]]; then
 fi
 echo "   migration succeeded"
 
-echo "== API app (ingress: $INGRESS) and worker app"
+echo "== API app (ingress: $INGRESS) and worker ($WORKER_MODE)"
 if [[ "$INGRESS" == "external" ]]; then INGRESS_YAML="ingress: { external: true, targetPort: 8000, allowInsecure: false }"; else INGRESS_YAML="ingress: { external: false, targetPort: 8000, allowInsecure: false }"; fi
-write_app_yaml "$TMP/api.yaml" "api" '["python","-m","uvicorn","app.main:app","--host","0.0.0.0","--port","8000","--no-access-log"]' "$INGRESS_YAML" "          - { name: SHARED_PASSWORD, secretRef: shared-password }"
-write_app_yaml "$TMP/worker.yaml" "worker" '["python","-m","app.worker"]' "activeRevisionsMode: Single" ""
+API_ENV="          - { name: SHARED_PASSWORD, secretRef: shared-password }"
+if [[ "$WORKER_MODE" == "job" ]]; then
+  # The jobs come first: the API's settings name the worker job, and the API's identity is allowed to start only that job.
+  for job in "$WORKER_JOB" "$SWEEP_JOB"; do
+    if exists az containerapp job show -g "$RG" -n "$job"; then
+      echo "   replacing $job left by an earlier run"
+      az containerapp job delete -g "$RG" -n "$job" --yes -o none
+    fi
+  done
+  write_job_yaml "$TMP/worker-job.yaml" "worker" "    triggerType: Manual
+    manualTriggerConfig: { parallelism: 1, replicaCompletionCount: 1 }"
+  write_job_yaml "$TMP/sweep-job.yaml" "worker" "    triggerType: Schedule
+    scheduleTriggerConfig: { cronExpression: \"*/15 * * * *\", parallelism: 1, replicaCompletionCount: 1 }"
+  az containerapp job create -g "$RG" -n "$WORKER_JOB" --yaml "$TMP/worker-job.yaml" -o none
+  az containerapp job create -g "$RG" -n "$SWEEP_JOB" --yaml "$TMP/sweep-job.yaml" -o none
+  API_ENV="$API_ENV
+          - { name: WORKER_TRIGGER, value: azure_job }
+          - { name: AZURE_WORKER_JOB_ID, value: \"$WORKER_JOB_ID\" }"
+fi
+write_app_yaml "$TMP/api.yaml" "api" '["python","-m","uvicorn","app.main:app","--host","0.0.0.0","--port","8000","--no-access-log"]' "$INGRESS_YAML" "$API_ENV"
 az containerapp create -g "$RG" -n "api-$NAME" --yaml "$TMP/api.yaml" -o none
-az containerapp create -g "$RG" -n "worker-$NAME" --yaml "$TMP/worker.yaml" -o none
+if [[ "$WORKER_MODE" == "job" ]]; then
+  echo "== Letting the API start the worker job (managed identity, Contributor on that one job only)"
+  az containerapp identity assign -g "$RG" -n "api-$NAME" --system-assigned -o none
+  PRINCIPAL_ID="$(az containerapp show -g "$RG" -n "api-$NAME" --query identity.principalId -o tsv)"
+  # A just-created identity can take a minute to replicate ("PrincipalNotFound"), so try for about a minute.
+  ROLE_OK=0
+  for _ in $(seq 1 8); do
+    if az role assignment create --assignee-object-id "$PRINCIPAL_ID" --assignee-principal-type ServicePrincipal \
+         --role Contributor --scope "$WORKER_JOB_ID" -o none 2>/dev/null; then ROLE_OK=1; break; fi
+    sleep 8
+  done
+  if [[ "$ROLE_OK" != "1" ]]; then
+    echo "Could not give the API the right to start $WORKER_JOB. The apps and jobs exist; run this by hand, then uploads start the worker:" >&2
+    echo "  az role assignment create --assignee-object-id $PRINCIPAL_ID --assignee-principal-type ServicePrincipal --role Contributor --scope $WORKER_JOB_ID" >&2
+    exit 1
+  fi
+  echo "   (a new role can take a few minutes to apply; until then a start fails and the scheduled job picks the work up)"
+else
+  write_app_yaml "$TMP/worker.yaml" "worker" '["python","-m","app.worker"]' "activeRevisionsMode: Single" ""
+  az containerapp create -g "$RG" -n "worker-$NAME" --yaml "$TMP/worker.yaml" -o none
+fi
 
 cat <<DONE
 
 Done. Resource group: $RG
   Postgres:  $PG.postgres.database.azure.com   (admin $PG_ADMIN; the password is stored only as a Container Apps secret)
-  Storage:   $STORAGE / share $SHARE (mounted at /data in both apps)
+  Storage:   $STORAGE / share $SHARE (mounted at /data in the API and the worker)
   Registry:  $ACR_SERVER
   Live Claude: $LIVE
 Next:
@@ -243,6 +335,7 @@ Next:
   2. (The migration already ran; run it again after a new release with:
       az containerapp job start -g $RG -n job-migrate-$NAME)
   3. Check the API log:           az containerapp logs show -g $RG -n api-$NAME --follow
+  3b. (WORKER_MODE=job) worker runs: az containerapp job execution list -g $RG -n $WORKER_JOB -o table
   4. Stop paying when finished:   ./deploy/azure/destroy.sh $NAME
 DONE
 if [[ "$INGRESS" == "external" ]]; then
