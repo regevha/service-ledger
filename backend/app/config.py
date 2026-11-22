@@ -153,13 +153,21 @@ class Settings(BaseSettings):
     @property
     def stub_mode_warning(self) -> str | None:
         """Said at startup by the API and the worker when no real model is used, so
-        invented demo values are not mistaken for a reading of the document."""
+        stand-in values are not mistaken for a reading of the document."""
         if self.use_live_claude:
             return None
+        if self.stub_extract_from_text:
+            extraction = (
+                "extraction reads only the PDF's own text layer (what it cannot read stays empty, "
+                "and a scan with no text layer fails)"
+            )
+        else:
+            extraction = "extraction returns invented demo values (STUB_EXTRACT_FROM_TEXT is off)"
         return (
-            "USE_LIVE_CLAUDE is off: documents are NOT read by the model. Classification and "
-            "extraction return invented demo values. Set USE_LIVE_CLAUDE=true (and ANTHROPIC_API_KEY) "
-            "for real use."
+            "USE_LIVE_CLAUDE is off: documents are NOT read by the model. Classification is a "
+            "stand-in that does not look at the content (the report type and instrument may be "
+            f"wrong), {extraction}, and Hebrew documents cannot be translated. Set "
+            "USE_LIVE_CLAUDE=true (and ANTHROPIC_API_KEY) for real use."
         )
 
     @property
