@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
+from app.job_trigger import notify_job_queued
 from app.services.attachment_names import (
     clean_original_filename,
     source_name,
@@ -431,6 +432,7 @@ def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db))
     db.commit()
     db.refresh(job)
     logger.info("Queued %s job %s for attachment %s", job.kind.value, job.id, attachment_id)
+    notify_job_queued()
     return job
 
 
@@ -480,6 +482,7 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(job)
     logger.info("Queued %s job %s for attachment %s", job.kind.value, job.id, attachment_id)
+    notify_job_queued()
     return job
 
 
@@ -506,6 +509,7 @@ def approve_extraction_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(job)
     logger.info("Prompt approved for %s job %s", job.kind.value, job.id)
+    notify_job_queued()
     return job
 
 

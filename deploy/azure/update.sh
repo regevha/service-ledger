@@ -26,10 +26,16 @@ GIT_REV="$(git rev-parse --short HEAD 2>/dev/null || echo nogit)"
 IMAGE_TAG="${IMAGE_TAG:-${GIT_REV}-$(date -u +%Y%m%d%H%M%S)}"
 
 az extension add --name containerapp --upgrade -y >/dev/null
-for app in "api-$NAME" "worker-$NAME"; do
-  az containerapp show -g "$RG" -n "$app" --query name -o tsv >/dev/null \
-    || { echo "$app not found in $RG. Run deploy.sh first." >&2; exit 1; }
-done
+az containerapp show -g "$RG" -n "api-$NAME" --query name -o tsv >/dev/null \
+  || { echo "api-$NAME not found in $RG. Run deploy.sh first." >&2; exit 1; }
+# WORKER_MODE=app deployments have a worker app; WORKER_MODE=job ones have two worker jobs instead.
+if az containerapp show -g "$RG" -n "worker-$NAME" -o none 2>/dev/null; then
+  WORKER_MODE=app
+elif az containerapp job show -g "$RG" -n "job-worker-$NAME" -o none 2>/dev/null; then
+  WORKER_MODE=job
+else
+  echo "Neither worker-$NAME nor job-worker-$NAME found in $RG. Run deploy.sh first." >&2; exit 1
+fi
 if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
   echo "Note: you have uncommitted changes; the image is built from the files on disk, not from commit $GIT_REV."
 fi
@@ -67,7 +73,14 @@ echo "   migration succeeded"
 
 echo "== Rolling the API and the worker to the new image"
 az containerapp update -g "$RG" -n "api-$NAME" --image "$IMAGE" -o none
-az containerapp update -g "$RG" -n "worker-$NAME" --image "$IMAGE" -o none
+if [[ "$WORKER_MODE" == "app" ]]; then
+  az containerapp update -g "$RG" -n "worker-$NAME" --image "$IMAGE" -o none
+else
+  # A run already in progress finishes on the old image; the next one starts on the new image.
+  for job in "job-worker-$NAME" "job-sweep-$NAME"; do
+    az containerapp job update -g "$RG" -n "$job" --image "$IMAGE" -o none
+  done
+fi
 
 cat <<DONE
 

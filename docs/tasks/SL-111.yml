@@ -1,0 +1,41 @@
+id: SL-111
+title: "On-demand worker: run when a job is queued instead of polling forever"
+owner: backend-dev
+branch: SL-111-on-demand-worker
+wave: R1
+depends_on: []
+migration: false
+files_touched:
+  - backend/README.md
+  - backend/app/config.py
+  - backend/app/job_queue.py
+  - backend/app/job_trigger.py
+  - backend/app/routers/attachments.py
+  - backend/app/routers/translations.py
+  - backend/app/worker.py
+  - backend/tests/test_worker_on_demand.py
+  - deploy/azure/README.md
+  - deploy/azure/_apps.sh
+  - deploy/azure/deploy.sh
+  - deploy/azure/pause.sh
+  - deploy/azure/restore.sh
+  - deploy/azure/resume.sh
+  - deploy/azure/set-secrets.sh
+  - deploy/azure/update.sh
+  - docs/tasks/SL-111.yml
+acceptance: [SL-111]
+# Why: the worker polls the job table every 0.5 s, so it must be always on and cannot scale to zero
+# (hosting cost on Azure). Decided 2026-11-20: trigger a run-once worker each time a user loads documents.
+#
+# Change: `python -m app.worker --once` drains the queue, waits WORKER_IDLE_EXIT_SECONDS, prunes once, exits;
+# one run at a time (Postgres advisory lock). The routers call notify_job_queued() after committing a job;
+# WORKER_TRIGGER = none (default, always-on worker unchanged) | local | azure_job. deploy/azure gets an
+# optional WORKER_MODE=job (manual worker job + 15-minute sweep job).
+#
+# Acceptance (testable):
+#   1. With WORKER_TRIGGER=none nothing changes: the always-on worker still works.
+#   2. With WORKER_TRIGGER=local an upload is processed with no separate worker, and the run exits after
+#      the idle time (checked by hand in WSL 2026-11-22 for translate jobs).
+#   3. A second run while one is active exits without working the queue; no job is claimed twice.
+#   4. `pytest` (backend) green; tests/test_worker_on_demand.py covers the run, lock and trigger.
+#   5. Not yet verified: a real Azure run with WORKER_MODE=job (managed identity, role, scheduled sweep).
