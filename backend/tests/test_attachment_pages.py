@@ -56,7 +56,7 @@ def test_width_is_bounded(client):
 
 def test_an_image_scan_is_one_page_returned_as_stored(client):
     buf = io.BytesIO()
-    Image.new("RGB", (40, 30), "white").save(buf, format="PNG")
+    Image.new("RGB", (800, 600), "white").save(buf, format="PNG")
     att = _upload(client, "scan.png", buf.getvalue(), "image/png")
     assert client.get(f"/attachments/{att}/pages").json() == {"page_count": 1}
     res = client.get(f"/attachments/{att}/pages/1")
@@ -105,7 +105,7 @@ def test_an_image_is_one_page_and_an_unreadable_pdf_falls_back_to_one(client):
     from app.services.page_text import count_pdf_pages
 
     buf = io.BytesIO()
-    Image.new("RGB", (20, 20), "white").save(buf, "PNG")
+    Image.new("RGB", (800, 600), "white").save(buf, "PNG")
     att = _upload(client, "scan.png", buf.getvalue(), "image/png")
     assert client.get(f"/attachments/{att}/pages").json() == {"page_count": 1}
     assert count_pdf_pages(b"%PDF-1.4 this is not a real pdf") == 1

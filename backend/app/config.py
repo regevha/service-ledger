@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     debug_claude_log_dir: str = ""
     debug_claude_log_days: int = 7
 
+    @field_validator("min_image_long_side", "min_image_short_side", "max_image_long_side", "max_image_pixels_total")
+    @classmethod
+    def _positive_image_limit(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("image size limits must be at least 1 pixel")
+        return v
+
     @field_validator("debug_claude_log_days")
     @classmethod
     def _debug_days_in_range(cls, value: int) -> int:
@@ -69,6 +76,13 @@ class Settings(BaseSettings):
     # API docs if either changes).
     max_pdf_upload_bytes: int = 20 * 1024 * 1024
     max_image_upload_bytes: int = 5 * 1024 * 1024
+    # Image size in pixels (services/image_size.py). Too small to be a report: refused at upload. Larger than
+    # max_image_long_side: shrunk, only the copy sent to the model (the stored original is untouched).
+    # Above max_image_pixels_total: refused, to protect the server while decoding. Starting values, to tune on real files.
+    min_image_long_side: int = 600
+    min_image_short_side: int = 300
+    max_image_long_side: int = 2000
+    max_image_pixels_total: int = 100_000_000
 
     # §4: fields below this confidence are flagged for mandatory review.
     field_confidence_threshold: float = 0.7

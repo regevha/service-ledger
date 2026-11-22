@@ -16,6 +16,8 @@ from __future__ import annotations
 import base64
 from pathlib import Path
 
+from app.services.image_size import reading_copy
+
 PDF = "application/pdf"
 IMAGE_TYPES = ("image/png", "image/jpeg", "image/gif", "image/webp")
 ACCEPTED_TYPES = (PDF, *IMAGE_TYPES)
@@ -56,5 +58,7 @@ def claude_content_block(path: str | Path) -> dict:
         raise UnsupportedDocumentError(
             f"The stored file is not {ACCEPTED_DESCRIPTION}, so Claude cannot read it."
         )
+    if media_type != PDF:
+        data, media_type = reading_copy(data, media_type)  # an oversized image is shrunk; the stored file is not
     source = {"type": "base64", "media_type": media_type, "data": base64.standard_b64encode(data).decode("ascii")}
     return {"type": "document" if media_type == PDF else "image", "source": source}

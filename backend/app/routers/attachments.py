@@ -26,6 +26,7 @@ from app.services.duplicates import (
     normalize_work_order,
 )
 from app.services.field_locator import FieldToLocate, locate_fields
+from app.services.image_size import ImageSizeError, check_image_size
 from app.services.job_limits import CANCELLED_UNSENT, enforce_job_limits
 from app.services.page_text import PDFIUM_LOCK, count_pdf_pages, page_words
 from app.services.text_reader import extract_text, read_work_order
@@ -91,6 +92,11 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, request: Req
     contents = b"".join(chunks)
     if detect_media_type(contents) != media_type:
         raise HTTPException(415, f"Unsupported file type. Upload {ACCEPTED_DESCRIPTION}.")
+    if media_type != PDF:
+        try:
+            check_image_size(contents)  # too small or too many pixels: refused before anything is stored or read
+        except ImageSizeError as e:
+            raise HTTPException(422, str(e)) from None
 
     # The exact same file already read under another report: don't store it
     # and don't let it be classified and extracted a second time (two more
