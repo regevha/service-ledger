@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 import { test, expect } from './coverage';
 import { deleteReports, listReportIds } from './helpers/api';
 import { TIMEOUT } from './timeouts';
@@ -35,16 +35,16 @@ test('an HTML page that is not a service report is rejected, with no draft left'
   expect(after.filter((id) => !before.has(id))).toEqual([]);
 });
 
-test('an HTML service report is accepted and shown as text, not as a web page', async ({ page, request }) => {
+test('an HTML service report is accepted and shown as a PDF copy or text, not as a web page', async ({ page, request }) => {
   const before = new Set(await listReportIds(request));
   try {
-    await acceptedReportFlow(page);
+    await acceptedReportFlow(page, request);
   } finally {
     await deleteReports(request, (await listReportIds(request)).filter((id) => !before.has(id)));
   }
 });
 
-async function acceptedReportFlow(page: Page) {
+async function acceptedReportFlow(page: Page, request: APIRequestContext) {
   const token = unique();
   await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles({
@@ -60,9 +60,16 @@ async function acceptedReportFlow(page: Page) {
 
   // The original pane shows the readable text (not the markup); no script of the file ran in the page.
   await page.getByRole('button', { name: 'Show scan' }).click();
-  const pane = page.frameLocator('iframe[title="Original scan"]').locator('body');
-  await expect(pane).toContainText('Serial number', { timeout: TIMEOUT.ui });
-  await expect(pane).not.toContainText('<table');
+  // Beside the fields: the HTML drawn as a page image (a PDF copy made by headless Chromium), not its markup.
+  // (The pane is an iframe on the inline file; headless Chromium cannot draw PDFs there, so check what it points to.)
+  const src = await page.locator('aside[aria-label="Original scan"] iframe').getAttribute('src', { timeout: TIMEOUT.ui });
+  expect(src).toBeTruthy();
+  const inline = await request.get(src!.split('#')[0]);
+  // The PDF copy when the backend has Chromium, else the extracted text; never the page itself.
+  const type = inline.headers()['content-type'] ?? '';
+  expect(type).toMatch(/application\/pdf|text\/plain/);
+  expect(type).not.toContain('text/html');
+  if (type.includes('application/pdf')) expect((await inline.body()).subarray(0, 5).toString()).toBe('%PDF-');
   // The file's own script never ran: its marker would be on the window of a page that rendered it.
   expect(await page.evaluate(() => (window as unknown as { __ran?: number }).__ran)).toBeUndefined();
 }

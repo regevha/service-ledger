@@ -26,6 +26,7 @@ from app.services.duplicates import (
     normalize_work_order,
 )
 from app.services.field_locator import FieldToLocate, locate_fields
+from app.services.html_pdf import ensure_display_pdf
 from app.services.job_limits import CANCELLED_UNSENT, enforce_job_limits
 from app.services.page_text import PDFIUM_LOCK, count_pdf_pages, page_words
 from app.services.text_reader import extract_text, read_work_order
@@ -182,6 +183,10 @@ def get_attachment_file(attachment_id: uuid.UUID, inline: bool = False, db: Sess
         # Shown inline it is the text the app reads; downloaded it is the original bytes, as opaque data.
         safe = {"X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'"}
         if inline:
+            copy = ensure_display_pdf(path)
+            if copy is not None:
+                # The PDF copy rendered with scripts and network off, shown like any stored PDF.
+                return FileResponse(copy, media_type="application/pdf", filename=original_name + ".pdf", content_disposition_type="inline", headers=safe)
             return Response(extract_text(path.read_bytes()), media_type="text/plain; charset=utf-8", headers=safe)
         return FileResponse(
             path, media_type="application/octet-stream", filename=original_name, content_disposition_type="attachment", headers=safe
@@ -207,18 +212,29 @@ def _stored_scan(db: Session, attachment_id: uuid.UUID) -> tuple[models.Attachme
     return attachment, path
 
 
+def _pdf_view(attachment: models.Attachment, path: Path) -> Path | None:
+    """The PDF to draw pages, words and field positions from: the stored PDF itself, or for an HTML report
+    its PDF copy (made on first use). None for an image, and for an HTML report whose copy cannot be made."""
+    if attachment.file_type == "application/pdf":
+        return path
+    if attachment.file_type == HTML:
+        return ensure_display_pdf(path)
+    return None
+
+
 @router.get("/attachments/{attachment_id}/pages")
 def get_attachment_pages(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
     """How many viewable pages the stored scan has (an image is one page).
     The phone's Scan view lists these and fetches each as a PNG, because
     Android Chrome cannot show a PDF inside an <iframe>."""
     attachment, path = _stored_scan(db, attachment_id)
-    if attachment.file_type == "application/pdf":
+    pdf_path = _pdf_view(attachment, path)
+    if pdf_path is not None:
         import pypdfium2 as pdfium
 
         try:
             with PDFIUM_LOCK:
-                pdf = pdfium.PdfDocument(str(path))
+                pdf = pdfium.PdfDocument(str(pdf_path))
                 try:
                     return {"page_count": len(pdf)}
                 finally:
@@ -226,6 +242,7 @@ def get_attachment_pages(attachment_id: uuid.UUID, db: Session = Depends(get_db)
         except pdfium.PdfiumError:
             raise HTTPException(422, "The stored PDF could not be opened") from None
     if attachment.file_type == HTML:
+        # No PDF copy could be made: the screens show the extracted text instead of page images.
         return {"page_count": 1, "kind": "text"}
     return {"page_count": 1}
 
@@ -241,9 +258,10 @@ def get_attachment_page_image(
     A raster image scan is returned as stored."""
     attachment, path = _stored_scan(db, attachment_id)
     headers = {"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600"}
-    if attachment.file_type == HTML:
-        raise HTTPException(404, "An HTML report has no page images")
-    if attachment.file_type != "application/pdf":
+    pdf_path = _pdf_view(attachment, path)
+    if attachment.file_type == HTML and pdf_path is None:
+        raise HTTPException(404, "This HTML report has no page images")
+    if pdf_path is None:
         if page != 1:
             raise HTTPException(404, "Page not found")
         return FileResponse(path, media_type=attachment.file_type or "application/octet-stream", headers=headers)
@@ -252,7 +270,7 @@ def get_attachment_page_image(
 
     with PDFIUM_LOCK:
         try:
-            pdf = pdfium.PdfDocument(str(path))
+            pdf = pdfium.PdfDocument(str(pdf_path))
         except pdfium.PdfiumError:
             raise HTTPException(422, "The stored PDF could not be opened") from None
         try:
@@ -283,10 +301,12 @@ def get_attachment_page_words(attachment_id: uuid.UUID, page: int, db: Session =
     image so a person can click a word or drag a box to turn it into a field.
     An image scan, or a PDF with no text layer, has no words (`has_text` false)."""
     attachment, path = _stored_scan(db, attachment_id)
-    if attachment.file_type != "application/pdf":
+    pdf_path = _pdf_view(attachment, path)
+    if pdf_path is None:
         if page != 1:
             raise HTTPException(404, "Page not found")
         return schemas.PageWordsOut(page=1, has_text=False, words=[])
+    path = pdf_path
 
     import pypdfium2 as pdfium
 
@@ -312,8 +332,10 @@ def get_attachment_field_locations(attachment_id: uuid.UUID, db: Session = Depen
     attachment, path = _stored_scan(db, attachment_id)
     report = attachment.report
     model_boxes = _model_boxes(report, attachment)
-    if attachment.file_type != "application/pdf":
+    pdf_path = _pdf_view(attachment, path)
+    if pdf_path is None:
         return schemas.FieldLocationsOut(has_text=False, page_count=1, fields=_model_locations(model_boxes, 1))
+    path = pdf_path
 
     import pypdfium2 as pdfium
 
