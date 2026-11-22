@@ -1,0 +1,36 @@
+id: SL-113
+title: "PDF copy of HTML reports via headless Chromium"
+owner: lead
+branch: SL-113-html-pdf-copy
+wave: R1
+depends_on: [SL-115]
+migration: false
+files_touched:
+  - backend/app/services/html_pdf.py
+  - backend/app/routers/attachments.py
+  - backend/app/config.py
+  - backend/requirements.txt
+  - backend/Dockerfile
+  - backend/tests/test_html_pdf_copy.py
+  - backend/tests/test_html_reports.py
+  - frontend/tests/e2e/html-reports.spec.ts
+  - .github/workflows/test.yml
+  - docs/tasks/SL-113.yml
+acceptance: [SL-113]
+# Why: proposal "HTML reports and rejecting non-report files at intake", pull request 4 of 4. The review
+# screen shows page images with the fields drawn on them; an HTML report had only its extracted text.
+#
+# Change: the first time pages, words, field positions or the inline file of an HTML report are asked for, a PDF
+# copy is rendered with headless Chromium (scripts off, every network request refused, rendered from a string)
+# and kept beside the original as <name>.html.display.pdf. The original HTML stays the stored file, the download
+# and the duplicate-detection source. Pages, words and field-locations then work as for a PDF. Without Chromium
+# (or if a render fails) the text view from SL-112 is used, so nothing depends on it. Settings
+# HTML_PDF_CHROMIUM_PATH and HTML_PDF_TIMEOUT_SECONDS. The image installs Chromium and Hebrew-capable fonts.
+#
+# Acceptance (testable):
+#   1. backend/tests/test_html_pdf_copy.py passes with Chromium; the fallback test passes without it.
+#   2. e2e html-reports.spec.ts: the review/confirm screen draws the HTML report as page images.
+#   3. ruff clean; mypy count not above baseline; full backend suite green.
+# Review fixes: Chromium's sandbox stays on unless running as root or HTML_PDF_NO_SANDBOX=true; the render runs in a
+# child process killed at the time limit; a failed render leaves a .display.failed marker so it is tried once.
+# Not verified here: Chromium's sandbox starting as the non-root user inside the Docker image; the Docker image build (no Docker in the cloud workspace).

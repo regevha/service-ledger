@@ -89,6 +89,12 @@ class Settings(BaseSettings):
     # (services/report_keywords.py). Starting values: tune them on real files.
     report_keyword_min_score: int = 4
     report_min_text_chars: int = 80
+    # PDF copy of an HTML report for the review view, made with headless Chromium (services/html_pdf.py).
+    # Empty path: Playwright's own installed Chromium. Without any Chromium the text view is shown instead.
+    html_pdf_chromium_path: str = ""
+    html_pdf_timeout_seconds: int = 30
+    # Run Chromium without its own sandbox (only if the container forbids it; scripts and network stay off).
+    html_pdf_no_sandbox: bool = False
 
     # §4: fields below this confidence are flagged for mandatory review.
     field_confidence_threshold: float = 0.7

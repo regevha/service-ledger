@@ -85,7 +85,17 @@ def test_upload_accepts_html_with_server_decided_type(client):
     assert resp.json()["file_type"] == HTML
 
 
-def test_html_is_never_served_as_a_web_page(client):
+def _no_chromium(monkeypatch):
+    from app.services import html_pdf
+
+    def broken(_path):
+        raise RuntimeError("no browser")
+
+    monkeypatch.setattr(html_pdf, "_render_in_child", broken)
+
+
+def test_html_is_never_served_as_a_web_page(client, monkeypatch):
+    _no_chromium(monkeypatch)  # the text fallback; the PDF copy is covered in test_html_pdf_copy.py
     _, resp = _upload(client, "report.html", REPORT)
     attachment_id = resp.json()["id"]
     inline = client.get(f"/attachments/{attachment_id}/file?inline=1")

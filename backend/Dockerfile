@@ -26,6 +26,17 @@ WORKDIR /app
 COPY backend/requirements.txt .
 RUN python -m pip install -r requirements.txt
 
+# Headless Chromium (with the system libraries and fonts it needs, Hebrew included) renders a PDF copy of an
+# HTML report for the review screen. Installed to a shared path so the non-root user below can run it.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+# libatomic1 first: Playwright's own Node driver needs it, and the slim image does not have it (the driver
+# runs before --with-deps installs anything).
+RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 \
+ && python -m playwright install --with-deps chromium \
+ && apt-get install -y --no-install-recommends fonts-noto-core fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/* \
+ && chmod -R a+rX /ms-playwright
+
 # alembic.ini and alembic/ must sit in the working directory: the migration
 # command is run from here.
 COPY backend/alembic.ini ./
