@@ -74,7 +74,7 @@ jobs:
       - name: Restore mypy cache
         # Incremental mypy re-checks only what changed. A fresh key per commit, restored from the
         # newest earlier one, so each run starts from the last run's cache.
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: backend/.mypy_cache
           key: mypy-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}-${{ github.sha }}
@@ -133,7 +133,7 @@ jobs:
       - name: Restore TypeScript incremental build info
         # tsconfig.*.json keep their .tsbuildinfo in node_modules/.tmp, which `npm ci` wipes,
         # so this is restored after the install. `tsc -b` then only re-checks changed files.
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: frontend/node_modules/.tmp
           key: tsbuildinfo-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ github.sha }}
@@ -293,7 +293,7 @@ jobs:
 
       - name: Cache Playwright's browsers
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/package-lock.json') }}
@@ -463,7 +463,7 @@ jobs:
 
       - name: Cache Playwright's browsers
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/package-lock.json') }}
