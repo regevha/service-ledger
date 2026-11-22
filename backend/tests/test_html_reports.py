@@ -88,10 +88,10 @@ def test_upload_accepts_html_with_server_decided_type(client):
 def _no_chromium(monkeypatch):
     from app.services import html_pdf
 
-    def broken(_: bytes) -> bytes:
+    def broken(_path):
         raise RuntimeError("no browser")
 
-    monkeypatch.setattr(html_pdf, "render_html_to_pdf", broken)
+    monkeypatch.setattr(html_pdf, "_render_in_child", broken)
 
 
 def test_html_is_never_served_as_a_web_page(client, monkeypatch):

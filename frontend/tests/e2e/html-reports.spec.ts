@@ -58,7 +58,7 @@ async function acceptedReportFlow(page: Page, request: APIRequestContext) {
   await expect(page.getByText('Detected from the document')).toBeVisible({ timeout: TIMEOUT.flow });
   await expect(page.getByText("This doesn't look like a service report.")).toHaveCount(0);
 
-  // The original pane shows the readable text (not the markup); no script of the file ran in the page.
+  // The original pane shows the report (a PDF copy or its text, never the markup); no script of the file ran.
   await page.getByRole('button', { name: 'Show scan' }).click();
   // Beside the fields: the HTML drawn as a page image (a PDF copy made by headless Chromium), not its markup.
   // (The pane is an iframe on the inline file; headless Chromium cannot draw PDFs there, so check what it points to.)
@@ -66,10 +66,20 @@ async function acceptedReportFlow(page: Page, request: APIRequestContext) {
   expect(src).toBeTruthy();
   const inline = await request.get(src!.split('#')[0]);
   // The PDF copy when the backend has Chromium, else the extracted text; never the page itself.
+  // E2E_EXPECT_HTML_PDF=1 (backend started with HTML_PDF_CHROMIUM_PATH) makes the text fallback a failure,
+  // and also checks the page images the review screens draw from.
   const type = inline.headers()['content-type'] ?? '';
-  expect(type).toMatch(/application\/pdf|text\/plain/);
   expect(type).not.toContain('text/html');
-  if (type.includes('application/pdf')) expect((await inline.body()).subarray(0, 5).toString()).toBe('%PDF-');
+  if (process.env.E2E_EXPECT_HTML_PDF === '1') {
+    expect(type).toContain('application/pdf');
+    const id = src!.match(/attachments\/([^/]+)\/file/)?.[1];
+    expect(id).toBeTruthy();
+    const pageImage = await request.get(src!.split('/attachments/')[0] + `/attachments/${id}/pages/1?width=900`);
+    expect(pageImage.headers()['content-type']).toBe('image/png');
+    expect((await inline.body()).subarray(0, 5).toString()).toBe('%PDF-');
+  } else {
+    expect(type).toMatch(/application\/pdf|text\/plain/);
+  }
   // The file's own script never ran: its marker would be on the window of a page that rendered it.
   expect(await page.evaluate(() => (window as unknown as { __ran?: number }).__ran)).toBeUndefined();
 }

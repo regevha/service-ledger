@@ -31,4 +31,6 @@ acceptance: [SL-113]
 #   1. backend/tests/test_html_pdf_copy.py passes with Chromium; the fallback test passes without it.
 #   2. e2e html-reports.spec.ts: the review/confirm screen draws the HTML report as page images.
 #   3. ruff clean; mypy count not above baseline; full backend suite green.
-# Not verified here: the Docker image build (no Docker in the cloud workspace).
+# Review fixes: Chromium's sandbox stays on unless running as root or HTML_PDF_NO_SANDBOX=true; the render runs in a
+# child process killed at the time limit; a failed render leaves a .display.failed marker so it is tried once.
+# Not verified here: Chromium's sandbox starting as the non-root user inside the Docker image; the Docker image build (no Docker in the cloud workspace).

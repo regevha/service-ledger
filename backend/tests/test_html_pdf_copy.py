@@ -46,7 +46,48 @@ def test_renders_a_pdf_without_running_scripts_or_reading_files(chromium_ok):
 
 def test_hebrew_page_renders(chromium_ok):
     html = "<html dir='rtl'><head><meta charset='utf-8'></head><body><p>דוח שירות מספר סידורי AB1234</p></body></html>".encode()
-    assert len(PdfReader(io.BytesIO(html_pdf.render_html_to_pdf(html))).pages) == 1
+    text = _text(html_pdf.render_html_to_pdf(html))
+    assert "AB1234" in text and any("\u05d0" <= c <= "\u05ea" for c in text)  # Hebrew letters, not empty boxes
+
+
+def test_no_request_reaches_the_network(chromium_ok):
+    """Every kind of fetch a page can start is pointed at a local listener, which must see no connection."""
+    import socket
+    import threading
+
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(16)
+    srv.settimeout(0.3)
+    hits: list[int] = []
+    stop = threading.Event()
+
+    def accept():
+        while not stop.is_set():
+            try:
+                conn, _ = srv.accept()
+                hits.append(1)
+                conn.close()
+            except OSError:
+                continue
+
+    t = threading.Thread(target=accept, daemon=True)
+    t.start()
+    base = f"http://127.0.0.1:{srv.getsockname()[1]}"
+    html = (
+        f"<html><head><link rel='preconnect' href='{base}'><link rel='dns-prefetch' href='{base}'>"
+        f"<link rel='prefetch' href='{base}/p'><link rel='stylesheet' href='{base}/s.css'>"
+        f"<meta http-equiv='refresh' content='0;url={base}/r'><style>body{{background:url({base}/bg.png)}}</style></head>"
+        f"<body><p>Serial QQ999</p><img src='{base}/i.png'><iframe src='{base}/f'></iframe>"
+        f"<form action='{base}/post'><input></form><a href='{base}/a'>link</a></body></html>"
+    ).encode()
+    try:
+        assert "QQ999" in _text(html_pdf.render_html_to_pdf(html))
+        t.join(1.0)
+    finally:
+        stop.set()
+        srv.close()
+    assert hits == []
 
 
 def _upload(client):
@@ -67,12 +108,30 @@ def test_pages_come_from_the_pdf_copy_and_the_original_is_kept(client, chromium_
 
 
 def test_without_chromium_the_text_view_is_used(client, monkeypatch):
-    def broken(_: bytes) -> bytes:
+    def broken(_path):
         raise RuntimeError("no browser")
 
-    monkeypatch.setattr(html_pdf, "render_html_to_pdf", broken)
+    monkeypatch.setattr(html_pdf, "_render_in_child", broken)
     attachment_id = _upload(client)
     assert client.get(f"/attachments/{attachment_id}/pages").json() == {"page_count": 1, "kind": "text"}
-    assert client.get(f"/attachments/{attachment_id}/pages/1").status_code == 404
-    inline = client.get(f"/attachments/{attachment_id}/file?inline=1")
-    assert inline.headers["content-type"].startswith("text/plain")
+
+
+def test_a_failed_render_is_not_retried_on_every_request(client, monkeypatch):
+    calls = []
+
+    def broken(_path):
+        calls.append(1)
+        raise RuntimeError("no browser")
+
+    monkeypatch.setattr(html_pdf, "_render_in_child", broken)
+    attachment_id = _upload(client)
+    for _ in range(4):
+        client.get(f"/attachments/{attachment_id}/pages")
+        client.get(f"/attachments/{attachment_id}/file?inline=1")
+    assert len(calls) == 1
+
+
+def test_field_locations_work_on_the_pdf_copy(client, chromium_ok):
+    attachment_id = _upload(client)
+    r = client.get(f"/attachments/{attachment_id}/field-locations")
+    assert r.status_code == 200

@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     # Empty path: Playwright's own installed Chromium. Without any Chromium the text view is shown instead.
     html_pdf_chromium_path: str = ""
     html_pdf_timeout_seconds: int = 30
+    # Run Chromium without its own sandbox (only if the container forbids it; scripts and network stay off).
+    html_pdf_no_sandbox: bool = False
 
     # §4: fields below this confidence are flagged for mandatory review.
     field_confidence_threshold: float = 0.7
