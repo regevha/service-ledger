@@ -8,6 +8,7 @@ import { REPORT_TYPE_LABEL } from '../labels';
 import { fieldLabel } from '../fieldLabels';
 import { markFor, sameValue, type FieldMark } from '../reviewMarks';
 import { FieldsOnPage } from './review/FieldsOnPage';
+import { useAttachmentKind } from '../hooks/useAttachmentKind';
 import type { ReportTemplate } from '../api';
 import { AttentionStrip } from './review/AttentionStrip';
 import { EditConfirm, FinalizeConfirm } from './review/ConfirmBanners';
@@ -158,6 +159,7 @@ export function ReviewScreen({
       : undefined);
 
   const preview = useScanPreview(scanInlineUrl, scanAttachmentId);
+  const scanKind = useAttachmentKind(scanAttachmentId);
   const { phone, phoneScan } = preview;
 
   // The fields drawn on the page: what each is called, how much it needs a person, and which one is pointed at.
@@ -292,7 +294,7 @@ export function ReviewScreen({
       <ScanSplit
         preview={preview}
         scanOverride={
-          preview.showScan && scanAttachmentId ? (
+          preview.showScan && scanAttachmentId && scanKind !== 'text' ? (
             <FieldsOnPage
               attachmentId={scanAttachmentId}
               marks={marks}

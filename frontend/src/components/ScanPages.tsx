@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { attachmentPageUrl, getAttachmentPageCount } from '../api';
+import { attachmentFileUrl, attachmentPageUrl, getAttachmentPageCount } from '../api';
 
 const ZOOM_KEY = 'scan-zoom';
 const MIN_ZOOM = 1;
@@ -21,6 +21,8 @@ function readZoom(): number {
 
 export function ScanPages({ attachmentId }: { attachmentId: string }) {
   const [pages, setPages] = useState<number | null>(null);
+  // An HTML report has no page images: the text the app reads is shown instead.
+  const [textOnly, setTextOnly] = useState(false);
   const [error, setError] = useState(false);
   const [zoom, setZoom] = useState(readZoom);
   const zoomRef = useRef(zoom);
@@ -31,7 +33,11 @@ export function ScanPages({ attachmentId }: { attachmentId: string }) {
     setPages(null);
     setError(false);
     getAttachmentPageCount(attachmentId)
-      .then((r) => live && setPages(r.page_count))
+      .then((r) => {
+        if (!live) return;
+        setTextOnly(r.kind === 'text');
+        setPages(r.page_count);
+      })
       .catch(() => live && setError(true));
     return () => {
       live = false;
@@ -94,6 +100,10 @@ export function ScanPages({ attachmentId }: { attachmentId: string }) {
         <div>Loading scan…</div>
       </div>
     );
+  }
+
+  if (textOnly) {
+    return <iframe className="scan-text" src={attachmentFileUrl(attachmentId, { inline: true })} title="Original text" />;
   }
 
   return (

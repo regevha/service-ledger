@@ -179,7 +179,7 @@ export function IntakeScreen({
             .
           </p>
         )}
-        <p className="hint-text">Scanned or printed service forms, as a PDF or a PNG, JPEG, GIF or WebP image — one PDF, or several photos of the pages, per report (several PDFs: each becomes its own report); any instrument, any report type</p>
+        <p className="hint-text">Scanned or printed service forms, as a PDF, an HTML file or a PNG, JPEG, GIF or WebP image — one PDF, or several photos of the pages, per report (several PDFs: each becomes its own report); any instrument, any report type</p>
         <aside className="next-card" data-testid="intake-next-card" aria-label="What happens next">
           <div className="next-card-title">What happens next</div>
           <ol>

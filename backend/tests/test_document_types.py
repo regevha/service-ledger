@@ -40,7 +40,9 @@ PDF_BYTES = b"%PDF-1.4 x"
         (JPEG, "image/jpeg"),
         (GIF, "image/gif"),
         (WEBP, "image/webp"),
-        (b"<html><script>alert(1)</script></html>", None),
+        # HTML is accepted since SL-112, read as text and never served as a web page (test_html_reports.py).
+        (b"<html><script>alert(1)</script></html>", "text/html"),
+        (b"plain prose that mentions <html> but does not start with markup", None),
         (b"PK\x03\x04 a zip or docx", None),
         (b"", None),
     ],
@@ -174,7 +176,7 @@ def test_an_uploaded_scan_is_served_back_with_its_real_type(client):
 
 @pytest.mark.parametrize("name, data", [
     ("notes.txt", b"just some text"),
-    ("page.html", b"<html><script>alert(1)</script></html>"),
+    ("page.png", b"<<not an image>>"),
     ("sheet.xlsx", b"PK\x03\x04 zip container"),
     ("iphone.heic", b"\x00\x00\x00\x18ftypheic"),
     ("renamed.pdf", b"this is not a pdf"),
@@ -182,7 +184,7 @@ def test_an_uploaded_scan_is_served_back_with_its_real_type(client):
 def test_upload_refuses_other_file_types_with_a_clear_message(client, name, data):
     report, resp = _upload(client, name, data, "application/pdf")
     assert resp.status_code == 415
-    assert "PDF" in resp.json()["detail"] and "PNG" in resp.json()["detail"]
+    assert "PDF" in resp.json()["detail"] and "PNG" in resp.json()["detail"] and "HTML" in resp.json()["detail"]
     # Nothing was attached or written.
     assert client.get(f"/reports/{report['id']}").json()["attachments"] == []
 

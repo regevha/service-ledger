@@ -60,9 +60,10 @@ from app.services.claude_client import (
 from app.services.claude_client import (
     stable_unit as _stable_unit,
 )
-from app.services.documents import UnsupportedDocumentError
+from app.services.documents import HTML, UnsupportedDocumentError
 from app.services.duplicates import find_duplicate_report_ids, normalize_work_order
 from app.services.errors import ClassificationError
+from app.services.report_keywords import check_service_report_text
 from app.services.templates import resolve_template
 from app.services.text_reader import extract_text, read_identifiers
 from app.services.translation import accepted_text, is_hebrew_text_layer, source_block
@@ -508,6 +509,34 @@ def _stub_classify(
     )
 
 
+def _html_not_a_report(db: Session, attachment: Attachment, instruments: list[Instrument]) -> ClassificationResult | None:
+    """An HTML file whose text does not look like a service report (an error page, an invoice, a login page,
+    nearly nothing) is stopped here, before any model call, with the same outcome as any other non-report:
+    `recognized` is false and the screens reject it. None for any other file or an HTML report that passes."""
+    if attachment.file_type != HTML:
+        return None
+    try:
+        with open(attachment.file_path, "rb") as f:
+            text = extract_text(f.read())
+    except OSError:
+        return None
+    check = check_service_report_text(
+        text, min_score=settings.report_keyword_min_score, min_chars=settings.report_min_text_chars
+    )
+    if check.looks_like_report:
+        return None
+    logger.info("HTML attachment %s stopped as not a service report (%s, score %s)", attachment.id, check.reason, check.score)
+    return ClassificationResult(
+        instrument=ClassificationGuess(value=instruments[0].model, confidence=0.0),
+        report_type=ClassificationGuess(value=ReportType.repair.value, confidence=0.0),
+        report_type_source="none",
+        reader="text_layer",
+        maker_in_fleet=False,
+        recognized=False,
+        duplicate_report_ids=find_duplicate_report_ids(db, attachment),
+    )
+
+
 def classify(db: Session, attachment: Attachment) -> ClassificationResult:
     instruments = db.query(Instrument).order_by(Instrument.serial_number).all()
     if not instruments:
@@ -516,6 +545,10 @@ def classify(db: Session, attachment: Attachment) -> ClassificationResult:
         # RuntimeError surfaced as "Worker crashed processing this job". Easy to
         # reach now that an instrument (and every report on it) can be deleted.
         raise ClassificationError("No instruments registered — add one on the Instruments tab, then try again.")
+
+    not_a_report = _html_not_a_report(db, attachment, instruments)
+    if not_a_report is not None:
+        return not_a_report
 
     # DocumentRead(*...) so a plain (instrument, type, serial) triple — what
     # these two functions returned before — is still accepted.

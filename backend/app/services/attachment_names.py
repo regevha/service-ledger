@@ -26,6 +26,7 @@ from app.services.documents import PDF
 
 _EXTENSIONS = {
     PDF: ".pdf",
+    "text/html": ".html",
     "image/png": ".png",
     "image/jpeg": ".jpg",
     "image/gif": ".gif",

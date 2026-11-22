@@ -37,4 +37,16 @@ describe('chooseIntakeRoute', () => {
   it('still reports a problem for several PDFs through dropProblem (used when no batch screen is wired)', () => {
     expect(dropProblem([pdf('a.pdf'), pdf('b.pdf')])).toContain('Drop one PDF');
   });
+  it('takes one HTML report, on its own', () => {
+    expect(chooseIntakeRoute([{ name: 'report.html', type: 'text/html' }]).kind).toBe('single');
+    // A dropped file with no type is told apart by its extension.
+    expect(chooseIntakeRoute([{ name: 'report.HTM', type: '' }]).kind).toBe('single');
+  });
+  it('refuses an HTML report together with other files', () => {
+    const html = { name: 'report.html', type: 'text/html' };
+    for (const files of [[html, html], [html, pdf('a.pdf')], [html, img('b.jpg')]]) {
+      const r = chooseIntakeRoute(files);
+      expect(r.kind === 'problem' && r.message).toContain('HTML report on its own');
+    }
+  });
 });

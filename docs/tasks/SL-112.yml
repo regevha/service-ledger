@@ -1,0 +1,46 @@
+id: SL-112
+title: "HTML reports: accept, read as text, never serve as a web page"
+owner: lead
+branch: SL-112-html-reports
+wave: R1
+depends_on: [SL-79]
+migration: false
+files_touched:
+  - backend/app/config.py
+  - backend/app/routers/attachments.py
+  - backend/app/services/attachment_names.py
+  - backend/app/services/classification.py
+  - backend/app/services/documents.py
+  - backend/app/services/text_reader.py
+  - backend/app/services/html_text.py
+  - backend/app/services/report_keywords.py
+  - backend/tests/test_document_types.py
+  - backend/tests/test_html_reports.py
+  - frontend/src/api/attachments.ts
+  - frontend/src/components/ReviewScreen.tsx
+  - frontend/src/components/ScanPages.tsx
+  - frontend/src/components/intake/IntakeScreen.tsx
+  - frontend/src/hooks/useAttachmentKind.ts
+  - frontend/src/styles/05-review-and-processing.css
+  - frontend/src/uploadFiles.ts
+  - frontend/src/uploadFiles.test.ts
+  - frontend/tests/e2e/html-reports.spec.ts
+  - docs/tasks/SL-112.yml
+acceptance: [SL-112]
+# Why: users receive some service reports as HTML files (proposal "HTML reports and rejecting non-report
+# files at intake", 2026-11-22, pull request 3 of 4; PR 1 is SL-79/#374).
+#
+# Change: .html/.htm accepted at upload (type from the bytes, own cap MAX_HTML_UPLOAD_MB, default 5).
+# The visible text (no scripts or styles, tables row by row, charset honoured) is what classification,
+# extraction and translation read: extract_text() returns it, and the model gets a plain-text document block.
+# A free keyword check (EN and HE) stops an HTML page that is not a report (error page, invoice, login)
+# before any model call with `recognized: false`, the same outcome as SL-79. Safety: HTML is never served as
+# text/html: inline it is the extracted text as text/plain (nosniff, CSP sandbox), downloaded it is
+# application/octet-stream. The review screen shows that text in the original pane; no page images or
+# fields-on-page for HTML. NOT built (proposal PRs 2 and 4): image size checks, PDF copy of the HTML.
+#
+# Acceptance (testable):
+#   1. backend/tests/test_html_reports.py and test_document_types.py pass; full backend suite green.
+#   2. e2e html-reports.spec.ts: a non-report HTML page is rejected with no draft left; a report HTML is
+#      accepted and its text is shown in the original pane; no script of the file ran.
+#   3. ruff clean; mypy error count not above backend/mypy-baseline.txt; tsc, oxlint, vitest green.

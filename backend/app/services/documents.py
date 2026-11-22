@@ -16,12 +16,15 @@ from __future__ import annotations
 import base64
 from pathlib import Path
 
+from app.services.html_text import html_to_text, looks_like_html
+
 PDF = "application/pdf"
+HTML = "text/html"
 IMAGE_TYPES = ("image/png", "image/jpeg", "image/gif", "image/webp")
-ACCEPTED_TYPES = (PDF, *IMAGE_TYPES)
+ACCEPTED_TYPES = (PDF, HTML, *IMAGE_TYPES)
 
 # Shown to the user when an upload is refused for its type.
-ACCEPTED_DESCRIPTION = "a PDF or a PNG, JPEG, GIF or WebP image"
+ACCEPTED_DESCRIPTION = "a PDF, an HTML file or a PNG, JPEG, GIF or WebP image"
 
 
 def detect_media_type(data: bytes) -> str | None:
@@ -38,6 +41,8 @@ def detect_media_type(data: bytes) -> str | None:
         return "image/gif"
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return "image/webp"
+    if looks_like_html(data):
+        return HTML
     return None
 
 
@@ -56,5 +61,9 @@ def claude_content_block(path: str | Path) -> dict:
         raise UnsupportedDocumentError(
             f"The stored file is not {ACCEPTED_DESCRIPTION}, so Claude cannot read it."
         )
+    if media_type == HTML:
+        # An HTML report goes to the model as its visible text, never as markup.
+        text = html_to_text(data)
+        return {"type": "document", "source": {"type": "text", "media_type": "text/plain", "data": text}}
     source = {"type": "base64", "media_type": media_type, "data": base64.standard_b64encode(data).decode("ascii")}
     return {"type": "document" if media_type == PDF else "image", "source": source}
