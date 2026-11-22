@@ -62,6 +62,11 @@ fits two report types (an upgrade done together with a preventive maintenance vi
 the main one in `report_type` and name the other in `report_type_note`. Numbers without a \
 unit are not given one.
 
+6. If the file is not an instrument service report or service form at all (a photo of \
+something else, a blank or unrelated page, a letter, an invoice), set `is_service_document` \
+to false and leave the other fields empty with confidence 0. A hard-to-read or partial \
+service report is still a service document: set it to false only when it plainly is not one.
+
 Give confidence scores that reflect real uncertainty. A clean, legible, unambiguous \
 read deserves something like 0.9-0.98. Anything you had to infer rather than read \
 directly, or where the document is ambiguous between two categories, deserves \

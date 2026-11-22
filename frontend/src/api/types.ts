@@ -232,6 +232,10 @@ export interface ClassificationResult {
   detected_model?: string | null;
   maker_in_fleet?: boolean;
   report_type_note?: string | null;
+  // False when nothing on the file ties it to a service visit (a photo, a blank
+  // page, other paper). Optional: results stored before this existed lack it, and
+  // only an explicit false means "not a service report".
+  recognized?: boolean;
   // Other reports already holding this document: same file bytes or same
   // work-order number.
   duplicate_report_ids?: string[];

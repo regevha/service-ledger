@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.db import get_db
+from app.job_trigger import notify_job_queued
 from app.services.job_limits import enforce_job_limits
 from app.services.translation import current_translation
 
@@ -78,6 +79,7 @@ def translate_attachment(
     db.commit()
     db.refresh(job)
     logger.info("Queued %s job %s for attachment %s", job.kind.value, job.id, attachment_id)
+    notify_job_queued()
     return job
 
 

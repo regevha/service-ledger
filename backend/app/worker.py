@@ -23,6 +23,7 @@ actually runs continuously behind `python -m app.worker` in dev/demo.
 """
 from __future__ import annotations
 
+import argparse
 import logging
 import time
 from datetime import datetime, timezone
@@ -40,6 +41,7 @@ from app.job_queue import (
     _recover_orphaned_jobs,
     _was_cancelled,
     prune_finished_jobs,
+    run_lock,
 )
 from app.services import prompt_gate
 from app.services.classification import classify as run_classify
@@ -456,5 +458,69 @@ def run_forever() -> None:
             _periodic_retention()
 
 
+def run_once() -> int:
+    """The on-demand entry point (`python -m app.worker --once`): work the queue until it has
+    been empty for `worker_idle_exit_seconds`, then exit. Started by app/job_trigger.py each
+    time a job is queued (and by a scheduled fallback run). Returns how many jobs it ran.
+
+    Only one run works the queue at a time (job_queue.run_lock); a run that cannot get the lock
+    exits at once with 0. Orphan recovery runs at the start and pruning once before the run ends,
+    since there is no long-lived loop to do them on a timer."""
+    configure_logging("worker")
+    announce_debug_log()
+    settings = get_settings()
+    if (warning := settings.stub_mode_warning):
+        logger.warning(warning)
+    with run_lock(settings.worker_run_lock_wait_seconds) as got:
+        if not got:
+            logger.info("Another worker run is already working the queue; this one exits.")
+            return 0
+        logger.info(
+            "ServiceLedger worker run starting (exits after %.0fs idle, live_claude=%s)",
+            settings.worker_idle_exit_seconds,
+            settings.use_live_claude,
+        )
+        _periodic_recovery()
+        ran = 0
+        run_started = time.monotonic()
+        idle_since = run_started
+        pruned = False
+        next_recovery = run_started + settings.worker_recovery_interval_seconds
+        while True:
+            if settings.worker_max_run_seconds and time.monotonic() - run_started >= settings.worker_max_run_seconds:
+                # Stay well inside the platform's run timeout (replicaTimeout): stop claiming, so no job is
+                # cut off half done. What is still pending waits for the next trigger or the scheduled run.
+                logger.warning("Worker run reached its %.0fs limit; exiting.", settings.worker_max_run_seconds)
+                break
+            if _worker_tick():
+                ran += 1
+                idle_since = time.monotonic()
+            elif time.monotonic() - idle_since >= settings.worker_idle_exit_seconds:
+                if pruned:
+                    break
+                # Prune first, then look at the queue once more before leaving: the prune can be slow, and
+                # a run started for a job queued meanwhile gives up waiting for the lock after a few seconds.
+                _periodic_retention()
+                pruned = True
+                continue
+            else:
+                time.sleep(settings.worker_poll_interval_seconds)
+            if time.monotonic() >= next_recovery:
+                next_recovery = time.monotonic() + settings.worker_recovery_interval_seconds
+                _periodic_recovery()
+        logger.info("Worker run finished: %d job(s) processed, queue idle.", ran)
+        return ran
+
+
 if __name__ == "__main__":
-    run_forever()
+    parser = argparse.ArgumentParser(description="ServiceLedger extraction worker")
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="work the queue until it is idle, then exit (on-demand runs) instead of polling forever",
+    )
+    args = parser.parse_args()
+    if args.once:
+        run_once()
+    else:
+        run_forever()

@@ -15,9 +15,10 @@ NAME="${1:?usage: resume.sh <name>}"
 RG="rg-$NAME"
 SUB_SHORT="$(az account show --query id -o tsv | tr -d '-' | cut -c1-6)"
 PG="pg-${NAME}-${SUB_SHORT}"
-APPS=("api-$NAME" "worker-$NAME")
+APPS=("api-$NAME")  # the worker app is added below when there is one
 # shellcheck source=_apps.sh
 source "$HERE/_apps.sh"
+mapfile -t APPS < <(deployed_apps)
 
 for app in "${APPS[@]}"; do
   az containerapp show -g "$RG" -n "$app" -o none 2>/dev/null || { echo "$app not found in $RG. Is '$NAME' deployed?" >&2; exit 1; }

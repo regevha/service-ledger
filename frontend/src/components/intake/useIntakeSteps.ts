@@ -1,6 +1,6 @@
 import { plainMessage } from '../../plainMessages';
 import { deleteReport, ApiError, classifyAttachment, confirmTemplate, createReport, extractAttachment, findTemplate, listInstrumentTypes, finalizeReport, getReport, getReportTemplate, getTranslation, PollAborted, cancelExtractionJob, translateAttachment, updateReportFields, uploadAttachment, type ClassificationResult, type Instrument, type ReportTemplate, type ReportType } from '../../api';
-import { REPORT_TYPE_LABEL } from '../../labels';
+import { NOT_A_SERVICE_REPORT, REPORT_TYPE_LABEL } from '../../labels';
 import { showToast } from '../../toast';
 import { prepareUpload } from '../../imageUpload';
 import type { TemplateRequest } from '../../templateRequest';
@@ -275,6 +275,14 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
         return;
       }
       const result = job.classification as unknown as ClassificationResult;
+      if (result.recognized === false) {
+        // Not a service report: nothing to pick or add. Remove the draft made for it
+        // and offer another file, instead of the fleet form.
+        await discardDraft(reportId);
+        setReport(null);
+        failPhase(NOT_A_SERVICE_REPORT, chooseAnotherFile, undefined, 'Choose another file');
+        return;
+      }
       setClassification(result);
       noteDuplicates(result.duplicate_report_ids);
       setSerialNotice(

@@ -10,11 +10,23 @@ and it needs a first real run with the project owner watching.
 ## What `deploy.sh` creates (one resource group, `rg-<name>`)
 
 - PostgreSQL Flexible Server (Burstable B1ms, version 16), database `service_ledger`; reachable from Azure services only
-- Storage account with an Azure Files share, mounted at `/data` in both apps (`ATTACHMENT_STORAGE_DIR=/data/attachments`, so no code change)
+- Storage account with an Azure Files share, mounted at `/data` in the API and the worker (`ATTACHMENT_STORAGE_DIR=/data/attachments`, so no code change)
 - Container registry, Container Apps environment, log workspace
 - A manual job that runs `alembic upgrade head`; the script starts it and waits for it to succeed before it creates the API and worker (after a new release, start it again by hand)
 - The API app (`uvicorn app.main:app`, serving the built frontend and asking for the shared password) and the worker app (`python -m app.worker`), one replica each, always on (the worker polls)
 - Secrets (database URL, API key, registry password) as Container Apps secrets; nothing is written to a file in the repo
+
+### Worker as on-demand jobs (`WORKER_MODE=job`, optional, not yet run against real Azure)
+
+By default the worker is an app that is always on and polls the job table. With `WORKER_MODE=job ./deploy/azure/deploy.sh <name>` there is no always-on worker; instead:
+
+- `job-worker-<name>`: a manual job running `python -m app.worker --once`. The API starts it (Azure REST call with the API's own managed identity, `WORKER_TRIGGER=azure_job`, `AZURE_WORKER_JOB_ID`) each time a job is queued: after a classify, extract or translate request, and after a prompt approval. It works the queue, waits 30 seconds for more (a classify is usually followed by an extract), and exits.
+- `job-sweep-<name>`: the same job on a schedule (every 15 minutes), the safety net when a start fails (for example the role below has not applied yet, or the Azure API is down). A run that finds nothing exits after the 30 seconds.
+- Only one run works the queue at a time (a Postgres advisory lock); a second run waits up to 10 seconds, then leaves the queue to the first.
+- The API's identity gets the Contributor role on the worker job only (not on the resource group). The person running `deploy.sh` needs the right to create role assignments on the subscription (Owner, or User Access Administrator). A new role can take a few minutes to apply.
+- Billing is per second while a run is working, so a few uploads a day cost close to nothing for the worker. The API and the database still run all the time.
+- `update.sh`, `set-secrets.sh`, `pause.sh`, `resume.sh` and `restore.sh` detect the mode by themselves. While paused, the scheduled job still fires every 15 minutes and fails against the stopped database; that is harmless. Look at runs with `az containerapp job execution list -g rg-<name> -n job-worker-<name> -o table`.
+- Switching an existing deployment between the two modes is not supported: `destroy.sh` and deploy again.
 
 ## What it does not do
 
