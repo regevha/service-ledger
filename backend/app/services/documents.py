@@ -17,6 +17,7 @@ import base64
 from pathlib import Path
 
 from app.services.html_text import html_to_text, looks_like_html
+from app.services.image_size import reading_copy
 
 PDF = "application/pdf"
 HTML = "text/html"
@@ -65,5 +66,7 @@ def claude_content_block(path: str | Path) -> dict:
         # An HTML report goes to the model as its visible text, never as markup.
         text = html_to_text(data)
         return {"type": "document", "source": {"type": "text", "media_type": "text/plain", "data": text}}
+    if media_type in IMAGE_TYPES:
+        data, media_type = reading_copy(data, media_type)  # an oversized image is shrunk; the stored file is not
     source = {"type": "base64", "media_type": media_type, "data": base64.standard_b64encode(data).decode("ascii")}
     return {"type": "document" if media_type == PDF else "image", "source": source}

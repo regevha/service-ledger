@@ -85,7 +85,7 @@ def _png() -> bytes:
     from PIL import Image
 
     buf = io.BytesIO()
-    Image.new("RGB", (60, 80), "white").save(buf, "PNG")
+    Image.new("RGB", (600, 800), "white").save(buf, "PNG")
     return buf.getvalue()
 
 

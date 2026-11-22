@@ -98,7 +98,7 @@ def test_a_pdf_with_no_text_has_no_words_and_says_so(client):
 
 def test_an_image_scan_has_no_words(client):
     buf = io.BytesIO()
-    Image.new("RGB", (40, 30), "white").save(buf, format="PNG")
+    Image.new("RGB", (800, 600), "white").save(buf, format="PNG")
     att, _ = _upload(client, "scan.png", buf.getvalue(), "image/png")
     assert _words(client, att) == {"page": 1, "has_text": False, "words": []}
     assert client.get(f"/attachments/{att}/pages/2/words").status_code == 404
@@ -111,7 +111,7 @@ def test_an_unknown_attachment_is_404(client):
 def test_sample_scans_lists_stored_pdfs_newest_first_and_skips_images(client):
     first, first_report = _upload(client, "older.pdf", _form_pdf(), "application/pdf")
     buf = io.BytesIO()
-    Image.new("RGB", (40, 30), "white").save(buf, format="PNG")
+    Image.new("RGB", (800, 600), "white").save(buf, format="PNG")
     _upload(client, "photo.png", buf.getvalue(), "image/png")
     second, second_report = _upload(client, "newer.pdf", _blank_pdf(), "application/pdf")
 
