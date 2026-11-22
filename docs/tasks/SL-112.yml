@@ -14,6 +14,8 @@ files_touched:
   - backend/app/services/text_reader.py
   - backend/app/services/html_text.py
   - backend/app/services/report_keywords.py
+  - backend/app/services/prompt_gate.py
+  - backend/app/debug_claude_log.py
   - backend/tests/test_document_types.py
   - backend/tests/test_html_reports.py
   - frontend/src/api/attachments.ts

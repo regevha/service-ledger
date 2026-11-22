@@ -39,7 +39,11 @@ def build_preview(request_kwargs: dict[str, Any], verb: str) -> dict[str, Any]:
                 source = part.get("source") or {}
                 size = digest = None
                 data = source.get("data")
-                if isinstance(data, str):
+                if isinstance(data, str) and source.get("type") == "text":
+                    # An HTML report goes as plain text, not base64.
+                    raw = data.encode("utf-8")
+                    size, digest = len(raw), hashlib.sha256(raw).hexdigest()
+                elif isinstance(data, str):
                     try:
                         raw = base64.b64decode(data)
                         size, digest = len(raw), hashlib.sha256(raw).hexdigest()

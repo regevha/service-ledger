@@ -142,3 +142,42 @@ def test_real_html_report_passes_the_gate(client, run_worker):
     result = client.get(f"/extraction-jobs/{job['id']}").json()["classification"]
     assert result["recognized"] is True
     assert result["detected_model"] == "Cytek Aurora"
+
+
+# Near misses the first gate rejected: a real report may mention an error code, an invoice block or a
+# password reset below its heading, and Hebrew uses the definite article and abbreviations.
+REAL_WITH_NOISE = b"""<html><head><title>Field service report</title></head><body><h1>Field service report</h1>
+<p>Serial number: AB1234. Work order: WO-04215114. Technician: A. Example. Visit date: 2026-11-20.</p>
+<p>Work performed: replaced the detector board; the instrument logged Error 404 not found on the board and Error 503.
+Parts replaced: board. Labour hours: 3. Invoice to: the customer account. Customer asked for a password reset on the PC.</p></body></html>"""
+HEBREW_VARIANTS = (
+    "<html><body><h1>דו\"ח טכנאי</h1><p>מס. סידורי: AB1234</p><p>תאריך הביקור: 20/11/2026</p>"
+    "<p>עבודה שבוצעה: החלפת חיישן. חלקים שהוחלפו: חיישן. טכנאי: א. לדוגמה. שגיאה 503. סיסמה אופסה.</p></body></html>"
+).encode()
+
+
+@pytest.mark.parametrize("data", [REAL_WITH_NOISE, HEBREW_VARIANTS])
+def test_real_reports_with_noise_are_not_rejected(data):
+    assert check_service_report_text(html_to_text(data), min_score=4, min_chars=80).looks_like_report
+
+
+def test_penalty_is_capped_and_only_from_the_top():
+    late = b"<html><body><h1>Service report</h1><p>" + b"x" * 400 + b" invoice sign in unsubscribe page not found</p></body></html>"
+    assert check_service_report_text(html_to_text(late) + " serial number work order work performed", min_score=4, min_chars=20).looks_like_report
+
+
+def test_charset_is_read_from_a_meta_tag_only():
+    body = "<html><head><meta charset='utf-8'></head><body>charset=latin1 דוח שירות</body></html>".encode()
+    assert "דוח שירות" in html_to_text(body)
+    legacy = "<html><body>דוח שירות</body></html>".encode("cp1255")
+    assert "דוח שירות" in html_to_text(legacy)
+
+
+def test_prompt_sizing_handles_a_text_source():
+    from app.debug_claude_log import _describe_request
+    from app.services.prompt_gate import build_preview  # noqa: F401  (import check: the module loads)
+
+    kwargs = {"model": "m", "messages": [{"role": "user", "content": [
+        {"type": "document", "source": {"type": "text", "media_type": "text/plain", "data": "דוח שירות"}}]}]}
+    doc = _describe_request(kwargs, False)["documents"][0]
+    assert doc["bytes"] == len("דוח שירות".encode()) and doc["sha256"]

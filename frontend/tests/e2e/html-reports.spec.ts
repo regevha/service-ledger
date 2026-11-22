@@ -1,5 +1,6 @@
+import type { Page } from '@playwright/test';
 import { test, expect } from './coverage';
-import { listReportIds } from './helpers/api';
+import { deleteReports, listReportIds } from './helpers/api';
 import { TIMEOUT } from './timeouts';
 
 // An HTML report is accepted, read as text and shown as text (never as a web page); an HTML page that is
@@ -35,6 +36,15 @@ test('an HTML page that is not a service report is rejected, with no draft left'
 });
 
 test('an HTML service report is accepted and shown as text, not as a web page', async ({ page, request }) => {
+  const before = new Set(await listReportIds(request));
+  try {
+    await acceptedReportFlow(page);
+  } finally {
+    await deleteReports(request, (await listReportIds(request)).filter((id) => !before.has(id)));
+  }
+});
+
+async function acceptedReportFlow(page: Page) {
   const token = unique();
   await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles({
@@ -48,13 +58,11 @@ test('an HTML service report is accepted and shown as text, not as a web page', 
   await expect(page.getByText('Detected from the document')).toBeVisible({ timeout: TIMEOUT.flow });
   await expect(page.getByText("This doesn't look like a service report.")).toHaveCount(0);
 
-  const ids = await listReportIds(request);
-  expect(ids.length).toBeGreaterThan(0);
   // The original pane shows the readable text (not the markup); no script of the file ran in the page.
   await page.getByRole('button', { name: 'Show scan' }).click();
   const pane = page.frameLocator('iframe[title="Original scan"]').locator('body');
   await expect(pane).toContainText('Serial number', { timeout: TIMEOUT.ui });
   await expect(pane).not.toContainText('<table');
-  await page.screenshot({ path: '/tmp/html-report-confirm.png' });
+  // The file's own script never ran: its marker would be on the window of a page that rendered it.
   expect(await page.evaluate(() => (window as unknown as { __ran?: number }).__ran)).toBeUndefined();
-});
+}

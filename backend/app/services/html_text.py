@@ -2,7 +2,7 @@
 
 A service report can arrive as an HTML file (saved from an email or a web
 portal). It is read as text, never rendered and never served back as a web
-page: scripts, styles and hidden parts are dropped, tables keep one row per
+page: scripts and styles are dropped (text hidden with `hidden` or CSS is kept, as a PDF text layer's would be), tables keep one row per
 line with tab-separated cells, and Hebrew stays in logical order (HTML stores it
 that way, so there is none of the reversed-text problem a PDF text layer has).
 """
@@ -15,6 +15,7 @@ from html.parser import HTMLParser
 MAX_TEXT_CHARS = 200_000
 
 _HTML_START = re.compile(rb"<!doctype\s+html|<(html|head|body|meta|title|table)[\s>/]", re.IGNORECASE)
+_META = re.compile(rb"<meta\b[^>]*>", re.IGNORECASE)
 _CHARSET = re.compile(rb"""charset\s*=\s*["']?\s*([A-Za-z0-9_\-:.]+)""", re.IGNORECASE)
 
 _SKIP = {"script", "style", "noscript", "template", "svg", "object", "iframe"}
@@ -33,18 +34,21 @@ def looks_like_html(data: bytes) -> bool:
 
 
 def decode_html(data: bytes) -> str:
-    """UTF-8 unless a byte-order mark or a declared charset says otherwise."""
+    """UTF-8 unless a byte-order mark or a charset declared in a <meta> tag says otherwise. Bytes that are
+    not valid UTF-8 and declare nothing are read as windows-1255 (Hebrew), the usual legacy encoding."""
     if data.startswith(b"\xef\xbb\xbf"):
         return data[3:].decode("utf-8", errors="replace")
-    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
-        return data.decode("utf-16", errors="replace")
-    match = _CHARSET.search(data[:2048])
-    if match:
-        try:
-            return data.decode(match.group(1).decode("ascii"), errors="replace")
-        except (LookupError, ValueError):
-            pass
-    return data.decode("utf-8", errors="replace")
+    for tag in _META.findall(data[:4096]):
+        match = _CHARSET.search(tag)
+        if match:
+            try:
+                return data.decode(match.group(1).decode("ascii"), errors="replace")
+            except (LookupError, ValueError):
+                break
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("cp1255", errors="replace")
 
 
 class _TextCollector(HTMLParser):

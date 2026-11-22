@@ -294,7 +294,7 @@ export function ReviewScreen({
       <ScanSplit
         preview={preview}
         scanOverride={
-          preview.showScan && scanAttachmentId && scanKind !== 'text' ? (
+          preview.showScan && scanAttachmentId && scanKind === 'pages' ? (
             <FieldsOnPage
               attachmentId={scanAttachmentId}
               marks={marks}
