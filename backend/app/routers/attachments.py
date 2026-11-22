@@ -20,7 +20,13 @@ from app.services.attachment_names import (
     source_name,
     stored_filename,
 )
-from app.services.documents import ACCEPTED_DESCRIPTION, PDF, detect_media_type
+from app.services.documents import (
+    ACCEPTED_DESCRIPTION,
+    HTML,
+    IMAGE_TYPES,
+    PDF,
+    detect_media_type,
+)
 from app.services.duplicates import (
     find_duplicate_report_ids,
     find_read_copy,
@@ -74,7 +80,11 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, request: Req
     media_type = detect_media_type(first)
     if media_type is None:
         raise HTTPException(415, f"Unsupported file type. Upload {ACCEPTED_DESCRIPTION}.")
-    limit = settings.max_pdf_upload_bytes if media_type == PDF else settings.max_image_upload_bytes
+    limit = {
+        PDF: settings.max_pdf_upload_bytes,
+        HTML: settings.max_html_upload_bytes,
+    }.get(media_type, settings.max_image_upload_bytes)
+    kind_name = {PDF: "PDF", HTML: "HTML file"}.get(media_type, "image")
     chunks, size = [first], len(first)
     while size <= limit:
         chunk = await file.read(_CHUNK_BYTES)
@@ -87,13 +97,13 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, request: Req
         shown = f"{int(declared) / 1048576:.1f} MB" if declared and declared.isdigit() else f"over {limit // 1048576} MB"
         raise HTTPException(
             413,
-            f"This {'PDF' if media_type == PDF else 'image'} is {shown}; "
+            f"This {kind_name} is {shown}; "
             f"the limit is {limit // 1048576} MB. Reduce its size or resolution and upload it again.",
         )
     contents = b"".join(chunks)
     if detect_media_type(contents) != media_type:
         raise HTTPException(415, f"Unsupported file type. Upload {ACCEPTED_DESCRIPTION}.")
-    if media_type != PDF:
+    if media_type in IMAGE_TYPES:
         try:
             check_image_size(contents)  # too small or too many pixels: refused before anything is stored or read
         except ImageSizeError as e:
@@ -139,7 +149,7 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, request: Req
         # Read from the PDF's own text, no model involved, so the same visit
         # scanned twice is flagged right at upload — before (or without)
         # classification. None for an image or a PDF with no text layer.
-        work_order_number=normalize_work_order(read_work_order(extract_text(contents))) if media_type == PDF else None,
+        work_order_number=normalize_work_order(read_work_order(extract_text(contents))) if media_type in (PDF, HTML) else None,
     )
     db.add(attachment)
     db.commit()
@@ -180,6 +190,15 @@ def get_attachment_file(attachment_id: uuid.UUID, inline: bool = False, db: Sess
     # The browser's save-as name is the uploader's own file name. Starlette
     # encodes a non-ASCII name (Hebrew) as filename*=utf-8''... for us.
     original_name = source_name(attachment)
+    if attachment.file_type == HTML:
+        # An HTML upload is never served back as a web page (it could run script on this origin).
+        # Shown inline it is the text the app reads; downloaded it is the original bytes, as opaque data.
+        safe = {"X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'"}
+        if inline:
+            return Response(extract_text(path.read_bytes()), media_type="text/plain; charset=utf-8", headers=safe)
+        return FileResponse(
+            path, media_type="application/octet-stream", filename=original_name, content_disposition_type="attachment", headers=safe
+        )
     return FileResponse(
         path,
         media_type=attachment.file_type or "application/octet-stream",
@@ -219,6 +238,8 @@ def get_attachment_pages(attachment_id: uuid.UUID, db: Session = Depends(get_db)
                     pdf.close()
         except pdfium.PdfiumError:
             raise HTTPException(422, "The stored PDF could not be opened") from None
+    if attachment.file_type == HTML:
+        return {"page_count": 1, "kind": "text"}
     return {"page_count": 1}
 
 
@@ -233,6 +254,8 @@ def get_attachment_page_image(
     A raster image scan is returned as stored."""
     attachment, path = _stored_scan(db, attachment_id)
     headers = {"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600"}
+    if attachment.file_type == HTML:
+        raise HTTPException(404, "An HTML report has no page images")
     if attachment.file_type != "application/pdf":
         if page != 1:
             raise HTTPException(404, "Page not found")

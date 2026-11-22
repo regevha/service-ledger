@@ -40,6 +40,13 @@
   overflow: hidden;
   background: var(--surface-2);
 }
+.scan-text {
+  width: 100%;
+  min-height: 60vh;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
 .review-scan iframe {
   width: 100%;
   height: 100%;

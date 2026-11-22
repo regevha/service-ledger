@@ -71,7 +71,7 @@ test('a file that is not a PDF or an image is refused on the spot, with the reas
   const zone = page.locator('.dropzone');
   const dt = await dataTransfer(page, [{ name: 'notes.txt', type: 'text/plain' }], Buffer.from('hello'));
   await zone.dispatchEvent('drop', { dataTransfer: dt });
-  await expect(page.getByRole('alert')).toContainText('“notes.txt” is not a PDF or an image');
+  await expect(page.getByRole('alert')).toContainText('“notes.txt” is not a PDF, an HTML file or an image');
   await expect(zone.locator('.primary')).toContainText('Click to choose');
   await expect(page.getByRole('button', { name: 'Upload & classify' })).toBeDisabled();
 });
@@ -137,10 +137,10 @@ test('dropProblem: what is accepted and what is said when it is not', () => {
   // A system that gives no type: the name decides.
   expect(dropProblem([f('SCAN.PDF', '')])).toBeNull();
   expect(dropProblem([f('photo.JPEG', '')])).toBeNull();
-  expect(dropProblem([f('notes.txt', '')])).toContain('is not a PDF or an image');
+  expect(dropProblem([f('notes.txt', '')])).toContain('is not a PDF, an HTML file or an image');
   expect(dropProblem([f('movie.mp4', 'video/mp4')])).toContain('“movie.mp4”');
   // A wrong type is not rescued by a right-looking name.
-  expect(dropProblem([f('fake.pdf', 'text/plain')])).toContain('is not a PDF or an image');
+  expect(dropProblem([f('fake.pdf', 'text/plain')])).toContain('is not a PDF, an HTML file or an image');
   expect(dropProblem([])).toContain('Nothing was dropped');
   expect(dropProblem([f('a.pdf', 'application/pdf'), f('b.pdf', 'application/pdf')])).toContain('Drop one PDF');
   // Several photos of the pages are fine, but not mixed with a PDF.

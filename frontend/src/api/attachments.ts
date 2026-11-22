@@ -21,7 +21,7 @@ export function attachmentFileUrl(attachmentId: string, opts: { inline?: boolean
 }
 
 /** Page count of the stored scan (an image is one page), and a page rendered as a PNG for the phone's Scan view. */
-export function getAttachmentPageCount(attachmentId: string): Promise<{ page_count: number }> {
+export function getAttachmentPageCount(attachmentId: string): Promise<{ page_count: number; kind?: 'pages' | 'text' }> {
   return apiFetch(`/attachments/${attachmentId}/pages`);
 }
 

@@ -35,12 +35,15 @@ MAX_PAGES = 3
 
 
 def extract_text(data: bytes, max_pages: int = MAX_PAGES) -> str:
-    """The text of the first pages of a PDF, followed by the values of its
+    """The text of an HTML report, or of the first pages of a PDF, followed by the values of its
     fillable form fields (a BD Product Intervention Report Form keeps its
     content there, not in the page text). Empty when `data` is not a readable
     PDF or has no text — never raises."""
     if b"%PDF-" not in data[:1024]:
-        return ""
+        # An HTML report is read as its visible text (services/html_text.py).
+        from app.services.html_text import html_to_text
+
+        return html_to_text(data)
     try:
         from pypdf import (
             PdfReader,  # imported here so a missing library degrades to "no text"

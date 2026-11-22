@@ -1,7 +1,7 @@
 // What the upload accepts: the same list the file picker is limited to. The server
 // still checks the file's own bytes; this only gives an instant answer to a drop.
-export const ACCEPTED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-const ACCEPTED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
+export const ACCEPTED_TYPES = ['application/pdf', 'text/html', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const ACCEPTED_EXTENSIONS = ['.pdf', '.html', '.htm', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
 
 function isAcceptedFile(f: { name: string; type: string }): boolean {
   if (ACCEPTED_TYPES.includes(f.type)) return true;
@@ -9,12 +9,21 @@ function isAcceptedFile(f: { name: string; type: string }): boolean {
   return !f.type && ACCEPTED_EXTENSIONS.some((ext) => f.name.toLowerCase().endsWith(ext));
 }
 
+export function isHtmlFile(f: { name: string; type: string }): boolean {
+  const name = f.name.toLowerCase();
+  return f.type === 'text/html' || (!f.type && (name.endsWith('.html') || name.endsWith('.htm')));
+}
+
+/** Shown when an HTML report is chosen together with other files: it is read as text, one report per file. */
+export const HTML_ON_ITS_OWN = 'Upload an HTML report on its own: one HTML file per report, not together with PDFs or photos.';
+
 /** The text shown when a drop is refused, or null when the files are fine to use.
  *  One PDF, or one or more images (several photos become one PDF); never a mix. */
 export function dropProblem(files: { name: string; type: string }[]): string | null {
-  if (files.length === 0) return 'Nothing was dropped. Drop a PDF or an image file.';
+  if (files.length === 0) return 'Nothing was dropped. Drop a PDF, an HTML file or an image file.';
   const bad = files.find((f) => !isAcceptedFile(f));
-  if (bad) return `\u201c${bad.name}\u201d is not a PDF or an image (PNG, JPEG, GIF or WebP).`;
+  if (bad) return `\u201c${bad.name}\u201d is not a PDF, an HTML file or an image (PNG, JPEG, GIF or WebP).`;
+  if (files.length > 1 && files.some(isHtmlFile)) return HTML_ON_ITS_OWN;
   if (files.length > 1 && files.some(isPdfFile)) return 'Drop one PDF, or photos of the pages — not both. To upload several reports, choose only PDFs.';
   return null;
 }

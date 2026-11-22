@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     min_image_short_side: int = 300
     max_image_long_side: int = 2000
     max_image_pixels_total: int = 100_000_000
+    max_html_upload_bytes: int = 5 * 1024 * 1024
+    # Free keyword check on an HTML report's text before any model call
+    # (services/report_keywords.py). Starting values: tune them on real files.
+    report_keyword_min_score: int = 4
+    report_min_text_chars: int = 80
 
     # §4: fields below this confidence are flagged for mandatory review.
     field_confidence_threshold: float = 0.7
