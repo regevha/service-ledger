@@ -1,10 +1,13 @@
 """The PDF copy of an HTML report (headless Chromium, scripts and network off).
 
-Skipped when no Chromium can be launched (set HTML_PDF_CHROMIUM_PATH, or `playwright install chromium`).
+Skipped locally when no Chromium can be launched (set HTML_PDF_CHROMIUM_PATH, or `playwright install chromium`).
+When the CI environment variable is set (GitHub Actions sets CI=true) a missing Chromium is a failure instead: the
+workflow installs it, and a silent skip there would leave the PDF copy untested without anyone noticing.
 """
 from __future__ import annotations
 
 import io
+import os
 
 import pytest
 from pypdf import PdfReader
@@ -21,12 +24,31 @@ REPORT = (
 ).encode()
 
 
+def _chromium_missing(reason: str) -> None:
+    """Skip the tests that need Chromium, or fail them when running on CI."""
+    if os.environ.get("CI", "").lower() in ("true", "1"):
+        pytest.fail(f"CI is set but no headless Chromium can be launched: {reason}", pytrace=False)
+    pytest.skip(f"no headless Chromium available: {reason}")
+
+
 @pytest.fixture(scope="module")
 def chromium_ok():
     try:
         html_pdf.render_html_to_pdf(b"<html><body>probe</body></html>")
     except Exception as e:  # noqa: BLE001
-        pytest.skip(f"no headless Chromium available: {str(e).splitlines()[0] if str(e) else e}")
+        _chromium_missing(str(e).splitlines()[0] if str(e) else repr(e))
+
+
+def test_a_missing_chromium_fails_on_ci(monkeypatch):
+    monkeypatch.setenv("CI", "true")
+    with pytest.raises(pytest.fail.Exception, match="no headless Chromium can be launched"):
+        _chromium_missing("Executable doesn't exist")
+
+
+def test_a_missing_chromium_skips_off_ci(monkeypatch):
+    monkeypatch.delenv("CI", raising=False)
+    with pytest.raises(pytest.skip.Exception, match="no headless Chromium available"):
+        _chromium_missing("Executable doesn't exist")
 
 
 def _text(pdf_bytes: bytes) -> str:

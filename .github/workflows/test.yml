@@ -220,9 +220,20 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r requirements.txt
 
+      - name: Restore Playwright's browsers
+        # The e2e shards save Chromium under this key (see "Cache Playwright's browsers" in the
+        # frontend-shards job). Restore only, never save: this job's Playwright is the Python package,
+        # whose Chromium build may differ from the frontend's, and a copy saved here under the shards'
+        # key would make them skip their own install. The install step below fetches whatever is missing.
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/package-lock.json') }}
+
       - name: Install Chromium for the HTML PDF copy tests
         # services/html_pdf.py renders a PDF copy of an HTML report with headless Chromium
-        # (tests/test_html_pdf_copy.py skips itself when none can be launched).
+        # (tests/test_html_pdf_copy.py skips itself when none can be launched, but fails when CI is
+        # set, as it is on GitHub Actions: a failed install here must not turn into a silent skip).
         # The system packages come first, each attempt capped and tried again, because the Ubuntu
         # package mirror on the runner sometimes hangs for many minutes (see the WebKit step in the
         # "webkit" job); then the browser itself, which is a plain download.
@@ -238,6 +249,14 @@ jobs:
           done
           [ "$ok" = 1 ] || { echo "::error::Chromium's system packages did not install in 3 attempts."; exit 1; }
           python -m playwright install chromium
+
+      - name: Let Chromium's sandbox start on the runner
+        # services/html_pdf.py keeps Chromium's own sandbox on (it renders untrusted HTML). The Ubuntu 24.04
+        # runner blocks the unprivileged user namespaces that sandbox needs ("Chromium sandboxing failed!"),
+        # so without this the PDF copy tests could not launch a browser (and, before they failed on CI, were
+        # silently skipped). Allowing them on this throwaway VM keeps the tests on the same sandboxed path as
+        # production, instead of setting HTML_PDF_NO_SANDBOX and testing a different one.
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Create service_ledger_test database
         run: psql -d service_ledger -c "CREATE DATABASE service_ledger_test;"
