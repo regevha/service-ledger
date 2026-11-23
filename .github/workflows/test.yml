@@ -22,7 +22,7 @@ on:
 # going on main, and the scheduled run, are not cancelled by this. But a group holds one running
 # and one waiting run, so a run still waiting on main is replaced by a newer one: when several
 # pull requests merge within minutes, only the last merge gets tested (8 of the last 60 runs on
-# main, as of 2026-11-23, were cancelled; the ones checked were merges a few seconds apart).
+# main, as of 2026-11-23, were cancelled; six of those eight were merges within 32 seconds of each other).
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
