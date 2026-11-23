@@ -25,3 +25,8 @@ acceptance: [SL-118]
 #   3. A CI run of the backend job is green with Chromium installed and the PDF tests really run
 #      (no skips in the html_pdf test file).
 # Depends on SL-116 only for merge order (both edit test.yml, one at a time).
+# Found on this PR's first CI run: with the tests failing instead of skipping, the backend job failed with
+# "Chromium sandboxing failed!". Chromium installs fine but cannot start its sandbox on the Ubuntu 24.04
+# runner (AppArmor restricts unprivileged user namespaces), so these PDF tests were being skipped on main
+# since SL-113, not run. Fix: a step before pytest sets kernel.apparmor_restrict_unprivileged_userns=0 on
+# the runner, so the tests run with the sandbox on, as in production (HTML_PDF_NO_SANDBOX stays unset).

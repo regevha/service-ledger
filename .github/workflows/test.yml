@@ -208,6 +208,14 @@ jobs:
         # set, as it is on GitHub Actions: a failed install here must not turn into a silent skip).
         run: python -m playwright install --with-deps chromium
 
+      - name: Let Chromium's sandbox start on the runner
+        # services/html_pdf.py keeps Chromium's own sandbox on (it renders untrusted HTML). The Ubuntu 24.04
+        # runner blocks the unprivileged user namespaces that sandbox needs ("Chromium sandboxing failed!"),
+        # so without this the PDF copy tests could not launch a browser (and, before they failed on CI, were
+        # silently skipped). Allowing them on this throwaway VM keeps the tests on the same sandboxed path as
+        # production, instead of setting HTML_PDF_NO_SANDBOX and testing a different one.
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - name: Create service_ledger_test database
         run: psql -d service_ledger -c "CREATE DATABASE service_ledger_test;"
 
