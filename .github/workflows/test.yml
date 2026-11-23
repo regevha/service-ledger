@@ -38,6 +38,11 @@ jobs:
     name: Static checks (lint, types, drift)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # `actions: write` lets the last step cancel the run (see there); `contents: read` is what
+    # checkout needs. Setting `permissions` replaces the defaults, so both are listed.
+    permissions:
+      contents: read
+      actions: write
 
     services:
       postgres:
@@ -155,6 +160,22 @@ jobs:
         run: |
           (cd backend && python -m scripts.export_openapi > ../frontend/openapi.json)
           (cd frontend && npm run codegen && git diff --exit-code -- src/generated/api-schema.ts)
+
+      - name: Cancel the run when a static check failed
+        # The jobs that run alongside this one take about 8 minutes of wall-clock time and about 45
+        # billed minutes in all, and a change that fails lint or types cannot be merged anyway, so stop
+        # them rather than let them finish. Only on pull
+        # requests: a push to main and the scheduled run keep going so they show every failing job.
+        # The token of a fork's or Dependabot's pull request is read-only and cannot cancel; that is
+        # a warning, not a second failure. The static-checks job itself ends as "cancelled" (the cancel stops
+        # this step), not "failure": the failing step is marked and its log is intact. The "ci-ok" check
+        # fails on such a run.
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" \
+            || echo "::warning::Could not cancel the run (read-only token?); the other jobs will finish."
 
   backend:
     name: Backend (pytest)
