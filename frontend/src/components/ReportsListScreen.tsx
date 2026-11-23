@@ -268,7 +268,7 @@ export function ReportsListScreen({
           <div>Loading reports…</div>
         </div>
       ) : items.length === 0 ? (
-        <div className="empty-hint" data-testid="empty-hint">
+        error ? null : <div className="empty-hint" data-testid="empty-hint">
           {statusBlocksSearch
             ? 'Search covers finalized reports only. Set the status filter to Finalized or clear it.'
             : searching

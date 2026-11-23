@@ -37,8 +37,10 @@ export async function apiFetchWithHeaders<T>(path: string, init?: RequestInit): 
     // statusText is empty over HTTP/2, so it can't be the only fallback.
     let detail = response.statusText || `Request failed (${response.status})`;
     let existingReportId: string | undefined;
+    let apiAnswered = false;
     try {
       const body = await response.json();
+      apiAnswered = true;
       if (typeof body?.existing_report_id === 'string') existingReportId = body.existing_report_id;
       if (typeof body?.detail === 'string') {
         detail = body.detail;
@@ -57,6 +59,13 @@ export async function apiFetchWithHeaders<T>(path: string, init?: RequestInit): 
       }
     } catch {
       // non-JSON error body — keep the fallback above
+    }
+    // A stopped backend never reaches the API: the host in front of it (the container app's ingress, a
+    // proxy) answers for it, with 502/503/504 or a 404 whose body is not the API's JSON. Report that as
+    // "could not reach", not as a bare "Request failed (404)" (and with status 0, so screens do not treat
+    // it as "this item does not exist"). A real API 404 has a JSON body and is left alone.
+    if ([502, 503, 504].includes(response.status) || (response.status === 404 && !apiAnswered)) {
+      throw new ApiError(0, `Could not reach the backend at ${API_BASE || 'this address'}. Is it running?`);
     }
     throw new ApiError(response.status, detail, existingReportId);
   }
