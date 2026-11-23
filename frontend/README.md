@@ -270,6 +270,23 @@ The same tests also run in WebKit (an iPhone profile) as the `phone-webkit` proj
 unless `E2E_WEBKIT=1` and needs `npx playwright install --with-deps webkit`. CI runs it
 only on the daily schedule and on "Run workflow".
 
+### Screenshot tests (visual)
+
+`visual.spec.ts` compares screenshots of the trend chart, the review screen's field list and the Reports
+list (tagged `@visual`, in the `visual` Playwright project). The baseline images in
+`tests/e2e/visual.spec.ts-snapshots/` are drawn on the Linux CI runner, and fonts and anti-aliasing differ
+between machines, so these tests fail on a developer's machine even when nothing is wrong. Leave them out
+of local runs:
+
+```bash
+npm run test:e2e -- --project=chromium --project=phone   # everything except the visual tests
+npx playwright test --grep-invert @visual                # the same, by tag
+```
+
+`E2E_VISUAL=0` does not do this: the project is on whenever the baseline folder exists, and the variable is
+only read for `E2E_VISUAL=1` (which the "Update visual baselines" workflow sets to run before any baseline
+exists). To change a baseline, run that workflow from the Actions tab, review the images it commits, and merge.
+
 ### Built page behind the password
 
 `npm run test:e2e:built` runs against what is deployed: the production build of

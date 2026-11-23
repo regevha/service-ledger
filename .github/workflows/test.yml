@@ -11,11 +11,18 @@ on:
   # workflows run on the default branch. "Run workflow" in the Actions tab
   # starts the same shuffled run on demand.
   schedule:
-    - cron: "17 3 * * *" # 03:17 UTC, about 06:17 in Israel
+    # 03:17 UTC is 05:17 in Israel in winter and 06:17 in summer. GitHub starts scheduled runs late when
+    # it is busy: the twelve runs from 2026-11-11 to 11-22 began between 10:38 and 12:02 UTC, so expect
+    # the result in the Israeli afternoon, not at breakfast.
+    - cron: "17 3 * * *"
   workflow_dispatch:
 
-# A newer push to the same pull request cancels the older, now pointless run (a full run
-# is about 37 billed minutes). Runs on main and the scheduled run are never cancelled.
+# A newer push to the same pull request cancels the older, now pointless run (a full run takes
+# about 8 minutes and bills about 45 to 50 minutes over its 10 to 11 jobs). A run that is already
+# going on main, and the scheduled run, are not cancelled by this. But a group holds one running
+# and one waiting run, so a run still waiting on main is replaced by a newer one: when several
+# pull requests merge within minutes, only the last merge gets tested (8 of the last 60 runs on
+# main, as of 2026-11-23, were cancelled; six of those eight were merges within 32 seconds of each other).
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -38,6 +45,11 @@ jobs:
     name: Static checks (lint, types, drift)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # `actions: write` lets the last step cancel the run (see there); `contents: read` is what
+    # checkout needs. Setting `permissions` replaces the defaults, so both are listed.
+    permissions:
+      contents: read
+      actions: write
 
     services:
       postgres:
@@ -156,10 +168,26 @@ jobs:
           (cd backend && python -m scripts.export_openapi > ../frontend/openapi.json)
           (cd frontend && npm run codegen && git diff --exit-code -- src/generated/api-schema.ts)
 
+      - name: Cancel the run when a static check failed
+        # The jobs that run alongside this one take about 8 minutes of wall-clock time and about 45
+        # billed minutes in all, and a change that fails lint or types cannot be merged anyway, so stop
+        # them rather than let them finish. Only on pull
+        # requests: a push to main and the scheduled run keep going so they show every failing job.
+        # The token of a fork's or Dependabot's pull request is read-only and cannot cancel; that is
+        # a warning, not a second failure. The static-checks job itself ends as "cancelled" (the cancel stops
+        # this step), not "failure": the failing step is marked and its log is intact. The "ci-ok" check
+        # fails on such a run.
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" \
+            || echo "::warning::Could not cancel the run (read-only token?); the other jobs will finish."
+
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -206,7 +234,21 @@ jobs:
         # services/html_pdf.py renders a PDF copy of an HTML report with headless Chromium
         # (tests/test_html_pdf_copy.py skips itself when none can be launched, but fails when CI is
         # set, as it is on GitHub Actions: a failed install here must not turn into a silent skip).
-        run: python -m playwright install --with-deps chromium
+        # The system packages come first, each attempt capped and tried again, because the Ubuntu
+        # package mirror on the runner sometimes hangs for many minutes (see the WebKit step in the
+        # "webkit" job); then the browser itself, which is a plain download.
+        run: |
+          ok=0
+          for attempt in 1 2 3; do
+            if timeout 3m python -m playwright install-deps chromium; then ok=1; break; fi
+            echo "install-deps attempt $attempt did not finish; trying again."
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sleep 3
+            sudo dpkg --configure -a || true
+          done
+          [ "$ok" = 1 ] || { echo "::error::Chromium's system packages did not install in 3 attempts."; exit 1; }
+          python -m playwright install chromium
 
       - name: Let Chromium's sandbox start on the runner
         # services/html_pdf.py keeps Chromium's own sandbox on (it renders untrusted HTML). The Ubuntu 24.04
@@ -322,13 +364,24 @@ jobs:
         # Chromium when that exact path exists (see its SANDBOX_CHROMIUM
         # comment); anywhere else, including here, it falls back to
         # Playwright's own browser cache, which this installs. With the browser
-        # restored from the cache, only the system packages are installed.
+        # restored from the cache, only the browser download is skipped; the system packages are
+        # always installed. Those come first, each attempt capped and tried again, because the
+        # Ubuntu package mirror on the runner sometimes hangs for many minutes (see the WebKit
+        # step in the "webkit" job).
         working-directory: frontend
         run: |
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
-            npx playwright install-deps chromium
-          else
-            npx playwright install --with-deps chromium
+          ok=0
+          for attempt in 1 2 3; do
+            if timeout 3m npx playwright install-deps chromium; then ok=1; break; fi
+            echo "install-deps attempt $attempt did not finish; trying again."
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sleep 3
+            sudo dpkg --configure -a || true
+          done
+          [ "$ok" = 1 ] || { echo "::error::Chromium's system packages did not install in 3 attempts."; exit 1; }
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install chromium
           fi
 
       - name: Run this shard's specs with coverage
@@ -434,7 +487,7 @@ jobs:
   built:
     name: Built page behind the password (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     # The production build of the page, served by the backend behind the shared password
     # (frontend/playwright.built.config.ts). Runs on every push and pull request. The post-deploy
@@ -488,12 +541,21 @@ jobs:
           key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/package-lock.json') }}
 
       - name: Install Playwright's Chromium
+        # Same capped, retried install of the system packages as in the shard jobs.
         working-directory: frontend
         run: |
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
-            npx playwright install-deps chromium
-          else
-            npx playwright install --with-deps chromium
+          ok=0
+          for attempt in 1 2 3; do
+            if timeout 3m npx playwright install-deps chromium; then ok=1; break; fi
+            echo "install-deps attempt $attempt did not finish; trying again."
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sleep 3
+            sudo dpkg --configure -a || true
+          done
+          [ "$ok" = 1 ] || { echo "::error::Chromium's system packages did not install in 3 attempts."; exit 1; }
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install chromium
           fi
 
       - name: Run the built-page suite
@@ -593,3 +655,38 @@ jobs:
             frontend/playwright-report/
             frontend/test-results/
           retention-days: 7
+
+  # The one check the main branch ruleset requires. It needs every job above and passes only
+  # when each of them succeeded, or was skipped on purpose (the WebKit job, which runs only on
+  # the daily schedule and on "Run workflow"). A job that failed, was cancelled or was skipped
+  # by accident makes it fail, so a required check cannot be satisfied by a job that never ran.
+  # `always()` so it runs, and fails, after a failed job and also on a cancelled run (SL-117 cancels the
+  # run when a static check fails): a required check that never reports could otherwise read as a pass.
+  # Seen on throwaway pull requests: with `!cancelled()` the check ended "cancelled", with `always()`
+  # "failure" and a list of the jobs that did not pass.
+  # Add every new job of this workflow to `needs` below.
+  ci-ok:
+    name: ci-ok
+    needs: [static-checks, backend, frontend-shards, frontend, built, webkit]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Every job passed or was skipped on purpose
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          # The only intended skip: "webkit" outside the schedule and "Run workflow".
+          WEBKIT_EXPECTED: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          bad=$(jq -r --arg wk "$WEBKIT_EXPECTED" '
+            to_entries[]
+            | select(.value.result != "success")
+            | select((.key == "webkit" and $wk != "true" and .value.result == "skipped") | not)
+            | "\(.key): \(.value.result)"' <<<"$NEEDS")
+          if [ -n "$bad" ]; then
+            echo "::error::These jobs did not pass:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "All jobs passed or were skipped on purpose."
