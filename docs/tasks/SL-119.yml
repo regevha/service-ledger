@@ -1,0 +1,33 @@
+id: SL-119
+title: "Fix stale CI comments and document how to skip the visual tests locally"
+owner: lead
+branch: SL-119-ci-comments-and-readme
+wave: T0
+depends_on: [SL-116]
+migration: false
+files_touched:
+  - .github/workflows/test.yml
+  - frontend/playwright.config.ts
+  - frontend/README.md
+  - docs/tasks/SL-119.yml
+acceptance: [SL-119]
+# Why: test review item 1.10 (findings C-04, C-05, C-06, E-11, F-13). Comments and a README that say
+# things that are no longer true.
+#
+# Change (comments and docs only; no behaviour change):
+#   - test.yml: the run cost ("about 37 billed minutes" -> about 8 minutes, 45 to 50 billed, measured
+#     on recent runs); "never cancelled" (a waiting run on main is replaced by a newer one); the cron
+#     time (03:17 UTC is 05:17/06:17 in Israel, and GitHub starts the run around 11:00 UTC).
+#   - playwright.config.ts: the visual-project comment said the tests do not run until baselines are
+#     committed; they are committed, so the project always runs.
+#   - frontend/README.md: new "Screenshot tests (visual)" section: how to leave them out locally.
+# Deviation from the handoff: it asked for `E2E_VISUAL=0` guidance, but the config never reads
+# E2E_VISUAL=0 (checked with `playwright test --list`: 7 visual tests with and without it). The README
+# gives the options that work, `--project=chromium --project=phone` and `--grep-invert @visual`, and
+# says that E2E_VISUAL=0 does nothing. Making it work would be a behaviour change: a separate decision.
+#
+# Acceptance (testable):
+#   1. `git diff` of test.yml and playwright.config.ts shows comment lines only; the YAML parses and
+#      `npx tsc -b` is clean.
+#   2. `playwright test --list` gives the same list before and after (525 tests incl. 7 visual).
+#   3. `--project=chromium --project=phone` and `--grep-invert @visual` list 0 visual tests.

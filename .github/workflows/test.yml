@@ -11,11 +11,18 @@ on:
   # workflows run on the default branch. "Run workflow" in the Actions tab
   # starts the same shuffled run on demand.
   schedule:
-    - cron: "17 3 * * *" # 03:17 UTC, about 06:17 in Israel
+    # 03:17 UTC is 05:17 in Israel in winter and 06:17 in summer. GitHub starts scheduled runs late when
+    # it is busy: the twelve runs from 2026-11-11 to 11-22 began between 10:38 and 12:02 UTC, so expect
+    # the result in the Israeli afternoon, not at breakfast.
+    - cron: "17 3 * * *"
   workflow_dispatch:
 
-# A newer push to the same pull request cancels the older, now pointless run (a full run
-# is about 37 billed minutes). Runs on main and the scheduled run are never cancelled.
+# A newer push to the same pull request cancels the older, now pointless run (a full run takes
+# about 8 minutes and bills about 45 to 50 minutes over its 10 to 11 jobs). A run that is already
+# going on main, and the scheduled run, are not cancelled by this. But a group holds one running
+# and one waiting run, so a run still waiting on main is replaced by a newer one: when several
+# pull requests merge within minutes, only the last merge gets tested (8 of the last 60 runs on
+# main, as of 2026-11-23, were cancelled; six of those eight were merges within 32 seconds of each other).
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
