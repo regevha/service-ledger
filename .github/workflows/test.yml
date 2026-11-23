@@ -637,7 +637,7 @@ jobs:
   ci-ok:
     name: ci-ok
     needs: [static-checks, backend, frontend-shards, frontend, built, webkit]
-    if: ${{ !cancelled() }}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
