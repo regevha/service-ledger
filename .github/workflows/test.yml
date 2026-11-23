@@ -18,11 +18,11 @@ on:
   workflow_dispatch:
 
 # A newer push to the same pull request cancels the older, now pointless run (a full run takes
-# about 8 minutes and bills about 45 to 50 minutes over its 11 jobs). A run that is already
+# about 8 minutes and bills about 45 to 50 minutes over its 10 to 11 jobs). A run that is already
 # going on main, and the scheduled run, are not cancelled by this. But a group holds one running
 # and one waiting run, so a run still waiting on main is replaced by a newer one: when several
 # pull requests merge within minutes, only the last merge gets tested (8 of the last 60 runs on
-# main were cancelled this way).
+# main, as of 2026-11-23, were cancelled; the ones checked were merges a few seconds apart).
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
