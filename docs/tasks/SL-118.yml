@@ -1,0 +1,27 @@
+id: SL-118
+title: "The HTML PDF copy tests fail, not skip, on CI when Chromium is missing"
+owner: lead
+branch: SL-118-html-pdf-test-fails-in-ci
+wave: T0
+depends_on: [SL-116]
+migration: false
+files_touched:
+  - backend/tests/test_html_pdf_copy.py
+  - .github/workflows/test.yml
+  - docs/tasks/SL-118.yml
+acceptance: [SL-118]
+# Why: test review item 1.4 (finding C-10). tests/test_html_pdf_copy.py skips itself when no Chromium
+# can be launched, so a failed or missing browser install in the backend job leaves the PDF copy
+# untested and CI stays green.
+#
+# Change: with CI=true (or 1) in the environment the module fixture fails instead of skipping; without
+# it the skip stays for local runs. The backend job restores the shards' Playwright browser cache
+# (restore only, same key) before its own install.
+#
+# Acceptance (testable):
+#   1. CI unset: the 5 Chromium tests skip, the 2 new policy tests pass.
+#   2. CI=true with no Chromium: the 5 Chromium tests fail with "CI is set but no headless Chromium
+#      can be launched", the 2 policy tests pass.
+#   3. A CI run of the backend job is green with Chromium installed and the PDF tests really run
+#      (no skips in the html_pdf test file).
+# Depends on SL-116 only for merge order (both edit test.yml, one at a time).

@@ -192,9 +192,20 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r requirements.txt
 
+      - name: Restore Playwright's browsers
+        # The e2e shards save Chromium under this key (see "Cache Playwright's browsers" in the
+        # frontend-shards job). Restore only, never save: this job's Playwright is the Python package,
+        # whose Chromium build may differ from the frontend's, and a copy saved here under the shards'
+        # key would make them skip their own install. The install step below fetches whatever is missing.
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/package-lock.json') }}
+
       - name: Install Chromium for the HTML PDF copy tests
         # services/html_pdf.py renders a PDF copy of an HTML report with headless Chromium
-        # (tests/test_html_pdf_copy.py skips itself when none can be launched).
+        # (tests/test_html_pdf_copy.py skips itself when none can be launched, but fails when CI is
+        # set, as it is on GitHub Actions: a failed install here must not turn into a silent skip).
         run: python -m playwright install --with-deps chromium
 
       - name: Create service_ledger_test database
