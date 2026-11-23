@@ -159,7 +159,7 @@ jobs:
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -440,7 +440,7 @@ jobs:
   built:
     name: Built page behind the password (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     # The production build of the page, served by the backend behind the shared password
     # (frontend/playwright.built.config.ts). Runs on every push and pull request. The post-deploy
