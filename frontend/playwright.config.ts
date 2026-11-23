@@ -89,9 +89,12 @@ export default defineConfig({
       grep: /@phone/,
     },
     // Screenshot comparisons (visual.spec.ts), Chromium only. Their baseline images are made on the CI
-    // runner by the "Update visual baselines" workflow (which sets E2E_VISUAL=1). Until those images are
-    // committed there is nothing to compare against, so the project is left out and the @visual tests
-    // simply do not run, here or in CI.
+    // runner by the "Update visual baselines" workflow (which sets E2E_VISUAL=1), and they are committed
+    // (tests/e2e/visual.spec.ts-snapshots), so this project is always part of a run, in CI and on a
+    // developer's machine. The images only match the CI runner's fonts: a local run fails these tests
+    // on font differences. Locally, leave them out with `--project=chromium --project=phone` (see
+    // frontend/README.md). E2E_VISUAL=1 only forces the project in before any baseline exists; setting
+    // E2E_VISUAL=0 does not switch it off.
     ...(process.env.E2E_VISUAL === '1' || existsSync('tests/e2e/visual.spec.ts-snapshots')
       ? [{ name: 'visual', use: { ...devices['Desktop Chrome'], ...chromiumLaunch }, grep: /@visual/ }]
       : []),
