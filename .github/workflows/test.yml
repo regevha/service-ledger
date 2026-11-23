@@ -167,7 +167,9 @@ jobs:
         # them rather than let them finish. Only on pull
         # requests: a push to main and the scheduled run keep going so they show every failing job.
         # The token of a fork's or Dependabot's pull request is read-only and cannot cancel; that is
-        # a warning, not a second failure.
+        # a warning, not a second failure. The static-checks job itself ends as "cancelled" (the cancel stops
+        # this step), not "failure": the failing step is marked and its log is intact. The "ci-ok" check
+        # fails on such a run.
         if: failure() && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}

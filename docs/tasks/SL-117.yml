@@ -23,4 +23,8 @@ acceptance: [SL-117]
 #      of the static check failing.
 #   2. A pull request with no failing static check: nothing is cancelled and the run finishes as before.
 #   3. What a cancelled run looks like for the "ci-ok" check (it must not read as passing) is recorded.
+# Observed on throwaway PR #386 (lint failure on top of SL-116 and this task): Ruff failed at 07:31:09;
+# every other job had stopped by 07:31:22; the run ended "cancelled"; static-checks ended "cancelled"
+# (its Ruff step is marked failure); ci-ok ended "failure" with the jobs listed. A lint failure now reads
+# "Cancelled" on the checks list, not a red cross: say so in the PR.
 # Depends on SL-116 only for merge order (both edit test.yml, one at a time).
