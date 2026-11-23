@@ -613,12 +613,15 @@ jobs:
   # when each of them succeeded, or was skipped on purpose (the WebKit job, which runs only on
   # the daily schedule and on "Run workflow"). A job that failed, was cancelled or was skipped
   # by accident makes it fail, so a required check cannot be satisfied by a job that never ran.
-  # `!cancelled()` (not `always()`) so it still runs after a failed job but not on a cancelled run.
+  # `always()` so it runs, and fails, after a failed job and also on a cancelled run (SL-117 cancels the
+  # run when a static check fails): a required check that never reports could otherwise read as a pass.
+  # Seen on throwaway pull requests: with `!cancelled()` the check ended "cancelled", with `always()`
+  # "failure" and a list of the jobs that did not pass.
   # Add every new job of this workflow to `needs` below.
   ci-ok:
     name: ci-ok
     needs: [static-checks, backend, frontend-shards, frontend, built, webkit]
-    if: ${{ !cancelled() }}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

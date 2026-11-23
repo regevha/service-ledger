@@ -18,7 +18,7 @@ acceptance: [SL-116]
 #   1.2  Backend, e2e shard and built-page jobs: `install-deps chromium` runs under `timeout 3m`,
 #        three tries, apt/dpkg stopped between tries (same pattern as the WebKit step); the browser
 #        download is a separate step after it.
-#   1.1  New job `ci-ok`: needs every job, `if: !cancelled()`, passes only when each job succeeded
+#   1.1  New job `ci-ok`: needs every job, `if: always()`, passes only when each job succeeded
 #        or "webkit" was skipped on purpose (any event but schedule / workflow_dispatch). The existing
 #        "Frontend (Playwright e2e)" aggregate stays.
 # After merge Nir adds `ci-ok` to the main ruleset (decision already made). Warn the team first:
@@ -31,3 +31,6 @@ acceptance: [SL-116]
 #      static-checks; a red e2e shard makes it fail naming frontend-shards; this PR's own run
 #      (webkit skipped) makes it pass.
 #   3. The PR's own run is timed against a recent main run (the estimate is not trusted).
+#   4. A cancelled run (SL-117's cancel after a lint failure) must not leave ci-ok looking like a pass:
+#      observed on throwaway PRs #385 (`!cancelled()`: ci-ok "cancelled") and #386 (`always()`: ci-ok
+#      "failure", listing the jobs); `always()` chosen. Reviewer's blocking point, resolved by observation.
