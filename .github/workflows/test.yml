@@ -195,7 +195,21 @@ jobs:
       - name: Install Chromium for the HTML PDF copy tests
         # services/html_pdf.py renders a PDF copy of an HTML report with headless Chromium
         # (tests/test_html_pdf_copy.py skips itself when none can be launched).
-        run: python -m playwright install --with-deps chromium
+        # The system packages come first, each attempt capped and tried again, because the Ubuntu
+        # package mirror on the runner sometimes hangs for many minutes (see the WebKit step in the
+        # "webkit" job); then the browser itself, which is a plain download.
+        run: |
+          ok=0
+          for attempt in 1 2 3; do
+            if timeout 3m python -m playwright install-deps chromium; then ok=1; break; fi
+            echo "install-deps attempt $attempt did not finish; trying again."
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sleep 3
+            sudo dpkg --configure -a || true
+          done
+          [ "$ok" = 1 ] || { echo "::error::Chromium's system packages did not install in 3 attempts."; exit 1; }
+          python -m playwright install chromium
 
       - name: Create service_ledger_test database
         run: psql -d service_ledger -c "CREATE DATABASE service_ledger_test;"
@@ -303,13 +317,24 @@ jobs:
         # Chromium when that exact path exists (see its SANDBOX_CHROMIUM
         # comment); anywhere else, including here, it falls back to
         # Playwright's own browser cache, which this installs. With the browser
-        # restored from the cache, only the system packages are installed.
+        # restored from the cache, only the browser download is skipped; the system packages are
+        # always installed. Those come first, each attempt capped and tried again, because the
+        # Ubuntu package mirror on the runner sometimes hangs for many minutes (see the WebKit
+        # step in the "webkit" job).
         working-directory: frontend
         run: |
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
-            npx playwright install-deps chromium
-          else
-            npx playwright install --with-deps chromium
+          ok=0
+          for attempt in 1 2 3; do
+            if timeout 3m npx playwright install-deps chromium; then ok=1; break; fi
+            echo "install-deps attempt $attempt did not finish; trying again."
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sleep 3
+            sudo dpkg --configure -a || true
+          done
+          [ "$ok" = 1 ] || { echo "::error::Chromium's system packages did not install in 3 attempts."; exit 1; }
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install chromium
           fi
 
       - name: Run this shard's specs with coverage
@@ -469,12 +494,21 @@ jobs:
           key: playwright-${{ runner.os }}-chromium-${{ hashFiles('frontend/package-lock.json') }}
 
       - name: Install Playwright's Chromium
+        # Same capped, retried install of the system packages as in the shard jobs.
         working-directory: frontend
         run: |
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
-            npx playwright install-deps chromium
-          else
-            npx playwright install --with-deps chromium
+          ok=0
+          for attempt in 1 2 3; do
+            if timeout 3m npx playwright install-deps chromium; then ok=1; break; fi
+            echo "install-deps attempt $attempt did not finish; trying again."
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sleep 3
+            sudo dpkg --configure -a || true
+          done
+          [ "$ok" = 1 ] || { echo "::error::Chromium's system packages did not install in 3 attempts."; exit 1; }
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install chromium
           fi
 
       - name: Run the built-page suite
@@ -574,3 +608,35 @@ jobs:
             frontend/playwright-report/
             frontend/test-results/
           retention-days: 7
+
+  # The one check the main branch ruleset requires. It needs every job above and passes only
+  # when each of them succeeded, or was skipped on purpose (the WebKit job, which runs only on
+  # the daily schedule and on "Run workflow"). A job that failed, was cancelled or was skipped
+  # by accident makes it fail, so a required check cannot be satisfied by a job that never ran.
+  # `!cancelled()` (not `always()`) so it still runs after a failed job but not on a cancelled run.
+  # Add every new job of this workflow to `needs` below.
+  ci-ok:
+    name: ci-ok
+    needs: [static-checks, backend, frontend-shards, frontend, built, webkit]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Every job passed or was skipped on purpose
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          # The only intended skip: "webkit" outside the schedule and "Run workflow".
+          WEBKIT_EXPECTED: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          bad=$(jq -r --arg wk "$WEBKIT_EXPECTED" '
+            to_entries[]
+            | select(.value.result != "success")
+            | select((.key == "webkit" and $wk != "true" and .value.result == "skipped") | not)
+            | "\(.key): \(.value.result)"' <<<"$NEEDS")
+          if [ -n "$bad" ]; then
+            echo "::error::These jobs did not pass:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "All jobs passed or were skipped on purpose."

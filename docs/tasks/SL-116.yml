@@ -1,0 +1,33 @@
+id: SL-116
+title: "ci-ok aggregate check and a capped Chromium system-package install"
+owner: lead
+branch: SL-116-ci-ok-and-deps-cap
+wave: T0
+depends_on: []
+migration: false
+files_touched:
+  - .github/workflows/test.yml
+  - docs/tasks/SL-116.yml
+  - docs/PLAN.md
+acceptance: [SL-116]
+# Why: test review Wave 0 (items 1.2 + 1.1, findings C-03, C-01, C-11). The Chromium system-package
+# install has no time cap, so a slow Ubuntu mirror holds a job for many minutes (p90 about 4 to 11
+# minutes). And main has no single check that is green only when every job passed.
+#
+# Change, in this order (one PR):
+#   1.2  Backend, e2e shard and built-page jobs: `install-deps chromium` runs under `timeout 3m`,
+#        three tries, apt/dpkg stopped between tries (same pattern as the WebKit step); the browser
+#        download is a separate step after it.
+#   1.1  New job `ci-ok`: needs every job, `if: !cancelled()`, passes only when each job succeeded
+#        or "webkit" was skipped on purpose (any event but schedule / workflow_dispatch). The existing
+#        "Frontend (Playwright e2e)" aggregate stays.
+# After merge Nir adds `ci-ok` to the main ruleset (decision already made). Warn the team first:
+# agent-team merges stop on red.
+#
+# Acceptance (testable):
+#   1. YAML parses; the ci-ok filter gives the expected verdict for 8 combinations of job results
+#      (checked locally with jq).
+#   2. Throwaway PRs (closeout-proof-* branches): a red static check makes ci-ok fail naming
+#      static-checks; a red e2e shard makes it fail naming frontend-shards; this PR's own run
+#      (webkit skipped) makes it pass.
+#   3. The PR's own run is timed against a recent main run (the estimate is not trusted).

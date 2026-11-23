@@ -305,3 +305,11 @@ Agents propose API and data-model changes here. The lead accepts or rejects them
 | ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
 |---|---|---|---|---|---|---|
 | SL-78 | frontend-dev | Dark-mode `--input-border` meets WCAG 1.4.11 (3:1). Issue #314. | Both dark definitions in `index.css` change from #7280a0 to #7b88a6 (3.50:1 on `--surface` #2c3448, 3.005:1 on `--surface-2` #353e54); light #7d889f unchanged; frontend checks green; a look at inputs at rest and on hover in system and manual dark mode in the running app. | see `docs/tasks/SL-78.yml` | none | in-review |
+
+## Test review Wave 0: CI foundation (2026-11-23)
+
+Source: the test review of `regevha/service-ledger` at 8c8730d (handoff of 2026-11-23). CI changes only: no product code, no live model calls. All four tasks touch `test.yml`, so they are merged one at a time, A first (the merge gate), each rebased on the result.
+
+| ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
+|---|---|---|---|---|---|---|
+| SL-116 | lead | Items 1.2 + 1.1 (C-03, C-01, C-11): cap Chromium `install-deps` (3 min, three tries); add the `ci-ok` aggregate job that Nir then requires on main. | See `docs/tasks/SL-116.yml`. | see `docs/tasks/SL-116.yml` | none | in-review |
