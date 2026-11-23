@@ -74,8 +74,8 @@ class ExtractionJobKind(str, enum.Enum):
 
 
 class TranslationStatus(str, enum.Enum):
-    """Life of one translation record. A person always reviews a translation
-    (`pending_review` -> `accepted`); `discarded` means the original is used as
+    """Life of one translation record. A translation can be reviewed before acceptance or used automatically.
+    `discarded` means the original is used as
     it is today; `superseded` is a replaced translation kept as history;
     `not_needed` records that the document was checked and is not Hebrew."""
 

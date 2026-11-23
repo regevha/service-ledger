@@ -88,7 +88,7 @@ class SearchModelCall(Base):
 class Translation(Base):
     """One English translation of one attachment, awaiting or past review.
     The original attachment is never changed; this row is linked to it and
-    holds both the model's text and the text a person accepted. The English is
+    holds the model's text and the text used after the review step. The English is
     shown on screen only and is not downloadable."""
 
     __tablename__ = "translations"
@@ -118,6 +118,7 @@ class Translation(Base):
     reader: Mapped[str] = mapped_column(String, nullable=False, default="model")
     model: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Set when a person accepts the translation in the review screen.
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     attachment: Mapped[Attachment] = relationship(back_populates="translations")

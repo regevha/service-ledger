@@ -180,6 +180,34 @@ def test_a_hebrew_document_waits_for_review_and_blocks_classify_and_extract(clie
     assert report["attachments"][0]["translation_status"] == "pending_review"
 
 
+def test_admin_can_skip_translation_review_and_restore_it(client, run_worker):
+    path = "/admin/translation-review"
+    assert client.get(path).json() == {"show_translation_review": True}
+
+    skip = {"show_translation_review": False}
+    assert client.put(path, json=skip).json() == skip
+    assert client.get(path).json() == skip
+
+    ids = _upload(client, "hebrew_cytek_report.pdf")
+    att = ids["attachment"]["id"]
+    assert _translate(client, run_worker, att)["status"] == "succeeded"
+    current = _current(client, att)
+    assert current["status"] == "accepted"
+    assert current["model_text"] and current["accepted_text"] == current["model_text"]
+    assert current["accepted_at"] is None
+    assert client.post(f"/attachments/{att}/classify").status_code == 202
+    report = client.get(f"/reports/{ids['report']['id']}").json()
+    assert report["status"] == "draft"
+
+    show = {"show_translation_review": True}
+    assert client.put(path, json=show).json() == show
+    assert client.get(path).json() == show
+    next_att = _upload(client, "hebrew_next.pdf", b"%PDF-1.4 another fake scan")["attachment"]["id"]
+    assert _translate(client, run_worker, next_att)["status"] == "succeeded"
+    assert _current(client, next_att)["status"] == "pending_review"
+    assert client.post(f"/attachments/{next_att}/classify").status_code == 409
+
+
 def test_accepting_unlocks_classification_and_keeps_both_texts(client, run_worker):
     ids = _upload(client, "hebrew_cytek_report.pdf")
     att = ids["attachment"]["id"]

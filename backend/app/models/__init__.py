@@ -36,6 +36,7 @@ from .instruments import (  # noqa: F401
 )
 from .reports import Attachment, Report, ReportTemplate, report_chronological_order  # noqa: F401
 from .jobs import ExtractionJob, SearchModelCall, Translation  # noqa: F401
+from .intake_settings import ReportIntakeSettings  # noqa: F401
 from .saved_filters import SavedReportFilter  # noqa: F401
 from .field_aliases import FieldAliasGroup, FieldAliasName  # noqa: F401
 

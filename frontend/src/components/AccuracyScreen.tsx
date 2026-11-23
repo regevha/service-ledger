@@ -150,7 +150,7 @@ export function AccuracyScreen() {
             </div>
             <div className="stat-tile" data-testid="acc-translations">
               <span className="stat-value">{formatPct(trShare)}</span>
-              <span className="stat-label">Translations accepted with no edit</span>
+              <span className="stat-label">Reviewed translations accepted with no edit</span>
               <span className="home-tile-note">{data.translations.accepted ? `${data.translations.unchanged} of ${data.translations.accepted} Hebrew reports` : 'No translated reports in this period'}</span>
             </div>
           </div>

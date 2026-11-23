@@ -224,9 +224,8 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
   }
 
   // Every upload is checked for language first (a cheap local check for a PDF
-  // with text, one model call for a scan). A Hebrew document stops at the
-  // review screen; anything else, or a discarded translation, goes straight on
-  // to classification.
+  // with text, one model call for a scan). Translations awaiting review stop
+  // at the review screen. Other uploads continue to classification.
   async function runTranslation(attId: string, reportId: string, includePages: number[] = []) {
     dispatchPhase({
       type: 'working',

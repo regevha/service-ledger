@@ -2,9 +2,9 @@
 
 Submit-and-poll like classify and extract: `POST /attachments/{id}/translate`
 enqueues a `translate` job (poll `GET /extraction-jobs/{id}`), the worker stores
-a translation record, and a person reviews it: accept (optionally with edited
-text), discard (keep using the original as today), or translate again (the
-earlier record stays as history). The English text is for the screen only;
+a translation record, and its review setting determines whether it is used
+immediately or shown for review. Reviewers can accept, edit, discard, or
+translate again. The English text is for the screen only;
 there is deliberately no route that serves it as a file.
 """
 from __future__ import annotations
@@ -14,6 +14,8 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -25,6 +27,32 @@ from app.services.translation import current_translation
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["translations"])
+settings_router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+class TranslationReviewSetting(BaseModel):
+    show_translation_review: bool
+
+
+@settings_router.get("/translation-review", response_model=TranslationReviewSetting)
+def get_translation_review_setting(db: Session = Depends(get_db)):
+    settings = db.get(models.ReportIntakeSettings, 1)
+    return TranslationReviewSetting(
+        show_translation_review=settings.show_translation_review if settings else True,
+    )
+
+
+@settings_router.put("/translation-review", response_model=TranslationReviewSetting)
+def update_translation_review_setting(payload: TranslationReviewSetting, db: Session = Depends(get_db)):
+    statement = insert(models.ReportIntakeSettings).values(
+        id=1, show_translation_review=payload.show_translation_review,
+    )
+    db.execute(statement.on_conflict_do_update(
+        index_elements=[models.ReportIntakeSettings.id],
+        set_={"show_translation_review": statement.excluded.show_translation_review},
+    ))
+    db.commit()
+    return payload
 
 
 def _get_attachment(db: Session, attachment_id: uuid.UUID) -> models.Attachment:
