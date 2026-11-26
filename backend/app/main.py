@@ -17,6 +17,7 @@ from app.routers import (
     accuracy,
     analytics,
     attachments,
+    email_intake,
     field_aliases,
     home,
     instrument_models,
@@ -143,6 +144,7 @@ app.include_router(reports.router)
 app.include_router(saved_filters.router)
 app.include_router(field_aliases.router)
 app.include_router(attachments.router)
+app.include_router(email_intake.router)
 app.include_router(translations.router)
 app.include_router(analytics.router)
 app.include_router(home.router)

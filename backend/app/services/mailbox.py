@@ -1,7 +1,7 @@
 """Bounded mailbox adapters. Call acknowledge only after the intake transaction commits.
 
-Gmail requires IMAP UID MOVE support; no EXPUNGE is ever issued. A failed move
-leaves the message available for a later deduplicated retry.
+Use UID MOVE, or a UIDPLUS fallback that expunges only the handled message.
+The poller retries a failed acknowledgement with the same message key.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ class Mailbox(Protocol):
 
 
 class FolderMailbox:
-    def __init__(self, directory: str | Path, max_message_bytes: int = 25 * 1024 * 1024,
+    def __init__(self, directory: str | Path, max_message_bytes: int = 50 * 1024 * 1024,
                  max_messages: int = 20):
         if max_message_bytes <= 0 or max_messages <= 0:
             raise ValueError('mailbox limits must be positive')
@@ -68,9 +68,7 @@ class FolderMailbox:
 
     def acknowledge(self, ref: str) -> None:
         path = self._handled.pop(ref)  # refuse refs not yielded by this adapter
-        handled = self.directory / 'handled'
-        handled.mkdir(exist_ok=True)
-        path.rename(handled / path.name)
+        path.unlink(missing_ok=True)
 
 
 class ImapMailbox:
@@ -81,6 +79,7 @@ class ImapMailbox:
         self.max_messages = max_messages
         self._client = None
         self._handled: set[str] = set()
+        self._supports_move = False
 
     def __enter__(self):
         self._handled.clear()
@@ -90,9 +89,13 @@ class ImapMailbox:
                                       ssl_context=ssl.create_default_context(), timeout=30)
             self._client = client
             client.login(settings.email_username.get_secret_value(), settings.email_app_password.get_secret_value())
+            # Capabilities may change after authentication. IMAP4.capabilities
+            # is the greeting snapshot, not necessarily the authenticated set.
+            capabilities = b" ".join(self._ok(client.capability())).upper().split()
+            self._supports_move = b"MOVE" in capabilities
+            if not self._supports_move and b"UIDPLUS" not in capabilities:
+                raise RuntimeError("mailbox cannot acknowledge a single UID")
             self._ok(client.select(settings.email_imap_folder))
-            if b'MOVE' not in {c.upper() for c in client.capabilities}:
-                raise RuntimeError('mailbox requires UID MOVE support')
         except Exception:
             self.__exit__()
             raise RuntimeError('mailbox connection failed') from None
@@ -150,7 +153,16 @@ class ImapMailbox:
     def acknowledge(self, ref: str) -> None:
         if self._client is None or ref not in self._handled:
             raise ValueError('message was not fetched by this mailbox')
-        self._ok(self._client.uid('MOVE', ref, self.settings.email_imap_trash_folder))
+        folder = self.settings.email_imap_trash_folder
+        if not folder or not folder.isascii() or not folder.isprintable():
+            raise ValueError("invalid mailbox Trash folder")
+        trash = '"' + folder.replace(chr(92), chr(92) * 2).replace('"', chr(92) + '"') + '"'
+        if self._supports_move:
+            self._ok(self._client.uid("MOVE", ref, trash))
+        else:
+            self._ok(self._client.uid("COPY", ref, trash))
+            self._ok(self._client.uid("STORE", ref, "+FLAGS.SILENT", r"(\Deleted)"))
+            self._ok(self._client.uid("EXPUNGE", ref))
         self._handled.remove(ref)
 
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { intakeResumeStep, manualClassification } from './intakeResume';
 import type { IntakeState } from '../../api/emailIntake';
 import type { ExtractionJob } from '../../api/types';
-const base: IntakeState = { report_id: 'report', status: 'draft', attachment_id: 'scan', translation_status: 'not_needed', latest_jobs: { translate: null, classify: null, extract: null }, source: null };
+const base: IntakeState = { report_id: 'report', status: 'draft', attachment_id: 'scan', translation_status: 'not_needed', translation_required: false, latest_jobs: { translate: null, classify: null, extract: null }, source: null };
 const job = (kind: ExtractionJob['kind'], status: ExtractionJob['status']): ExtractionJob => ({ id: kind, attachment_id: 'scan', kind, status, classification: null, field_confidences: null, error_message: null, started_at: null, completed_at: null });
 const source = (read_state: 'queued' | 'waiting_for_limit' | 'needs_person' | null, needs_report_type = false) => ({ channel: 'email' as const, sender_address: 'lab@example.org', sender_label: 'Lab team', received_at: '2026-11-01T12:00:00Z', read_state, needs_report_type });
 describe('continuing an existing draft', () => {
@@ -18,6 +18,7 @@ describe('continuing an existing draft', () => {
   it('offers a retry for failed extraction', () => expect(intakeResumeStep({ ...base, source: source('needs_person'), latest_jobs: { ...base.latest_jobs, extract: job('extract', 'failed') } })).toBe('extraction-failed'));
   it('reviews completed extraction', () => expect(intakeResumeStep({ ...base, latest_jobs: { ...base.latest_jobs, extract: job('extract', 'succeeded') } })).toBe('review'));
   it('reuses completed classification', () => expect(intakeResumeStep({ ...base, latest_jobs: { ...base.latest_jobs, classify: job('classify', 'succeeded') } })).toBe('classification'));
+  it('translates a paused emailed report before its manual type step', () => expect(intakeResumeStep({ ...base, translation_status: null, translation_required: true, source: source('needs_person') })).toBe('translation'));
   it('checks language for an untouched web draft', () => expect(intakeResumeStep({ ...base, translation_status: null })).toBe('translation'));
   it('provides a manual choice without deleting an unsure draft', () => expect(manualClassification({ recognized: false })).toMatchObject({ recognized: true, instrument: { value: '', confidence: 0 }, report_type: { value: '', confidence: 0 }, resolved_instrument_id: null }));
 });

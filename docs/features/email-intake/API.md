@@ -36,6 +36,10 @@ FileOutcome      = "loaded" | "needs_report_type" | "held" | "released" | "held_
 ReplyStatus      = "none" | "pending" | "sent" | "failed"
 ```
 
+In the current internal demo, the app's shared password protects this API.
+When intake is off, status still returns `enabled: false` and administration
+endpoints return 404. Named admin permissions depend on the sign-in work.
+
 ## 1. Allow list (AC-20, AC-21, AC-30, AC-32)
 
 ### `GET /email-intake/allowed-senders`
@@ -140,7 +144,7 @@ in `extracted_fields`, or in `search_text`. SL-86 tests this.
 What the intake screen needs to pick up a draft where it stopped. 200:
 ```json
 { "report_id": "uuid", "status": "draft", "attachment_id": "uuid",
-  "translation_status": null,
+  "translation_status": null, "translation_required": false,
   "latest_jobs": { "translate": null, "classify": { "...": "ExtractionJobOut" }, "extract": null },
   "source": { "...": "ReportSourceOut or null" } }
 ```

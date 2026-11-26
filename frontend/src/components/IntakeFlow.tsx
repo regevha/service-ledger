@@ -172,7 +172,7 @@ export function IntakeFlow({
         setReport(current);
         // The mailbox worker owns its chaining: observe it rather than enqueue another chain.
         const deadline = Date.now() + 300_000;
-        while (state.source?.read_state === 'queued') {
+        while (state.source?.read_state === 'queued' && intakeResumeStep(state) !== 'already-read') {
           if (!alive()) return;
           const job = Object.values(state.latest_jobs).find((value) => value && !['succeeded', 'failed'].includes(value.status));
           dispatchPhase({ type: 'working', label: job?.kind === 'translate' ? 'Translating the report…' : job?.kind === 'extract' ? 'Reading the fields from the document…' : 'Reading the instrument and visit type…' });

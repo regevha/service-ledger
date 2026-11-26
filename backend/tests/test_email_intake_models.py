@@ -6,9 +6,18 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from app.models import (
-    ExtractionJobKind, IntakeAllowEntry, IntakeAllowKind, IntakeFile, IntakeFileOutcome,
-    IntakeMessage, IntakeMessageOutcome, IntakeReadState, IntakeReplyStatus, Report,
-    ReportSource, ReportSourceChannel,
+    ExtractionJobKind,
+    IntakeAllowEntry,
+    IntakeAllowKind,
+    IntakeFile,
+    IntakeFileOutcome,
+    IntakeMessage,
+    IntakeMessageOutcome,
+    IntakeReadState,
+    IntakeReplyStatus,
+    Report,
+    ReportSource,
+    ReportSourceChannel,
 )
 
 NOW = datetime(2026, 11, 26, tzinfo=timezone.utc)

@@ -9,6 +9,7 @@ export function intakeResumeStep(state: IntakeState): ResumeStep {
   if (state.source?.read_state === 'waiting_for_limit') return 'waiting';
   if (running(state.latest_jobs.translate?.status)) return 'translation';
   if (state.translation_status === 'pending_review') return 'translation-review';
+  if (state.translation_required) return 'translation';
   if (running(state.latest_jobs.classify?.status)) return 'classification';
   if (state.source?.needs_report_type) return 'manual-classification';
   const extract = state.latest_jobs.extract;

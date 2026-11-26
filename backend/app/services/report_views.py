@@ -16,5 +16,6 @@ def list_item(r: models.Report) -> schemas.ReportListItemOut:
         report_date=r.report_date,
         created_at=r.created_at,
         finalized_at=r.finalized_at,
+        source_channel=r.source.channel if r.source else models.ReportSourceChannel.web,
     )
 

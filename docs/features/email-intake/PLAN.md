@@ -10,12 +10,13 @@ original branch and are superseded by the specs below.
    adapters. The Gmail demo uses a dedicated inbox, IMAP and SMTP over TLS,
    and an app password. The mailbox moves handled mail to Trash after the
    database commits. The mailbox owner controls permanent retention.
-3. SL-122 adds the runnable one-shot poller, existing worker integration,
-   held-file and allow-list operations, and the report API and UI. The
+3. SL-122 adds the one-shot poller, worker integration, held-file and
+   allow-list operations, and the report API. The
    poller runs independently of the report worker in both deployment
    modes. For an on-demand worker, it wakes the worker after commit.
    Test mode uses a folder inbox and outbox. Gmail uses the same flow.
-4. Verify the synthetic flow from inbox to human review, including replay,
+4. SL-123 adds the intake administration and report continuation screens.
+5. Verify the synthetic flow from inbox to human review, including replay,
    mixed results, held release, job limit recovery, and export privacy.
    Then run the dedicated Gmail smoke test with the mailbox owner.
 

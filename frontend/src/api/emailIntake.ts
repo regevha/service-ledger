@@ -44,6 +44,7 @@ export interface IntakeState {
   status: ReportStatus;
   attachment_id: string | null;
   translation_status: string | null;
+  translation_required: boolean;
   latest_jobs: Record<'translate' | 'classify' | 'extract', ExtractionJob | null>;
   source: ReportSource | null;
 }

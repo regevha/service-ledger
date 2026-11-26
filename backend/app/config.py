@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     email_fake_outbox_dir: str = "./storage/email/outbox"
     email_intake_address: str = "intake@example.invalid"
     email_trusted_authserv_id: str = ""
-    email_max_message_bytes: int = 25 * 1024 * 1024
+    email_max_message_bytes: int = 50 * 1024 * 1024
     email_max_pdfs_per_message: int = 10
     email_max_messages_per_sender_per_hour: int = 20
     email_log_retention_days: int = 90
