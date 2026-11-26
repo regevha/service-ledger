@@ -83,6 +83,12 @@ def test_the_report_type_filter_keeps_only_that_type(client, db_session):
     installation = _fleet(client, report_type="installation_upgrade")
     assert installation["finalized_report_count"] == 1
     assert installation["total_labor_hours"] == 0.0
+    assert installation["reports_without_labor_hours"] == 1
+
+    _report(db_session, FORTESSA, ReportType.installation_upgrade, when=date(2026, 2, 21), labor=20)
+    installation = _fleet(client, report_type="installation_upgrade")
+    assert installation["total_labor_hours"] == 20.0
+    assert installation["reports_without_labor_hours"] == 1
 
 
 def test_the_date_range_is_inclusive_and_leaves_out_reports_with_no_date(client, db_session):

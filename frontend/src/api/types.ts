@@ -335,7 +335,7 @@ export interface FleetAnalytics {
   parts_replaced: PartUsage[];
   total_labor_hours: number;
   labor_hours_by_instrument: InstrumentRollup[];
-  /** Finalized repair/PM reports that added no hours (no number in the labor field, or no instrument). */
+  /** Matching reports that added no hours (no number in the labor field, or no instrument). */
   reports_without_labor_hours?: number;
   report_counts_by_instrument?: ReportCountByInstrument[];
   report_counts_by_model?: ReportCountByModel[];
