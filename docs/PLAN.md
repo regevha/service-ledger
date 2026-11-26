@@ -324,4 +324,5 @@ for the work originally held in the email intake branches.
 |---|---|---|---|
 | SL-120 | Email intake models, migration and DB tests | | in-progress |
 | SL-121 | MIME and PDF checks, folder and Gmail adapters | | in-progress |
-| SL-122 | Poller, queues, review and admin flows, and demo verification | SL-120, SL-121 | todo |
+| SL-122 | Poller, queues, review and admin APIs, and demo verification | SL-120, SL-121 | in-progress |
+| SL-123 | Admin and draft screens | SL-122 | in-progress |
