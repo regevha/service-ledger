@@ -1,0 +1,33 @@
+id: SL-122
+title: "Email intake to report review"
+role: backend-dev
+branch: SL-122-email-intake-flow
+wave: Email intake
+depends_on: ["SL-120", "SL-121"]
+files_touched:
+  - backend/README.md
+  - backend/app/email_poller.py
+  - backend/app/main.py
+  - backend/app/worker.py
+  - backend/app/services/email_intake.py
+  - backend/app/services/job_limits.py
+  - backend/app/services/report_views.py
+  - backend/app/services/duplicates.py
+  - backend/app/routers/attachments.py
+  - backend/app/routers/email_intake.py
+  - backend/app/schemas/reports.py
+  - backend/tests/test_email_intake.py
+  - docs/features/email-intake/DEMO.md
+  - docs/features/email-intake/PLAN.md
+  - docs/PLAN.md
+  - frontend/src/App.tsx
+  - frontend/src/components/AdminScreen.tsx
+  - frontend/src/components/ReportDetailScreen.tsx
+  - frontend/src/components/email/**
+  - frontend/src/components/reports/ReportRow.tsx
+  - frontend/src/api/**
+  - frontend/src/generated/api-schema.ts
+acceptance:
+  - "A verified allowlisted email creates drafts and one reply. Delivery replay and concurrent polling are safe."
+  - "All four relevance outcomes, job-limit retry, admin review and report provenance are observable."
+  - "Email starts an on-demand worker after commit. Human review remains the final approval step."

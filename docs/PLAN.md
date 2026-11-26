@@ -313,3 +313,15 @@ Source: the test review of `regevha/service-ledger` at 8c8730d (handoff of 2026-
 | ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
 |---|---|---|---|---|---|---|
 | SL-116 | lead | Items 1.2 + 1.1 (C-03, C-01, C-11): cap Chromium `install-deps` (3 min, three tries); add the `ci-ok` aggregate job that Nir then requires on main. | See `docs/tasks/SL-116.yml`. | see `docs/tasks/SL-116.yml` | none | in-review |
+
+## Email intake
+
+The November 13 [product brief](features/email-intake/PRODUCT.md) is the
+source of the acceptance criteria. See the [refreshed plan](features/email-intake/PLAN.md)
+for the work originally held in the email intake branches.
+
+| ID | Scope | Depends on | Status |
+|---|---|---|---|
+| SL-120 | Email intake models, migration and DB tests | | in-progress |
+| SL-121 | MIME and PDF checks, folder and Gmail adapters | | in-progress |
+| SL-122 | Poller, queues, review and admin flows, and demo verification | SL-120, SL-121 | todo |

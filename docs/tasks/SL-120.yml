@@ -1,0 +1,19 @@
+id: SL-120
+title: "Email intake models and migration"
+role: db-engineer
+branch: SL-120-email-intake-models
+wave: Email intake
+depends_on: []
+files_touched:
+  - backend/alembic/versions/0017_email_intake.py
+  - backend/app/models/__init__.py
+  - backend/app/models/intake.py
+  - backend/app/models/reports.py
+  - backend/tests/conftest.py
+  - backend/tests/test_email_intake_models.py
+  - backend/tests/test_migration_email_intake.py
+  - docs/features/email-intake/DATA_MODEL.md
+acceptance:
+  - "Email intake records and report provenance match the product contract."
+  - "Migration upgrade, downgrade and upgrade again keep one head and pass model drift checks."
+  - "Replay keys are unique. Unknown senders' addresses cannot be stored."
