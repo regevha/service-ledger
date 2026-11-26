@@ -1,13 +1,11 @@
 # Email intake: data model
 
-Draft by architect, 2026-11-13. Built by `db-engineer` in SL-61 (2026-11-13), who owns it from now on.
+Built by `db-engineer` in SL-120 (2026-11-26), selectively ported from SL-61.
 No change below affects `API.md`.
 
 One migration for the whole feature: `backend/alembic/versions/0017_email_intake.py`, revision `0017_email_intake`,
-`down_revision = '0016_relative_attachment_paths'` (the head of `main` when it was built). **It is renumbered at merge
-time**: PR #305 adds `0017_glossary_terms`, and the hardening plan queues more. Whoever merges last renames the file and
-the revision id to the next free number and points `down_revision` at the head of `main` then. Reversible: the downgrade
-drops the four tables and the five new enum types, nothing else. No existing column changes. The existing type
+`down_revision = '0016_relative_attachment_paths'`, the current base head. Reversible: the downgrade
+drops the four tables and the six new enum types, nothing else. No existing column changes. The existing type
 `extraction_job_kind` is reused, never created or dropped.
 
 Models live in a new module `backend/app/models/intake.py`, registered in `models/__init__.py` after `.reports`
@@ -111,7 +109,7 @@ there is no separate index. Partial indexes: `ix_intake_files_held (created_at) 
 first); `ix_intake_files_waiting_for_limit (created_at) WHERE read_state = 'waiting_for_limit'`. Index on `report_id`.
 
 Constraints (CHECK): `position >= 1`; `size_bytes >= 0`; `page_count` null or not negative; `held_path` only while
-`outcome = 'held'` (release and delete must clear it in the same update); `waiting_kind` only while
+`outcome = 'held'` (release and delete must clear it in the same update); `waiting_kind` only with a non-null
 `read_state = 'waiting_for_limit'` (clear it when the job is queued).
 No original attachment name is stored anywhere (AC-24). The attachment row of an emailed report gets a generated
 `original_filename` (`emailed-report-<n>.pdf`).
@@ -135,9 +133,10 @@ Deleting a report leaves its `intake_files` row and the database sets `intake_fi
 
 ## Notes for tests
 
-- `tests/conftest.py` truncates a fixed list of tables. `TRUNCATE reports ... CASCADE` empties `report_sources` and
-  `intake_files`, but `intake_messages` and `intake_allow_entries` are not in the list, so their rows survive between
-  tests until the list gains them (requested in SL-61's hand-off).
+- `tests/conftest.py` explicitly truncates all four intake tables between tests, including
+  `intake_messages` and `intake_allow_entries`, which are not emptied by `TRUNCATE reports ... CASCADE`.
+- Model tests cover replay keys, database privacy constraints, and provenance surviving allow-list edits and
+  message pruning. Migration tests use a throwaway database for upgrade/downgrade/re-upgrade and `alembic check`.
 
 ## What is never stored
 
