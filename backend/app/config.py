@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +33,37 @@ class Settings(BaseSettings):
     # the API then share one origin and no other site needs access, so the default
     # is none. Without FRONTEND_DIST_DIR (development) every origin is allowed.
     cors_allowed_origins: str = ""
+
+    # Email intake is opt-in. Gmail uses a dedicated mailbox and an app password.
+    email_intake_enabled: bool = False
+    email_mailbox: Literal["folder", "imap"] = "folder"
+    email_sender: Literal["folder", "smtp"] = "folder"
+    email_fake_inbox_dir: str = "./storage/email/inbox"
+    email_fake_outbox_dir: str = "./storage/email/outbox"
+    email_intake_address: str = "intake@example.invalid"
+    email_trusted_authserv_id: str = ""
+    email_max_message_bytes: int = 25 * 1024 * 1024
+    email_max_pdfs_per_message: int = 10
+    email_max_messages_per_sender_per_hour: int = 20
+    email_log_retention_days: int = 90
+    email_poll_interval_seconds: float = 60.0
+    email_imap_host: str = "imap.gmail.com"
+    email_imap_port: int = 993
+    email_imap_folder: str = "INBOX"
+    email_imap_trash_folder: str = "[Gmail]/Trash"
+    email_smtp_host: str = "smtp.gmail.com"
+    email_smtp_port: int = 465
+    email_username: SecretStr = SecretStr("")
+    email_app_password: SecretStr = SecretStr("")
+
+    @field_validator("email_max_message_bytes", "email_max_pdfs_per_message",
+                     "email_max_messages_per_sender_per_hour", "email_log_retention_days",
+                     "email_poll_interval_seconds", "email_imap_port", "email_smtp_port")
+    @classmethod
+    def _positive_email_limit(cls, value):
+        if value <= 0:
+            raise ValueError("email limits must be positive")
+        return value
 
     # Claude call debug log (docs: claude/proposal-debug-log.md). Off by default and
     # switched on only by the project owner, by this environment setting (never in the
