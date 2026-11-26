@@ -4,10 +4,13 @@ import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../labels';
 import { useTheme } from '../theme';
 import { DateInput } from './DateInput';
 import { AccuracyScreen } from './AccuracyScreen';
+import { getEmailIntakeStatus, listHeldFiles } from '../api/emailIntake';
+import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import { EmailIntakeScreen } from './email/EmailIntakeScreen';
 import { FieldAliasManagerScreen } from './FieldAliasManager';
 
-type Section = 'export' | 'aliases' | 'appearance' | 'accuracy';
-const SECTIONS: Section[] = ['aliases', 'appearance', 'accuracy'];
+type Section = 'export' | 'aliases' | 'appearance' | 'accuracy' | 'email';
+const SECTIONS: Section[] = ['aliases', 'appearance', 'accuracy', 'email'];
 
 /**
  * Admin: housekeeping that is not part of the daily flow. Data export (the CSV that used to sit on the
@@ -15,7 +18,14 @@ const SECTIONS: Section[] = ['aliases', 'appearance', 'accuracy'];
  * after #/admin/, so a section can be bookmarked.
  */
 export function AdminScreen({ section, onSection, instruments }: { section: string; onSection: (s: string) => void; instruments: Instrument[] }) {
-  const current: Section = SECTIONS.find((s) => s === section) ?? 'export';
+  const [heldCount, setHeldCount] = useState<number | null>(null);
+  useAsyncEffect(async (isCancelled) => {
+    const status = await getEmailIntakeStatus();
+    if (!status.enabled || isCancelled()) return;
+    const files = await listHeldFiles();
+    if (!isCancelled()) setHeldCount(files.length);
+  }, [], '');
+  const current: Section = section === 'email' || section.startsWith('email/') ? 'email' : SECTIONS.find((s) => s === section) ?? 'export';
   return (
     <div className="admin-screen" data-testid="admin-screen">
       <nav className="admin-nav" aria-label="Admin sections">
@@ -28,12 +38,17 @@ export function AdminScreen({ section, onSection, instruments }: { section: stri
         <button type="button" className={`admin-nav-item ${current === 'aliases' ? 'active' : ''}`} aria-current={current === 'aliases' ? 'page' : undefined} onClick={() => onSection('aliases')}>
           Field aliases
         </button>
+        <button type="button" className={`admin-nav-item ${current === 'email' ? 'active' : ''}`} aria-current={current === 'email' ? 'page' : undefined} onClick={() => onSection('email')}>
+          Email intake{heldCount ? <><span className="status-pill ei-count" aria-hidden="true">{heldCount}</span><span className="sr-only"> ({heldCount} files to check)</span></> : null}
+        </button>
         <button type="button" className={`admin-nav-item ${current === 'appearance' ? 'active' : ''}`} aria-current={current === 'appearance' ? 'page' : undefined} onClick={() => onSection('appearance')}>
           Appearance
         </button>
       </nav>
       <div className="admin-body">
-        {current === 'aliases' ? (
+        {current === 'email' ? (
+          <EmailIntakeScreen section={section} onHeldCount={setHeldCount} />
+        ) : current === 'aliases' ? (
           <FieldAliasManagerScreen onBack={() => onSection('')} />
         ) : current === 'appearance' ? (
           <Appearance />

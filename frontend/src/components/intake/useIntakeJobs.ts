@@ -7,7 +7,7 @@ import { ApiError, PollAborted, cancelExtractionJob, deleteReport, pollExtractio
  * Pure move out of IntakeFlow; the refs are returned as-is so the container's steps use them
  * exactly as before.
  */
-export function useIntakeJobs() {
+export function useIntakeJobs(preserveReportId?: string) {
   // Cancel: set once the person presses it (or the screen goes away). Every step checks it, so a
   // step that is still in flight neither goes on to the next one nor shows an error.
   const cancelledRef = useRef(false);
@@ -21,6 +21,7 @@ export function useIntakeJobs() {
   // Remove a draft, trying again a few times: a delete that arrives while the upload is still being
   // stored can be refused once. A draft that is already gone counts as removed.
   async function discardDraft(reportId: string) {
+    if (reportId === preserveReportId) return;
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         await deleteReport(reportId);
@@ -44,12 +45,18 @@ export function useIntakeJobs() {
   // A job that was submitted but not seen to finish (the wait ran out). "Try again" goes back to
   // waiting for that same job rather than submitting a second one, which would read the scan twice.
   const submittedJobs = useRef(new Map<string, string>());
+  const submittingJobs = useRef(new Map<string, Promise<{ id: string }>>());
   async function submitOrResume(key: string, submit: () => Promise<{ id: string }>): Promise<{ id: string }> {
     const earlier = submittedJobs.current.get(key);
     if (earlier) return { id: earlier };
-    const job = await submit();
-    submittedJobs.current.set(key, job.id);
-    return job;
+    const inFlight = submittingJobs.current.get(key);
+    if (inFlight) return inFlight;
+    const pending = submit().then((job) => {
+      submittedJobs.current.set(key, job.id);
+      return job;
+    }).finally(() => { submittingJobs.current.delete(key); });
+    submittingJobs.current.set(key, pending);
+    return pending;
   }
   function forgetJob(jobId: string) {
     for (const [key, id] of submittedJobs.current) if (id === jobId) submittedJobs.current.delete(key);
@@ -60,7 +67,7 @@ export function useIntakeJobs() {
   async function pollJob(jobId: string, opts: { timeoutMs?: number } = {}) {
     if (cancelledRef.current) {
       // Cancel was pressed while this job was being submitted, before it could be stopped by id.
-      void cancelExtractionJob(jobId).catch(() => undefined);
+      if (!preserveReportId) void cancelExtractionJob(jobId).catch(() => undefined);
       throw new PollAborted();
     }
     jobIdRef.current = jobId;

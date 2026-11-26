@@ -1,5 +1,6 @@
 import type { ReportListItem } from '../../api';
 import { REPORT_TYPE_LABEL, STATUS_LABEL } from '../../labels';
+import '../email/emailIntake.css';
 import { isUnread } from './grouping';
 
 /** One report in the list: instrument, type, lab manager, date, status and the matching excerpt of a search. */
@@ -17,10 +18,11 @@ export function ReportRow({ r, onOpen }: { r: ReportListItem; onOpen: () => void
       <span data-label="Lab manager" data-empty={r.technician_name ? undefined : ''}>{r.technician_name ?? '—'}</span>
       <span data-label="Report date">
         {r.report_date ??
-          (isUnread(r) ? <span className="muted">uploaded {r.created_at.slice(0, 10)}</span> : '—')}
+          (isUnread(r) ? <span className="muted">{r.source_channel === 'email' ? 'received' : 'uploaded'} {r.created_at.slice(0, 10)}</span> : '—')}
       </span>
       <span data-label="Status">
         <span className={`status-pill status-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+        {r.source_channel === 'email' && <span className="status-pill source-pill"><span aria-hidden="true">By email</span><span className="sr-only">Received by email</span></span>}
       </span>
       {r.snippet && r.snippet.length > 0 && (
         <span className="report-excerpt" data-testid="excerpt">

@@ -35,6 +35,7 @@ export type IntakeStepsContext = Omit<ReturnType<typeof useIntakeJobs>, 'forgetJ
     requestTemplate: (waiting: WaitingForTemplate) => void;
     resetToIntake: () => void;
     onCancel?: () => void;
+    preserveExisting?: boolean;
     onCreateTemplate?: (request: TemplateRequest) => void;
     onInstrumentAdded?: () => Promise<void> | void;
   };
@@ -68,6 +69,7 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
     onCreateTemplate,
     onInstrumentAdded,
     phase,
+    preserveExisting,
     pickInstrumentId,
     pickReportType,
     pollJob,
@@ -145,10 +147,10 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
     abortRef.current.abort();
     submittedJobs.current.clear();
     const jobId = jobIdRef.current;
-    discardDraftRef.current = true;
+    discardDraftRef.current = !preserveExisting;
     const draftId = phase.name !== 'review' && phase.name !== 'done' ? draftIdRef.current : null;
     // Stop the job first: deleting a report whose scan is still being read is refused.
-    if (jobId) await cancelExtractionJob(jobId).catch(() => undefined);
+    if (jobId && !preserveExisting) await cancelExtractionJob(jobId).catch(() => undefined);
     if (draftId) await discardDraft(draftId);
     if (onCancel) {
       onCancel();
@@ -275,7 +277,7 @@ export function useIntakeSteps(ctx: IntakeStepsContext) {
         return;
       }
       const result = job.classification as unknown as ClassificationResult;
-      if (result.recognized === false) {
+      if (result.recognized === false && !preserveExisting) {
         // Not a service report: nothing to pick or add. Remove the draft made for it
         // and offer another file, instead of the fleet form.
         await discardDraft(reportId);

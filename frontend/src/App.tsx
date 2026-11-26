@@ -48,7 +48,7 @@ interface Route {
 function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   const view = VIEWS.find((v) => v === parts[0]) ?? 'home';
-  return { view, sub: view === 'reports' || view === 'admin' ? parts.slice(1).join('/') : '' };
+  return { view, sub: view === 'reports' || view === 'admin' || view === 'new' ? parts.slice(1).join('/') : '' };
 }
 
 // The top-level app shell: the masthead, the view tabs, and the fleet list
@@ -73,6 +73,7 @@ export default function App() {
   const view = route.view;
   // Changing this discards the intake flow's state (and any work still running in it): "Cancel".
   const [intakeKey, setIntakeKey] = useState(0);
+  const [resumeReportId, setResumeReportId] = useState<string | undefined>(() => route.view === 'new' ? route.sub || undefined : undefined);
   // Once the several-files screen has been opened it stays mounted (hidden), so its list survives checking a report.
   const [batchOpened, setBatchOpened] = useState(false);
   // Files dropped on Home, waiting for the several-files screen to take them (a new nonce is a new drop).
@@ -118,6 +119,7 @@ export default function App() {
       const go = () => {
         // A pending template request only lives while the Templates tab is showing it.
         if (next !== 'templates') setTemplateRequest(null);
+        if (next === 'new') setResumeReportId(sub || undefined);
         shownHash.current = hash;
         if (window.location.hash !== hash) window.location.hash = hash;
         setRoute((r) => (r.view === next && r.sub === sub ? r : { view: next, sub }));
@@ -160,6 +162,7 @@ export default function App() {
         () => {
           shownHash.current = hash;
           if (next.view !== 'templates') setTemplateRequest(null);
+          if (next.view === 'new') setResumeReportId(next.sub || undefined);
           setRoute(next);
         },
         // Staying puts the address bar back where the screen still is.
@@ -280,7 +283,8 @@ export default function App() {
         {(view === 'new' || templateRequest !== null) && (
           <div hidden={view !== 'new'}>
             <IntakeFlow
-              key={intakeKey}
+              key={`${intakeKey}:${resumeReportId ?? ''}`}
+              resumeReportId={resumeReportId}
               instruments={instruments}
               instrumentsError={instrumentsError}
               fieldConfidenceThreshold={config.field_confidence_threshold}
@@ -296,7 +300,7 @@ export default function App() {
               onBatchFiles={openBatchWith}
               onOpenReport={(reportId) => navigate('reports', reportId)}
               onViewInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
-              onCancel={() => setIntakeKey((k) => k + 1)}
+              onCancel={() => { setIntakeKey((k) => k + 1); navigate('new'); }}
             />
           </div>
         )}
@@ -350,7 +354,7 @@ export default function App() {
               // Saved or cancelled, the waiting report is on the New report tab:
               // after a save it reads itself again with the new template.
               if (saved) setTemplateCreated({ template: saved, nonce: Date.now() });
-              navigate('new', '', { force: true });
+              navigate('new', resumeReportId ?? '', { force: true });
             }}
           />
         )}
@@ -372,6 +376,7 @@ export default function App() {
               onPath={(sub) => navigate('reports', sub)}
               initialFilters={homeFilters ?? undefined}
               onInitialFiltersUsed={() => setHomeFilters(null)}
+              onContinue={(id) => navigate('new', id)}
             />
           </KeptSearchGate>
         )}
