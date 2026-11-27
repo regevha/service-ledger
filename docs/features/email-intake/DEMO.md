@@ -3,6 +3,11 @@
 Use an isolated local database and synthetic reports. The app creates a
 draft and a receipt. A person still approves the report in ServiceLedger.
 
+**Current status:** A live mailbox has yet to be connected and the live
+end-to-end (E2E) test has yet to run. The local demo uses synthetic
+`.eml` files and a folder outbox. The Azure schedule below is the
+agreed deployment plan.
+
 ## Start with the folder inbox
 
 Follow the [local backend setup](../../../backend/README.md). In WSL or
@@ -56,8 +61,10 @@ where they can be released or deleted.
    app's internal shared password or set a new one for the demo.
 3. In Admin, allowlist the test sender's **From** address. Start the
    poller and send one synthetic service report PDF to the new address.
-   Confirm the draft, the receipt, and the outcome in the Email log.
-   Once direct delivery passes, test a forwarded report and a scanned PDF.
+   To complete the live E2E test, confirm the Gmail message was picked
+   up, SL shows a draft with its source, the Email log records the
+   outcome, and the sender receives a receipt in their inbox. Once
+   direct delivery passes, test a forwarded report and a scanned PDF.
 
 ```dotenv
 EMAIL_INTAKE_ENABLED=true
@@ -85,12 +92,15 @@ Retries use the same Message-ID, and the intake log records failed sends.
 
 ## Schedule a deployed instance
 
-Use an internal job running `python -m app.email_poller --once` about
-once a minute with the same database, attachment storage, and relevant
-runtime settings as the API. Give only that job the mailbox credentials.
-For the on-demand worker, configure the poller with the existing worker
-trigger and an identity authorized to start that worker job. The default
-always-on worker picks up committed jobs on its own.
+Create a scheduled Azure Container Apps Job in the same environment
+as the API. Run `python -m app.email_poller --once` every minute
+(`* * * * *`). Give the job access to the same database and attachment
+storage as the API, and supply the Gmail credentials as job secrets.
+Keep the API on internal ingress. For the on-demand worker, configure
+the poller with the existing worker trigger and a managed identity
+authorized to start that worker job. The default always-on worker
+picks up committed jobs on its own.
+[Azure Container Apps Jobs](https://learn.microsoft.com/en-us/azure/container-apps/jobs)
 
 Keep `EMAIL_INTAKE_ENABLED=false` on deployments that have not been
 configured and tested. The current shared-password demo is for trusted

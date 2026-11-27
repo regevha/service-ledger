@@ -320,6 +320,11 @@ The November 13 [product brief](features/email-intake/PRODUCT.md) is the
 source of the acceptance criteria. See the [refreshed plan](features/email-intake/PLAN.md)
 for the work originally held in the email intake branches.
 
+Live mailbox connection and live end-to-end verification are pending.
+The deployment plan uses a dedicated Gmail inbox and a scheduled
+Azure Container Apps Job that runs the ServiceLedger poller.
+[Setup and verification](features/email-intake/DEMO.md)
+
 | ID | Scope | Depends on | Status |
 |---|---|---|---|
 | SL-120 | Email intake models, migration and DB tests | | in-review |
