@@ -15,6 +15,7 @@ files_touched:
   - frontend/src/components/email/**
   - frontend/src/components/intake/**
   - frontend/src/components/reports/ReportRow.tsx
+  - frontend/tests/e2e/email-intake.spec.ts
 acceptance:
   - Admin can manage allowed senders, view held files and release or delete them, and page through the intake log.
   - Reports show their intake source, and a user can continue an email draft from the appropriate existing intake step.

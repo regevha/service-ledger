@@ -268,14 +268,14 @@ export function ReportDetailScreen({
           <div className="spinner" />
           <div>{busyLabel ?? 'Loading report…'}</div>
         </div>
-      ) : report && (report.status === 'draft' || report.status === 'classified') && Object.keys(report.extracted_fields ?? {}).length === 0 ? (
+      ) : report?.source?.channel === 'email' && (report.status === 'draft' || report.status === 'classified') && Object.keys(report.extracted_fields ?? {}).length === 0 ? (
         <div className="unread-panel">
           <h2 className="section-title">Not read yet</h2>
           <div id="unread-explanation" className="banner banner-info">
             {report.source?.read_state === 'waiting_for_limit' ? <><strong>Waiting for the daily limit.</strong> The app has read as many reports today as it may. This report will be read after the limit resets. Nothing for you to do.</>
               : report.source?.read_state === 'queued' ? <><strong>Being read now.</strong> This usually takes under a minute. <button className="btn small" onClick={() => setReload((value) => value + 1)}>Check again</button></>
               : report.source?.needs_report_type ? <><strong>Needs a report type.</strong> The app did not recognise this kind of report, so it has not read it. Choose Continue to pick the instrument and report type. If there is no form for it yet, you can make one from this report.</>
-              : <><strong>Not read yet.</strong> {report.source?.channel === 'email' ? 'The app could not finish reading this report on its own. Choose Continue to check the instrument and report type, then read it.' : 'This report was uploaded but not read. Choose Continue to finish it.'}</>}
+              : <><strong>Not read yet.</strong> The app could not finish reading this report on its own. Choose Continue to check the instrument and report type, then read it.</>}
           </div>
           <div className="ei-actions">
             {onContinue && !['waiting_for_limit', 'queued'].includes(report.source?.read_state ?? '') && <button className="btn primary" aria-describedby="unread-explanation" onClick={() => confirmLeave(() => onContinue(report.id))}>Continue</button>}

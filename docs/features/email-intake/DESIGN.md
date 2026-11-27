@@ -393,7 +393,7 @@ There is no file name: it is never stored (AC-24). Do not invent one beyond the 
 
 ## 9. Report page of a draft that is not read yet (SL-81 text, SL-85 Continue)
 
-Today such a page shows "No template could be resolved for this report…". For a report that is not read yet (status `draft` or `classified`, no extracted fields) replace that sentence with the unread panel (`unread-panel`):
+The unread panel (`unread-panel`) applies to emailed reports with status `draft` or `classified` and no extracted fields. Web uploads retain their existing report page, including the template preview when a template has been selected.
 
 1. Heading (`section-title`): "Not read yet" (the same words as the Reports group).
 2. The source line (8).
@@ -406,7 +406,6 @@ Today such a page shows "No template could be resolved for this report…". For 
 | `read_state` = `waiting_for_limit` | `Notice tone="info"`: "**Waiting for the daily limit.** The app has read as many reports today as it may. This report will be read after the limit resets. Nothing for you to do." | Not shown |
 | `read_state` = `queued` | `Notice tone="info"`: "**Being read now.** This usually takes under a minute." with `btn small` **Check again** (reloads the report) | Not shown |
 | `read_state` = `needs_person` | `Notice tone="warn"`: "**Not read yet.** The app could not finish reading this report on its own. Choose Continue to check the instrument and report type, then read it." | Shown |
-| Web draft, no source (any unread web upload) | `Notice tone="warn"`: "**Not read yet.** This report was uploaded but not read. Choose Continue to finish it." | Shown |
 
 - **Continue** has `aria-describedby` pointing to the banner text, so its purpose is announced.
 - The texts do not name the daily number (60): the screen does not get it from the API, and it may change.

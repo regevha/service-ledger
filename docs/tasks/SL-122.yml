@@ -24,6 +24,7 @@ files_touched:
   - backend/app/routers/email_intake.py
   - backend/app/schemas/reports.py
   - backend/tests/test_email_intake.py
+  - backend/tests/test_email_ci_coverage.py
   - backend/tests/test_email_intake_models.py
   - backend/tests/test_email_mailbox.py
   - docs/features/email-intake/API.md
