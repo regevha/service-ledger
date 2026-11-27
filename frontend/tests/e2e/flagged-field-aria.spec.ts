@@ -11,11 +11,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONFIDENT_SCAN = path.join(__dirname, 'fixtures', 'synthetic-confident-scan.pdf');
 
 test('flagged fields are named groups that say they need checking, and checking keeps the focus', async ({ page }) => {
-  await page.route('**/extraction-jobs/*', async (route) => {
+  await page.route(/\/reports\/[\da-f-]{36}$/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
     const response = await route.fetch();
-    const job = await response.json();
-    if (job && typeof job === 'object') job.field_confidences = { ...(job.field_confidences ?? {}), report_date: 0.1 };
-    await route.fulfill({ response, json: job });
+    const report = await response.json();
+    if (report.review_state) {
+      report.review_state.field_confidences.report_date = 0.1;
+    }
+    await route.fulfill({ response, json: report });
   });
   await page.goto('/#/new');
   await page.locator('input[type="file"]').setInputFiles(uniqueFixture(CONFIDENT_SCAN));
