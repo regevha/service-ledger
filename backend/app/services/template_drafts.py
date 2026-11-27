@@ -12,7 +12,12 @@ from pydantic import ValidationError
 
 from app.config import get_settings
 from app.schemas.templates import REPORT_DATE_KEY, TemplateFieldDraft
-from app.services.claude_client import call_claude_tool, extract_tool_use, get_client, raise_if_truncated
+from app.services.claude_client import (
+    call_claude_tool,
+    extract_tool_use,
+    get_client,
+    raise_if_truncated,
+)
 from app.services.documents import PDF
 from app.services.errors import LiveClaudeError
 from app.services.page_image import render_pdf_page
