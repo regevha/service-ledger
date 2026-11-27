@@ -44,7 +44,9 @@ class TemplateDraftError(LiveClaudeError):
 
 
 def enabled() -> bool:
-    return bool(settings.use_live_claude and (settings.use_local_codex or settings.anthropic_api_key))
+    # The local Codex overlay adds this setting to the base application.
+    use_local_codex = getattr(settings, "use_local_codex", False)
+    return bool(settings.use_live_claude and (use_local_codex or settings.anthropic_api_key))
 
 
 def page_image(path: Path, file_type: str, page: int) -> bytes:

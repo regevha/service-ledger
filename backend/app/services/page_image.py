@@ -4,7 +4,7 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
-import pypdfium2 as pdfium
+import pypdfium2 as pdfium  # type: ignore[import-untyped]
 
 from app.services.page_text import PDFIUM_LOCK
 
