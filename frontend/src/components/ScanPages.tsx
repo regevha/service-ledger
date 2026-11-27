@@ -117,7 +117,7 @@ export function ScanPages({ attachmentId }: { attachmentId: string }) {
           +
         </button>
       </div>
-      <div className="scan-pane" ref={pane} aria-label="Original scan pages">
+      <div className="scan-pane" ref={pane} role="region" aria-label="Original scan pages" tabIndex={0}>
         <div className="scan-sheet" style={{ width: `${zoom * 100}%` }}>
           {Array.from({ length: pages }, (_, i) => (
             <img
