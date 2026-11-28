@@ -12,7 +12,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
 
 BACKEND = Path(__file__).resolve().parents[1]
-TABLES = {"intake_allow_entries", "intake_messages", "intake_files", "report_sources"}
+TABLES = {"intake_allow_entries", "intake_messages", "intake_files", "report_sources", "intake_notification_opt_outs"}
 ENUMS = {"intake_allow_kind", "intake_message_outcome", "intake_reply_status",
          "intake_file_outcome", "intake_read_state", "report_source_channel"}
 
@@ -26,7 +26,7 @@ def alembic(url, *args):
 def test_email_intake_migration_round_trip():
     config = Config(str(BACKEND / "alembic.ini"))
     config.set_main_option("script_location", str(BACKEND / "alembic"))
-    assert ScriptDirectory.from_config(config).get_heads() == ["0017_email_intake"]
+    assert ScriptDirectory.from_config(config).get_heads() == ["0019_receipt_filenames"]
     base = make_url(os.environ["DATABASE_URL"])
     name = f"sl_email_{uuid.uuid4().hex[:8]}"
     admin = create_engine(base.set(database="postgres"), isolation_level="AUTOCOMMIT")
@@ -52,7 +52,7 @@ def test_email_intake_migration_round_trip():
             assert ENUMS <= {item["name"] for item in inspect(engine).get_enums()}
             alembic(url, "check")
             with engine.connect() as conn:
-                assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0017_email_intake"
+                assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0019_receipt_filenames"
                 assert conn.execute(text("SELECT id FROM reports WHERE id = :id"), {"id": report_id}).scalar_one() == report_id
             alembic(url, "downgrade", "0016_relative_attachment_paths")
             assert TABLES.isdisjoint(inspect(engine).get_table_names())

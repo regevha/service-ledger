@@ -91,7 +91,7 @@ Reports already loaded keep the old label (AC-30): the label is copied into `rep
 ```
 - `sender_address` and `sender_label` are `null` unless the sender was on the allow list (AC-12).
 - `reason` is fixed app text (for example `"Sender is not on the allow list."`), never text from the message.
-- No body, subject or attachment name exists to return (they are never stored).
+- The API omits email bodies and the subject or attachment names used to compose a pending receipt.
 - `files_loaded` counts `loaded` + `needs_report_type` + `released`; `files_refused` counts `refused` + `duplicate`; `files_held` counts `held` + `held_deleted`.
 
 ## 4. Held files: "Check: maybe not a service report" (AC-10 outcome 4, AC-26)

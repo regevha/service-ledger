@@ -1,20 +1,21 @@
 """Admin operations for the internal email intake demo and the draft resume state."""
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app import models, schemas
+from app import email_poller, models, schemas
 from app.config import get_settings
 from app.db import get_db
 from app.job_trigger import notify_job_queued
@@ -25,6 +26,7 @@ from app.services.text_reader import extract_text
 from app.services.translation import translation_gate
 
 router = APIRouter(tags=["email intake"])
+logger = logging.getLogger(__name__)
 
 _DOMAIN = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+")
 _LOCAL = re.compile(r"[a-z0-9.!#$%&'*+/=?^_`{|}~-]+")
@@ -36,7 +38,7 @@ _FILE_REASON = {
 
 def _enabled() -> bool:
     settings = get_settings()
-    return settings.email_intake_enabled and (settings.email_mailbox == "folder" or bool(settings.shared_password))
+    return settings.email_intake_enabled and (settings.email_mailbox == "folder" or settings.imap_intake_allowed)
 
 
 def _require_enabled() -> None:
@@ -137,6 +139,27 @@ def email_status():
         max_pdf_megabytes=settings.max_pdf_upload_bytes // (1024 * 1024),
         poll_interval_seconds=settings.email_poll_interval_seconds,
     )
+
+
+class EmailPollResult(BaseModel):
+    handled: int
+
+
+@router.post("/email-intake/poll", response_model=EmailPollResult, dependencies=[Depends(_require_enabled)])
+def poll_email(request: Request):
+    # Require a non-simple browser request since a poll can move mail and send replies.
+    content_type = request.headers.get("content-type", "").partition(";")[0].strip().lower()
+    if content_type != "application/json":
+        raise HTTPException(415, "Use application/json to check the mailbox.")
+    try:
+        return EmailPollResult(handled=email_poller.poll_once(report_busy=True))
+    except email_poller.PollInProgress:
+        raise HTTPException(409, "The mailbox is already being checked.") from None
+    except email_poller.IncompletePoll:
+        raise HTTPException(502, "Some mail could not be processed. Check the email log and try again.") from None
+    except RuntimeError as exc:
+        logger.warning("Manual email check failed (%s).", type(exc).__name__)
+        raise HTTPException(503, "Could not check the mailbox. Check the setup and try again.") from None
 
 
 @router.get("/email-intake/allowed-senders", response_model=list[AllowedSenderOut], dependencies=[Depends(_require_enabled)])

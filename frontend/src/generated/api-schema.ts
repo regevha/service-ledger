@@ -1115,6 +1115,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/email-intake/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Poll Email */
+        post: operations["poll_email_email_intake_poll_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/email-intake/allowed-senders": {
         parameters: {
             query?: never;
@@ -1737,6 +1754,11 @@ export interface components {
             sender_label: string | null;
             reply_status: components["schemas"]["IntakeReplyStatus"];
         };
+        /** EmailPollResult */
+        EmailPollResult: {
+            /** Handled */
+            handled: number;
+        };
         /**
          * ExtractionJobKind
          * @description Which half of §4's pipeline this job runs. Not a spec-named column —
@@ -1950,6 +1972,35 @@ export interface components {
             /** Size Bytes */
             size_bytes: number;
         };
+        /** HomeEmailDraftOut */
+        HomeEmailDraftOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            report_type: components["schemas"]["ReportType"] | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "needs_report_type" | "needs_reading";
+        };
+        /** HomeEmailDraftsOut */
+        HomeEmailDraftsOut: {
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /** Items */
+            items?: components["schemas"]["HomeEmailDraftOut"][];
+        };
         /**
          * HomeFinalizedOut
          * @description Reports finalized (by the day of finalizing, not the visit date) this month and in the month before.
@@ -1980,6 +2031,7 @@ export interface components {
             waiting: components["schemas"]["HomeWaitingOut"];
             finalized: components["schemas"]["HomeFinalizedOut"];
             read_without_edits: components["schemas"]["HomeReadAccuracyOut"];
+            email_drafts?: components["schemas"]["HomeEmailDraftsOut"];
         };
         /**
          * HomeWaitingOut
@@ -5679,6 +5731,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmailIntakeStatusOut"];
+                };
+            };
+        };
+    };
+    poll_email_email_intake_poll_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailPollResult"];
                 };
             };
         };

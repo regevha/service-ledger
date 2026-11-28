@@ -7,8 +7,8 @@ See docs/features/email-intake/DATA_MODEL.md. Four tables, because:
 - where a report came from is stored beside the report, not in a report field (AC-27, R-15), and is a
   copy, so it survives log pruning and allow-list edits (AC-30).
 
-Privacy (AC-12, AC-24, AC-25): no email body, subject, attachment name, Reply-To, raw header or raw
-Message-ID is stored anywhere here. A sender address is stored only when the sender matched the allow
+Privacy: the bounded reply subject and Message-ID are transient metadata for pending replies.
+Attachment names are stored temporarily for pending receipts. No email body or Reply-To is stored. An address is stored only when the sender matched the allow
 list; CHECK constraints below make the database refuse an address on an unknown or unverified sender's row.
 
 Every index and constraint is declared here as well as in the migration, because tests build the
@@ -198,6 +198,8 @@ class IntakeMessage(Base):
     )
     reply_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
     reply_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reply_subject: Mapped[str | None] = mapped_column(String(240))
+    reply_to_message_id: Mapped[str | None] = mapped_column(String(254))
 
     # passive_deletes: pruning a message lets the database's ON DELETE CASCADE remove its files.
     files: Mapped[list["IntakeFile"]] = relationship(
@@ -205,9 +207,17 @@ class IntakeMessage(Base):
     )
 
 
+class IntakeNotificationOptOut(Base):
+    """Suppress receipts for one address, including addresses allowed by domain."""
+
+    __tablename__ = "intake_notification_opt_outs"
+
+    address: Mapped[str] = mapped_column(String(ADDRESS_MAX_LENGTH), primary_key=True)
+
+
 class IntakeFile(Base):
     """One row per attachment that was looked at, non-PDFs included, so the reply can list each one by
-    position ("Attachment 2"; AC-02, AC-13). No attachment name is stored (AC-24). A refused file is never
+    position ("Attachment 2"; AC-02, AC-13). A filename may be retained until its receipt is sent. A refused file is never
     written to disk (R-9). A held file (AC-10 outcome 4) is kept under `<storage>/email-held/` and
     `held_path` is set only while the outcome is `held` (CHECK); release or delete clears it (AC-26).
     `report_id` points at the draft the file made and is set to NULL if that report is deleted.
@@ -247,9 +257,11 @@ class IntakeFile(Base):
     outcome: Mapped[IntakeFileOutcome] = mapped_column(
         Enum(IntakeFileOutcome, name="intake_file_outcome"), nullable=False
     )
-    # One of: not_pdf, too_large, unsafe_pdf, not_service_report, unsure, no_text, already_on_file,
+    # One of: not_pdf, unsupported_type, type_mismatch, too_large, unsafe_pdf, not_service_report, unsure, no_text, already_on_file,
     # over_limit. A short code, not text from the file; the reply and the screens turn it into words.
     reason_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    receipt_type_hint: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    receipt_filename: Mapped[str | None] = mapped_column(String(160), nullable=True)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)

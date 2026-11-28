@@ -84,11 +84,32 @@ SHARED_PASSWORD=<internal ServiceLedger password>
 USE_LIVE_CLAUDE=false
 ```
 
+For local development without the ServiceLedger password, set
+`EMAIL_INTAKE_LOCAL_NO_AUTH=true` in `backend/.env` and leave
+`SHARED_PASSWORD` and `FRONTEND_DIST_DIR` unset. Start Uvicorn on
+`127.0.0.1` with `--no-proxy-headers` and keep Vite on `127.0.0.1` too.
+The Vite same-origin proxy is supported. Use this mode without public tunnels
+or reverse proxies that expose the local servers.
+
 Use an empty inbox. The poller handles mail already present as well as new
 mail. The IMAP adapter moves handled messages to Trash after commit. It
 uses IMAP UID MOVE or UIDPLUS with deletion scoped to that message. Confirm the Trash folder name if Gmail
 uses a localized name. SMTP delivery can be ambiguous after a disconnect.
 Retries use the same Message-ID, and the intake log records failed sends.
+
+Receipts reply in the original thread when the incoming message has a usable
+Message-ID. They include a plain-text fallback and an HTML layout with each
+attachment's outcome. The receipt shows the report type if it has already
+been assigned, plus the instrument model and service date when available. With live
+reading, the poller gives queued reports up to eight seconds per batch to finish
+before sending the details it has. To include report links, set `EMAIL_REPORT_BASE_URL` to the
+HTTPS address of the ServiceLedger instance protected by `SHARED_PASSWORD`.
+For local Gmail mode, set `EMAIL_REPORT_BASE_URL=http://127.0.0.1:5173` (or
+the loopback URL of your frontend). The recipient opens that link on the
+machine running ServiceLedger.
+The unsubscribe link prepares an email to the intake mailbox. Send it from
+the address that received the receipt to stop notifications for that address.
+Reports from allowed senders still go through intake.
 
 ## Schedule a deployed instance
 

@@ -42,6 +42,7 @@ from .intake import (  # noqa: F401
     IntakeFileOutcome,
     IntakeMessage,
     IntakeMessageOutcome,
+    IntakeNotificationOptOut,
     IntakeReadState,
     IntakeReplyStatus,
     ReportSource,

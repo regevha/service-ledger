@@ -253,7 +253,7 @@ TEMPLATE_ROWS: list[tuple[ReportType, str | None, list[dict]]] = [
 ]
 
 
-def seed(db: Session) -> list[ReportTemplate]:
+def seed(db: Session, *, prune_obsolete: bool = True) -> list[ReportTemplate]:
     """Upserts every row in TEMPLATE_ROWS, then removes any report_templates
     row for a report_type covered here that isn't in the current desired set
     — e.g. the three old per-model preventive_maintenance rows a v0.12
@@ -291,6 +291,12 @@ def seed(db: Session) -> list[ReportTemplate]:
         db.add(row)
         created.append(row)
     db.flush()
+
+    if not prune_obsolete:
+        db.commit()
+        for row in created:
+            db.refresh(row)
+        return created
 
     stale_candidates = [
         row

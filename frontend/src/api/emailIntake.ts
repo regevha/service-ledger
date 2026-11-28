@@ -1,4 +1,5 @@
 import { API_BASE, apiFetch } from './http';
+import type { components } from '../generated/api-schema';
 import type { ExtractionJob, ReportSource, ReportStatus } from './types';
 
 export interface EmailIntakeStatus {
@@ -50,6 +51,7 @@ export interface IntakeState {
 }
 const base = '/email-intake';
 export const getEmailIntakeStatus = () => apiFetch<EmailIntakeStatus>(`${base}/status`);
+export const pollEmailIntake = () => apiFetch<components['schemas']['EmailPollResult']>(`${base}/poll`, { method: 'POST' });
 export const listAllowedSenders = () => apiFetch<AllowedSender[]>(`${base}/allowed-senders`);
 export const addAllowedSender = (body: Pick<AllowedSender, 'kind' | 'value' | 'label'>) =>
   apiFetch<AllowedSender>(`${base}/allowed-senders`, { method: 'POST', body: JSON.stringify(body) });

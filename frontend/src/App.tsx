@@ -314,6 +314,7 @@ export default function App() {
             instruments={instruments}
             instrumentsLoading={instrumentsLoading}
             onOpenReport={(reportId) => navigate('reports', reportId)}
+            onContinueReport={(reportId) => navigate('new', reportId)}
             onOpenInstrument={(instrumentId) => navigate('reports', `instrument/${instrumentId}`)}
             onNewReport={() => selectView('new')}
             onOpenReports={() => selectView('reports')}

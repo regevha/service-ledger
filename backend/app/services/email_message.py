@@ -9,8 +9,8 @@ security"):
 * whether a trusted `Authentication-Results` header vouches for the sender;
 * the attachments: bytes, 1-based position and declared content type.
 
-It never returns, stores or logs the subject, the body, an attachment name or
-any other header. Nothing in the message is ever executed or followed. It never
+It exposes bounded Subject, Message-ID and attachment names for replies. The body
+is discarded. Nothing in the message is executed or followed. It never
 raises: a message it cannot read comes back with `unreadable=True`.
 
 Bounds: a message over `max_message_bytes` is not parsed (`too_large`); at most
@@ -32,6 +32,8 @@ logger = logging.getLogger("app.services.email_message")
 
 MAX_PARTS = 50
 MAX_ADDRESS_LENGTH = 254
+UNSUBSCRIBE_SUBJECT = "Unsubscribe from ServiceLedger email notifications"
+_REPLY_ID = re.compile(r"<[!-;=?A-~]+@[A-Za-z0-9.-]+>")
 
 _ADDRESS_OK = re.compile(r"^[^@\s<>(),;:\\\"\[\]\x00-\x1f\x7f]+@[^@\s<>(),;:\\\"\[\]\x00-\x1f\x7f]+$")
 _BULK_PRECEDENCE = frozenset({"bulk", "list", "junk"})
@@ -41,11 +43,12 @@ _COMMENT = re.compile(r"\([^()]*\)")
 @dataclass(frozen=True)
 class Attachment:
     """One attachment. `declared_type` is what the sender claims; trust only
-    the bytes (see `pdf_safety.check_pdf`). The file name is not kept."""
+    the bytes (see `pdf_safety.check_pdf`). The name is for the receipt only."""
 
     position: int  # 1-based, in the order found in the message
     data: bytes
     declared_type: str  # lower-case "maintype/subtype", or "" when missing
+    receipt_name: str | None = field(default=None, repr=False)
 
     @property
     def size_bytes(self) -> int:
@@ -63,6 +66,8 @@ class ParsedMessage:
     from_address: str | None = None
     # 64 hex chars (SHA-256). Empty when the message was not parsed.
     message_key: str = ""
+    reply_subject: str | None = field(default=None, repr=False)
+    reply_to_message_id: str | None = field(default=None, repr=False)
     # Auto-Submitted other than "no", Precedence bulk/list/junk, or an empty
     # Return-Path (a bounce). Such mail is ignored and never answered.
     is_auto_reply: bool = False
@@ -101,9 +106,14 @@ def _parse(raw: bytes, trusted_authserv_id: str | None) -> ParsedMessage:
         verified = from_address is not None and authentication_verdict(
             _headers(msg, "Authentication-Results"), trusted_authserv_id, from_address
         )
+    subject = " ".join((_first_header(msg, "Subject") or "").split())
+    subject = "".join(char for char in subject if char.isprintable())[:240]
+    message_id = (_first_header(msg, "Message-ID") or "").strip()
     return ParsedMessage(
         from_address=from_address,
         message_key=_message_key(msg, attachments),
+        reply_subject=subject or None,
+        reply_to_message_id=message_id if len(message_id) <= 254 and _REPLY_ID.fullmatch(message_id) else None,
         is_auto_reply=_is_auto_reply(msg),
         sender_verified=verified,
         attachments=tuple(attachments),
@@ -179,7 +189,7 @@ def _collect_attachments(msg: Message) -> tuple[list[Attachment], bool]:
         maintype = part.get_content_maintype()
         if maintype == "message":
             # An attached message is one non-PDF attachment; it is not opened.
-            attachments.append(Attachment(len(attachments) + 1, b"", part.get_content_type()))
+            attachments.append(Attachment(len(attachments) + 1, b"", part.get_content_type(), _receipt_name(part)))
             continue
         if part.is_multipart():
             children = list(part.iter_parts())  # type: ignore[attr-defined]
@@ -190,8 +200,14 @@ def _collect_attachments(msg: Message) -> tuple[list[Attachment], bool]:
         payload = part.get_payload(decode=True)
         data = payload if isinstance(payload, bytes) else b""
         declared = part.get_content_type() if part.get("Content-Type") else ""
-        attachments.append(Attachment(len(attachments) + 1, data, declared))
+        attachments.append(Attachment(len(attachments) + 1, data, declared, _receipt_name(part)))
     return attachments, False
+
+
+def _receipt_name(part: Message) -> str | None:
+    name = (part.get_filename() or "").replace("\\", "/").rsplit("/", 1)[-1]
+    name = "".join(char for char in name if char.isprintable()).strip()
+    return (name[:159] + "…" if len(name) > 160 else name) or None
 
 
 def _is_body(part: Message) -> bool:

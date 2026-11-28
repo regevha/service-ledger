@@ -92,7 +92,7 @@ def test_demo_cleans_temporary_file_when_publish_fails(inbox, tmp_path, monkeypa
     ("folder", "folder", "", "", "", "", None),
 ])
 def test_live_settings_fail_before_mailbox_access(mailbox, sender, password, authserv, username, app_password, expected):
-    settings = SimpleNamespace(email_mailbox=mailbox, email_sender=sender, shared_password=password,
+    settings = SimpleNamespace(email_mailbox=mailbox, email_sender=sender, imap_intake_allowed=bool(password),
         email_trusted_authserv_id=authserv, email_username=SecretStr(username), email_app_password=SecretStr(app_password))
     if expected:
         with pytest.raises(RuntimeError, match=expected):
@@ -204,7 +204,7 @@ def test_non_pdf_and_repeated_pdf_have_bounded_outcomes(client, db_session, inbo
     write_mail(inbox, "non-pdf.eml", message(b"ordinary text", message_id="<nonpdf@example.org>"))
     assert email_poller.poll_once() == 2
     rows = db_session.scalars(select(models.IntakeFile).order_by(models.IntakeFile.reason_code)).all()
-    assert sorted(row.reason_code for row in rows) == ["already_in_message", "not_pdf", "unsure"]
+    assert sorted(row.reason_code for row in rows) == ["already_in_message", "unsupported_type", "unsure"]
     logs = client.get("/email-intake/log").json()["items"]
     assert {row["outcome"] for row in logs} == {"processed", "no_pdf"}
     assert len(client.get("/email-intake/held").json()) == 1
@@ -226,7 +226,7 @@ def test_mime_part_limit_is_visible_in_reply(client, inbox):
     client.post("/email-intake/allowed-senders", json={"kind": "address", "value": "flow-team@example.org", "label": "Lab"})
     write_mail(inbox, "many.eml", message(*([b"not pdf"] * 55)))
     assert email_poller.poll_once() == 1
-    body = replies(inbox)[0].get_content()
+    body = replies(inbox)[0].get_body(preferencelist=("plain",)).get_content()
     assert "too many parts" in body
     assert "Attachment 49:" not in body
 

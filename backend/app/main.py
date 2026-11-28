@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
         ensure_default_types(db)
         ensure_default_makers(db)
         seed_instruments.seed(db)
-        seed_templates.seed(db)
+        seed_templates.seed(db, prune_obsolete=False)
     yield
 
 

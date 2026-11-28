@@ -63,7 +63,7 @@ def _schema():
 @pytest.fixture(autouse=True)
 def _clean_tables():
     with test_engine.begin() as conn:
-        for table in ("report_sources", "intake_files", "intake_messages", "intake_allow_entries", "translations", "extraction_jobs", "attachments", "reports", "report_templates", "instruments", "places", "instrument_models", "manufacturers", "instrument_types", "saved_report_filters", "search_model_calls", "field_alias_names", "field_alias_groups"):
+        for table in ("report_sources", "intake_files", "intake_messages", "intake_allow_entries", "intake_notification_opt_outs", "translations", "extraction_jobs", "attachments", "reports", "report_templates", "instruments", "places", "instrument_models", "manufacturers", "instrument_types", "saved_report_filters", "search_model_calls", "field_alias_names", "field_alias_groups"):
             conn.execute(text(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE"))
     yield
 

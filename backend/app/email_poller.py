@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import select, text
+from sqlalchemy import exists, select, text
 from sqlalchemy.orm import selectinload
 
 from app import models
@@ -16,9 +17,9 @@ from app.db import SessionLocal, engine
 from app.job_trigger import notify_job_queued
 from app.services.email_intake import (
     clean_paths,
+    compose_receipt,
     process_message,
     prune_log,
-    reply_body,
     retry_waiting,
 )
 from app.services.mail_sender import create_sender
@@ -28,18 +29,53 @@ from app.trace import configure_logging
 logger = logging.getLogger(__name__)
 _POLL_LOCK = 1502316810
 _REPLY_SUBJECT = "ServiceLedger email intake"
+_RECEIPT_WAIT_SECONDS = 8
 
 
 class IncompletePoll(RuntimeError):
     """A poll left mail unprocessed on purpose so the next attempt can retry it."""
 
 
-def _send_replies(settings: Settings) -> None:
+class PollInProgress(RuntimeError):
+    """Another process holds the mailbox lock."""
+
+
+def _clear_receipt_metadata(message: models.IntakeMessage) -> None:
+    message.reply_subject = message.reply_to_message_id = None
+    for entry in message.files:
+        entry.receipt_filename = None
+
+
+def _receipts_waiting_for_reading() -> bool:
     with SessionLocal() as db:
+        return bool(db.scalar(select(exists().where(
+            models.IntakeFile.message_id == models.IntakeMessage.id,
+            models.IntakeMessage.reply_status == models.IntakeReplyStatus.pending,
+            models.IntakeFile.read_state == models.IntakeReadState.queued,
+        ))))
+
+
+def _wait_for_receipt_details() -> None:
+    # Give the worker one shared window per batch. Each check opens a fresh
+    # transaction so a completed read is visible without holding a DB session idle.
+    deadline = time.monotonic() + _RECEIPT_WAIT_SECONDS
+    while _receipts_waiting_for_reading():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(0.5, remaining))
+
+
+def _send_replies(settings: Settings) -> None:
+    if settings.use_live_claude:
+        _wait_for_receipt_details()
+    with SessionLocal() as db:
+        report_loader = selectinload(models.IntakeMessage.files).selectinload(models.IntakeFile.report)
         pending = db.scalars(
             select(models.IntakeMessage)
             .where(models.IntakeMessage.reply_status == models.IntakeReplyStatus.pending)
-            .options(selectinload(models.IntakeMessage.files))
+            .options(report_loader.selectinload(models.Report.template),
+                     report_loader.selectinload(models.Report.instrument))
             .order_by(models.IntakeMessage.handled_at, models.IntakeMessage.id)
             .limit(50)
         ).all()
@@ -49,12 +85,22 @@ def _send_replies(settings: Settings) -> None:
         domain = settings.email_intake_address.rsplit("@", 1)[-1] or "serviceledger.invalid"
         for message in pending:
             assert message.sender_address is not None  # Enforced by the pending-reply constraint.
+            if db.get(models.IntakeNotificationOptOut, message.sender_address) is not None:
+                message.reply_status = models.IntakeReplyStatus.none
+                _clear_receipt_metadata(message)
+                db.commit()
+                continue
             # A deterministic Message-ID makes a retry recognizable. SMTP itself
             # cannot guarantee exactly-once delivery after an ambiguous disconnect.
             message_id = f"<sl-intake-{message.message_key}@{domain}>"
             message.reply_attempts += 1
             try:
-                sender.send(message.sender_address, _REPLY_SUBJECT, reply_body(message, settings.max_pdf_upload_bytes), message_id)
+                subject = message.reply_subject or _REPLY_SUBJECT
+                if message.reply_subject and not re.match(r"^re\s*:", subject, re.IGNORECASE):
+                    subject = f"Re: {subject}"
+                plain, html, unsubscribe = compose_receipt(message, settings)
+                sender.send(message.sender_address, subject, plain, message_id, html=html,
+                            parent_id=message.reply_to_message_id, unsubscribe=unsubscribe)
             except Exception:
                 logger.warning("Email intake notification failed for message %s.", message.id)
                 if message.reply_attempts >= 3:
@@ -62,12 +108,14 @@ def _send_replies(settings: Settings) -> None:
             else:
                 message.reply_status = models.IntakeReplyStatus.sent
                 message.reply_sent_at = datetime.now(timezone.utc)
+            if message.reply_status != models.IntakeReplyStatus.pending:
+                _clear_receipt_metadata(message)
             db.commit()
 
 
 def _validate_live_settings(settings: Settings) -> None:
     if settings.email_mailbox == "imap":
-        if not settings.shared_password:
+        if not settings.imap_intake_allowed:
             raise RuntimeError("Configure SHARED_PASSWORD before enabling a live inbox.")
         if not settings.email_trusted_authserv_id.strip():
             raise RuntimeError("Configure EMAIL_TRUSTED_AUTHSERV_ID before enabling a live inbox.")
@@ -76,7 +124,7 @@ def _validate_live_settings(settings: Settings) -> None:
             raise RuntimeError("Configure EMAIL_USERNAME and EMAIL_APP_PASSWORD for the dedicated mailbox.")
 
 
-def poll_once() -> int:
+def poll_once(*, report_busy: bool = False) -> int:
     """Return the number of messages committed and acknowledged in this pass."""
     settings = get_settings()
     if not settings.email_intake_enabled:
@@ -88,6 +136,8 @@ def poll_once() -> int:
         obtained = lock.scalar(text("SELECT pg_try_advisory_lock(:key)"), {"key": _POLL_LOCK})
         lock.commit()
         if not obtained:
+            if report_busy:
+                raise PollInProgress
             return 0
         try:
             return _poll_mailbox(settings)

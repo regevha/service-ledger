@@ -14,7 +14,8 @@ from typing import Protocol
 from app.config import Settings
 
 
-def _message(from_address: str, to: str, subject: str, body: str, message_id: str) -> EmailMessage:
+def _message(from_address: str, to: str, subject: str, body: str, message_id: str, *,
+             html: str | None = None, parent_id: str | None = None, unsubscribe: str | None = None) -> EmailMessage:
     message = EmailMessage(policy=SMTP)
     message['From'] = from_address
     message['To'] = to
@@ -23,12 +24,20 @@ def _message(from_address: str, to: str, subject: str, body: str, message_id: st
     key = hashlib.sha256(message_id.encode('utf-8')).hexdigest()
     message['Message-ID'] = f'<{key}@service-ledger.invalid>'
     message['Auto-Submitted'] = 'auto-replied'
+    if parent_id:
+        message['In-Reply-To'] = parent_id
+        message['References'] = parent_id
+    if unsubscribe:
+        message['List-Unsubscribe'] = f'<{unsubscribe}>'
     message.set_content(body)
+    if html:
+        message.add_alternative(html, subtype='html')
     return message
 
 
 class Sender(Protocol):
-    def send(self, to: str, subject: str, body: str, message_id: str) -> None: ...
+    def send(self, to: str, subject: str, body: str, message_id: str, *,
+             html: str | None = None, parent_id: str | None = None, unsubscribe: str | None = None) -> None: ...
 
 
 class FolderSender:
@@ -36,8 +45,10 @@ class FolderSender:
         self.directory = Path(directory)
         self.from_address = from_address
 
-    def send(self, to: str, subject: str, body: str, message_id: str) -> None:
-        message = _message(self.from_address, to, subject, body, message_id)
+    def send(self, to: str, subject: str, body: str, message_id: str, *,
+             html: str | None = None, parent_id: str | None = None, unsubscribe: str | None = None) -> None:
+        message = _message(self.from_address, to, subject, body, message_id, html=html,
+                           parent_id=parent_id, unsubscribe=unsubscribe)
         self.directory.mkdir(parents=True, exist_ok=True)
         key = hashlib.sha256(message_id.encode('utf-8')).hexdigest()
         # Publish only a complete file; a retry or concurrent send cannot replace it.
@@ -59,9 +70,11 @@ class SmtpSender:
     def __init__(self, settings: Settings):
         self.settings = settings
 
-    def send(self, to: str, subject: str, body: str, message_id: str) -> None:
+    def send(self, to: str, subject: str, body: str, message_id: str, *,
+             html: str | None = None, parent_id: str | None = None, unsubscribe: str | None = None) -> None:
         settings = self.settings
-        message = _message(settings.email_intake_address, to, subject, body, message_id)
+        message = _message(settings.email_intake_address, to, subject, body, message_id, html=html,
+                           parent_id=parent_id, unsubscribe=unsubscribe)
         try:
             with smtplib.SMTP_SSL(settings.email_smtp_host, settings.email_smtp_port,
                                   context=ssl.create_default_context(), timeout=30) as client:

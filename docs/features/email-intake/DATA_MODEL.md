@@ -60,7 +60,7 @@ One row per email the worker handled, whatever the outcome.
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| message_key | varchar(64) | not null, **unique**, CHECK 64 lower-case hex characters. SHA-256 hex of the normalized `Message-ID` header; when it is missing, of the `Date` header plus the SHA-256 of every attachment. The raw Message-ID is not stored. |
+| message_key | varchar(64) | not null, **unique**, CHECK 64 lower-case hex characters. SHA-256 hex of the normalized `Message-ID` header; when it is missing, of the `Date` header plus the SHA-256 of every attachment. |
 | received_at | timestamptz | not null. Mailbox arrival time (IMAP INTERNALDATE, file mtime for the folder mailbox) |
 | handled_at | timestamptz | not null, server default now() |
 | sender_address | varchar(254) | null. Set **only** when the sender matched the allow list |
@@ -68,7 +68,7 @@ One row per email the worker handled, whatever the outcome.
 | outcome | enum `intake_message_outcome` | `processed`, `unknown_sender`, `sender_not_verified`, `rate_limited`, `no_pdf`, `too_large`, `auto_reply_ignored`, `error` |
 | reason | varchar(200) | null. Fixed app text only |
 | file_count | int | not null default 0. Attachments seen (all types) |
-| files_skipped | int | not null default 0. PDFs beyond the per-message limit (AC-02) |
+| files_skipped | int | not null default 0. Attachments beyond the per-message limits, PDFs or other files (AC-02) |
 | reply_status | enum `intake_reply_status` | `none`, `pending`, `sent`, `failed`; not null default `none` |
 | reply_attempts | int | not null default 0 |
 | reply_sent_at | timestamptz | null |
@@ -93,7 +93,7 @@ One row per attachment that was looked at (non-PDFs included, so the reply can l
 | message_id | uuid FK `intake_messages.id` ON DELETE CASCADE | not null (indexed through the unique `(message_id, position)`) |
 | position | int | not null. 1-based order in the email; the reply says "Attachment 2" |
 | outcome | enum `intake_file_outcome` | `loaded`, `needs_report_type`, `held`, `released`, `held_deleted`, `refused`, `duplicate` |
-| reason_code | varchar(40) | null. One of: `not_pdf`, `too_large`, `unsafe_pdf`, `not_service_report`, `unsure`, `no_text`, `already_on_file`, `over_limit` |
+| reason_code | varchar(40) | null. One of: `not_pdf`, `unsupported_type`, `type_mismatch`, `too_large`, `unsafe_pdf`, `not_service_report`, `unsure`, `no_text`, `already_on_file`, `over_limit` |
 | size_bytes | int | not null |
 | page_count | int | null |
 | content_sha256 | varchar(64) | null, CHECK 64 lower-case hex characters (same type as `attachments.content_sha256`) |
@@ -111,7 +111,7 @@ first); `ix_intake_files_waiting_for_limit (created_at) WHERE read_state = 'wait
 Constraints (CHECK): `position >= 1`; `size_bytes >= 0`; `page_count` null or not negative; `held_path` only while
 `outcome = 'held'` (release and delete must clear it in the same update); `waiting_kind` only with a non-null
 `read_state = 'waiting_for_limit'` (clear it when the job is queued).
-No original attachment name is stored anywhere (AC-24). The attachment row of an emailed report gets a generated
+The original name is used only for the pending receipt. The attachment row of an emailed report gets a generated
 `original_filename` (`emailed-report-<n>.pdf`).
 
 ## `report_sources`
@@ -140,8 +140,12 @@ Deleting a report leaves its `intake_files` row and the database sets `intake_fi
 
 ## What is never stored
 
-Email body, subject, attachment names, Reply-To, other recipients, raw headers, the raw Message-ID, and the address of a sender who is
-not on the allow list. Refused files are never written to disk. Raw messages are deleted from the mailbox after their row commits (R-9).
+Email body, Reply-To, other recipients and the address of a sender who is
+not on the allow list. Pending receipts temporarily hold bounded subject and Message-ID values
+for threading and attachment names to identify each result to the sender. These are removed when
+the receipt is sent, suppressed, or exhausts its retries. The notification opt-out table
+stores addresses that requested no receipts. Refused files are never written to disk. Raw messages
+are deleted from the mailbox after their row commits (R-9).
 
 ## Retention
 

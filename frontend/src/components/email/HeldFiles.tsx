@@ -5,7 +5,7 @@ import { deleteHeldFile, heldFileUrl, listHeldFiles, releaseHeldFile, type HeldF
 import { showToast } from '../../toast';
 import { ReceivedTime } from './SourceLine';
 
-export function HeldFiles({ onCount }: { onCount: (count: number) => void }) {
+export function HeldFiles({ onCount, refresh }: { onCount: (count: number) => void; refresh: number }) {
   const [rows, setRows] = useState<HeldFile[]>([]);
   const [error, setError] = useState('');
   const [nonce, setNonce] = useState(0);
@@ -20,7 +20,7 @@ export function HeldFiles({ onCount }: { onCount: (count: number) => void }) {
     } catch {
       if (!isCancelled()) setError('Could not load the held files. Check your connection and try again.');
     }
-  }, [nonce, onCount], 'Could not load the held files.');
+  }, [nonce, onCount, refresh], 'Could not load the held files.');
   async function act(row: HeldFile, remove: boolean) {
     if (busy) return;
     setBusy(row.id); setError(''); setLoadedId(null);

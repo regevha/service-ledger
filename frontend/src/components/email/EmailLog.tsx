@@ -4,7 +4,7 @@ import { getEmailLog, type EmailLogRow } from '../../api/emailIntake';
 import { ReceivedTime } from './SourceLine';
 import { emailFiles, emailOutcome, replyStatus } from './emailLog';
 
-export function EmailLog() {
+export function EmailLog({ refresh }: { refresh: number }) {
   const [page, setPage] = useState<{ items: EmailLogRow[]; total: number } | null>(null);
   const [offset, setOffset] = useState(0);
   const [nonce, setNonce] = useState(0);
@@ -17,10 +17,10 @@ export function EmailLog() {
       if (!data.items.length && offset) setOffset(0);
       else setPage(data);
     } catch { if (!isCancelled()) setError(true); }
-  }, [offset, nonce], 'Could not load the email log.');
+  }, [offset, nonce, refresh], 'Could not load the email log.');
   return <>
     <h2>Email log</h2>
-    <p className="admin-lead">Every email the app received in the last 90 days, newest first. The app never keeps the subject, the text of the email or the file names. Addresses are kept only for allowed senders.</p>
+    <p className="admin-lead">Every email the app received in the last 90 days, newest first. Subjects, email text and file names are omitted from this log. Addresses are kept only for allowed senders.</p>
     <div className="ei-actions"><span role="status">{loading ? 'Loading…' : page?.total ? `Showing ${offset + 1}–${Math.min(offset + 50, page.total)} of ${page.total}` : '0 emails'}</span>
       <button className="btn small" disabled={loading || !offset} onClick={() => setOffset((value) => Math.max(0, value - 50))}>Newer</button><button className="btn small" disabled={loading || !page || offset + 50 >= page.total} onClick={() => setOffset((value) => value + 50)}>Older</button><button className="btn small" disabled={loading} onClick={() => { setOffset(0); setNonce((n) => n + 1); }}>Refresh</button>
     </div>
