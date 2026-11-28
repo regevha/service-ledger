@@ -543,3 +543,8 @@ PDFs for exactly this kind of check — see their docstrings.
   — two LSRFortessa repairs, a FACSAria III repair, and a FACSDiscover S8
   repair all map cleanly with zero schema changes, making it the only
   template checked against every model in scope (§5, §12).
+
+## Email intake demo
+
+See the [email intake demo and Gmail setup](../docs/features/email-intake/DEMO.md)
+for the folder inbox, dedicated Gmail account, and independent poller.

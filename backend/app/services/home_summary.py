@@ -80,4 +80,35 @@ def home_summary(db: Session, today: date) -> schemas.HomeSummaryOut:
             this_month=finalized_between(this_start, None), last_month=finalized_between(last_start, this_start)
         ),
         read_without_edits=read_accuracy(db, today),
+        email_drafts=email_drafts_needing_attention(db),
+    )
+
+
+def email_drafts_needing_attention(db: Session) -> schemas.HomeEmailDraftsOut:
+    rows = db.execute(
+        select(
+            models.Report.id, models.ReportSource.received_at, models.ReportTemplate.report_type,
+            models.IntakeFile.receipt_type_hint, models.IntakeFile.outcome, func.count().over(),
+        )
+        .select_from(models.Report)
+        .join(models.ReportSource, models.ReportSource.report_id == models.Report.id)
+        .join(models.IntakeFile, models.IntakeFile.id == models.ReportSource.intake_file_id)
+        .outerjoin(models.ReportTemplate, models.ReportTemplate.id == models.Report.template_id)
+        .where(
+            models.ReportSource.channel == models.ReportSourceChannel.email,
+            models.Report.status.in_((models.ReportStatus.draft, models.ReportStatus.classified)),
+            models.IntakeFile.read_state == models.IntakeReadState.needs_person,
+        )
+        .order_by(models.ReportSource.received_at.desc(), models.Report.id.desc())
+        .limit(6)
+    ).all()
+    return schemas.HomeEmailDraftsOut(
+        count=rows[0][-1] if rows else 0,
+        items=[
+            schemas.HomeEmailDraftOut(
+                id=report_id, received_at=received_at, report_type=report_type or hint,
+                reason="needs_report_type" if outcome == models.IntakeFileOutcome.needs_report_type else "needs_reading",
+            )
+            for report_id, received_at, report_type, hint, outcome, _ in rows
+        ],
     )

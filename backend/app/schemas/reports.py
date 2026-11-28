@@ -5,9 +5,13 @@ import uuid
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models import (
+    IntakeFileOutcome,
+    IntakeReadState,
+    ReportSource,
+    ReportSourceChannel,
     ReportStatus,
     ReportType,
 )
@@ -44,6 +48,33 @@ class ReportCreate(BaseModel):
     report_date: date | None = None
 
 
+class ReportSourceOut(BaseModel):
+    channel: ReportSourceChannel
+    sender_address: str | None
+    sender_label: str | None
+    received_at: datetime
+    read_state: IntakeReadState | None = None
+    needs_report_type: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def from_source(cls, value):
+        if not isinstance(value, ReportSource):
+            return value
+        intake_file = value.intake_file
+        return {
+            "channel": value.channel,
+            "sender_address": value.sender_address,
+            "sender_label": value.sender_label,
+            "received_at": value.received_at,
+            "read_state": intake_file.read_state if intake_file else None,
+            "needs_report_type": bool(
+                intake_file and intake_file.outcome == IntakeFileOutcome.needs_report_type
+                and value.report.template_id is None
+            ),
+        }
+
+
 class ReportOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,6 +101,7 @@ class ReportOut(BaseModel):
     # ReportOut already loads the ORM row this hangs off of for free via the
     # existing Report.attachments relationship.
     attachments: list[AttachmentOut] = []
+    source: ReportSourceOut | None = None
 
 
 class SnippetPiece(BaseModel):
@@ -100,6 +132,7 @@ class ReportListItemOut(BaseModel):
     report_date: date | None
     created_at: datetime
     finalized_at: datetime | None
+    source_channel: ReportSourceChannel = ReportSourceChannel.web
     # Only when the list was searched (`q`): a short excerpt around the first
     # match, and the label of the field it came from.
     snippet: list[SnippetPiece] | None = None

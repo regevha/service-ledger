@@ -1,0 +1,42 @@
+id: SL-122
+title: "Email intake processing and APIs"
+role: backend-dev
+branch: SL-122-email-intake-flow
+wave: Email intake
+depends_on: ["SL-120", "SL-121"]
+files_touched:
+  - backend/README.md
+  - backend/app/email_poller.py
+  - backend/.env.example
+  - backend/app/config.py
+  - backend/app/main.py
+  - backend/app/job_queue.py
+  - backend/app/tools/email_demo_send.py
+  - backend/app/worker.py
+  - backend/app/services/email_intake.py
+  - backend/app/services/attachment_storage.py
+  - backend/app/services/job_limits.py
+  - backend/app/services/mailbox.py
+  - backend/app/services/mail_sender.py
+  - backend/app/services/report_views.py
+  - backend/app/services/duplicates.py
+  - backend/app/routers/attachments.py
+  - backend/app/routers/email_intake.py
+  - backend/app/schemas/reports.py
+  - backend/tests/test_email_intake.py
+  - backend/tests/test_email_ci_coverage.py
+  - backend/tests/test_email_intake_models.py
+  - backend/tests/test_email_mailbox.py
+  - docs/features/email-intake/API.md
+  - docs/features/email-intake/DEMO.md
+  - docs/features/email-intake/PLAN.md
+  - docs/PLAN.md
+  - frontend/src/generated/api-schema.ts
+  - frontend/src/api/emailIntake.ts
+  - frontend/src/components/IntakeFlow.tsx
+  - frontend/src/components/intake/intakeResume.ts
+  - frontend/src/components/intake/intakeResume.test.ts
+acceptance:
+  - "A verified allowlisted email creates drafts and one reply. Delivery replay and concurrent polling are safe."
+  - "All four relevance outcomes, job-limit retry, admin review and report provenance are observable."
+  - "Email starts an on-demand worker after commit. Human review remains the final approval step."

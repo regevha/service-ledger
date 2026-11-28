@@ -328,6 +328,15 @@
   border-top: 1px solid var(--border);
   font-size: var(--text-sm);
 }
+.home-email-drafts {
+  border-top: 1px solid var(--border);
+}
+.home-email-drafts h3 {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  font-size: var(--text-base);
+}
 @media (max-width: 899px) {
   .home {
     padding: var(--space-4);

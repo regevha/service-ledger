@@ -74,7 +74,7 @@ def find_duplicate_report_ids(
 _READ_STATUSES = (ReportStatus.extracted, ReportStatus.in_review, ReportStatus.finalized)
 
 
-def find_read_copy(db: Session, content_sha256: str, exclude_report_id: uuid.UUID) -> Report | None:
+def find_read_copy(db: Session, content_sha256: str, exclude_report_id: uuid.UUID | None = None) -> Report | None:
     """The most recent *other* report whose attachment has exactly these bytes
     and which has already been read (extracted, in review or finalized), or
     None. A report whose first attempt failed or never got past classification

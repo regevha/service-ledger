@@ -141,7 +141,17 @@ export interface ReportTemplate {
 
 export type ReportStatus = components['schemas']['ReportStatus'];
 
+export interface ReportSource {
+  channel: 'email' | 'web';
+  sender_address: string | null;
+  sender_label: string | null;
+  received_at: string;
+  read_state: 'queued' | 'waiting_for_limit' | 'needs_person' | null;
+  needs_report_type: boolean;
+}
+
 export interface Report {
+  source?: ReportSource | null;
   id: string;
   instrument_id: string | null;
   template_id: string | null;
@@ -165,6 +175,7 @@ export interface Report {
 // Report/ReportOut, which stays the raw single-report detail shape the
 // review flow round-trips against.
 export interface ReportListItem {
+  source_channel?: 'email' | 'web';
   id: string;
   status: ReportStatus;
   instrument_model: string | null;

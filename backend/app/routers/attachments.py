@@ -14,12 +14,10 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import get_settings
 from app.db import get_db
+from app.job_queue import set_email_job_state
 from app.job_trigger import notify_job_queued
-from app.services.attachment_names import (
-    clean_original_filename,
-    source_name,
-    stored_filename,
-)
+from app.services.attachment_names import source_name
+from app.services.attachment_storage import store_attachment
 from app.services.documents import (
     ACCEPTED_DESCRIPTION,
     HTML,
@@ -30,14 +28,17 @@ from app.services.documents import (
 from app.services.duplicates import (
     find_duplicate_report_ids,
     find_read_copy,
-    normalize_work_order,
 )
 from app.services.field_locator import FieldToLocate, locate_fields
 from app.services.html_pdf import ensure_display_pdf
 from app.services.image_size import ImageSizeError, check_image_size
-from app.services.job_limits import CANCELLED_UNSENT, enforce_job_limits
-from app.services.page_text import PDFIUM_LOCK, count_pdf_pages, page_words
-from app.services.text_reader import extract_text, read_work_order
+from app.services.job_limits import (
+    CANCELLED_UNSENT,
+    enforce_job_limits,
+    find_unfinished_job,
+)
+from app.services.page_text import PDFIUM_LOCK, page_words
+from app.services.text_reader import extract_text
 from app.services.translation import translation_gate
 
 logger = logging.getLogger(__name__)
@@ -126,33 +127,7 @@ async def upload_attachment(report_id: uuid.UUID, file: UploadFile, request: Req
             },
         )
 
-    report_dir = settings.attachment_storage_path / str(report_id)
-    report_dir.mkdir(parents=True, exist_ok=True)
-    # file.filename is entirely client-controlled, so it never reaches the
-    # filesystem: the file is stored under a generated name (a UUID and the
-    # extension of the detected type), and the uploader's name is kept as
-    # cleaned text in the database for the download and the stub-mode hooks.
-    # That closes by construction what used to need care here: slashes and
-    # ".." in the name (a nested-folder upload once crashed with a 500),
-    # characters the Azure Files share refuses, names longer than the 255
-    # bytes a Hebrew name can reach, and NFC/NFD differences.
-    original_filename = clean_original_filename(file.filename, media_type)
-    dest = report_dir / stored_filename(media_type)
-    dest.write_bytes(contents)
-
-    attachment = models.Attachment(
-        report_id=report_id,
-        file_path=str(dest),
-        original_filename=original_filename,
-        file_type=media_type,
-        page_count=count_pdf_pages(contents) if media_type == PDF else 1,
-        content_sha256=content_sha256,
-        # Read from the PDF's own text, no model involved, so the same visit
-        # scanned twice is flagged right at upload — before (or without)
-        # classification. None for an image or a PDF with no text layer.
-        work_order_number=normalize_work_order(read_work_order(extract_text(contents))) if media_type in (PDF, HTML) else None,
-    )
-    db.add(attachment)
+    attachment, _ = store_attachment(db, report_id, contents, media_type, file.filename)
     db.commit()
     db.refresh(attachment)
     # Same bytes, or the same work-order number, already on file under another
@@ -414,29 +389,6 @@ def _model_locations(boxes: dict, page_count: int) -> dict:
 
 
 _CHUNK_BYTES = 1024 * 1024
-_UNFINISHED = (
-    models.ExtractionJobStatus.pending,
-    models.ExtractionJobStatus.classifying,
-    models.ExtractionJobStatus.extracting,
-    models.ExtractionJobStatus.translating,
-    models.ExtractionJobStatus.awaiting_approval,
-)
-
-
-def _unfinished_job(db: Session, attachment_id: uuid.UUID, kind: models.ExtractionJobKind):
-    """The job of this kind for this attachment that has not finished, if any.
-    Asking again while one runs returns that job instead of queuing a second one
-    (two paid model calls for the same answer, the later overwriting the earlier)."""
-    return (
-        db.query(models.ExtractionJob)
-        .filter(
-            models.ExtractionJob.attachment_id == attachment_id,
-            models.ExtractionJob.kind == kind,
-            models.ExtractionJob.status.in_(_UNFINISHED),
-        )
-        .order_by(models.ExtractionJob.started_at.desc())
-        .first()
-    )
 
 
 @router.post(
@@ -468,7 +420,7 @@ def classify_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db))
     if blocked:
         raise HTTPException(409, blocked)
 
-    running = _unfinished_job(db, attachment_id, models.ExtractionJobKind.classify)
+    running = find_unfinished_job(db, attachment_id, models.ExtractionJobKind.classify)
     if running is not None:
         return running
     enforce_job_limits(db, attachment_id, models.ExtractionJobKind.classify)
@@ -518,7 +470,7 @@ def extract_attachment(attachment_id: uuid.UUID, db: Session = Depends(get_db)):
     if blocked:
         raise HTTPException(409, blocked)
 
-    running = _unfinished_job(db, attachment_id, models.ExtractionJobKind.extract)
+    running = find_unfinished_job(db, attachment_id, models.ExtractionJobKind.extract)
     if running is not None:
         return running
     enforce_job_limits(db, attachment_id, models.ExtractionJobKind.extract)
@@ -580,6 +532,7 @@ def cancel_extraction_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
     job.status = models.ExtractionJobStatus.failed
     job.error_message = CANCELLED_UNSENT if waiting else "Cancelled."
     job.completed_at = datetime.now(timezone.utc)
+    set_email_job_state(job, models.IntakeReadState.needs_person)
     db.commit()
     db.refresh(job)
     logger.info("Cancelled %s job %s", job.kind.value, job.id)

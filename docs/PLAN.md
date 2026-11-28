@@ -313,3 +313,21 @@ Source: the test review of `regevha/service-ledger` at 8c8730d (handoff of 2026-
 | ID | Owner | Description | Acceptance criteria | Files touched | Depends on | Status |
 |---|---|---|---|---|---|---|
 | SL-116 | lead | Items 1.2 + 1.1 (C-03, C-01, C-11): cap Chromium `install-deps` (3 min, three tries); add the `ci-ok` aggregate job that Nir then requires on main. | See `docs/tasks/SL-116.yml`. | see `docs/tasks/SL-116.yml` | none | in-review |
+
+## Email intake
+
+The November 13 [product brief](features/email-intake/PRODUCT.md) is the
+source of the acceptance criteria. See the [refreshed plan](features/email-intake/PLAN.md)
+for the work originally held in the email intake branches.
+
+Live mailbox connection and live end-to-end verification are pending.
+The deployment plan uses a dedicated Gmail inbox and a scheduled
+Azure Container Apps Job that runs the ServiceLedger poller.
+[Setup and verification](features/email-intake/DEMO.md)
+
+| ID | Scope | Depends on | Status |
+|---|---|---|---|
+| SL-120 | Email intake models, migration and DB tests | | in-review |
+| SL-121 | MIME and PDF checks, folder and Gmail adapters | | in-review |
+| SL-122 | Poller, queues, review and admin APIs, and demo verification | SL-120, SL-121 | in-review |
+| SL-123 | Admin and draft screens | SL-122 | in-review |

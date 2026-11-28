@@ -21,7 +21,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
 from app import models
@@ -40,17 +40,52 @@ def _counted(query):
     )
 
 
-def enforce_job_limits(db: Session, attachment_id: uuid.UUID, kind: models.ExtractionJobKind) -> None:
+_UNFINISHED = (
+    models.ExtractionJobStatus.pending,
+    models.ExtractionJobStatus.classifying,
+    models.ExtractionJobStatus.extracting,
+    models.ExtractionJobStatus.translating,
+    models.ExtractionJobStatus.awaiting_approval,
+)
+
+
+def _lock_submissions(db: Session) -> None:
+    # Separate from the worker-run and mailbox locks. Web and email must
+    # make the count-and-enqueue decision under the same lock.
+    db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": 1502316812})
+
+
+def find_unfinished_job(
+    db: Session, attachment_id: uuid.UUID, kind: models.ExtractionJobKind
+) -> models.ExtractionJob | None:
+    _lock_submissions(db)
+    return (
+        db.query(models.ExtractionJob)
+        .filter(
+            models.ExtractionJob.attachment_id == attachment_id,
+            models.ExtractionJob.kind == kind,
+            models.ExtractionJob.status.in_(_UNFINISHED),
+        )
+        .order_by(models.ExtractionJob.started_at.desc())
+        .first()
+    )
+
+
+def job_limit(
+    db: Session, attachment_id: uuid.UUID, kind: models.ExtractionJobKind
+) -> tuple[str, str] | None:
+    """Check and reserve the decision until the caller commits its new job."""
     settings = get_settings()
     since = datetime.now(timezone.utc) - WINDOW
 
     if settings.daily_job_cap > 0:
+        _lock_submissions(db)
         today = _counted(
             db.query(func.count(models.ExtractionJob.id)).filter(models.ExtractionJob.started_at >= since)
         ).scalar()
         if today >= settings.daily_job_cap:
-            raise HTTPException(
-                429,
+            return (
+                "daily",
                 f"The daily limit of {settings.daily_job_cap} model jobs has been reached. "
                 "Try again later, or ask the administrator to raise DAILY_JOB_CAP.",
             )
@@ -65,8 +100,14 @@ def enforce_job_limits(db: Session, attachment_id: uuid.UUID, kind: models.Extra
             )
         ).scalar()
         if failed >= settings.max_failed_attempts_per_attachment:
-            raise HTTPException(
-                429,
+            return (
+                "attempts",
                 f"This document has failed {failed} times in the last 24 hours. "
                 "Check the file (is it readable? is it the right type?) before trying again later.",
             )
+    return None
+
+
+def enforce_job_limits(db: Session, attachment_id: uuid.UUID, kind: models.ExtractionJobKind) -> None:
+    if limit := job_limit(db, attachment_id, kind):
+        raise HTTPException(429, limit[1])

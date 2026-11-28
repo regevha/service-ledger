@@ -1,0 +1,24 @@
+import { describe, expect, it } from 'vitest';
+import { intakeResumeStep, manualClassification } from './intakeResume';
+import type { IntakeState } from '../../api/emailIntake';
+import type { ExtractionJob } from '../../api/types';
+const base: IntakeState = { report_id: 'report', status: 'draft', attachment_id: 'scan', translation_status: 'not_needed', translation_required: false, latest_jobs: { translate: null, classify: null, extract: null }, source: null };
+const job = (kind: ExtractionJob['kind'], status: ExtractionJob['status']): ExtractionJob => ({ id: kind, attachment_id: 'scan', kind, status, classification: null, field_confidences: null, error_message: null, started_at: null, completed_at: null });
+const source = (read_state: 'queued' | 'waiting_for_limit' | 'needs_person' | null, needs_report_type = false) => ({ channel: 'email' as const, sender_address: 'lab@example.org', sender_label: 'Lab team', received_at: '2026-11-01T12:00:00Z', read_state, needs_report_type });
+describe('continuing an existing draft', () => {
+  it.each(['extracted', 'in_review', 'finalized'] as const)('returns to the report when %s', (status) => expect(intakeResumeStep({ ...base, status })).toBe('already-read'));
+  it('requires the stored attachment', () => expect(intakeResumeStep({ ...base, attachment_id: null })).toBe('missing-attachment'));
+  it('never starts work while waiting for the cap', () => expect(intakeResumeStep({ ...base, source: source('waiting_for_limit') })).toBe('waiting'));
+  it.each(['pending', 'extracting', 'awaiting_approval'] as const)('resumes the %s translation', (status) => expect(intakeResumeStep({ ...base, latest_jobs: { ...base.latest_jobs, translate: job('translate', status) } })).toBe('translation'));
+  it('reviews a pending translation before classifying', () => expect(intakeResumeStep({ ...base, translation_status: 'pending_review', source: source('needs_person') })).toBe('translation-review'));
+  it('waits for existing classification', () => expect(intakeResumeStep({ ...base, latest_jobs: { ...base.latest_jobs, classify: job('classify', 'pending') } })).toBe('classification'));
+  it('asks a person for an unknown report type', () => expect(intakeResumeStep({ ...base, source: source('needs_person', true) })).toBe('manual-classification'));
+  it('asks a person after classification failed', () => expect(intakeResumeStep({ ...base, latest_jobs: { ...base.latest_jobs, classify: job('classify', 'failed') } })).toBe('manual-classification'));
+  it('resumes existing extraction', () => expect(intakeResumeStep({ ...base, latest_jobs: { ...base.latest_jobs, extract: job('extract', 'pending') } })).toBe('extraction'));
+  it('offers a retry for failed extraction', () => expect(intakeResumeStep({ ...base, source: source('needs_person'), latest_jobs: { ...base.latest_jobs, extract: job('extract', 'failed') } })).toBe('extraction-failed'));
+  it('reviews completed extraction', () => expect(intakeResumeStep({ ...base, latest_jobs: { ...base.latest_jobs, extract: job('extract', 'succeeded') } })).toBe('review'));
+  it('reuses completed classification', () => expect(intakeResumeStep({ ...base, latest_jobs: { ...base.latest_jobs, classify: job('classify', 'succeeded') } })).toBe('classification'));
+  it('translates a paused emailed report before its manual type step', () => expect(intakeResumeStep({ ...base, translation_status: null, translation_required: true, source: source('needs_person') })).toBe('translation'));
+  it('checks language for an untouched web draft', () => expect(intakeResumeStep({ ...base, translation_status: null })).toBe('translation'));
+  it('provides a manual choice without deleting an unsure draft', () => expect(manualClassification({ recognized: false })).toMatchObject({ recognized: true, instrument: { value: '', confidence: 0 }, report_type: { value: '', confidence: 0 }, resolved_instrument_id: null }));
+});

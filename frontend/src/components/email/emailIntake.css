@@ -1,0 +1,91 @@
+.ei-section {
+  --ei-content-width:38rem;
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-4);
+  min-width:0;
+}
+.ei-subnav,.ei-actions { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+.ei-subnav .btn[aria-current='page'],
+.ei-subnav .btn[aria-current='page']:hover {
+  background:var(--accent-soft);
+  color:var(--accent-strong);
+  border-color:var(--accent);
+}
+.ei-status,.source-line { color:var(--text-muted); font-size:var(--text-sm); overflow-wrap:anywhere; }
+.ei-status {
+  display:grid;
+  gap:var(--space-2);
+  width:100%;
+  max-width:var(--ei-content-width);
+  padding:var(--space-3) var(--space-4);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  background:var(--surface-2);
+}
+.ei-status-header {
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr) auto;
+  align-items:center;
+  justify-items:start;
+  gap:var(--space-2);
+}
+.ei-status-header .ei-addr { min-width:0; color:var(--text); }
+.ei-poll { align-items:center; }
+.ei-status p,.ei-panel-heading h2,.ei-panel-heading p,.ei-sender-form p { margin:0; }
+.ei-panel-heading { display:grid; gap:var(--space-1); }
+.ei-panel-heading h2 { font-size:var(--text-xl); }
+.ei-panel-heading p { max-width:var(--ei-content-width); color:var(--text-muted); }
+.ei-sub { display:block; color:var(--text-muted); font-size:var(--text-sm); }
+.ei-addr { font-family:var(--font-mono); overflow-wrap:anywhere; }
+.ei-section .ei-table :is(th,td) { text-align:left; white-space:normal; vertical-align:top; font-family:var(--font-ui); overflow-wrap:anywhere; }
+.ei-section .ei-table .num { text-align:right; font-family:var(--font-mono); }
+.ei-state-on { background:var(--good-soft); color:var(--good); }
+.ei-state-off,.source-pill { background:var(--surface-2); color:var(--text-muted); text-transform:none; }
+.ei-count { background:var(--flag-soft); border:1px solid var(--flag); }
+.ei-sender-form {
+  width:100%;
+  max-width:var(--ei-content-width);
+  padding:var(--space-4);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+}
+.ei-sender-form input:is([type='email'],[type='text']) {
+  width:100%;
+  min-height:44px;
+  padding:9px 12px;
+  border:1px solid var(--input-border);
+  border-radius:var(--radius-sm);
+  background:var(--surface);
+  color:var(--text);
+  font:400 var(--text-base) var(--font-ui);
+}
+.ei-sender-form input[aria-invalid='true'] { border-color:var(--crit); }
+.ei-field-error { color:var(--crit); font-size:var(--text-sm); }
+.ei-sender-kind { min-width:0; margin:0; border:0; padding:0; }
+.ei-sender-kind legend { padding:0; font-weight:500; }
+.ei-sender-kind .ei-actions { column-gap:var(--space-5); }
+.ei-sender-form .ei-sender-kind label { flex-direction:row; align-items:center; gap:var(--space-2); min-height:44px; }
+.ei-sender-kind input { margin:0; accent-color:var(--accent); }
+.unread-panel { display:flex; flex-direction:column; gap:var(--space-3); }
+@media (max-width:900px) {
+ .ei-wide-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+ .ei-wide-table tr,.ei-wide-table td { display:block; width:auto; }
+ .ei-wide-table td::before { content:attr(data-label); display:block; color:var(--text-faint); font-size:var(--text-sm); }
+ .ei-wide-table tr { border-bottom:1px solid var(--border); padding:var(--space-3) 0; }
+}
+@media (max-width:620px) {
+ .admin-screen:has(.ei-section) .admin-nav {
+   display:grid;
+   grid-template-columns:repeat(3, minmax(0, 1fr));
+ }
+ .ei-subnav { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); }
+ .ei-subnav .btn { justify-content:center; padding-inline:var(--space-1); text-align:center; }
+ .ei-status { padding-inline:var(--space-3); }
+ .ei-status-header .btn { padding-inline:var(--space-2); }
+ .ei-sender-form input:is([type='email'],[type='text']) { font-size:1rem; }
+ .ei-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+ .ei-table tr,.ei-table td { display:block; width:auto; }
+ .ei-table td::before { content:attr(data-label); display:block; color:var(--text-faint); font-size:var(--text-sm); }
+ .ei-table tr { border-bottom:1px solid var(--border); padding:var(--space-3) 0; }
+}

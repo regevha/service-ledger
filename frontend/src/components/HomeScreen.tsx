@@ -27,6 +27,7 @@ export function HomeScreen({
   instruments,
   instrumentsLoading,
   onOpenReport,
+  onContinueReport,
   onOpenInstrument,
   onNewReport,
   onOpenReports,
@@ -37,6 +38,7 @@ export function HomeScreen({
   instruments: Instrument[];
   instrumentsLoading: boolean;
   onOpenReport: (reportId: string) => void;
+  onContinueReport: (reportId: string) => void;
   onOpenInstrument: (instrumentId: string) => void;
   onNewReport: () => void;
   onOpenReports: () => void;
@@ -108,6 +110,7 @@ export function HomeScreen({
   const dueSoon = maintenance.length - overdue;
 
   const heading = today.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  const emailDrafts = data?.summary.email_drafts;
 
   return (
     <div className="home" data-testid="home-screen">
@@ -175,6 +178,13 @@ export function HomeScreen({
                 ? 'Nothing is waiting for review'
                 : `Oldest has waited ${waitingAge(data.summary.waiting.oldest_created_at, today) ?? 'a while'}`}
           </span>
+          {!!emailDrafts?.count && <a className="home-tile-link" href="#home-email-drafts-title"
+            onClick={(event) => {
+              event.preventDefault();
+              document.getElementById('home-email-drafts-title')?.focus();
+            }}>
+            {emailDrafts.count} email {emailDrafts.count === 1 ? 'draft needs' : 'drafts need'} action
+          </a>}
         </div>
         <div className={`stat-tile home-tile${overdue > 0 ? ' attention' : ''}`} data-testid="home-tile-overdue">
           <span className="stat-value">{instrumentsLoading ? '–' : overdue}</span>
@@ -256,6 +266,24 @@ export function HomeScreen({
               </button>
             </div>
           )}
+          {!!emailDrafts?.count && <div className="home-email-drafts">
+            <h3 id="home-email-drafts-title" tabIndex={-1}>Email drafts that need action</h3>
+            <ul className="home-list">
+              {emailDrafts.items?.map((draft) => (
+                <li className="home-row" key={draft.id}>
+                  <div className="home-row-main">
+                    <span className="home-row-title">{draft.report_type ? REPORT_TYPE_LABEL[draft.report_type] : 'Email draft'}</span>
+                    <span className="home-row-sub">{draft.reason === 'needs_report_type' ? 'Choose the report type' : 'Reading needs attention'}
+                      {' · '}{new Date(draft.received_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                  </div>
+                  <button className="btn small" type="button" onClick={() => onContinueReport(draft.id)}>Continue</button>
+                </li>
+              ))}
+            </ul>
+            {emailDrafts.count > (emailDrafts.items?.length ?? 0) && <div className="home-more">
+              <button type="button" className="link-button" onClick={onOpenReports}>See all reports</button>
+            </div>}
+          </div>}
         </section>
 
         <section className="home-card" aria-labelledby="home-maintenance-title">

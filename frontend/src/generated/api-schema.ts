@@ -1098,6 +1098,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/email-intake/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Email Status */
+        get: operations["email_status_email_intake_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/email-intake/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Poll Email */
+        post: operations["poll_email_email_intake_poll_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/email-intake/allowed-senders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Allowed Senders */
+        get: operations["list_allowed_senders_email_intake_allowed_senders_get"];
+        put?: never;
+        /** Add Allowed Sender */
+        post: operations["add_allowed_sender_email_intake_allowed_senders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/email-intake/allowed-senders/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Allowed Sender */
+        delete: operations["remove_allowed_sender_email_intake_allowed_senders__entry_id__delete"];
+        options?: never;
+        head?: never;
+        /** Change Allowed Sender */
+        patch: operations["change_allowed_sender_email_intake_allowed_senders__entry_id__patch"];
+        trace?: never;
+    };
+    "/email-intake/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Email Log */
+        get: operations["email_log_email_intake_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/email-intake/held": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Held Files */
+        get: operations["list_held_files_email_intake_held_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/email-intake/held/{file_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Held File */
+        get: operations["download_held_file_email_intake_held__file_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/email-intake/held/{file_id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release Held File */
+        post: operations["release_held_file_email_intake_held__file_id__release_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/email-intake/held/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Held File */
+        delete: operations["delete_held_file_email_intake_held__file_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/{report_id}/intake-state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report Intake State */
+        get: operations["report_intake_state_reports__report_id__intake_state_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/attachments/{attachment_id}/translate": {
         parameters: {
             query?: never;
@@ -1391,6 +1563,37 @@ export interface components {
             /** Names */
             names: string[];
         };
+        /** AllowedSenderChange */
+        AllowedSenderChange: {
+            /** Label */
+            label: string;
+        };
+        /** AllowedSenderCreate */
+        AllowedSenderCreate: {
+            /** Label */
+            label: string;
+            kind: components["schemas"]["IntakeAllowKind"];
+            /** Value */
+            value: string;
+        };
+        /** AllowedSenderOut */
+        AllowedSenderOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["IntakeAllowKind"];
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /**
          * AppConfigOut
          * @description GET /config (§4/§12): the confidence thresholds the frontend used to
@@ -1476,6 +1679,8 @@ export interface components {
             created_at: string;
             /** Finalized At */
             finalized_at: string | null;
+            /** @default web */
+            source_channel: components["schemas"]["ReportSourceChannel"];
             /** Snippet */
             snippet?: components["schemas"]["SnippetPiece"][] | null;
             /** Matched Field */
@@ -1487,6 +1692,72 @@ export interface components {
             reason: "same_file" | "same_work_order";
             /** Work Order Number */
             work_order_number?: string | null;
+        };
+        /** EmailIntakeStatusOut */
+        EmailIntakeStatusOut: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Mailbox
+             * @enum {string}
+             */
+            mailbox: "folder" | "imap";
+            /**
+             * Sender
+             * @enum {string}
+             */
+            sender: "folder" | "smtp";
+            /** Intake Address */
+            intake_address: string | null;
+            /** Max Pdfs Per Message */
+            max_pdfs_per_message: number;
+            /** Max Pdf Megabytes */
+            max_pdf_megabytes: number;
+            /** Poll Interval Seconds */
+            poll_interval_seconds: number;
+        };
+        /** EmailLogPage */
+        EmailLogPage: {
+            /** Items */
+            items: components["schemas"]["EmailLogRow"][];
+            /** Total */
+            total: number;
+        };
+        /** EmailLogRow */
+        EmailLogRow: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            outcome: components["schemas"]["IntakeMessageOutcome"];
+            /** Reason */
+            reason: string | null;
+            /** File Count */
+            file_count: number;
+            /** Files Loaded */
+            files_loaded: number;
+            /** Files Held */
+            files_held: number;
+            /** Files Refused */
+            files_refused: number;
+            /** Files Skipped */
+            files_skipped: number;
+            /** Sender Address */
+            sender_address: string | null;
+            /** Sender Label */
+            sender_label: string | null;
+            reply_status: components["schemas"]["IntakeReplyStatus"];
+        };
+        /** EmailPollResult */
+        EmailPollResult: {
+            /** Handled */
+            handled: number;
         };
         /**
          * ExtractionJobKind
@@ -1680,6 +1951,56 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HeldFileOut */
+        HeldFileOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /** Sender Label */
+            sender_label: string | null;
+            /** Reason */
+            reason: string;
+            /** Page Count */
+            page_count: number | null;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** HomeEmailDraftOut */
+        HomeEmailDraftOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            report_type: components["schemas"]["ReportType"] | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "needs_report_type" | "needs_reading";
+        };
+        /** HomeEmailDraftsOut */
+        HomeEmailDraftsOut: {
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /** Items */
+            items?: components["schemas"]["HomeEmailDraftOut"][];
+        };
         /**
          * HomeFinalizedOut
          * @description Reports finalized (by the day of finalizing, not the visit date) this month and in the month before.
@@ -1710,6 +2031,7 @@ export interface components {
             waiting: components["schemas"]["HomeWaitingOut"];
             finalized: components["schemas"]["HomeFinalizedOut"];
             read_without_edits: components["schemas"]["HomeReadAccuracyOut"];
+            email_drafts?: components["schemas"]["HomeEmailDraftsOut"];
         };
         /**
          * HomeWaitingOut
@@ -1998,6 +2320,50 @@ export interface components {
             /** Location */
             location?: string | null;
             status?: components["schemas"]["InstrumentStatus"] | null;
+        };
+        /**
+         * IntakeAllowKind
+         * @description An allow-list entry is either one address or a whole domain (AC-20).
+         * @enum {string}
+         */
+        IntakeAllowKind: "address" | "domain";
+        /**
+         * IntakeMessageOutcome
+         * @description What happened to one email as a whole. Per-file results are in `IntakeFileOutcome`.
+         * @enum {string}
+         */
+        IntakeMessageOutcome: "processed" | "unknown_sender" | "sender_not_verified" | "rate_limited" | "no_pdf" | "too_large" | "auto_reply_ignored" | "error";
+        /**
+         * IntakeReadState
+         * @description Where reading stopped for a file that made a draft (AC-10 outcome 2, AC-16).
+         * @enum {string}
+         */
+        IntakeReadState: "queued" | "waiting_for_limit" | "needs_person";
+        /**
+         * IntakeReplyStatus
+         * @description The one reply per email (AC-13). `none` means no reply is due (unknown sender, auto-reply).
+         * @enum {string}
+         */
+        IntakeReplyStatus: "none" | "pending" | "sent" | "failed";
+        /** IntakeStateOut */
+        IntakeStateOut: {
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            status: components["schemas"]["ReportStatus"];
+            /** Attachment Id */
+            attachment_id: string | null;
+            /** Translation Status */
+            translation_status: string | null;
+            /** Translation Required */
+            translation_required: boolean;
+            /** Latest Jobs */
+            latest_jobs: {
+                [key: string]: components["schemas"]["ExtractionJobOut"] | null;
+            };
+            source: components["schemas"]["ReportSourceOut"] | null;
         };
         /**
          * ItemSchemaColumn
@@ -2496,6 +2862,15 @@ export interface components {
             /** H */
             h: number;
         };
+        /** ReleaseOut */
+        ReleaseOut: {
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            read_state: components["schemas"]["IntakeReadState"];
+        };
         /**
          * RepairCountOut
          * @description How many finalized repair reports one instrument has in a date range.
@@ -2619,6 +2994,8 @@ export interface components {
             created_at: string;
             /** Finalized At */
             finalized_at: string | null;
+            /** @default web */
+            source_channel: components["schemas"]["ReportSourceChannel"];
             /** Snippet */
             snippet?: components["schemas"]["SnippetPiece"][] | null;
             /** Matched Field */
@@ -2666,6 +3043,7 @@ export interface components {
              * @default []
              */
             attachments: components["schemas"]["AttachmentOut"][];
+            source?: components["schemas"]["ReportSourceOut"] | null;
         };
         /** ReportSearchParseIn */
         ReportSearchParseIn: {
@@ -2709,6 +3087,32 @@ export interface components {
             key: string;
             /** Label */
             label: string;
+        };
+        /**
+         * ReportSourceChannel
+         * @description How a report arrived. Only `email` rows are written today; no row means a web upload.
+         *     `web` is here so recording the uploader later (AC-31) needs no enum migration.
+         * @enum {string}
+         */
+        ReportSourceChannel: "email" | "web";
+        /** ReportSourceOut */
+        ReportSourceOut: {
+            channel: components["schemas"]["ReportSourceChannel"];
+            /** Sender Address */
+            sender_address: string | null;
+            /** Sender Label */
+            sender_label: string | null;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            read_state?: components["schemas"]["IntakeReadState"] | null;
+            /**
+             * Needs Report Type
+             * @default false
+             */
+            needs_report_type: boolean;
         };
         /**
          * ReportStatus
@@ -5298,6 +5702,339 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExtractionJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    email_status_email_intake_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailIntakeStatusOut"];
+                };
+            };
+        };
+    };
+    poll_email_email_intake_poll_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailPollResult"];
+                };
+            };
+        };
+    };
+    list_allowed_senders_email_intake_allowed_senders_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllowedSenderOut"][];
+                };
+            };
+        };
+    };
+    add_allowed_sender_email_intake_allowed_senders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AllowedSenderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllowedSenderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_allowed_sender_email_intake_allowed_senders__entry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_allowed_sender_email_intake_allowed_senders__entry_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AllowedSenderChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllowedSenderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    email_log_email_intake_log_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailLogPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_held_files_email_intake_held_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldFileOut"][];
+                };
+            };
+        };
+    };
+    download_held_file_email_intake_held__file_id__file_get: {
+        parameters: {
+            query?: {
+                inline?: boolean;
+            };
+            header?: never;
+            path: {
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    release_held_file_email_intake_held__file_id__release_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_held_file_email_intake_held__file_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_intake_state_reports__report_id__intake_state_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeStateOut"];
                 };
             };
             /** @description Validation Error */

@@ -3,6 +3,8 @@ name: Tests
 on:
   push:
     branches: [main]
+    # Test tagged commits through a push event before creating a branch that requires ci-ok.
+    tags: ['ci/**']
   pull_request:
   # The shuffled-order run (random test order, to catch tests that only pass
   # because of what ran before them) happens once a day, not on every push or

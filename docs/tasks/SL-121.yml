@@ -1,0 +1,20 @@
+id: SL-121
+title: "Email and PDF checks and mailbox adapters"
+role: backend-dev
+branch: SL-121-email-intake-mail
+wave: Email intake
+depends_on: []
+files_touched:
+  - backend/.env.example
+  - backend/app/config.py
+  - backend/app/services/email_message.py
+  - backend/app/services/pdf_safety.py
+  - backend/app/services/mailbox.py
+  - backend/app/services/mail_sender.py
+  - backend/tests/test_email_message.py
+  - backend/tests/test_pdf_safety.py
+  - backend/tests/test_email_mailbox.py
+acceptance:
+  - "Use the draft MIME and PDF modules and test valid and refused inputs."
+  - "Folder adapters use synthetic .eml files. Gmail reads a dedicated mailbox over IMAP TLS and sends over SMTP TLS."
+  - "The fetch yields bounded messages and acknowledgement targets only the committed message."

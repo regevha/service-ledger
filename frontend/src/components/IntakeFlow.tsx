@@ -1,3 +1,8 @@
+import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import { getIntakeState } from '../api/emailIntake';
+import { ApiError, getReport, getReportTemplate, getTranslation, PollAborted } from '../api';
+import { SourceLine } from './email/SourceLine';
+import { intakeResumeStep, manualClassification } from './intake/intakeResume';
 import { useEffect, useReducer, useState } from 'react';
 import { PromptReview } from './PromptReview';
 import { attachmentFileUrl, reportPdfUrl, type Instrument, type ReportTemplate } from '../api';
@@ -39,6 +44,7 @@ import { STEP_FAILED, phaseReducer, templateApplies, type Phase } from './intake
 
 
 export function IntakeFlow({
+  resumeReportId,
   instruments,
   instrumentsError,
   fieldConfidenceThreshold,
@@ -53,6 +59,7 @@ export function IntakeFlow({
   onBatchFiles,
   templateCreated,
 }: {
+  resumeReportId?: string;
   instruments: Instrument[];
   instrumentsError: string | null;
   fieldConfidenceThreshold: number;
@@ -75,7 +82,7 @@ export function IntakeFlow({
   /** Set when a template was just saved for a request made here; `nonce` changes on every save. */
   templateCreated?: { template: ReportTemplate; nonce: number } | null;
 }) {
-  const [phase, dispatchPhase] = useReducer(phaseReducer, { name: 'intake' } as Phase);
+  const [phase, dispatchPhase] = useReducer(phaseReducer, resumeReportId ? { name: 'working', label: 'Opening the report…' } as Phase : { name: 'intake' } as Phase);
   const {
     cancelledRef,
     abortRef,
@@ -86,7 +93,8 @@ export function IntakeFlow({
     discardDraft,
     submitOrResume,
     pollJob,
-  } = useIntakeJobs();
+  } = useIntakeJobs(resumeReportId);
+  const [resumeWaiting, setResumeWaiting] = useState(false);
   const promptReview = usePromptReview();
 
   const [technicianName, setTechnicianName] = useState('');
@@ -140,7 +148,7 @@ export function IntakeFlow({
     phase, dispatchPhase, confirmLeave, files, technicianName, instruments,
     classificationConfidenceThreshold, pickInstrumentId, pickReportType, setPickInstrumentId, setPickReportType,
     setSerialNotice, setUnitChosen, noteDuplicates, chooseAnotherFile, requestTemplate, resetToIntake,
-    onCancel, onCreateTemplate, onInstrumentAdded,
+    onCancel, onCreateTemplate, onInstrumentAdded, preserveExisting: !!resumeReportId,
     cancelledRef, abortRef, jobIdRef, draftIdRef, discardDraftRef, submittedJobs, discardDraft, submitOrResume, pollJob,
     report, setReport, classification, setClassification, attachmentId, setAttachmentId, template, setTemplate,
     fieldConfidences, extractionSeconds, fields, setFields, reportDate, setReportDate, savedSnapshot, setSavedSnapshot,
@@ -150,6 +158,88 @@ export function IntakeFlow({
     handleCancel, resolveAndExtract, runTranslation, handleInstrumentAdded,
     handleStart, handleConfirmClassification, backToClassification, handleSaveFields,
   } = steps;
+
+  // Continuing owns no new draft: reuse the stored attachment and jobs and retain it on Cancel.
+  useAsyncEffect(async (isCancelled) => {
+    if (!resumeReportId) return;
+    const alive = () => !isCancelled() && !cancelledRef.current;
+    async function resume() {
+      setResumeWaiting(false);
+      dispatchPhase({ type: 'working', label: 'Opening the report…' });
+      try {
+        let [state, current] = await Promise.all([getIntakeState(resumeReportId!), getReport(resumeReportId!)]);
+        if (!alive()) return;
+        setReport(current);
+        // The mailbox worker owns its chaining: observe it rather than enqueue another chain.
+        const deadline = Date.now() + 300_000;
+        while (state.source?.read_state === 'queued' && intakeResumeStep(state) !== 'already-read') {
+          if (!alive()) return;
+          const job = Object.values(state.latest_jobs).find((value) => value && !['succeeded', 'failed'].includes(value.status));
+          dispatchPhase({ type: 'working', label: job?.kind === 'translate' ? 'Translating the report…' : job?.kind === 'extract' ? 'Reading the fields from the document…' : 'Reading the instrument and visit type…' });
+          if (job) await pollJob(job.id, { timeoutMs: 300_000 });
+          else await new Promise((resolve) => setTimeout(resolve, 500));
+          if (!alive()) return;
+          state = await getIntakeState(resumeReportId!);
+          if (Date.now() > deadline) throw new Error('The report is still being read. Check again in a moment.');
+        }
+        if (!alive()) return;
+        current = await getReport(resumeReportId!);
+        if (!alive()) return;
+        setReport(current);
+        const step = intakeResumeStep(state);
+        if (step === 'already-read') { onOpenReport?.(current.id); return; }
+        if (step === 'waiting') { setResumeWaiting(true); return; }
+        if (!state.attachment_id) throw new Error('This report has no scan to continue. Open New report to upload a scan.');
+        const attId = state.attachment_id;
+        setAttachmentId(attId);
+        if (step === 'translation-review') {
+          const existing = await getTranslation(attId);
+          if (!alive()) return;
+          setTranslation(existing);
+          dispatchPhase({ type: 'show', name: 'review-translation' });
+          return;
+        }
+        if (step === 'manual-classification') {
+          const result = manualClassification(state.latest_jobs.classify?.classification);
+          setClassification(result);
+          setPickInstrumentId(current.instrument_id ?? result.suggested_instrument_id ?? '');
+          setPickReportType(result.report_type.confidence >= classificationConfidenceThreshold ? result.report_type.value as import('../api').ReportType : '');
+          dispatchPhase({ type: 'show', name: 'confirm-classification' });
+          return;
+        }
+        if (['extraction', 'extraction-failed', 'review'].includes(step)) {
+          if (!current.template_id) throw new Error('Choose an instrument and report type before reading this report.');
+          const tpl = await getReportTemplate(current.template_id);
+          if (!alive()) return;
+          setTemplate(tpl);
+          if (step === 'review') {
+            loadExtraction(current, state.latest_jobs.extract?.field_confidences ?? {}, 0);
+            dispatchPhase({ type: 'show', name: 'review' });
+          } else if (step === 'extraction-failed') {
+            steps.failPhase(state.latest_jobs.extract?.error_message ?? 'Reading the fields failed.', () => void steps.runExtraction(attId, current.id, tpl));
+          } else {
+            const job = state.latest_jobs.extract;
+            if (job) submittedJobs.current.set(`extract:${attId}`, job.id);
+            await steps.runExtraction(attId, current.id, tpl);
+          }
+          return;
+        }
+        if (step === 'translation') {
+          const job = state.latest_jobs.translate;
+          if (job && job.status !== 'failed') submittedJobs.current.set(`translate:${attId}:`, job.id);
+          await runTranslation(attId, current.id);
+        } else {
+          const job = state.latest_jobs.classify;
+          if (job && job.status !== 'failed') submittedJobs.current.set(`classify:${attId}`, job.id);
+          await steps.runClassification(attId, current.id);
+        }
+      } catch (e) {
+        if (!alive() || e instanceof PollAborted) return;
+        steps.failPhase(e instanceof ApiError && e.status === 404 ? 'This report no longer exists. Someone may have deleted it.' : e instanceof Error ? e.message : 'Could not open this report. Check your connection and try again.', () => void resume());
+      }
+    }
+    await resume();
+  }, [resumeReportId], 'Could not open this report.');
 
   // A template was saved for the request made above: read the waiting report
   // again with it, as long as it is the template this report resolves to.
@@ -189,7 +279,13 @@ export function IntakeFlow({
 
   return (
     <>
-      <StepBar phase={phase} />
+      {resumeReportId && <div className="banner banner-info">
+        Continuing a report{report?.source?.channel === 'email' ? ' received by email' : ' uploaded in the app'}.
+        {report && <SourceLine report={report} />}
+        <button className="btn small" onClick={() => onOpenReport?.(resumeReportId)}>Back to the report</button>
+      </div>}
+      {!resumeWaiting && <StepBar phase={phase} />}
+      {resumeWaiting && <div className="banner banner-info"><strong>Waiting for the daily limit.</strong> The app has read as many reports today as it may. This report will be read after the limit resets. Nothing for you to do.</div>}
 
       {promptReview && (
         <PromptReview
@@ -213,7 +309,7 @@ export function IntakeFlow({
         />
       )}
 
-      {phase.name === 'working' && (
+      {phase.name === 'working' && !resumeWaiting && (
         <WorkingPanel
           label={phase.label}
           fileName={file?.name}
@@ -236,6 +332,7 @@ export function IntakeFlow({
         />
       )}
 
+      {phase.name === 'confirm-classification' && report?.source?.needs_report_type && <div className="banner banner-warn">The app did not recognise this kind of report. Choose the instrument and the report type. If there is no form for it yet, you can create one from this report.</div>}
       {phase.name === 'confirm-classification' && classification && (
         <ConfirmClassificationScreen
           classification={classification}
@@ -322,7 +419,7 @@ export function IntakeFlow({
         </div>
       )}
 
-      {phase.name === 'done' && report && <DoneScreen report={report} instrumentLabel={reviewInstrument ? `${reviewInstrument.model} · ${reviewInstrument.serial_number}` : undefined} typeLabel={template ? REPORT_TYPE_LABEL[template.report_type] : undefined} onReset={resetToIntake} onOpenReport={onOpenReport} onViewInstrument={onViewInstrument} />}
+      {phase.name === 'done' && report && <DoneScreen report={report} instrumentLabel={reviewInstrument ? `${reviewInstrument.model} · ${reviewInstrument.serial_number}` : undefined} typeLabel={template ? REPORT_TYPE_LABEL[template.report_type] : undefined} onReset={resumeReportId ? () => onCancel?.() : resetToIntake} onOpenReport={onOpenReport} onViewInstrument={onViewInstrument} />}
 
       {phase.name === 'error' && (
         <div className="section">
@@ -340,7 +437,7 @@ export function IntakeFlow({
             </details>
           )}
           <div className="cta-row">
-            <button className="btn" onClick={resetToIntake}>
+            <button className="btn" onClick={resumeReportId ? () => onCancel?.() : resetToIntake}>
               Start over
             </button>
             {phase.action && (

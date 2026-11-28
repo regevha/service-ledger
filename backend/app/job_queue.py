@@ -85,10 +85,20 @@ def _was_cancelled(db: Session, job_id) -> bool:
     return row is None or bool((row[0] or {}).get("cancelled"))
 
 
+def set_email_job_state(job: models.ExtractionJob, state: models.IntakeReadState | None) -> None:
+    if not (job.params or {}).get("auto_extract") or job.attachment is None:
+        return
+    source = job.attachment.report.source
+    if source is not None and source.intake_file is not None:
+        source.intake_file.waiting_kind = None
+        source.intake_file.read_state = state
+
+
 def _fail_job(db: Session, job: models.ExtractionJob, message: str) -> None:
     job.status = models.ExtractionJobStatus.failed
     job.error_message = message
     job.completed_at = datetime.now(timezone.utc)
+    set_email_job_state(job, models.IntakeReadState.needs_person)
     db.commit()
 
 
@@ -165,6 +175,7 @@ def _recover_orphaned_jobs(db: Session, stale_after_seconds: float | None = None
         job.status = models.ExtractionJobStatus.failed
         job.error_message = "Worker restarted while this job was in progress — resubmit to retry."
         job.completed_at = datetime.now(timezone.utc)
+        set_email_job_state(job, models.IntakeReadState.needs_person)
     if orphaned:
         db.commit()
     return len(orphaned)

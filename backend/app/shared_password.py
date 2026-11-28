@@ -19,12 +19,31 @@ import base64
 import binascii
 import hmac
 import logging
+import re
+
+from starlette.datastructures import Headers
+from starlette.responses import JSONResponse
 
 from app.config import get_settings
 
 logger = logging.getLogger("app.shared_password")
 
 OPEN_PATHS = {"/health", "/health/ready"}
+_LOOPBACK = {"127.0.0.1", "::1"}
+_LOCAL_AUTHORITY = r"(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]+)?"
+
+
+def _local_request(scope) -> bool:
+    client = scope.get("client")
+    if not client or client[0] not in _LOOPBACK:
+        return False
+    headers = Headers(scope=scope)
+    if "forwarded" in headers or "x-forwarded-for" in headers:
+        return False
+    if not re.fullmatch(_LOCAL_AUTHORITY, headers.get("host", ""), re.IGNORECASE):
+        return False
+    origin = headers.get("origin")
+    return origin is None or bool(re.fullmatch(r"https?://" + _LOCAL_AUTHORITY, origin, re.IGNORECASE))
 
 
 def _password_from_header(value: str | None) -> str | None:
@@ -42,8 +61,7 @@ def _password_from_header(value: str | None) -> str | None:
 
 
 class SharedPasswordMiddleware:
-    """Pure ASGI middleware, so it adds nothing to streaming responses. Reads the
-    password on each request, so it is a no-op when none is configured."""
+    """Apply the password gate or the loopback restriction for local Gmail intake."""
 
     def __init__(self, app):
         self.app = app
@@ -52,8 +70,17 @@ class SharedPasswordMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        expected = get_settings().shared_password
-        if not expected or scope["path"] in OPEN_PATHS:
+        settings = get_settings()
+        if scope["path"] in OPEN_PATHS:
+            await self.app(scope, receive, send)
+            return
+        expected = settings.shared_password
+        if not expected:
+            if settings.local_imap_without_password and not _local_request(scope):
+                await JSONResponse({"detail": "Local Gmail intake requires a loopback request."}, status_code=403)(
+                    scope, receive, send
+                )
+                return
             await self.app(scope, receive, send)
             return
 

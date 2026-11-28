@@ -42,6 +42,7 @@ from app.job_queue import (
     _was_cancelled,
     prune_finished_jobs,
     run_lock,
+    set_email_job_state,
 )
 from app.services import prompt_gate
 from app.services.classification import classify as run_classify
@@ -57,6 +58,24 @@ from app.trace import bound_job, configure_logging
 
 logger = logging.getLogger("app.worker")
 settings = get_settings()
+
+
+def _finish_email_classification(
+    db: Session, job: models.ExtractionJob, attachment: models.Attachment, *, resolved: bool
+) -> None:
+    if not (job.params or {}).get("auto_extract"):
+        return
+    # Import here so normal worker startup does not load mailbox adapters.
+    from app.services.email_intake import queue_read
+
+    source = attachment.report.source
+    intake_file = source.intake_file if source else None
+    if intake_file is None:
+        return
+    if not resolved:
+        intake_file.read_state = models.IntakeReadState.needs_person
+        return
+    queue_read(db, intake_file, attachment, models.ExtractionJobKind.extract)
 
 
 def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
@@ -75,10 +94,7 @@ def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
     try:
         result = run_classify(db, attachment)
     except ClassificationError as e:
-        job.status = models.ExtractionJobStatus.failed
-        job.error_message = str(e)
-        job.completed_at = datetime.now(timezone.utc)
-        db.commit()
+        _fail_job(db, job, str(e))
         return
 
     if _was_cancelled(db, job.id):
@@ -136,6 +152,9 @@ def _run_classify_job(db: Session, job: models.ExtractionJob) -> None:
 
     job.status = models.ExtractionJobStatus.succeeded
     job.completed_at = datetime.now(timezone.utc)
+    _finish_email_classification(
+        db, job, attachment, resolved=bool(result.resolved_instrument_id and result.resolved_template_id)
+    )
     db.commit()
 
 
@@ -236,20 +255,14 @@ def _run_extract_job(db: Session, job: models.ExtractionJob) -> None:
         # pickup (e.g. two attachments on the same report racing), so the
         # worker re-checks rather than trusting the state it was enqueued
         # under.
-        job.status = models.ExtractionJobStatus.failed
-        job.error_message = "Report has no resolved instrument/template — classify and confirm a template first (§4)."
-        job.completed_at = datetime.now(timezone.utc)
-        db.commit()
+        _fail_job(db, job, "Report has no resolved instrument/template — classify and confirm a template first (§4).")
         return
     if report.status == models.ReportStatus.finalized:
         # Cheap early-out so a report finalized between submit and pickup
         # doesn't spend an API call — the router (extract_attachment) already
         # rejects this synchronously. Not sufficient on its own: the
         # authoritative re-check happens under a row lock after run_extract.
-        job.status = models.ExtractionJobStatus.failed
-        job.error_message = "Report was finalized after this job was submitted — extraction discarded."
-        job.completed_at = datetime.now(timezone.utc)
-        db.commit()
+        _fail_job(db, job, "Report was finalized after this job was submitted — extraction discarded.")
         return
 
     template = db.get(models.ReportTemplate, report.template_id)
@@ -302,6 +315,7 @@ def _run_extract_job(db: Session, job: models.ExtractionJob) -> None:
         job.params = {**(job.params or {}), **prompt_fingerprint(template)}
     job.status = models.ExtractionJobStatus.succeeded
     job.completed_at = datetime.now(timezone.utc)
+    set_email_job_state(job, None)
     db.commit()
 
 
@@ -351,10 +365,7 @@ def _run_claimed_job(db: Session, job: models.ExtractionJob, job_id, kind) -> No
             db.rollback()
             failed_job = db.get(models.ExtractionJob, job.id)
             if failed_job is not None:
-                failed_job.status = models.ExtractionJobStatus.failed
-                failed_job.error_message = "Worker crashed processing this job — see server logs."
-                failed_job.completed_at = datetime.now(timezone.utc)
-                db.commit()
+                _fail_job(db, failed_job, "Worker crashed processing this job — see server logs.")
         except Exception:  # noqa: BLE001
             # The exception above wasn't just a bug in this file's own logic
             # — the session/connection itself is what's broken (a dropped

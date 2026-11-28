@@ -57,6 +57,7 @@ export function ReportsListScreen({
   onPath,
   initialFilters,
   onInitialFiltersUsed,
+  onContinue,
 }: {
   instruments: Instrument[];
   fieldConfidenceThreshold: number;
@@ -67,6 +68,7 @@ export function ReportsListScreen({
   /** Filters to start with, from a request typed on Home. Used once, when the screen opens. */
   initialFilters?: ReportFilters;
   onInitialFiltersUsed?: () => void;
+  onContinue?: (reportId: string) => void;
 }) {
   // Starts from what was just asked on Home, else from the search kept since the last visit (see keptSearch.ts).
   const { kept } = useKeptSearch();
@@ -185,6 +187,7 @@ export function ReportsListScreen({
       <ReportDetailScreen
         key={screen.item.id}
         item={screen.item}
+        onContinue={onContinue}
         instruments={instruments}
         onBack={() => leaveReport(screen.returnTo)}
         onDeleted={() => leaveReport(screen.returnTo)}

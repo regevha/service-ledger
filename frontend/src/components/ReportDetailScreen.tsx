@@ -1,3 +1,4 @@
+import { SourceLine } from './email/SourceLine';
 import { showToast } from '../toast';
 import { useEffect, useState } from 'react';
 import {
@@ -51,6 +52,7 @@ export function ReportDetailScreen({
   onViewInstrument,
   fieldConfidenceThreshold,
   highlight,
+  onContinue,
 }: {
   item: ReportListItem;
   instruments: Instrument[];
@@ -63,7 +65,9 @@ export function ReportDetailScreen({
   fieldConfidenceThreshold: number;
   /** The free-text search this report was opened from; its matches are shown highlighted above the fields. */
   highlight?: string;
+  onContinue?: (reportId: string) => void;
 }) {
+  const [reload, setReload] = useState(0);
   const [report, setReport] = useState<Report | null>(null);
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [fields, setFields] = useState<Record<string, unknown>>({});
@@ -132,7 +136,7 @@ export function ReportDetailScreen({
         if (!isCancelled()) setTemplate(tpl);
       }
     },
-    [item],
+    [item, reload],
     'Could not load report.'
   );
 
@@ -184,6 +188,7 @@ export function ReportDetailScreen({
 
   return (
     <div className="section">
+      {report && <SourceLine report={report} />}
       <div className="detail-nav-row">
         <div className="detail-nav-links">
           <button className="btn small back-link" onClick={() => confirmLeave(onBack)}>
@@ -262,6 +267,20 @@ export function ReportDetailScreen({
         <div className="working-panel">
           <div className="spinner" />
           <div>{busyLabel ?? 'Loading report…'}</div>
+        </div>
+      ) : report?.source?.channel === 'email' && (report.status === 'draft' || report.status === 'classified') && Object.keys(report.extracted_fields ?? {}).length === 0 ? (
+        <div className="unread-panel">
+          <h2 className="section-title">Not read yet</h2>
+          <div id="unread-explanation" className="banner banner-info">
+            {report.source?.read_state === 'waiting_for_limit' ? <><strong>Waiting for the daily limit.</strong> The app has read as many reports today as it may. This report will be read after the limit resets. Nothing for you to do.</>
+              : report.source?.read_state === 'queued' ? <><strong>Being read now.</strong> This usually takes under a minute. <button className="btn small" onClick={() => setReload((value) => value + 1)}>Check again</button></>
+              : report.source?.needs_report_type ? <><strong>Needs a report type.</strong> The app did not recognise this kind of report, so it has not read it. Choose Continue to pick the instrument and report type. If there is no form for it yet, you can make one from this report.</>
+              : <><strong>Not read yet.</strong> The app could not finish reading this report on its own. Choose Continue to check the instrument and report type, then read it.</>}
+          </div>
+          <div className="ei-actions">
+            {onContinue && !['waiting_for_limit', 'queued'].includes(report.source?.read_state ?? '') && <button className="btn primary" aria-describedby="unread-explanation" onClick={() => confirmLeave(() => onContinue(report.id))}>Continue</button>}
+            {report.attachments[0] && <a className="btn small" href={attachmentFileUrl(report.attachments[0].id)} target="_blank" rel="noopener noreferrer">View original scan</a>}
+          </div>
         </div>
       ) : report && template ? (
         <>

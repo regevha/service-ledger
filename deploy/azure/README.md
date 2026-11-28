@@ -28,6 +28,15 @@ By default the worker is an app that is always on and polls the job table. With 
 - `update.sh`, `set-secrets.sh`, `pause.sh`, `resume.sh` and `restore.sh` detect the mode by themselves. While paused, the scheduled job still fires every 15 minutes and fails against the stopped database; that is harmless. Look at runs with `az containerapp job execution list -g rg-<name> -n job-worker-<name> -o table`.
 - Switching an existing deployment between the two modes is not supported: `destroy.sh` and deploy again.
 
+## Email intake
+
+The rollout plan pairs a dedicated Gmail inbox with a scheduled Azure
+Container Apps Job in the same environment as ServiceLedger. The job
+runs the SL poller every minute and keeps the API on internal ingress.
+Provision the intake job separately. A live mailbox connection and a
+live end-to-end test are still pending.
+[Email intake setup and verification](../../docs/features/email-intake/DEMO.md)
+
 ## What it does not do
 
 1. **Build or test the image on the official base.** `backend/Dockerfile` was tested on a stand-in base only. Run the script with `BUILD_IMAGE=1` (it builds the frontend with `npm`, then the image in the registry), or build and push it yourself. Still unchecked: that the container user (id 10001) can write to the mounted Azure Files share.
